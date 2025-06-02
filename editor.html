@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Editor - CodeX</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/editor.css">
+</head>
+<body>
+    <div class="editor-container">
+        <!-- Top App Bar -->
+        <div class="top-app-bar">
+            <div class="app-bar-left">
+                <button class="icon-button desktop-only" id="backButton" title="Back to Projects">
+                    <span class="material-icons">arrow_back</span>
+                </button>
+                <button class="icon-button mobile-only" id="drawerToggle" title="Toggle Sidebar">
+                    <span class="material-icons">menu</span>
+                </button>
+            </div>
+            <h1 id="projectTitle">CodeX</h1>
+            <div class="app-bar-right">
+                <button class="icon-button" id="settingsButton" title="Settings">
+                    <span class="material-icons">more_vert</span>
+                </button>
+            </div>
+        </div>
+        
+        <div class="editor-main-container">
+            <!-- Sidebar -->
+            <div class="sidebar">
+                <div class="sidebar-icons">
+                    <button class="sidebar-icon active" data-panel="explorer" title="Explorer">
+                        <span class="material-icons">description</span>
+                    </button>
+                    <button class="sidebar-icon" data-panel="search" title="Search">
+                        <span class="material-icons">search</span>
+                    </button>
+                    <button class="sidebar-icon" data-panel="extensions" title="Extensions">
+                        <span class="material-icons">extension</span>
+                    </button>
+                    <button class="sidebar-icon" data-panel="chat" title="Chat">
+                        <span class="material-icons">chat</span>
+                    </button>
+                    <button class="sidebar-icon" data-panel="preview" title="Preview">
+                        <span class="material-icons">visibility</span>
+                    </button>
+                </div>
+                
+                <!-- Explorer Panel -->
+                <div class="sidebar-panel active" id="explorer-panel">
+                    <div class="panel-header">
+                        <h3>EXPLORER</h3>
+                        <div class="panel-actions">
+                            <button class="icon-button" id="newFileBtn" title="New File">
+                                <span class="material-icons">note_add</span>
+                            </button>
+                            <button class="icon-button" id="newFolderBtn" title="New Folder">
+                                <span class="material-icons">create_new_folder</span>
+                            </button>
+                            <button class="icon-button" id="refreshBtn" title="Refresh">
+                                <span class="material-icons">refresh</span>
+                            </button>
+                        </div>
+                    </div>
+                    <!-- Explorer content will be dynamically added here -->
+                </div>
+                
+                <!-- Search Panel -->
+                <div class="sidebar-panel" id="search-panel">
+                    <div class="panel-header">
+                        <h3>SEARCH</h3>
+                    </div>
+                    <div class="search-container">
+                        <div class="search-input-container">
+                            <input type="text" class="search-input" placeholder="Search...">
+                            <button class="icon-button" title="Search">
+                                <span class="material-icons">search</span>
+                            </button>
+                        </div>
+                        <div class="search-options">
+                            <label class="search-option">
+                                <input type="checkbox" checked>
+                                <span>Match Case</span>
+                            </label>
+                            <label class="search-option">
+                                <input type="checkbox">
+                                <span>Whole Word</span>
+                            </label>
+                            <label class="search-option">
+                                <input type="checkbox">
+                                <span>Regex</span>
+                            </label>
+                        </div>
+                        <div class="search-results">
+                            <!-- Search results will be dynamically added here -->
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Extensions Panel -->
+                <div class="sidebar-panel" id="extensions-panel">
+                    <div class="panel-header">
+                        <h3>EXTENSIONS</h3>
+                    </div>
+                    <div class="extensions-container">
+                        <p class="coming-soon">Extensions functionality coming soon</p>
+                    </div>
+                </div>
+                
+                <!-- Chat Panel -->
+                <div class="sidebar-panel" id="chat-panel">
+                    <div class="panel-header">
+                        <h3>CHAT</h3>
+                    </div>
+                    <div class="panel-content">
+                        <p>Click on the Chat icon to open the chat interface.</p>
+                    </div>
+                </div>
+                
+                <!-- Preview Panel -->
+                <div class="sidebar-panel" id="preview-panel">
+                    <div class="panel-header">
+                        <h3>PREVIEW</h3>
+                    </div>
+                    <div class="panel-content">
+                        <p>Click on the Preview icon to open the preview interface.</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Main Editor Area -->
+            <div class="editor-main">
+                <!-- Code Tab Content -->
+                <div class="mobile-tab-content" id="code-tab-content">
+                    <!-- Tab Bar -->
+                    <div class="tab-bar">
+                        <div class="tabs" id="tabs">
+                            <!-- Tabs will be dynamically added here -->
+                        </div>
+                    </div>
+                    
+                    <!-- Editor Content -->
+                    <div class="editor-content" id="editorContent">
+                        <!-- Editor will be dynamically inserted here -->
+                    </div>
+                </div>
+                
+                <!-- Chat Tab Content -->
+                <div class="mobile-tab-content active" id="chat-tab-content">
+                    <div class="chat-container">
+                        <div class="chat-messages" id="chatMessages">
+                            <div class="chat-empty-state" id="chatEmptyState">
+                                <div class="chat-welcome">
+                                    <h3>Welcome to CodeX</h3>
+                                    <p>Your coding assistant is ready to help</p>
+                                </div>
+                                <div class="chat-suggestions">
+                                    <div class="chat-suggestion-item" data-prompt="Create a responsive navigation bar with HTML and CSS">
+                                        Create responsive navigation bar
+                                    </div>
+                                    <div class="chat-suggestion-item" data-prompt="Help me debug my JavaScript function that isn't working">
+                                        Debug my JavaScript code
+                                    </div>
+                                    <div class="chat-suggestion-item" data-prompt="How do I create an animated button with CSS?">
+                                        Create animated CSS buttons
+                                    </div>
+                                    <div class="chat-suggestion-item" data-prompt="Convert this design to HTML and CSS">
+                                        Convert design to HTML/CSS
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="chat-input-container">
+                            <textarea class="chat-input" id="chatInput" placeholder="Type your message..."></textarea>
+                            <button class="icon-button send-button" id="sendChatBtn">
+                                <span class="material-icons">send</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Preview Tab Content -->
+                <div class="mobile-tab-content" id="preview-tab-content">
+                    <div class="preview-container">
+                        <div class="preview-header">
+                            <div class="preview-tabs">
+                                <div class="preview-tab active" data-preview="website">Website</div>
+                                <div class="preview-tab" data-preview="console">Console</div>
+                            </div>
+                            <button class="icon-button" id="refreshPreviewBtn" title="Refresh Preview">
+                                <span class="material-icons">refresh</span>
+                            </button>
+                        </div>
+                        <div class="preview-content">
+                            <div class="preview-panel active" id="website-preview">
+                                <iframe id="previewFrame" src="about:blank" title="Preview"></iframe>
+                            </div>
+                            <div class="preview-panel" id="console-preview">
+                                <div class="console-output" id="consoleOutput">
+                                    <div class="console-line">// Console output will appear here</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Status Bar -->
+                <div class="status-bar">
+                    <div class="status-left">
+                        <span class="status-item" id="currentPosition">Ln 1, Col 1</span>
+                        <span class="status-item" id="indentSize">Spaces: 4</span>
+                    </div>
+                    <div class="status-right">
+                        <span class="status-item" id="fileType">HTML</span>
+                        <span class="status-item" id="encodingType">UTF-8</span>
+                        <span class="status-item" id="currentBranch">main</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Bottom Navigation for Mobile -->
+        <div class="bottom-navigation">
+            <div class="bottom-nav-items">
+                <div class="bottom-nav-item active" data-tab="chat">
+                    <span class="material-icons">chat</span>
+                    <span>Chat</span>
+                </div>
+                <div class="bottom-nav-item" data-tab="code">
+                    <span class="material-icons">code</span>
+                    <span>Code</span>
+                </div>
+                <div class="bottom-nav-item" data-tab="preview">
+                    <span class="material-icons">visibility</span>
+                    <span>Preview</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- New File Modal -->
+    <div class="modal" id="newFileModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Create New File</h3>
+                <button class="icon-button close-modal">
+                    <span class="material-icons">close</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="fileName">File Name</label>
+                    <input type="text" id="fileName" placeholder="example.html">
+                </div>
+                <div class="form-group">
+                    <label for="folderPath">Location</label>
+                    <select id="folderPath">
+                        <option value="/">Root</option>
+                        <!-- Folders will be dynamically added here -->
+                    </select>
+                </div>
+                <div class="form-actions">
+                    <button class="button secondary close-modal">Cancel</button>
+                    <button class="button primary" id="createFileBtn">Create</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- New Folder Modal -->
+    <div class="modal" id="newFolderModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Create New Folder</h3>
+                <button class="icon-button close-modal">
+                    <span class="material-icons">close</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="folderName">Folder Name</label>
+                    <input type="text" id="folderName" placeholder="assets">
+                </div>
+                <div class="form-group">
+                    <label for="parentFolderPath">Location</label>
+                    <select id="parentFolderPath">
+                        <option value="/">Root</option>
+                        <!-- Folders will be dynamically added here -->
+                    </select>
+                </div>
+                <div class="form-actions">
+                    <button class="button secondary close-modal">Cancel</button>
+                    <button class="button primary" id="createFolderBtn">Create</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Rename Modal -->
+    <div class="modal" id="renameModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="renameModalTitle">Rename</h3>
+                <button class="icon-button close-modal">
+                    <span class="material-icons">close</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="newName">New Name</label>
+                    <input type="text" id="newName">
+                </div>
+                <div class="form-actions">
+                    <button class="button secondary close-modal">Cancel</button>
+                    <button class="button primary" id="confirmRenameBtn">Rename</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Context Menu -->
+    <div class="context-menu" id="contextMenu">
+        <div class="context-menu-item" id="contextMenuRename">
+            <span class="material-icons">edit</span>
+            <span>Rename</span>
+        </div>
+        <div class="context-menu-item" id="contextMenuCopy">
+            <span class="material-icons">content_copy</span>
+            <span>Copy</span>
+        </div>
+        <div class="context-menu-item" id="contextMenuCut">
+            <span class="material-icons">content_cut</span>
+            <span>Cut</span>
+        </div>
+        <div class="context-menu-item" id="contextMenuPaste">
+            <span class="material-icons">content_paste</span>
+            <span>Paste</span>
+        </div>
+        <div class="context-menu-separator"></div>
+        <div class="context-menu-item" id="contextMenuDelete">
+            <span class="material-icons">delete</span>
+            <span>Delete</span>
+        </div>
+    </div>
+    
+    <div class="overlay" id="overlay"></div>
+    
+    <!-- Include Monaco Editor -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.36.1/min/vs/loader.min.js"></script>
+    <script src="js/editor.js" type="module"></script>
+</body>
+</html> 

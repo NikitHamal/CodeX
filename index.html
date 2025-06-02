@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CodeX</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="app-container">
+        <header class="topbar">
+            <div class="logo-container">
+                <span class="logo-icon">&#60;&#47;&#62;</span>
+                <h1>CodeX</h1>
+            </div>
+            <div class="actions">
+                <button class="icon-button settings-button" aria-label="Settings">
+                    <span class="material-icons">settings</span>
+                </button>
+                <button class="icon-button user-button" aria-label="User">
+                    <span class="material-icons">account_circle</span>
+                </button>
+            </div>
+        </header>
+        
+        <main class="content">
+            <div class="projects-header">
+                <h2>Projects</h2>
+                <div class="project-actions">
+                    <button class="button primary" id="newProjectBtn">
+                        <span class="material-icons">add</span>
+                        New
+                    </button>
+                    <button class="button secondary" id="importProjectBtn">
+                        <span class="material-icons">upload</span>
+                        Import
+                    </button>
+                </div>
+            </div>
+            
+            <div class="projects-container" id="projectsContainer">
+                <!-- Projects will be dynamically inserted here -->
+            </div>
+            
+            <div class="empty-state" id="emptyState">
+                <div class="empty-state-icon">
+                    <span class="material-icons">code</span>
+                </div>
+                <h3>No Projects Yet</h3>
+                <p>Create a new project to get started with CodeX</p>
+                <button class="button primary" id="createFirstProjectBtn">
+                    <span class="material-icons">add</span>
+                    Create Project
+                </button>
+            </div>
+        </main>
+    </div>
+    
+    <!-- Project Options Modal -->
+    <div class="modal" id="projectOptionsModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Project Options</h3>
+                <button class="icon-button close-modal">
+                    <span class="material-icons">close</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <button class="modal-option" id="renameProject">
+                    <span class="material-icons">edit</span>
+                    Rename
+                </button>
+                <button class="modal-option" id="exportProject">
+                    <span class="material-icons">download</span>
+                    Export
+                </button>
+                <button class="modal-option danger" id="deleteProject">
+                    <span class="material-icons">delete</span>
+                    Delete
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- New Project Modal -->
+    <div class="modal" id="newProjectModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Create New Project</h3>
+                <button class="icon-button close-modal">
+                    <span class="material-icons">close</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="projectName">Project Name</label>
+                    <input type="text" id="projectName" placeholder="My Awesome Project">
+                </div>
+                <div class="form-actions">
+                    <button class="button secondary close-modal">Cancel</button>
+                    <button class="button primary" id="createProjectBtn">Create</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="overlay" id="overlay"></div>
+    
+    <script src="js/app.js" type="module"></script>
+</body>
+</html> 

@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings - CodeX</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/settings.css">
+</head>
+<body>
+    <div class="app-container">
+        <header class="topbar">
+            <div class="logo-container">
+                <span class="logo-icon">&#60;&#47;&#62;</span>
+                <h1>CodeX</h1>
+            </div>
+            <div class="actions">
+                <button class="icon-button back-button" aria-label="Back" id="backButton">
+                    <span class="material-icons">arrow_back</span>
+                </button>
+            </div>
+        </header>
+        
+        <main class="content">
+            <div class="settings-header">
+                <h2>Settings</h2>
+            </div>
+            
+            <div class="settings-container">
+                <div class="settings-section">
+                    <h3>Appearance</h3>
+                    <div class="setting-item">
+                        <div class="setting-label">
+                            <span class="material-icons">dark_mode</span>
+                            <span>Theme</span>
+                        </div>
+                        <div class="setting-control">
+                            <select id="themeSelect">
+                                <option value="dark" selected>Dark</option>
+                                <option value="light">Light</option>
+                                <option value="system">System Default</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="setting-item">
+                        <div class="setting-label">
+                            <span class="material-icons">font_download</span>
+                            <span>Font Size</span>
+                        </div>
+                        <div class="setting-control">
+                            <input type="range" min="10" max="24" value="14" id="fontSizeRange">
+                            <span id="fontSizeValue">14px</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="settings-section">
+                    <h3>Editor</h3>
+                    <div class="setting-item">
+                        <div class="setting-label">
+                            <span class="material-icons">tab</span>
+                            <span>Tab Size</span>
+                        </div>
+                        <div class="setting-control">
+                            <select id="tabSizeSelect">
+                                <option value="2">2 spaces</option>
+                                <option value="4" selected>4 spaces</option>
+                                <option value="8">8 spaces</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="setting-item">
+                        <div class="setting-label">
+                            <span class="material-icons">wrap_text</span>
+                            <span>Word Wrap</span>
+                        </div>
+                        <div class="setting-control">
+                            <label class="toggle">
+                                <input type="checkbox" id="wordWrapToggle" checked>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="setting-item">
+                        <div class="setting-label">
+                            <span class="material-icons">format_line_spacing</span>
+                            <span>Line Numbers</span>
+                        </div>
+                        <div class="setting-control">
+                            <label class="toggle">
+                                <input type="checkbox" id="lineNumbersToggle" checked>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="settings-section">
+                    <h3>About</h3>
+                    <div class="about-info">
+                        <p>CodeX v1.0.0</p>
+                        <p>A minimal, dark-themed code editor</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <script src="js/settings.js" type="module"></script>
+</body>
+</html> 

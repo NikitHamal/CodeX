@@ -22,6 +22,11 @@ export class EditorUI {
         this.previewFrame = document.getElementById('previewFrame');
         this.consoleOutput = document.getElementById('consoleOutput');
         
+        // New AI chat elements
+        this.modelSelectorButton = document.getElementById('modelSelectorButton');
+        this.chatModeSelect = document.getElementById('chatModeSelect');
+        this.modelSelectionModal = document.getElementById('modelSelectionModal');
+        
         // Set up event listeners
         this.setupEventListeners();
     }
@@ -93,6 +98,31 @@ export class EditorUI {
                 }
             });
         }
+        
+        // AI Model selector button
+        if (this.modelSelectorButton) {
+            this.modelSelectorButton.addEventListener('click', () => {
+                this.showModelSelectionModal();
+            });
+        }
+        
+        // Chat mode selector
+        if (this.chatModeSelect) {
+            this.chatModeSelect.addEventListener('change', () => {
+                if (this.editor.aiAssistant) {
+                    this.editor.aiAssistant.setMode(this.chatModeSelect.value);
+                }
+            });
+        }
+        
+        // Model selection items
+        document.querySelectorAll('.model-item').forEach(item => {
+            item.addEventListener('click', () => {
+                const modelId = item.dataset.model;
+                this.selectModel(modelId);
+                this.editor.closeAllModals();
+            });
+        });
         
         // Refresh preview button
         const refreshPreviewBtn = document.getElementById('refreshPreviewBtn');
@@ -219,6 +249,12 @@ export class EditorUI {
         const tabContent = document.getElementById(`${tabId}-tab-content`);
         if (tabContent) {
             tabContent.classList.add('active');
+        }
+        
+        // Toggle status bar visibility based on active tab
+        const statusBar = document.querySelector('.status-bar');
+        if (statusBar) {
+            statusBar.style.display = tabId === 'code' ? 'flex' : 'none';
         }
         
         // If preview tab is selected, refresh the preview
@@ -462,22 +498,227 @@ export class EditorUI {
      */
     addChatMessage(message, sender) {
         const chatMessages = document.getElementById('chatMessages');
+        if (!chatMessages) return;
         
         const messageDiv = document.createElement('div');
         messageDiv.className = `chat-message ${sender}`;
         
         const contentDiv = document.createElement('div');
         contentDiv.className = 'chat-message-content';
+
+        // Check if the message is an AI action result for file operations
+        if (sender === 'ai' && typeof message === 'object' && message.action && message.filePath) {
+            let labelText = '';
+            let labelClass = '';
+            let isClickable = false;
+
+            switch (message.action) {
+                case 'createFile':
+                    labelText = 'NEW';
+                    labelClass = 'label-new';
+                    isClickable = true;
+                    break;
+                case 'updateFile':
+                    labelText = 'UPDATED';
+                    labelClass = 'label-updated';
+                    isClickable = true;
+                    break;
+                case 'deleteFile':
+                    labelText = 'DELETED';
+                    labelClass = 'label-deleted';
+                    break;
+            }
+
+            const actionMessage = document.createElement('p');
+            const labelSpan = document.createElement('span');
+            labelSpan.className = `chat-action-label ${labelClass}`;
+            labelSpan.textContent = labelText;
+            actionMessage.appendChild(labelSpan);
+
+            if (isClickable) {
+                const fileLink = document.createElement('a');
+                fileLink.href = '#';
+                fileLink.className = 'chat-file-link';
+                fileLink.textContent = ` ${message.filePath}`;
+                fileLink.dataset.action = message.action;
+                fileLink.dataset.fileId = message.fileId;
+                fileLink.dataset.filePath = message.filePath;
+                if (message.action === 'createFile') {
+                    fileLink.dataset.modifiedContent = message.content; 
+                } else if (message.action === 'updateFile') {
+                    fileLink.dataset.originalContent = message.originalContent;
+                    fileLink.dataset.modifiedContent = message.modifiedContent;
+                }
+                fileLink.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    this.handleFileActionClick(e.currentTarget.dataset);
+                });
+                actionMessage.appendChild(fileLink);
+            } else {
+                actionMessage.appendChild(document.createTextNode(` ${message.filePath}`));
+            }
+            contentDiv.appendChild(actionMessage);
+            // Optionally, add the AI's conversational message if it exists
+            if (typeof message.message === 'string' && !message.message.startsWith('File ')) {
+                 const followupP = document.createElement('p');
+                 followupP.textContent = message.message;
+                 contentDiv.appendChild(followupP);
+            }
+
+        } else if (sender === 'ai') {
+            // Handle standard AI text message with markdown
+            const formattedMessage = this.formatMarkdown(typeof message === 'string' ? message : message.message || 'Unexpected AI response format');
+            contentDiv.innerHTML = formattedMessage;
+        } else {
+            // User message (plain text)
+            const messageText = document.createElement('p');
+            messageText.textContent = message;
+            contentDiv.appendChild(messageText);
+        }
         
-        const messageText = document.createElement('p');
-        messageText.textContent = message;
-        
-        contentDiv.appendChild(messageText);
         messageDiv.appendChild(contentDiv);
-        chatMessages.prepend(messageDiv);
         
-        // Scroll to bottom
-        chatMessages.scrollTop = chatMessages.scrollHeight;
+        // Add to DOM
+        // If there's a typing indicator, insert before it, otherwise prepend
+        const typingIndicator = chatMessages.querySelector('.typing-indicator-container');
+        if (typingIndicator) {
+            chatMessages.insertBefore(messageDiv, typingIndicator);
+        } else {
+            chatMessages.prepend(messageDiv); // Prepend to keep newest at bottom due to flex-direction: column-reverse
+        }
+        
+        // Hide empty state if it's visible
+        if (this.chatEmptyState && this.chatEmptyState.style.display !== 'none') {
+            this.chatEmptyState.style.display = 'none';
+        }
+        
+        // Scroll to bottom (which is top due to column-reverse)
+        chatMessages.scrollTop = 0;
+    }
+
+    handleFileActionClick(dataset) {
+        const { action, fileId, filePath, originalContent, modifiedContent } = dataset;
+        
+        if (action === 'createFile') {
+            this.editor.monacoEditor.openDiffView(fileId, filePath, '', modifiedContent, 'New File');
+        } else if (action === 'updateFile') {
+            this.editor.monacoEditor.openDiffView(fileId, filePath, originalContent, modifiedContent, 'File Update');
+        }
+    }
+    
+    /**
+     * Format markdown for chat messages
+     */
+    formatMarkdown(text) {
+        // This is a very simple markdown parser, in a real application
+        // you might want to use a library like marked.js
+        
+        // Code blocks
+        text = text.replace(/```(\w*)([\s\S]*?)```/g, (match, lang, code) => {
+            return `<pre><code class="language-${lang}">${this.escapeHtml(code.trim())}</code></pre>`;
+        });
+        
+        // Inline code
+        text = text.replace(/`([^`]+)`/g, '<code>$1</code>');
+        
+        // Headers
+        text = text.replace(/^### (.*$)/gm, '<h3>$1</h3>');
+        text = text.replace(/^## (.*$)/gm, '<h2>$1</h2>');
+        text = text.replace(/^# (.*$)/gm, '<h1>$1</h1>');
+        
+        // Bold
+        text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        
+        // Italic
+        text = text.replace(/\*(.*?)\*/g, '<em>$1</em>');
+        
+        // Lists
+        text = text.replace(/^\s*- (.*$)/gm, '<li>$1</li>');
+        text = text.replace(/(<li>.*<\/li>)/gms, '<ul>$1</ul>');
+        
+        // Paragraphs
+        text = text.replace(/^(?!<[hou]|<li|<pre)(.+)$/gm, '<p>$1</p>');
+        
+        return text;
+    }
+    
+    /**
+     * Escape HTML for code blocks
+     */
+    escapeHtml(unsafe) {
+        return unsafe
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+    
+    /**
+     * Show typing indicator for AI
+     */
+    showTypingIndicator() {
+        this.hideTypingIndicator(); // Remove any existing indicator first
+
+        const chatMessagesEl = document.getElementById('chatMessages');
+        if (!chatMessagesEl) return;
+
+        const indicatorEl = document.createElement('div');
+        indicatorEl.classList.add('chat-message', 'ai', 'typing-indicator-container'); // Added a container class
+        indicatorEl.innerHTML = `<div class="chat-message-content typing-indicator-text">AI is typing...</div>`;
+
+        // If chat is scrolled to the bottom (or very close), append and scroll.
+        // Otherwise, it might be less intrusive to not auto-scroll if the user has scrolled up to read history.
+        const isScrolledToBottom = chatMessagesEl.scrollHeight - chatMessagesEl.clientHeight <= chatMessagesEl.scrollTop + 50;
+
+        chatMessagesEl.appendChild(indicatorEl);
+
+        if (isScrolledToBottom) {
+            chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
+        }
+    }
+
+    /**
+     * Hide typing indicator for AI
+     */
+    hideTypingIndicator() {
+        const typingIndicator = document.querySelector('.typing-indicator-container');
+        if (typingIndicator) {
+            typingIndicator.remove();
+        }
+    }
+    
+    /**
+     * Show model selection modal
+     */
+    showModelSelectionModal() {
+        document.getElementById('overlay').style.display = 'block';
+        document.getElementById('modelSelectionModal').style.display = 'block';
+    }
+    
+    /**
+     * Select an AI model
+     */
+    selectModel(modelId) {
+        if (this.editor.aiAssistant) {
+            if (this.editor.aiAssistant.setModel(modelId)) {
+                // Update selected model indicator
+                document.querySelectorAll('.model-item .model-selected').forEach(el => {
+                    el.textContent = '';
+                });
+                
+                const selectedEl = document.querySelector(`.model-item[data-model="${modelId}"] .model-selected`);
+                if (selectedEl) {
+                    selectedEl.textContent = 'check';
+                }
+                
+                // Update model name in button
+                const modelNameEl = this.modelSelectorButton.querySelector('.model-name');
+                if (modelNameEl) {
+                    modelNameEl.textContent = modelId;
+                }
+            }
+        }
     }
     
     /**

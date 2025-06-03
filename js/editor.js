@@ -5,6 +5,8 @@ import { EditorUI } from './editorUI.js';
 import { FileExplorer } from './fileExplorer.js';
 import { MonacoEditorManager } from './monacoEditor.js';
 import { PreviewManager } from './previewManager.js';
+import { CodebaseIndexer } from './codebaseIndexer.js';
+import { AIAssistant } from './aiAssistant.js';
 
 /**
  * EditorManager - Main editor class that coordinates all editor functionality
@@ -35,8 +37,15 @@ export class EditorManager {
         this.monacoEditor = new MonacoEditorManager(this, this.fileManager);
         this.previewManager = new PreviewManager(this, this.fileManager);
         
+        // Initialize AI components
+        this.codebaseIndexer = new CodebaseIndexer(this.fileManager);
+        this.aiAssistant = new AIAssistant(this, this.codebaseIndexer);
+        
         // Load project
         this.loadProject();
+        
+        // Index codebase for AI
+        this.indexCodebase();
     }
     
     /**
@@ -148,6 +157,7 @@ export class EditorManager {
         document.getElementById('newFileModal').style.display = 'none';
         document.getElementById('newFolderModal').style.display = 'none';
         document.getElementById('renameModal').style.display = 'none';
+        document.getElementById('modelSelectionModal').style.display = 'none';
         document.getElementById('fileName').value = '';
         document.getElementById('folderName').value = '';
         document.getElementById('newName').value = '';
@@ -379,26 +389,23 @@ export class EditorManager {
         const message = chatInput.value.trim();
         
         if (message) {
-            // Hide empty state when first message is sent
-            const chatEmptyState = document.getElementById('chatEmptyState');
-            if (chatEmptyState) {
-                chatEmptyState.style.display = 'none';
-            }
-            
-            // Add user message
-            this.ui.addChatMessage(message, 'user');
-            
             // Clear input
             chatInput.value = '';
             
-            // Simulate AI response (in a real app, this would call an API)
-            setTimeout(() => {
-                // Example response - in a real app, this would come from an AI API
-                let aiResponse = "I'll help you with that! Let me analyze your request...";
-                
-                // Add AI message
-                this.ui.addChatMessage(aiResponse, 'ai');
-            }, 1000);
+            // Process message with AI assistant
+            this.aiAssistant.processMessage(message);
+        }
+    }
+    
+    /**
+     * Index the codebase for AI context
+     */
+    async indexCodebase() {
+        try {
+            await this.codebaseIndexer.indexCodebase();
+            console.log('Codebase indexed successfully');
+        } catch (error) {
+            console.error('Error indexing codebase:', error);
         }
     }
 }

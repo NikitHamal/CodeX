@@ -6,6 +6,7 @@ class SettingsManager {
         this.settings = this.loadSettings();
         this.setupEventListeners();
         this.applySettings();
+        this.loadGeminiKey();
     }
     
     /**
@@ -34,6 +35,46 @@ class SettingsManager {
      */
     saveSettings() {
         localStorage.setItem('codex_settings', JSON.stringify(this.settings));
+    }
+    
+    /**
+     * Load Gemini API key from localStorage
+     */
+    loadGeminiKey() {
+        const apiKey = localStorage.getItem('gemini_api_key');
+        const geminiKeyInput = document.getElementById('geminiKeyInput');
+        if (apiKey && geminiKeyInput) {
+            geminiKeyInput.value = apiKey;
+        }
+    }
+    
+    /**
+     * Save Gemini API key to localStorage
+     */
+    saveGeminiKey() {
+        const geminiKeyInput = document.getElementById('geminiKeyInput');
+        if (geminiKeyInput && geminiKeyInput.value.trim()) {
+            localStorage.setItem('gemini_api_key', geminiKeyInput.value.trim());
+            alert('API key saved successfully!');
+        } else {
+            alert('Please enter a valid API key.');
+        }
+    }
+    
+    /**
+     * Toggle visibility of the API key
+     */
+    toggleKeyVisibility() {
+        const geminiKeyInput = document.getElementById('geminiKeyInput');
+        const showKeyBtn = document.getElementById('showKeyBtn');
+        
+        if (geminiKeyInput.type === 'password') {
+            geminiKeyInput.type = 'text';
+            showKeyBtn.querySelector('.material-icons').textContent = 'visibility_off';
+        } else {
+            geminiKeyInput.type = 'password';
+            showKeyBtn.querySelector('.material-icons').textContent = 'visibility';
+        }
     }
     
     /**
@@ -85,9 +126,32 @@ class SettingsManager {
             this.saveSettings();
         });
         
+        // Gemini API key
+        const saveGeminiKeyBtn = document.getElementById('saveGeminiKeyBtn');
+        if (saveGeminiKeyBtn) {
+            saveGeminiKeyBtn.addEventListener('click', () => {
+                this.saveGeminiKey();
+            });
+        }
+        
+        // Show/hide API key
+        const showKeyBtn = document.getElementById('showKeyBtn');
+        if (showKeyBtn) {
+            showKeyBtn.addEventListener('click', () => {
+                this.toggleKeyVisibility();
+            });
+        }
+        
         // Back button
         document.getElementById('backButton').addEventListener('click', () => {
-            window.location.href = 'index.html';
+            // Check if there's a previous page to return to
+            const referrer = document.referrer;
+            
+            if (referrer && referrer.includes(window.location.hostname)) {
+                history.back();
+            } else {
+                window.location.href = 'index.html';
+            }
         });
     }
     

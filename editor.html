@@ -10,6 +10,7 @@
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/editor.css">
+    <link rel="stylesheet" href="css/chat.css">
 </head>
 <body>
     <div class="editor-container">
@@ -177,10 +178,24 @@
                             </div>
                         </div>
                         <div class="chat-input-container">
-                            <textarea class="chat-input" id="chatInput" placeholder="Type your message..."></textarea>
-                            <button class="icon-button send-button" id="sendChatBtn">
-                                <span class="material-icons">send</span>
-                            </button>
+                            <div class="chat-control-bar">
+                                <div class="chat-mode-selector">
+                                    <select id="chatModeSelect">
+                                        <option value="agent" selected>Agent</option>
+                                        <option value="ask">Ask</option>
+                                    </select>
+                                </div>
+                                <div class="chat-model-selector" id="modelSelectorButton">
+                                    <span class="model-name">gemini-2.0-flash</span>
+                                    <span class="material-icons">expand_more</span>
+                                </div>
+                            </div>
+                            <div class="chat-input-bar">
+                                <textarea class="chat-input" id="chatInput" placeholder="Type your message..."></textarea>
+                                <button class="icon-button send-button" id="sendChatBtn">
+                                    <span class="material-icons">send</span>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -354,5 +369,49 @@
     <!-- Include Monaco Editor -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.36.1/min/vs/loader.min.js"></script>
     <script src="js/editor.js" type="module"></script>
+
+    <!-- Add AI Model Selection Modal -->
+    <div class="modal" id="modelSelectionModal">
+        <div class="modal-content model-selection-content">
+            <div class="modal-header">
+                <h3>Select AI Model</h3>
+                <button class="icon-button close-modal">
+                    <span class="material-icons">close</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="model-list">
+                    <div class="model-item" data-model="gemini-2.0-flash">
+                        <div class="model-details">
+                            <span class="model-title">gemini-2.0-flash</span>
+                            <span class="model-description">Fast responses, good for quick questions</span>
+                        </div>
+                        <span class="material-icons model-selected">check</span>
+                    </div>
+                    <div class="model-item" data-model="gemini-2.0-pro">
+                        <div class="model-details">
+                            <span class="model-title">gemini-2.0-pro</span>
+                            <span class="model-description">Balanced performance for most tasks</span>
+                        </div>
+                        <span class="material-icons model-selected"></span>
+                    </div>
+                    <div class="model-item" data-model="gemini-1.5-pro">
+                        <div class="model-details">
+                            <span class="model-title">gemini-1.5-pro</span>
+                            <span class="model-description">Advanced capabilities for complex tasks</span>
+                        </div>
+                        <span class="material-icons model-selected"></span>
+                    </div>
+                    <div class="model-item" data-model="gemini-1.5-flash">
+                        <div class="model-details">
+                            <span class="model-title">gemini-1.5-flash</span>
+                            <span class="model-description">Efficient model with good performance</span>
+                        </div>
+                        <span class="material-icons model-selected"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </body>
 </html> 

@@ -168,12 +168,17 @@ public class DialogHelper {
 		.show();
 	}
 
-	public void showApiKeyDialog(Runnable onSave) {
+	public void showApiKeyDialog(String preferenceKey, String dialogTitle, Runnable onSave) {
 		View dialogView = LayoutInflater.from(context).inflate(R.layout.dialog_api_key, null);
 		TextInputEditText editTextApiKey = dialogView.findViewById(R.id.edittext_api_key);
 
+		// Pre-fill existing value (if any) so users can update it easily
+		SharedPreferences prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE);
+		String existing = prefs.getString(preferenceKey, "");
+		editTextApiKey.setText(existing);
+
 		AlertDialog dialog = new MaterialAlertDialogBuilder(context)
-				.setTitle("Set API Key")
+				.setTitle(dialogTitle)
 				.setView(dialogView)
 				.setPositiveButton("Save", null)
 				.setNegativeButton("Cancel", null)
@@ -184,14 +189,18 @@ public class DialogHelper {
 		dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
 			String apiKey = editTextApiKey.getText().toString().trim();
 			if (apiKey.isEmpty()) {
-				editTextApiKey.setError("API Key cannot be empty");
+				editTextApiKey.setError("API key cannot be empty");
 			} else {
-				SharedPreferences prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE);
-				prefs.edit().putString("gemini_api_key", apiKey).apply();
+				prefs.edit().putString(preferenceKey, apiKey).apply();
 				onSave.run();
 				dialog.dismiss();
 			}
 		});
+	}
+
+	// Legacy helper – defaults to Gemini key for backward compatibility
+	public void showApiKeyDialog(Runnable onSave) {
+		showApiKeyDialog("gemini_api_key", "Set API Key", onSave);
 	}
 
 	public void showAiActionSummary(List<String> actionSummaries, String explanation) {

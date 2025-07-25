@@ -44,11 +44,7 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
         // Initialize AiProcessor here, it needs the project directory and application context
         this.aiProcessor = new AiProcessor(projectDir, activity.getApplicationContext());
 
-        String apiKey = SettingsActivity.getGeminiApiKey(activity);
-        if (apiKey.isEmpty()) {
-            activity.showToast("AI API Key not set. Please configure it in Settings.");
-        }
-
+        String apiKey = SettingsActivity.getGeminiApiKey(activity); // May be blank at start – that's fine
         // Initialize AIAssistant, passing 'this' as the AIActionListener
         this.aiAssistant = new AIAssistant(activity, apiKey, projectDir, projectName, executorService, this);
     }
@@ -114,19 +110,27 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
         if (aiAssistant.getCurrentModel() == AIAssistant.AIModel.GEMINI_2_0_FLASH) {
             apiKey = SettingsActivity.getGeminiApiKey(activity);
             if (apiKey.isEmpty()) {
-                activity.getDialogHelper().showApiKeyDialog(() -> {
-                    aiAssistant.setApiKey(SettingsActivity.getGeminiApiKey(activity));
-                    sendAiPrompt(userPrompt, activeTabItem);
-                });
+                activity.getDialogHelper().showApiKeyDialog(
+                    "gemini_api_key",
+                    "Set Gemini API Key",
+                    () -> {
+                        aiAssistant.setApiKey(SettingsActivity.getGeminiApiKey(activity));
+                        sendAiPrompt(userPrompt, activeTabItem);
+                    }
+                );
                 return;
             }
         } else if (aiAssistant.getCurrentModel() == AIAssistant.AIModel.DEEPSEEK_R1) {
             apiKey = SettingsActivity.getHuggingFaceToken(activity);
             if (apiKey.isEmpty()) {
-                activity.getDialogHelper().showApiKeyDialog(() -> {
-                    aiAssistant.setApiKey(SettingsActivity.getHuggingFaceToken(activity));
-                    sendAiPrompt(userPrompt, activeTabItem);
-                });
+                activity.getDialogHelper().showApiKeyDialog(
+                    "huggingface_token",
+                    "Set HuggingFace Token",
+                    () -> {
+                        aiAssistant.setApiKey(SettingsActivity.getHuggingFaceToken(activity));
+                        sendAiPrompt(userPrompt, activeTabItem);
+                    }
+                );
                 return;
             }
         } else {

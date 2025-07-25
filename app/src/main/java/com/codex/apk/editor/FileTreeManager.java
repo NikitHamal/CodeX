@@ -194,13 +194,13 @@ public class FileTreeManager {
         for (TabItem removedTab : toRemove) {
             int index = activity.getOpenTabsList().indexOf(removedTab); // Get current index in activity's list
             if (index != -1) {
-                activity.removeFileTabFromFragment(index);
+                activity.getCodeEditorFragment().removeFileTab(index);
             }
         }
 
         if (!toRemove.isEmpty() || !toUpdate.isEmpty()) {
-            activity.refreshAllFileTabsInFragment(); // Refresh all tabs in fragment
-            activity.refreshFileTabLayoutInFragment();
+            activity.getCodeEditorFragment().refreshAllFileTabs(); // Refresh all tabs in fragment
+            activity.getCodeEditorFragment().refreshFileTabLayout();
         }
     }
 

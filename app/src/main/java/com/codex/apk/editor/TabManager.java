@@ -39,9 +39,8 @@ public class TabManager {
     }
 
     public TabItem getActiveTabItem() {
-        SimpleSoraTabAdapter tabAdapter = activity.getFileTabAdapterFromFragment();
-        if (tabAdapter != null) {
-            return tabAdapter.getActiveTabItem();
+        if (activity.getCodeEditorFragment() != null) {
+            return activity.getCodeEditorFragment().getActiveTabItem();
         }
         return null;
     }
@@ -59,7 +58,7 @@ public class TabManager {
         for (int i = 0; i < openTabs.size(); i++) {
             if (openTabs.get(i).getFile().equals(file)) {
                 // If file is already open, switch to it
-                activity.setFileViewPagerCurrentItemInFragment(i, true);
+                activity.getCodeEditorFragment().setFileViewPagerCurrentItem(i, true);
                 // Also ensure we are on the Code tab (position 1)
                 activity.getMainViewPager().setCurrentItem(1, true);
                 return;
@@ -74,11 +73,11 @@ public class TabManager {
             String content = fileManager.readFileContent(file);
             TabItem tabItem = new TabItem(file, content);
             openTabs.add(tabItem);
-            activity.addFileTabToFragment(tabItem); // Add to fragment's adapter
+            activity.getCodeEditorFragment().addFileTab(tabItem); // Add to fragment's adapter
             // Switch to Code tab (position 1) and then to the newly opened file
             activity.getMainViewPager().setCurrentItem(1, false);
-            activity.setFileViewPagerCurrentItemInFragment(openTabs.size() - 1, true);
-            activity.refreshFileTabLayoutInFragment();
+            activity.getCodeEditorFragment().setFileViewPagerCurrentItem(openTabs.size() - 1, true);
+            activity.getCodeEditorFragment().refreshFileTabLayout();
         } catch (IOException e) {
             Log.e(TAG, "Error opening file: " + file.getAbsolutePath(), e);
             activity.showToast("Error opening file: " + e.getMessage());
@@ -101,8 +100,8 @@ public class TabManager {
                 // Update content and switch to existing diff tab
                 existingTab.setContent(diffContent);
                 existingTab.setModified(false); // Diff tabs are not "modified" in the save sense
-                activity.setFileViewPagerCurrentItemInFragment(i, true);
-                activity.refreshFileTabLayoutInFragment(); // Refresh to update content
+                activity.getCodeEditorFragment().setFileViewPagerCurrentItem(i, true);
+                activity.getCodeEditorFragment().refreshFileTabLayout(); // Refresh to update content
                 activity.getMainViewPager().setCurrentItem(1, true); // Switch to Code tab
                 return;
             }
@@ -113,10 +112,10 @@ public class TabManager {
         diffTabItem.setModified(false); // Diffs are not user-editable in this context
 
         openTabs.add(diffTabItem);
-        activity.addFileTabToFragment(diffTabItem);
+        activity.getCodeEditorFragment().addFileTab(diffTabItem);
         activity.getMainViewPager().setCurrentItem(1, false); // Switch to code tab without smooth scroll
-        activity.setFileViewPagerCurrentItemInFragment(openTabs.size() - 1, true);
-        activity.refreshFileTabLayoutInFragment();
+        activity.getCodeEditorFragment().setFileViewPagerCurrentItem(openTabs.size() - 1, true);
+        activity.getCodeEditorFragment().refreshFileTabLayout();
         activity.showToast("Opened diff for: " + fileName);
     }
 
@@ -133,7 +132,7 @@ public class TabManager {
         if (tabItem.getFile().getName().startsWith("DIFF_")) {
             activity.showToast("Diff tabs cannot be saved.");
             tabItem.setModified(false); // Ensure it's not marked as modified
-            activity.refreshFileTabLayoutInFragment();
+            activity.getCodeEditorFragment().refreshFileTabLayout();
             return;
         }
         try {
@@ -144,7 +143,7 @@ public class TabManager {
             fileManager.writeFileContent(tabItem.getFile(), tabItem.getContent());
             tabItem.setModified(false);
             activity.showToast(tabItem.getFileName() + " saved.");
-            activity.refreshFileTabLayoutInFragment();
+            activity.getCodeEditorFragment().refreshFileTabLayout();
         } catch (IOException e) {
             Log.e(TAG, "Error saving file: " + tabItem.getFile().getAbsolutePath(), e);
             activity.showToast("Error saving " + tabItem.getFileName() + ": " + e.getMessage());
@@ -203,8 +202,8 @@ public class TabManager {
     private void removeTabAtPosition(int position) {
         if (position >= 0 && position < openTabs.size()) {
             openTabs.remove(position);
-            activity.removeFileTabFromFragment(position);
-            activity.refreshFileTabLayoutInFragment();
+            activity.getCodeEditorFragment().removeFileTab(position);
+            activity.getCodeEditorFragment().refreshFileTabLayout();
         }
     }
 
@@ -255,11 +254,11 @@ public class TabManager {
         openTabs.clear();
         openTabs.add(tabToKeep);
 
-        activity.refreshAllFileTabsInFragment();
+        activity.getCodeEditorFragment().refreshAllFileTabs();
         if (!openTabs.isEmpty()) {
-            activity.setFileViewPagerCurrentItemInFragment(0, false);
+            activity.getCodeEditorFragment().setFileViewPagerCurrentItem(0, false);
         }
-        activity.refreshFileTabLayoutInFragment();
+        activity.getCodeEditorFragment().refreshFileTabLayout();
     }
 
     /**
@@ -299,8 +298,8 @@ public class TabManager {
      */
     private void performCloseAllTabs() {
         openTabs.clear();
-        activity.refreshAllFileTabsInFragment();
-        activity.refreshFileTabLayoutInFragment();
+        activity.getCodeEditorFragment().refreshAllFileTabs();
+        activity.getCodeEditorFragment().refreshFileTabLayout();
     }
 
     /**
@@ -405,8 +404,8 @@ public class TabManager {
         openTabs.removeAll(toRemove);
 
         if (tabsChanged) {
-            activity.refreshAllFileTabsInFragment();
-            activity.refreshFileTabLayoutInFragment();
+            activity.getCodeEditorFragment().refreshAllFileTabs();
+            activity.getCodeEditorFragment().refreshFileTabLayout();
         }
     }
 }

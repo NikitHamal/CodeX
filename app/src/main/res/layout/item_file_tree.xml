@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:paddingTop="8dp"
+    android:paddingBottom="8dp"
+    android:paddingEnd="8dp"
+    android:gravity="center_vertical">
+
+    <LinearLayout
+        android:id="@+id/icon_container"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <ImageView
+            android:id="@+id/image_file_icon"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:src="@drawable/ic_file"
+            android:contentDescription="File icon" />
+
+        <ImageView
+            android:id="@+id/image_expand_icon"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:src="@drawable/ic_expand_more"
+            android:contentDescription="Expand icon"
+            android:layout_marginStart="4dp"
+            android:visibility="gone" /> </LinearLayout>
+
+    <TextView
+        android:id="@+id/text_file_name"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:text="File name"
+        android:textSize="14sp"
+        android:textColor="@color/text_primary"
+        android:layout_marginStart="8dp" android:maxLines="1"
+        android:ellipsize="end" />
+
+    <ImageView
+        android:id="@+id/image_more_vert"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:src="@drawable/icon_more_vert_round"
+        android:contentDescription="More options"
+        android:layout_marginStart="8dp"
+        android:visibility="visible"
+        android:focusable="true"
+        android:clickable="true" />
+</LinearLayout>

@@ -1,0 +1,187 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.drawerlayout.widget.DrawerLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/drawer_layout"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/background"
+    tools:context=".EditorActivity">
+
+<!-- Main Content -->
+<androidx.coordinatorlayout.widget.CoordinatorLayout
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/background">
+
+    <!-- App Bar with enhanced design -->
+    <com.google.android.material.appbar.AppBarLayout
+        android:id="@+id/app_bar_layout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:elevation="0dp"
+        app:elevation="0dp"
+        android:outlineProvider="none">
+
+        <com.google.android.material.appbar.MaterialToolbar
+            android:id="@+id/toolbar"
+            android:layout_width="match_parent"
+            android:layout_height="?attr/actionBarSize"
+            android:background="@color/surface"
+            app:titleTextColor="@color/on_surface"
+            app:titleTextAppearance="@style/TextAppearance.Material3.TitleLarge"
+            app:navigationIconTint="@color/on_surface"
+            app:layout_scrollFlags="scroll|enterAlways"
+            android:elevation="0dp"
+            android:outlineProvider="none" />
+
+        <!-- Enhanced Tab Layout -->
+        <com.google.android.material.tabs.TabLayout
+            android:id="@+id/tab_layout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@color/surface"
+            app:tabMode="scrollable"
+            app:tabGravity="start"
+            app:tabIndicatorColor="@color/primary"
+            app:tabIndicatorHeight="3dp"
+            app:tabIndicatorAnimationMode="elastic"
+            app:tabSelectedTextColor="@color/primary"
+            app:tabTextColor="@color/secondary_text"
+            app:tabRippleColor="@color/primary_container"
+            app:tabIndicatorFullWidth="false"
+            app:tabTextAppearance="@style/TextAppearance.Material3.LabelMedium"
+            android:elevation="0dp"
+            android:outlineProvider="none" />
+
+    </com.google.android.material.appbar.AppBarLayout>
+
+    <!-- Main Editor Area -->
+    <androidx.viewpager2.widget.ViewPager2
+        android:id="@+id/view_pager"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior" />
+
+    <!-- Floating Action Button for Quick Actions -->
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/fab_run_code"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end"
+        android:layout_margin="16dp"
+        android:contentDescription="Run code"
+        app:srcCompat="@drawable/icon_play_arrow_round"
+        app:backgroundTint="@color/secondary"
+        app:tint="@color/on_secondary"
+        android:elevation="0dp"
+        app:elevation="0dp"
+        android:outlineProvider="none" />
+
+    <!-- Bottom Sheet for AI Actions -->
+    <include
+        layout="@layout/bottom_sheet_ai_actions"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:visibility="gone" />
+
+</androidx.coordinatorlayout.widget.CoordinatorLayout>
+
+<!-- Navigation Drawer -->
+<com.google.android.material.navigation.NavigationView
+    android:id="@+id/navigation_drawer"
+    android:layout_width="300dp"
+    android:layout_height="match_parent"
+    android:layout_gravity="start"
+    android:background="@color/surface"
+    android:elevation="0dp"
+    app:elevation="0dp">
+
+    <!-- File Tree in Drawer -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:background="@color/surface">
+
+        <!-- File Tree Header -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:padding="16dp"
+            android:background="@color/surface">
+
+            <ImageView
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:src="@drawable/icon_folder_round"
+                app:tint="@color/primary"
+                android:layout_marginEnd="12dp" />
+
+            <TextView
+                android:id="@+id/text_project_name"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Project Files"
+                android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
+                android:textColor="@color/on_surface"
+                android:ellipsize="end"
+                android:maxLines="1" />
+
+            <!-- New File Button -->
+            <ImageView
+                android:id="@+id/btn_new_file"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:src="@drawable/icon_add_round"
+                android:contentDescription="New File"
+                android:layout_marginStart="8dp"
+                android:focusable="true"
+                android:clickable="true" />
+            <!-- New Folder Button -->
+            <ImageView
+                android:id="@+id/btn_new_folder"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:src="@drawable/icon_folder_open_round"
+                android:contentDescription="New Folder"
+                android:layout_marginStart="8dp"
+                android:focusable="true"
+                android:clickable="true" />
+            <!-- Open from Device Button -->
+            <ImageView
+                android:id="@+id/btn_open_from_device"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:src="@drawable/icon_upload_round"
+                android:contentDescription="Open from Device"
+                android:layout_marginStart="8dp"
+                android:focusable="true"
+                android:clickable="true" />
+        </LinearLayout>
+
+        <!-- Divider -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="@color/outline"
+            android:layout_marginHorizontal="16dp" />
+
+        <!-- File Tree Content -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/recycler_view_file_tree"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clipToPadding="false"
+            android:padding="8dp"
+            android:scrollbars="none" />
+
+    </LinearLayout>
+
+</com.google.android.material.navigation.NavigationView>
+
+</androidx.drawerlayout.widget.DrawerLayout>

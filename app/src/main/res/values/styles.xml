@@ -1,0 +1,108 @@
+<resources>
+    <style name="AppTheme" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="android:fontFamily">@font/poppins_reg</item>
+        <item name="android:includeFontPadding">false</item>
+        <item name="android:textColorAlertDialogListItem">@color/on_surface</item>
+        <item name="android:textColorPrimary">@color/on_surface</item>
+        <item name="colorPrimary">@color/primary</item>
+        <item name="colorOnPrimary">@color/on_primary</item>
+        <item name="colorSecondary">@color/secondary</item>
+        <item name="colorOnSecondary">@color/on_secondary</item>
+        <item name="colorError">@color/error</item>
+        <item name="colorOnError">@color/on_error</item>
+        <item name="android:colorBackground">@color/background</item>
+        <item name="colorSurface">@color/surface</item>
+        <item name="colorOnSurface">@color/on_surface</item>
+        <item name="colorOutline">@color/outline</item>
+        <item name="android:statusBarColor">@color/surface</item>
+        <item name="android:navigationBarColor">@color/surface</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar">true</item>
+    </style>
+    
+    <style name="AppTheme.DarkOnly" parent="Theme.Material3.Dark.NoActionBar">
+        <item name="android:fontFamily">@font/poppins_reg</item>
+        <item name="android:includeFontPadding">false</item>
+        <item name="android:textColorAlertDialogListItem">@color/on_surface</item>
+        <item name="android:textColorPrimary">@color/on_surface</item>
+        <item name="colorPrimary">@color/primary</item>
+        <item name="colorOnPrimary">@color/on_primary</item>
+        <item name="android:colorBackground">@color/background</item>
+        <item name="colorSurface">@color/surface</item>
+        <item name="colorOnSurface">@color/on_surface</item>
+        <item name="colorOutline">@color/outline</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+    
+    <style name="AppTheme.FullScreen" parent="AppTheme">
+        <item name="android:windowFullscreen">true</item>
+        <item name="android:windowContentOverlay">@null</item>
+    </style>
+    
+    <!-- Enhanced Button Styles (Sketchware Pro Compatible) -->
+    <style name="Widget.App.Button" parent="Widget.Material3.Button">
+        <item name="android:textAllCaps">false</item>
+        <item name="android:fontFamily">@font/poppins_reg</item>
+    </style>
+    
+    <style name="Widget.App.Button.Outlined" parent="Widget.Material3.Button.OutlinedButton">
+        <item name="android:textAllCaps">false</item>
+        <item name="android:fontFamily">@font/poppins_reg</item>
+    </style>
+    
+    <!-- Enhanced Card Styles (Sketchware Pro Compatible) -->
+    <style name="Widget.App.CardView" parent="Widget.Material3.CardView.Elevated">
+        <item name="cardCornerRadius">16dp</item>
+        <item name="cardElevation">2dp</item>
+    </style>
+    
+    <style name="Widget.App.CardView.Outlined" parent="Widget.Material3.CardView.Outlined">
+        <item name="cardCornerRadius">16dp</item>
+    </style>
+    
+    <!-- Enhanced Text Input Styles (Sketchware Pro Compatible) -->
+    <style name="Widget.App.TextInputLayout" parent="Widget.Material3.TextInputLayout.OutlinedBox">
+        <item name="android:fontFamily">@font/poppins_reg</item>
+    </style>
+    
+    <!-- Enhanced FAB Styles (Sketchware Pro Compatible) -->
+    <style name="Widget.App.FloatingActionButton" parent="Widget.Material3.FloatingActionButton.Primary">
+    </style>
+    
+    <style name="Widget.App.ExtendedFloatingActionButton" parent="Widget.Material3.ExtendedFloatingActionButton.Primary">
+        <item name="android:fontFamily">@font/poppins_reg</item>
+        <item name="android:textAllCaps">false</item>
+    </style>
+    
+    <style name="DropdownMenu" parent="Widget.Material3.TextInputLayout.OutlinedBox.Dense">
+        <item name="android:popupBackground">@color/m3_popupmenu_default_background_color</item>
+        <item name="android:dropDownVerticalOffset">4dp</item>
+        <item name="android:dropDownHorizontalOffset">0dp</item>
+        <item name="android:dropDownWidth">match_parent</item>
+    </style>
+    
+    <style name="ThemeOverlay.Material3.MaterialAlertDialog.Centered" parent="@style/ThemeOverlay.Material3.MaterialAlertDialog">
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowIsFloating">true</item>
+        <item name="android:windowCloseOnTouchOutside">true</item>
+        <item name="buttonBarPositiveButtonStyle">@style/Widget.Material3.Button.TextButton</item>
+        <item name="buttonBarNegativeButtonStyle">@style/Widget.Material3.Button.TextButton</item>
+    </style>
+    
+    <style name="AlertDialogCustom" parent="ThemeOverlay.Material3.MaterialAlertDialog">
+        <item name="android:background">@color/surface</item>
+        <item name="android:textColorPrimary">@color/text_primary</item>
+        <item name="android:textColorSecondary">@color/text_secondary</item>
+        <item name="buttonBarPositiveButtonStyle">@style/Widget.Material3.Button.TextButton</item>
+        <item name="buttonBarNegativeButtonStyle">@style/Widget.Material3.Button.TextButton</item>
+        <item name="android:textColorAlertDialogListItem">@color/text_primary</item>
+    </style>
+    
+    <style name="AppTheme.PopupOverlay" parent="Theme.Material3.DayNight.NoActionBar">
+    </style>
+    
+    <style name="AppTheme.DebugActivity" parent="Theme.AppCompat.Light.DarkActionBar">
+        <!-- Customize your theme here -->
+    </style>
+    
+</resources>

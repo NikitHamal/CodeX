@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?><resources>
+    <string name="app_name">CodeX</string>
+    <string name="navigation_drawer_open">Open navigation drawer</string>
+    <string name="index_refreshing">Refreshing codebase index...</string>
+    <string name="index_status_title">Codebase Index Status</string>
+    <string name="index_status_message">The codebase index helps the AI understand your project structure</string>
+    <string name="force_refresh">Force Refresh</string>
+    <string name="navigation_drawer_close">Close navigation drawer</string>
+</resources>

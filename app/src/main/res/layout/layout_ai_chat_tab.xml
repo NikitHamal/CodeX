@@ -1,0 +1,249 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/background">
+
+    <!-- Main Content Area -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+
+        <!-- Chat Messages Area -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/recycler_view_chat_history"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:clipToPadding="false"
+            android:paddingTop="8dp"
+            android:paddingBottom="8dp"
+            android:paddingHorizontal="16dp"
+            android:scrollbars="none" />
+
+        <!-- Empty State -->
+        <LinearLayout
+            android:id="@+id/layout_empty_state"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:padding="32dp"
+            android:visibility="gone">
+
+            <!-- AI Assistant Icon -->
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="80dp"
+                android:layout_height="80dp"
+                app:cardCornerRadius="40dp"
+                app:cardElevation="0dp"
+                app:strokeWidth="0dp"
+                app:cardBackgroundColor="@color/primary_container">
+
+                <ImageView
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:layout_gravity="center"
+                    android:src="@drawable/icon_smart_toy_round"
+                    app:tint="@color/on_primary_container" />
+
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Greeting Text -->
+            <TextView
+                android:id="@+id/text_greeting"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Hi! I'm your AI coding assistant"
+                android:textAppearance="@style/TextAppearance.Material3.HeadlineSmall"
+                android:textColor="@color/on_surface"
+                android:layout_marginTop="24dp"
+                android:layout_marginBottom="8dp"
+                android:gravity="center" />
+
+            <!-- Description -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="I can help you write, debug, and improve your code. Ask me anything!"
+                android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
+                android:textColor="@color/secondary_text"
+                android:gravity="center"
+                android:layout_marginBottom="24dp" />
+
+            <!-- Quick Actions -->
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginBottom="16dp">
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chip_explain_code"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Explain code"
+                    android:layout_marginEnd="8dp"
+                    app:chipIcon="@drawable/icon_code_round"
+                    style="@style/Widget.Material3.Chip.Suggestion" />
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chip_debug_help"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Debug help"
+                    android:layout_marginEnd="8dp"
+                    app:chipIcon="@drawable/icon_bug_report_round"
+                    style="@style/Widget.Material3.Chip.Suggestion" />
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chip_optimize"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Optimize"
+                    app:chipIcon="@drawable/icon_speed_round"
+                    style="@style/Widget.Material3.Chip.Suggestion" />
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+        <!-- Input Section -->
+        <LinearLayout
+            android:id="@+id/layout_input_section"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@color/surface"
+            android:elevation="8dp"
+            android:paddingTop="12dp"
+            android:paddingBottom="12dp"
+            android:paddingHorizontal="16dp">
+
+            <!-- Model Selector -->
+            <LinearLayout
+                android:id="@+id/layout_model_selector_custom"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:padding="12dp"
+                android:background="@drawable/rounded_edittext_background"
+                android:layout_marginBottom="12dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:foreground="?attr/selectableItemBackground">
+
+                <ImageView
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:src="@drawable/icon_smart_toy_round"
+                    app:tint="@color/primary"
+                    android:layout_marginEnd="12dp" />
+
+                <TextView
+                    android:id="@+id/text_selected_model"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Gemini 2.5 Flash"
+                    android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
+                    android:textColor="@color/on_surface"
+                    android:textStyle="bold" />
+
+                <ImageView
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
+                    android:src="@drawable/icon_arrow_drop_down_round"
+                    app:tint="@color/secondary_text" />
+
+            </LinearLayout>
+
+            <!-- Prompt Input Area -->
+            <LinearLayout
+                android:id="@+id/linear_prompt_input"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="bottom"
+                android:background="@drawable/rounded_edittext_background_with_border"
+                android:padding="4dp">
+
+                <!-- Input Field -->
+                <com.google.android.material.textfield.TextInputLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginEnd="8dp"
+                    app:boxBackgroundMode="none"
+                    app:hintEnabled="false">
+
+                    <EditText
+                        android:id="@+id/edit_text_ai_prompt"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:hint="Ask me anything about your code..."
+                        android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
+                        android:textColor="@color/on_surface"
+                        android:textColorHint="@color/secondary_text"
+                        android:background="@android:color/transparent"
+                        android:inputType="textMultiLine|textCapSentences"
+                        android:maxLines="6"
+                        android:minLines="1"
+                        android:padding="12dp"
+                        android:scrollbars="none" />
+
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <!-- Action Buttons -->
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:gravity="bottom">
+
+                    <!-- Attach File Button -->
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/button_attach_file"
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
+                        android:layout_marginBottom="4dp"
+                        android:minWidth="0dp"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        app:icon="@drawable/icon_attach_file_round"
+                        app:iconSize="20dp"
+                        app:iconGravity="textStart"
+                        app:iconPadding="0dp"
+                        app:cornerRadius="20dp"
+                        android:contentDescription="Attach file"
+                        style="@style/Widget.Material3.Button.TextButton.Icon" />
+
+                    <!-- Send Button -->
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/button_ai_send"
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:minWidth="0dp"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        app:icon="@drawable/icon_send_round"
+                        app:iconSize="20dp"
+                        app:iconGravity="textStart"
+                        app:iconPadding="0dp"
+                        app:cornerRadius="24dp"
+                        android:contentDescription="Send message"
+                        style="@style/Widget.Material3.Button" />
+
+                </LinearLayout>
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

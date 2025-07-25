@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginHorizontal="8dp"
+    android:layout_marginVertical="4dp"
+    app:cardCornerRadius="12dp"
+    app:cardElevation="2dp"
+    app:cardBackgroundColor="@color/surface"
+    android:clickable="true"
+    android:focusable="true"
+    android:foreground="?attr/selectableItemBackground">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <!-- Main Content Row -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <!-- Model Icon -->
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                app:cardCornerRadius="20dp"
+                app:cardElevation="0dp"
+                app:cardBackgroundColor="@color/primary_container">
+
+                <ImageView
+                    android:id="@+id/image_model_icon"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:layout_gravity="center"
+                    android:src="@drawable/icon_smart_toy_round"
+                    app:tint="@color/on_primary_container"
+                    android:contentDescription="Model Icon" />
+
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Model Info -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:layout_marginStart="12dp"
+                android:layout_marginEnd="8dp">
+
+                <!-- Model Name -->
+                <TextView
+                    android:id="@+id/text_model_name"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Gemini 2.5 Flash"
+                    android:textAppearance="@style/TextAppearance.Material3.BodyLarge"
+                    android:textColor="@color/on_surface"
+                    android:textStyle="bold"
+                    android:ellipsize="end"
+                    android:maxLines="1" />
+
+                <!-- Model Capabilities -->
+                <TextView
+                    android:id="@+id/text_model_capabilities"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Latest &amp; fastest • Thinking mode • Code execution" 
+                    android:textAppearance="@style/TextAppearance.Material3.BodySmall"
+                    android:textColor="@color/secondary_text"
+                    android:layout_marginTop="2dp"
+                    android:ellipsize="end"
+                    android:maxLines="1" />
+
+            </LinearLayout>
+
+            <!-- Selection Indicator -->
+            <ImageView
+                android:id="@+id/image_checkmark"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:src="@drawable/icon_check_circle_round"
+                app:tint="@color/primary"
+                android:visibility="gone"
+                android:contentDescription="Selected" />
+
+        </LinearLayout>
+
+        <!-- Feature Badges (Simplified) -->
+        <LinearLayout
+            android:id="@+id/layout_feature_badges"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="12dp"
+            android:visibility="gone">
+
+            <!-- Vision Badge -->
+            <TextView
+                android:id="@+id/chip_vision"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Vision"
+                android:textSize="10sp"
+                android:textColor="@color/on_secondary_container"
+                android:background="@color/secondary_container"
+                android:paddingHorizontal="8dp"
+                android:paddingVertical="4dp"
+                android:layout_marginEnd="6dp"
+                android:visibility="gone" />
+
+            <!-- Function Calling Badge -->
+            <TextView
+                android:id="@+id/chip_function_calling"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Functions"
+                android:textSize="10sp"
+                android:textColor="@color/on_tertiary_container"
+                android:background="@color/tertiary_container"
+                android:paddingHorizontal="8dp"
+                android:paddingVertical="4dp"
+                android:layout_marginEnd="6dp"
+                android:visibility="gone" />
+
+            <!-- Latest Badge -->
+            <TextView
+                android:id="@+id/chip_latest"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Latest"
+                android:textSize="10sp"
+                android:textColor="@color/on_success_container"
+                android:background="@color/success_container"
+                android:paddingHorizontal="8dp"
+                android:paddingVertical="4dp"
+                android:visibility="gone" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+</com.google.android.material.card.MaterialCardView>

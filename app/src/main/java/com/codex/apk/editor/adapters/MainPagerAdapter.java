@@ -28,6 +28,7 @@ public class MainPagerAdapter extends FragmentStateAdapter {
         } else if (position == 1) { // Code tab
             CodeEditorFragment codeEditorFragment = CodeEditorFragment.newInstance();
             activity.setCodeEditorFragment(codeEditorFragment); // Set reference in activity
+            activity.onCodeEditorFragmentReady();
             return codeEditorFragment;
         } else { // position == 2, Preview tab
             PreviewConsoleFragment previewConsoleFragment = PreviewConsoleFragment.newInstance(activity.getProjectDirectory()); // Pass projectDir from activity

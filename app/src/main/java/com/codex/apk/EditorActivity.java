@@ -133,20 +133,15 @@ public class EditorActivity extends AppCompatActivity implements
         });
 
         viewPager.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
-            private boolean initialFileOpened = false;
             @Override
             public void onPageSelected(int position) {
                 super.onPageSelected(position);
                 bottomNavigationView.getMenu().getItem(position).setChecked(true);
-                if (!initialFileOpened) {
-                    openInitialFile();
-                    initialFileOpened = true;
-                }
             }
         });
     }
 
-    public void openInitialFile() {
+    public void onCodeEditorFragmentReady() {
         // Open index.html if no tabs are open initially
         if (openTabs.isEmpty()) {
             File indexHtml = new File(projectDir, "index.html");

@@ -140,6 +140,9 @@ public class EditorActivity extends AppCompatActivity implements
             }
         });
 
+    }
+
+    public void openInitialFile() {
         // Open index.html if no tabs are open initially
         if (openTabs.isEmpty()) {
             File indexHtml = new File(projectDir, "index.html");

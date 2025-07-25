@@ -40,4 +40,12 @@ public class MainPagerAdapter extends FragmentStateAdapter {
     public int getItemCount() {
         return 3; // We now have three main tabs: "Chat", "Code", "Preview"
     }
+
+    @Override
+    public void onAttachedToRecyclerView(@NonNull androidx.recyclerview.widget.RecyclerView recyclerView) {
+        super.onAttachedToRecyclerView(recyclerView);
+        // Now that the adapter is attached and fragments are being created,
+        // it's safe to open the initial file.
+        activity.openInitialFile();
+    }
 }

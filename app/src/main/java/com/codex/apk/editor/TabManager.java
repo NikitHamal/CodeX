@@ -142,7 +142,7 @@ public class TabManager {
             }
             fileManager.writeFileContent(tabItem.getFile(), tabItem.getContent());
             tabItem.setModified(false);
-            activity.showToast(tabItem.getFileName() + " saved.");
+            activity.showToast("File saved.");
             activity.getCodeEditorFragment().refreshFileTabLayout();
         } catch (IOException e) {
             Log.e(TAG, "Error saving file: " + tabItem.getFile().getAbsolutePath(), e);
@@ -156,7 +156,42 @@ public class TabManager {
     public void saveAllFiles() {
         for (TabItem tabItem : openTabs) {
             if (tabItem.isModified()) {
-                saveFile(tabItem);
+                saveFile(tabItem, false);
+            }
+        }
+    }
+
+    public void saveFile(TabItem tabItem, boolean showToast) {
+        if (tabItem == null || tabItem.getFile() == null) {
+            Log.e(TAG, "Cannot save, TabItem or its file is null");
+            return;
+        }
+        // Prevent saving for diff tabs
+        if (tabItem.getFile().getName().startsWith("DIFF_")) {
+            if (showToast) {
+                activity.showToast("Diff tabs cannot be saved.");
+            }
+            tabItem.setModified(false); // Ensure it's not marked as modified
+            activity.getCodeEditorFragment().refreshFileTabLayout();
+            return;
+        }
+        try {
+            if (fileManager == null) {
+                if (showToast) {
+                    activity.showToast("File manager not initialized.");
+                }
+                return;
+            }
+            fileManager.writeFileContent(tabItem.getFile(), tabItem.getContent());
+            tabItem.setModified(false);
+            if (showToast) {
+                activity.showToast("File saved.");
+            }
+            activity.getCodeEditorFragment().refreshFileTabLayout();
+        } catch (IOException e) {
+            Log.e(TAG, "Error saving file: " + tabItem.getFile().getAbsolutePath(), e);
+            if (showToast) {
+                activity.showToast("Error saving " + tabItem.getFileName() + ": " + e.getMessage());
             }
         }
     }

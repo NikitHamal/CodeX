@@ -54,7 +54,6 @@ public class CodeEditorFragment extends Fragment implements SimpleSoraTabAdapter
         void closeAllTabs(boolean confirmIfModified);
         void saveFile(TabItem tabItem);
         void showTabOptionsMenu(View anchorView, int position);
-        void onActiveTabContentChanged(String content, String fileName);
         void onActiveTabChanged(File newFile);
         void onIndexingStarted(int totalFiles);
         void onIndexingProgress(int indexedCount, int totalFiles, String currentFile);
@@ -139,19 +138,6 @@ public class CodeEditorFragment extends Fragment implements SimpleSoraTabAdapter
         }
     }
 
-    /**
-     * Implementation of TabAdapter.TabActionListener.
-     * Called by TabAdapter when the content of the active tab changes.
-     * This method notifies the parent activity.
-     * @param content The new content of the active file.
-     * @param fileName The name of the active file.
-     */
-    @Override
-    public void onActiveTabContentChanged(String content, String fileName) {
-        if (listener != null) {
-            listener.onActiveTabContentChanged(content, fileName);
-        }
-    }
 
     /**
      * Implementation of TabAdapter.TabActionListener.

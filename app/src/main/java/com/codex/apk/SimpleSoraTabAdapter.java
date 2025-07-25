@@ -40,7 +40,6 @@ public class SimpleSoraTabAdapter extends RecyclerView.Adapter<SimpleSoraTabAdap
      */
     public interface TabActionListener {
         void onTabModifiedStateChanged();
-        void onActiveTabContentChanged(String content, String fileName);
         void onActiveTabChanged(File newFile);
     }
 
@@ -112,9 +111,6 @@ public class SimpleSoraTabAdapter extends RecyclerView.Adapter<SimpleSoraTabAdap
                             currentTabItem.setModified(true);
                             if (tabActionListener != null) {
                                 tabActionListener.onTabModifiedStateChanged();
-                                if (currentPos == activeTabPosition) {
-                                    tabActionListener.onActiveTabContentChanged(newContent, currentTabItem.getFileName());
-                                }
                             }
                         }
                     }

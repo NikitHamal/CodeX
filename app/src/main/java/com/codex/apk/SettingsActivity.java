@@ -67,6 +67,7 @@ public class SettingsActivity extends AppCompatActivity {
 	private void initializeSettings() {
 		// Initialize settings controls from the layout
 		com.google.android.material.textfield.TextInputEditText apiKeyEditText = findViewById(R.id.edit_text_api_key);
+		com.google.android.material.textfield.TextInputEditText huggingFaceTokenEditText = findViewById(R.id.edit_text_hugging_face_token);
 		LinearLayout modelSelectorLayout = findViewById(R.id.layout_model_selector);
 		TextView selectedModelText = findViewById(R.id.text_selected_model);
 		LinearLayout themeSelectorLayout = findViewById(R.id.layout_theme_selector);
@@ -76,11 +77,16 @@ public class SettingsActivity extends AppCompatActivity {
 		SharedPreferences prefs = getSharedPreferences("settings", MODE_PRIVATE);
 		SharedPreferences defaultPrefs = getPreferences(this);
 		String savedApiKey = prefs.getString("gemini_api_key", "");
+		String savedHuggingFaceToken = prefs.getString("huggingface_token", "");
 		String savedModel = prefs.getString("selected_model", "Gemini 2.5 Flash");
 		String savedTheme = defaultPrefs.getString("app_theme", "light");
 		
 		if (apiKeyEditText != null) {
 			apiKeyEditText.setText(savedApiKey);
+		}
+
+		if (huggingFaceTokenEditText != null) {
+			huggingFaceTokenEditText.setText(savedHuggingFaceToken);
 		}
 		
 		if (selectedModelText != null) {
@@ -140,6 +146,41 @@ public class SettingsActivity extends AppCompatActivity {
 					saveRunnable = () -> {
 						String apiKey = s.toString().trim();
 						prefs.edit().putString("gemini_api_key", apiKey).apply();
+					};
+					handler.postDelayed(saveRunnable, 1000); // Save after 1 second of no typing
+				}
+			});
+		}
+
+		if (huggingFaceTokenEditText != null) {
+			// Save on focus change
+			huggingFaceTokenEditText.setOnFocusChangeListener((v, hasFocus) -> {
+				if (!hasFocus) {
+					String token = huggingFaceTokenEditText.getText().toString().trim();
+					prefs.edit().putString("huggingface_token", token).apply();
+					Toast.makeText(this, "Hugging Face Token saved", Toast.LENGTH_SHORT).show();
+				}
+			});
+
+			// Also save on text change with debouncing
+			huggingFaceTokenEditText.addTextChangedListener(new android.text.TextWatcher() {
+				private android.os.Handler handler = new android.os.Handler(android.os.Looper.getMainLooper());
+				private Runnable saveRunnable;
+
+				@Override
+				public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+				@Override
+				public void onTextChanged(CharSequence s, int start, int before, int count) {}
+
+				@Override
+				public void afterTextChanged(android.text.Editable s) {
+					if (saveRunnable != null) {
+						handler.removeCallbacks(saveRunnable);
+					}
+					saveRunnable = () -> {
+						String token = s.toString().trim();
+						prefs.edit().putString("huggingface_token", token).apply();
 					};
 					handler.postDelayed(saveRunnable, 1000); // Save after 1 second of no typing
 				}

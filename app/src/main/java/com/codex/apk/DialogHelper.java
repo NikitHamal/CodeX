@@ -167,6 +167,32 @@ public class DialogHelper {
 		.show();
 	}
 
+	public void showApiKeyDialog(Runnable onSave) {
+		View dialogView = LayoutInflater.from(context).inflate(R.layout.dialog_api_key, null);
+		TextInputEditText editTextApiKey = dialogView.findViewById(R.id.edittext_api_key);
+
+		AlertDialog dialog = new MaterialAlertDialogBuilder(context)
+				.setTitle("Set API Key")
+				.setView(dialogView)
+				.setPositiveButton("Save", null)
+				.setNegativeButton("Cancel", null)
+				.create();
+
+		dialog.show();
+
+		dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+			String apiKey = editTextApiKey.getText().toString().trim();
+			if (apiKey.isEmpty()) {
+				editTextApiKey.setError("API Key cannot be empty");
+			} else {
+				SharedPreferences prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE);
+				prefs.edit().putString("gemini_api_key", apiKey).apply();
+				onSave.run();
+				dialog.dismiss();
+			}
+		});
+	}
+
 	public void showAiActionSummary(List<String> actionSummaries, String explanation) {
 		StringBuilder message = new StringBuilder();
 		if (explanation != null && !explanation.trim().isEmpty()) {

@@ -101,13 +101,19 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
         if (aiAssistant.getCurrentModel() == AIAssistant.AIModel.GEMINI_2_0_FLASH) {
             apiKey = SettingsActivity.getGeminiApiKey(activity);
             if (apiKey.isEmpty()) {
-                activity.showToast("Gemini API Key not configured. Please set it in Settings.");
+                activity.getDialogHelper().showApiKeyDialog(() -> {
+                    aiAssistant.setApiKey(SettingsActivity.getGeminiApiKey(activity));
+                    sendAiPrompt(userPrompt, activeTabItem);
+                });
                 return;
             }
         } else if (aiAssistant.getCurrentModel() == AIAssistant.AIModel.DEEPSEEK_R1) {
             apiKey = SettingsActivity.getHuggingFaceToken(activity);
             if (apiKey.isEmpty()) {
-                activity.showToast("Hugging Face Token not configured. Required for Deepseek R1.");
+                activity.getDialogHelper().showApiKeyDialog(() -> {
+                    aiAssistant.setApiKey(SettingsActivity.getHuggingFaceToken(activity));
+                    sendAiPrompt(userPrompt, activeTabItem);
+                });
                 return;
             }
         } else {

@@ -160,7 +160,7 @@ public class EditorActivity extends AppCompatActivity implements
         } else if (id == R.id.action_save) {
             TabItem activeTab = tabManager.getActiveTabItem();
             if (activeTab != null) {
-                tabManager.saveFile(activeTab);
+                tabManager.saveFile(activeTab, true);
             }
             return true;
         } else if (id == R.id.action_preview) {
@@ -271,9 +271,7 @@ public class EditorActivity extends AppCompatActivity implements
 
     @Override
     public void onActiveTabContentChanged(String content, String fileName) {
-        if (aiAssistantManager != null && aiAssistantManager.getAIAssistant() != null && !aiAssistantManager.getAIAssistant().isProcessing()) {
-            uiManager.onActiveTabContentChanged(content, fileName); // Delegate to UiManager for preview update
-        }
+        // No-op
     }
 
     @Override

@@ -308,8 +308,6 @@ public class PreviewActivity extends AppCompatActivity {
     private void toggleConsole() {
         isConsoleVisible = !isConsoleVisible;
         consoleContainer.setVisibility(isConsoleVisible ? View.VISIBLE : View.GONE);
-        fabToggleConsole.setImageResource(isConsoleVisible ?
-            R.drawable.icon_expand_less_round : R.drawable.icon_expand_more_round);
     }
 
     private void refreshPreview() {

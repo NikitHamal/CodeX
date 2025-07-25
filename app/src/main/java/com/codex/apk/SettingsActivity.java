@@ -413,7 +413,7 @@ public class SettingsActivity extends AppCompatActivity {
 	
 	// Helper methods to get specific settings
 	public static String getGeminiApiKey(android.content.Context context) {
-		return getPreferences(context).getString("gemini_api_key", "Gemini API Key");
+		return getPreferences(context).getString("gemini_api_key", "");
 	}
 	
 	public static String getAppTheme(android.content.Context context) {

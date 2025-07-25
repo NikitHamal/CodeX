@@ -20,6 +20,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 
 /**
  * Manages the interaction with the AIAssistant, handling UI updates and delegation
@@ -83,7 +85,18 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
      * @param userPrompt The prompt from the user.
      * @param activeTabItem The currently active TabItem for context.
      */
+    private boolean isNetworkAvailable() {
+        ConnectivityManager connectivityManager
+                = (ConnectivityManager) activity.getSystemService(Context.CONNECTIVITY_SERVICE);
+        NetworkInfo activeNetworkInfo = connectivityManager.getActiveNetworkInfo();
+        return activeNetworkInfo != null && activeNetworkInfo.isConnected();
+    }
+
     public void sendAiPrompt(String userPrompt, TabItem activeTabItem) {
+        if (!isNetworkAvailable()) {
+            activity.showToast("No internet connection.");
+            return;
+        }
         String currentFileContent = "";
         String currentFileName = "";
         if (activeTabItem != null) {

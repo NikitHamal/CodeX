@@ -116,6 +116,7 @@ public class EditorActivity extends AppCompatActivity implements
         ViewPager2 viewPager = findViewById(R.id.view_pager);
         MainPagerAdapter adapter = new MainPagerAdapter(this);
         viewPager.setAdapter(adapter);
+        viewPager.setUserInputEnabled(false);
 
         bottomNavigationView.setOnNavigationItemSelectedListener(item -> {
             int itemId = item.getItemId();

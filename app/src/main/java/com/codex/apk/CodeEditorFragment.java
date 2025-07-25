@@ -16,6 +16,8 @@ import androidx.fragment.app.Fragment;
 import androidx.viewpager2.widget.ViewPager2;
 
 import com.codex.apk.SimpleSoraTabAdapter;
+import com.google.android.material.tabs.TabLayout;
+import com.google.android.material.tabs.TabLayoutMediator;
 
 import java.io.File;
 import java.util.List;
@@ -26,6 +28,7 @@ public class CodeEditorFragment extends Fragment implements SimpleSoraTabAdapter
 
     private ViewPager2 fileViewPager;
     private SimpleSoraTabAdapter tabAdapter;
+    private TabLayout tabLayout;
 
     // New UI elements for indexing progress
     private LinearLayout layoutIndexingProgress;
@@ -85,6 +88,7 @@ public class CodeEditorFragment extends Fragment implements SimpleSoraTabAdapter
         View view = inflater.inflate(R.layout.layout_code_editor_tab, container, false);
 
         fileViewPager = view.findViewById(R.id.file_view_pager);
+        tabLayout = view.findViewById(R.id.tab_layout);
 
         // Initialize new UI elements
         layoutIndexingProgress = view.findViewById(R.id.layout_indexing_progress_code_tab);
@@ -116,6 +120,9 @@ public class CodeEditorFragment extends Fragment implements SimpleSoraTabAdapter
 
         fileViewPager.setAdapter(tabAdapter);
 
+        new TabLayoutMediator(tabLayout, fileViewPager, (tab, position) -> {
+            tab.setText(openTabs.get(position).getFileName());
+        }).attach();
     }
 
     /**

@@ -2,14 +2,11 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
     <item
         android:id="@+id/navigation_chat"
-        android:icon="@drawable/icon_smart_toy_round"
-        android:title="Chat" />
+        android:icon="@drawable/icon_smart_toy_round" />
     <item
         android:id="@+id/navigation_editor"
-        android:icon="@drawable/icon_code_round"
-        android:title="Editor" />
+        android:icon="@drawable/icon_code_round" />
     <item
         android:id="@+id/navigation_preview"
-        android:icon="@drawable/icon_play_arrow_round"
-        android:title="Preview" />
+        android:icon="@drawable/icon_play_arrow_round" />
 </menu>

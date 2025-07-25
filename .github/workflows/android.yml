@@ -57,7 +57,7 @@ jobs:
 
       - name: Rename APK with commit hash
         run: |
-          mv app/build/outputs/apk/release/app-release-unsigned.apk \
+          mv app/build/outputs/apk/release/app-release.apk \
              app/build/outputs/apk/release/app-release-${{ steps.set_sha.outputs.short_sha }}.apk
 
       - name: Upload Release APK

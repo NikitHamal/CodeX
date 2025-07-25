@@ -20,10 +20,5 @@
         android:title="Clear Console"
         app:showAsAction="never" />
 
-    <item
-        android:id="@+id/action_view_source"
-        android:icon="@drawable/icon_code_round"
-        android:title="View Source"
-        app:showAsAction="never" />
 
 </menu>

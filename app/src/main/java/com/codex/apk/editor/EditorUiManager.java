@@ -216,7 +216,9 @@ public class EditorUiManager {
      * Closes the file tree panel if it is open.
      */
     public void closeDrawerIfOpen() {
-        // No action needed for side panel design
+        if (drawerLayout != null && drawerLayout.isDrawerOpen(GravityCompat.START)) {
+            drawerLayout.closeDrawer(GravityCompat.START);
+        }
     }
 
     /**

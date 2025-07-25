@@ -355,24 +355,9 @@ public class PreviewActivity extends AppCompatActivity {
         } else if (id == R.id.action_clear_console) {
             clearConsole();
             return true;
-        } else if (id == R.id.action_view_source) {
-            viewPageSource();
-            return true;
         }
 
         return super.onOptionsItemSelected(item);
-    }
-
-    private void viewPageSource() {
-        if (webViewPreview != null) {
-            webViewPreview.evaluateJavascript(
-                "document.documentElement.outerHTML",
-                value -> {
-                    // Create a new activity or dialog to show source
-                    addConsoleMessage("Page source logged to console");
-                }
-            );
-        }
     }
 
     @Override

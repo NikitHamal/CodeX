@@ -153,17 +153,17 @@ public class SimpleSoraTabAdapter extends RecyclerView.Adapter<SimpleSoraTabAdap
         codeEditor.setTextSize(14f);
         codeEditor.setLineNumberEnabled(true);
         codeEditor.setWordwrap(false);
-        codeEditor.setHighlightCurrentBlock(true);
-        codeEditor.setHighlightCurrentLine(true);
+        codeEditor.setHighlightCurrentBlock(false);
+        codeEditor.setHighlightCurrentLine(false);
         codeEditor.setTypefaceText(android.graphics.Typeface.MONOSPACE);
 
         // Set a clean color scheme
         codeEditor.setColorScheme(new EditorColorScheme());
 
         // Enable features for better editing experience
-        codeEditor.setScrollBarEnabled(true);
-        codeEditor.setVerticalScrollBarEnabled(true);
-        codeEditor.setHorizontalScrollBarEnabled(true);
+        codeEditor.setScrollBarEnabled(false);
+        codeEditor.setVerticalScrollBarEnabled(false);
+        codeEditor.setHorizontalScrollBarEnabled(false);
     }
 
     /**

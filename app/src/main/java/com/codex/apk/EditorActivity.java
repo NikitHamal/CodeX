@@ -241,6 +241,7 @@ public class EditorActivity extends AppCompatActivity implements
     @Override
     public void openFile(File file) {
         tabManager.openFile(file); // Delegate to TabManager
+        closeDrawerIfOpen();
     }
 
     @Override

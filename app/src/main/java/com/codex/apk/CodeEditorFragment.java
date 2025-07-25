@@ -172,8 +172,10 @@ public class CodeEditorFragment extends Fragment implements SimpleSoraTabAdapter
             Log.e(TAG, "refreshFileTabLayout: One or more UI components or listener are null.");
             return;
         }
-        // Simply notify the adapter that data has changed.
-        tabAdapter.notifyDataSetChanged();
+        int currentPosition = fileViewPager.getCurrentItem();
+        if (currentPosition >= 0 && currentPosition < tabAdapter.getItemCount()) {
+            tabAdapter.notifyItemChanged(currentPosition);
+        }
     }
 
     /**

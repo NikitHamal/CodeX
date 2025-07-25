@@ -24,7 +24,8 @@ import com.codex.apk.editor.FileTreeManager;
 import com.codex.apk.editor.TabManager;
 import com.codex.apk.editor.adapters.MainPagerAdapter;
 import com.codex.apk.SimpleSoraTabAdapter;
-import com.google.android.material.bottomnavigation.BottomNavigationView;
+import com.google.android.material.tabs.TabLayout;
+import com.google.android.material.tabs.TabLayoutMediator;
 
 import java.io.File;
 import java.io.IOException;
@@ -37,8 +38,7 @@ import java.util.concurrent.Executors;
 // but delegates the actual logic to the new manager classes.
 public class EditorActivity extends AppCompatActivity implements
         CodeEditorFragment.CodeEditorFragmentListener,
-        AIChatFragment.AIChatFragmentListener,
-        PreviewConsoleFragment.PreviewConsoleFragmentListener {
+        AIChatFragment.AIChatFragmentListener {
 
     private static final String TAG = "EditorActivity";
 
@@ -51,7 +51,6 @@ public class EditorActivity extends AppCompatActivity implements
     // References to the fragments hosted in the main ViewPager2 (still needed for direct calls from Activity)
     private CodeEditorFragment codeEditorFragment;
     private AIChatFragment aiChatFragment;
-    private PreviewConsoleFragment previewConsoleFragment;
 
     // Core project properties (still kept here as they define the context of the activity)
     private String projectPath;
@@ -111,35 +110,21 @@ public class EditorActivity extends AppCompatActivity implements
         uiManager.setupToolbar(); // Toolbar setup is part of UI
         fileTreeManager.setupFileTree(); // File tree setup
 
-        // Setup BottomNavigationView
-        BottomNavigationView bottomNavigationView = findViewById(R.id.bottom_navigation);
+        // Setup TabLayout with ViewPager2
+        TabLayout tabLayout = findViewById(R.id.tab_layout);
         ViewPager2 viewPager = findViewById(R.id.view_pager);
         MainPagerAdapter adapter = new MainPagerAdapter(this);
         viewPager.setAdapter(adapter);
-        viewPager.setUserInputEnabled(false);
+        viewPager.setUserInputEnabled(false); // Disable swipe, only tab clicks
 
-        bottomNavigationView.setOnNavigationItemSelectedListener(item -> {
-            int itemId = item.getItemId();
-            if (itemId == R.id.navigation_chat) {
-                viewPager.setCurrentItem(0);
-                return true;
-            } else if (itemId == R.id.navigation_editor) {
-                viewPager.setCurrentItem(1);
-                return true;
-            } else if (itemId == R.id.navigation_preview) {
-                viewPager.setCurrentItem(2);
-                return true;
+        // Connect TabLayout with ViewPager2
+        new TabLayoutMediator(tabLayout, viewPager, (tab, position) -> {
+            if (position == 0) {
+                tab.setText("Chat");
+            } else if (position == 1) {
+                tab.setText("Editor");
             }
-            return false;
-        });
-
-        viewPager.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
-            @Override
-            public void onPageSelected(int position) {
-                super.onPageSelected(position);
-                bottomNavigationView.getMenu().getItem(position).setChecked(true);
-            }
-        });
+        }).attach();
     }
 
     public void onCodeEditorFragmentReady() {
@@ -171,6 +156,15 @@ public class EditorActivity extends AppCompatActivity implements
 
         if (id == android.R.id.home) {
             uiManager.toggleDrawer();
+            return true;
+        } else if (id == R.id.action_save) {
+            TabItem activeTab = tabManager.getActiveTabItem();
+            if (activeTab != null) {
+                tabManager.saveFile(activeTab);
+            }
+            return true;
+        } else if (id == R.id.action_preview) {
+            launchPreviewActivity();
             return true;
         } else if (id == R.id.action_settings) {
             Intent settingsIntent = new Intent(this, SettingsActivity.class);
@@ -276,7 +270,9 @@ public class EditorActivity extends AppCompatActivity implements
 
     @Override
     public void onActiveTabContentChanged(String content, String fileName) {
-        uiManager.onActiveTabContentChanged(content, fileName); // Delegate to UiManager for preview update
+        if (aiAssistantManager != null && aiAssistantManager.getAIAssistant() != null && !aiAssistantManager.getAIAssistant().isProcessing()) {
+            uiManager.onActiveTabContentChanged(content, fileName); // Delegate to UiManager for preview update
+        }
     }
 
     @Override
@@ -322,24 +318,7 @@ public class EditorActivity extends AppCompatActivity implements
         aiAssistantManager.onAiFileChangeClicked(fileActionDetail); // Delegate to AiAssistantManager
     }
 
-    // --- PreviewConsoleFragmentListener methods implementation (delegating to TabManager and FileTreeManager) ---
 
-    @Override
-    public String getActiveFileContent() {
-        TabItem activeTab = tabManager.getActiveTabItem();
-        return activeTab != null ? activeTab.getContent() : "";
-    }
-
-    @Override
-    public String getActiveFileName() {
-        TabItem activeTab = tabManager.getActiveTabItem();
-        return activeTab != null ? activeTab.getFileName() : "";
-    }
-
-    @Override
-    public File getProjectDirectory() {
-        return projectDir; // Still managed here
-    }
 
     // --- Indexing progress methods (delegating to AiAssistantManager) ---
 
@@ -394,10 +373,6 @@ public class EditorActivity extends AppCompatActivity implements
         this.aiChatFragment = fragment;
     }
 
-    public void setPreviewConsoleFragment(PreviewConsoleFragment fragment) {
-        this.previewConsoleFragment = fragment;
-    }
-
     // Getters for fragment references, used by managers
     public AIChatFragment getAiChatFragment() {
         return aiChatFragment;
@@ -407,8 +382,8 @@ public class EditorActivity extends AppCompatActivity implements
         return codeEditorFragment;
     }
 
-    public PreviewConsoleFragment getPreviewConsoleFragment() {
-        return previewConsoleFragment;
+    public File getProjectDirectory() {
+        return projectDir;
     }
 
     // Public methods for DialogHelper/FileTreeAdapter to call back to EditorActivity for manager actions
@@ -426,5 +401,21 @@ public class EditorActivity extends AppCompatActivity implements
 
     public void deleteFileByPath(File fileOrDirectory) throws IOException {
         fileTreeManager.deleteFileByPath(fileOrDirectory);
+    }
+
+    // Launch the new PreviewActivity
+    private void launchPreviewActivity() {
+        Intent previewIntent = new Intent(this, PreviewActivity.class);
+        previewIntent.putExtra(PreviewActivity.EXTRA_PROJECT_PATH, projectPath);
+        previewIntent.putExtra(PreviewActivity.EXTRA_PROJECT_NAME, projectName);
+
+        // Get current active file content if available
+        TabItem activeTab = tabManager.getActiveTabItem();
+        if (activeTab != null) {
+            previewIntent.putExtra(PreviewActivity.EXTRA_HTML_CONTENT, activeTab.getContent());
+            previewIntent.putExtra(PreviewActivity.EXTRA_FILE_NAME, activeTab.getFileName());
+        }
+
+        startActivity(previewIntent);
     }
 }

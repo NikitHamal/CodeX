@@ -1,19 +1,29 @@
 <?xml version="1.0" encoding="utf-8"?>
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
+
     <item
-        android:id="@+id/action_console"
-        android:title="Console"
-        android:icon="@drawable/ic_console"
+        android:id="@+id/action_refresh"
+        android:icon="@drawable/icon_refresh_round"
+        android:title="Refresh"
         app:showAsAction="ifRoom" />
+
     <item
-        android:id="@+id/action_share"
-        android:title="Share"
-        android:icon="@drawable/ic_share"
+        android:id="@+id/action_toggle_console"
+        android:icon="@drawable/icon_terminal"
+        android:title="Toggle Console"
         app:showAsAction="ifRoom" />
+
     <item
-        android:id="@+id/action_open_browser"
-        android:title="Open in Browser"
-        android:icon="@drawable/ic_open_in_browser"
+        android:id="@+id/action_clear_console"
+        android:icon="@drawable/icon_clear_all_round"
+        android:title="Clear Console"
         app:showAsAction="never" />
+
+    <item
+        android:id="@+id/action_view_source"
+        android:icon="@drawable/icon_code_round"
+        android:title="View Source"
+        app:showAsAction="never" />
+
 </menu>

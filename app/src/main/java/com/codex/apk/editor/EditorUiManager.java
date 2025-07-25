@@ -18,13 +18,13 @@ import androidx.viewpager2.widget.ViewPager2;
 
 import com.codex.apk.EditorActivity;
 import com.codex.apk.FileManager;
-import com.codex.apk.PreviewConsoleFragment;
+
 import com.codex.apk.R;
 import com.codex.apk.SettingsActivity;
 import com.codex.apk.TabItem;
 import com.codex.apk.DialogHelper; // Added import for DialogHelper
 import com.codex.apk.editor.adapters.MainPagerAdapter;
-import com.google.android.material.floatingactionbutton.FloatingActionButton;
+
 import com.google.android.material.tabs.TabLayout;
 import com.google.android.material.tabs.TabLayoutMediator;
 
@@ -47,7 +47,7 @@ public class EditorUiManager {
     private NavigationView navigationView;
     private MaterialToolbar toolbar;
     private ViewPager2 mainViewPager;
-    private FloatingActionButton fabRun;
+
     private ActionBarDrawerToggle drawerToggle;
 
     public EditorUiManager(EditorActivity activity, File projectDir, FileManager fileManager, DialogHelper dialogHelper, ExecutorService executorService, List<TabItem> openTabs) {
@@ -69,11 +69,7 @@ public class EditorUiManager {
             navigationView = activity.findViewById(R.id.navigation_drawer);
             toolbar = activity.findViewById(R.id.toolbar);
             mainViewPager = activity.findViewById(R.id.view_pager);
-            fabRun = activity.findViewById(R.id.fab_run_code);
-
-            if (fabRun != null) {
-                fabRun.setVisibility(View.GONE);
-            }
+            // FAB was removed from layout, no longer needed
         } catch (Exception e) {
             Log.e("EditorUiManager", "Error initializing views: " + e.getMessage(), e);
             Toast.makeText(activity, "Error initializing UI components", Toast.LENGTH_SHORT).show();
@@ -224,28 +220,22 @@ public class EditorUiManager {
     }
 
     /**
-     * Handles content changes of the active tab, typically for updating the preview.
+     * Handles content changes of the active tab (preview is now in separate activity)
      * @param content The new content of the active file.
      * @param fileName The name of the active file.
      */
     public void onActiveTabContentChanged(String content, String fileName) {
-        PreviewConsoleFragment previewConsoleFragment = activity.getPreviewConsoleFragment();
-        if (previewConsoleFragment != null) {
-            previewConsoleFragment.updatePreview(content, fileName);
-        }
+        // Preview is now in a separate activity, no need to update here
+        // This method can be removed or used for other UI updates in the future
     }
 
     /**
-     * Handles active tab changes, typically for updating the preview.
+     * Handles active tab changes (preview is now in separate activity)
      * @param newFile The File object of the newly active tab.
      */
     public void onActiveTabChanged(File newFile) {
-        PreviewConsoleFragment previewConsoleFragment = activity.getPreviewConsoleFragment();
-        if (previewConsoleFragment != null) {
-            String content = activity.getActiveFileContent(); // Get from activity's listener implementation
-            String fileName = activity.getActiveFileName(); // Get from activity's listener implementation
-            previewConsoleFragment.updatePreview(content, fileName);
-        }
+        // Preview is now in a separate activity, no need to update here
+        // This method can be removed or used for other UI updates in the future
     }
 
     public ViewPager2 getMainViewPager() {

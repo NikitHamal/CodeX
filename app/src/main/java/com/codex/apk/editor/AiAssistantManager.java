@@ -290,8 +290,9 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
     @Override
     public void onAiRequestStarted() {
         activity.runOnUiThread(() -> {
-            if (activity.getAiChatFragment() != null && !activity.getAiChatFragment().isAiProcessing) {
-                activity.getAiChatFragment().addMessage(new ChatMessage(
+            AIChatFragment chatFragment = activity.getAiChatFragment();
+            if (chatFragment != null && !chatFragment.isAiProcessing) {
+                chatFragment.addMessage(new ChatMessage(
                         ChatMessage.SENDER_AI,
                         "AI is thinking...",
                         null, null,

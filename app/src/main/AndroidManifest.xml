@@ -44,6 +44,13 @@
 		<activity
 			android:name=".DebugActivity"
 			android:screenOrientation="portrait" />
+		<activity
+			android:name=".PreviewActivity"
+			android:configChanges="orientation|screenSize|keyboardHidden|smallestScreenSize|screenLayout"
+			android:hardwareAccelerated="true"
+			android:supportsPictureInPicture="true"
+			android:windowSoftInputMode="adjustResize"
+			android:theme="@style/AppTheme" />
 		<provider
 			android:name="androidx.startup.InitializationProvider"
 			android:authorities="com.codex.apk.androidx-startup"

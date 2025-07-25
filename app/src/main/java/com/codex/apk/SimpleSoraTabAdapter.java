@@ -31,15 +31,6 @@ public class SimpleSoraTabAdapter extends RecyclerView.Adapter<SimpleSoraTabAdap
     private final TabActionListener tabActionListener;
     private final FileManager fileManager;
 
-    // Auto-save functionality
-    private final Handler autoSaveHandler = new Handler(Looper.getMainLooper());
-    private final Map<String, Runnable> autoSaveRunnables = new HashMap<>();
-    private static final int AUTO_SAVE_DELAY = 2000; // 2 seconds delay
-
-    // Debounce functionality for content changes
-    private final Handler debounceHandler = new Handler(Looper.getMainLooper());
-    private final Map<String, Runnable> debounceRunnables = new HashMap<>();
-    private static final int DEBOUNCE_DELAY = 300; // 300ms delay
 
     // Current active tab position
     private int activeTabPosition = 0;
@@ -118,9 +109,13 @@ public class SimpleSoraTabAdapter extends RecyclerView.Adapter<SimpleSoraTabAdap
                         if (!currentTabItem.getContent().equals(newContent)) {
                             // Update content immediately for responsive typing
                             currentTabItem.setContent(newContent);
-
-                            // Debounce the modified state update to prevent flickering
-                            debounceModifiedStateUpdate(currentTabItem, currentPos, newContent);
+                            currentTabItem.setModified(true);
+                            if (tabActionListener != null) {
+                                tabActionListener.onTabModifiedStateChanged();
+                                if (currentPos == activeTabPosition) {
+                                    tabActionListener.onActiveTabContentChanged(newContent, currentTabItem.getFileName());
+                                }
+                            }
                         }
                     }
                 });
@@ -182,69 +177,6 @@ public class SimpleSoraTabAdapter extends RecyclerView.Adapter<SimpleSoraTabAdap
         return "";
     }
 
-    /**
-     * Debounce modified state updates to prevent flickering
-     */
-    private void debounceModifiedStateUpdate(TabItem tabItem, int position, String content) {
-        String tabId = tabItem.getFile().getAbsolutePath();
-
-        // Cancel existing debounce for this tab
-        Runnable existingRunnable = debounceRunnables.get(tabId);
-        if (existingRunnable != null) {
-            debounceHandler.removeCallbacks(existingRunnable);
-        }
-
-        // Schedule new debounced update
-        Runnable debounceRunnable = () -> {
-            // Set modified state
-            tabItem.setModified(true);
-
-            // Notify listener
-            if (tabActionListener != null) {
-                tabActionListener.onTabModifiedStateChanged();
-                if (position == activeTabPosition) {
-                    tabActionListener.onActiveTabContentChanged(content, tabItem.getFileName());
-                }
-            }
-
-            // Schedule auto-save
-            scheduleAutoSave(tabItem, content);
-
-            debounceRunnables.remove(tabId);
-        };
-
-        debounceRunnables.put(tabId, debounceRunnable);
-        debounceHandler.postDelayed(debounceRunnable, DEBOUNCE_DELAY);
-    }
-
-    /**
-     * Schedule auto-save for a tab
-     */
-    private void scheduleAutoSave(TabItem tabItem, String content) {
-        String tabId = tabItem.getFile().getAbsolutePath();
-
-        // Cancel existing auto-save for this tab
-        Runnable existingRunnable = autoSaveRunnables.get(tabId);
-        if (existingRunnable != null) {
-            autoSaveHandler.removeCallbacks(existingRunnable);
-        }
-
-        // Schedule new auto-save
-        Runnable autoSaveRunnable = () -> {
-            if (fileManager != null) {
-                try {
-                    fileManager.writeFileContent(tabItem.getFile(), content);
-                    Log.d(TAG, "Auto-saved: " + tabItem.getFileName());
-                } catch (Exception e) {
-                    Log.e(TAG, "Auto-save failed for: " + tabItem.getFileName(), e);
-                }
-            }
-            autoSaveRunnables.remove(tabId);
-        };
-
-        autoSaveRunnables.put(tabId, autoSaveRunnable);
-        autoSaveHandler.postDelayed(autoSaveRunnable, AUTO_SAVE_DELAY);
-    }
 
     @Override
     public int getItemCount() {
@@ -290,16 +222,6 @@ public class SimpleSoraTabAdapter extends RecyclerView.Adapter<SimpleSoraTabAdap
      * Clean up resources
      */
     public void cleanup() {
-        // Cancel all pending auto-saves
-        for (Runnable runnable : autoSaveRunnables.values()) {
-            autoSaveHandler.removeCallbacks(runnable);
-        }
-        autoSaveRunnables.clear();
-
-        // Cancel all pending debounce operations
-        for (Runnable runnable : debounceRunnables.values()) {
-            debounceHandler.removeCallbacks(runnable);
-        }
-        debounceRunnables.clear();
+        // No-op
     }
 }

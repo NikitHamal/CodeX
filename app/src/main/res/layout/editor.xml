@@ -36,36 +36,30 @@
 
     </com.google.android.material.appbar.AppBarLayout>
 
+    <!-- Tab Layout -->
+    <com.google.android.material.tabs.TabLayout
+        android:id="@+id/tab_layout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/app_bar_layout"
+        android:background="@android:color/white"
+        app:tabMode="fixed"
+        app:tabGravity="fill"
+        app:tabIndicatorColor="@color/primary"
+        app:tabSelectedTextColor="@color/primary"
+        app:tabTextColor="@color/on_surface_variant"
+        app:tabIndicatorHeight="3dp"
+        android:elevation="2dp"
+        app:tabPaddingStart="0dp"
+        app:tabPaddingEnd="0dp" />
+
     <androidx.viewpager2.widget.ViewPager2
         android:id="@+id/view_pager"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_below="@id/app_bar_layout"
-        android:layout_above="@id/bottom_navigation" />
+        android:layout_below="@id/tab_layout" />
 
-    <com.google.android.material.bottomnavigation.BottomNavigationView
-        android:id="@+id/bottom_navigation"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_alignParentBottom="true"
-        android:background="@color/surface"
-        app:menu="@menu/menu_bottom_navigation" />
 
-    <!-- Floating Action Button for Quick Actions -->
-    <com.google.android.material.floatingactionbutton.FloatingActionButton
-        android:id="@+id/fab_run_code"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignParentEnd="true"
-        android:layout_alignParentBottom="true"
-        android:layout_margin="16dp"
-        android:contentDescription="Run code"
-        app:srcCompat="@drawable/icon_play_arrow_round"
-        app:backgroundTint="@color/secondary"
-        app:tint="@color/on_secondary"
-        android:elevation="0dp"
-        app:elevation="0dp"
-        android:outlineProvider="none" />
 
     <!-- Bottom Sheet for AI Actions -->
     <include

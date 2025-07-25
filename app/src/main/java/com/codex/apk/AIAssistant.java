@@ -203,6 +203,11 @@ public class AIAssistant implements FileChangeListener { // Implement FileChange
 	// Store current file info used for the prompt to pass to AiProcessor
 	private String currentFileNameForPromptContext;
 	private String currentFileContentForPromptContext;
+    private boolean isProcessing = false;
+
+    public boolean isProcessing() {
+        return isProcessing;
+    }
 
 	public String getApiKey() {
 		return this.apiKey;
@@ -349,6 +354,7 @@ public class AIAssistant implements FileChangeListener { // Implement FileChange
 			return;
 		}
 
+		isProcessing = true;
 		if (listener != null) {
 			listener.onAiRequestStarted();
 			listener.onAiContextBuildingStarted();
@@ -411,6 +417,7 @@ public class AIAssistant implements FileChangeListener { // Implement FileChange
 			} catch (Exception e) { // Catch generic Exception for broader error handling
 				handleException(e);
 			} finally {
+				isProcessing = false;
 				if (listener != null) listener.onAiRequestCompleted();
 			}
 		});

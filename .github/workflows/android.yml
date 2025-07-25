@@ -55,6 +55,8 @@ jobs:
         id: set_sha
         run: echo "short_sha=${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
 
+      - name: List files in release directory
+        run: ls -R app/build/outputs/apk/release/
       - name: Rename APK with commit hash
         run: |
           mv app/build/outputs/apk/release/app-release.apk \

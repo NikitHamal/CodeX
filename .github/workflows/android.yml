@@ -44,6 +44,8 @@ jobs:
         with:
           cache-disabled: true
 
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
       - name: Build Release APK
         env:
           SKETCHUB_API_KEY: ${{ secrets.SKETCHUB_API_KEY }}

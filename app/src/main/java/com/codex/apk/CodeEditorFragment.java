@@ -219,6 +219,13 @@ public class CodeEditorFragment extends Fragment implements SimpleSoraTabAdapter
         return tabAdapter;
     }
 
+    public TabItem getActiveTabItem() {
+        if (tabAdapter != null) {
+            return tabAdapter.getActiveTabItem();
+        }
+        return null;
+    }
+
     @Override
     public void onDestroyView() {
         super.onDestroyView();

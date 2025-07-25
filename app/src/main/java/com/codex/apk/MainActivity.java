@@ -96,9 +96,9 @@ public class MainActivity extends AppCompatActivity {
         layoutEmptyState = findViewById(R.id.layout_empty_state);
         toolbar = findViewById(R.id.toolbar);
 
-        // Initialize new buttons
-        buttonNewProject = findViewById(R.id.button_new_project);
-        buttonImportProject = findViewById(R.id.button_import_project);
+        // Initialize new buttons (removed from welcome card)
+        buttonNewProject = null; // Removed from welcome card
+        buttonImportProject = null; // Removed from welcome card
 
         setSupportActionBar(toolbar);
         if (getSupportActionBar() != null) {
@@ -111,9 +111,8 @@ public class MainActivity extends AppCompatActivity {
 
         templateManager = new TemplateManager();
 
-        // Set up click listeners for new buttons
-        buttonNewProject.setOnClickListener(v -> showNewProjectDialog());
-        buttonImportProject.setOnClickListener(v -> importProject());
+        // Set up click listeners for new buttons (removed from welcome card)
+        // buttonNewProject and buttonImportProject are now null since buttons were removed
         
         // Additional button listeners
         MaterialButton buttonRefreshProjects = findViewById(R.id.button_refresh_projects);
@@ -121,11 +120,8 @@ public class MainActivity extends AppCompatActivity {
             buttonRefreshProjects.setOnClickListener(v -> refreshProjectsList());
         }
         
-        MaterialButton buttonCreateFirstProject = findViewById(R.id.button_create_first_project);
-        if (buttonCreateFirstProject != null) {
-            buttonCreateFirstProject.setOnClickListener(v -> showNewProjectDialog());
-        }
-        
+        // Removed button_create_first_project as per requirements
+
         // Extended FAB click listener
         com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton fabQuickActions = findViewById(R.id.fab_quick_actions);
         if (fabQuickActions != null) {
@@ -303,7 +299,7 @@ public class MainActivity extends AppCompatActivity {
         if (projectsList.isEmpty() && hasStoragePermission()) {
             listViewProjects.setVisibility(View.GONE);
             layoutEmptyState.setVisibility(View.VISIBLE);
-            textEmptyProjects.setText("No projects yet. Create or import your first project!");
+            // Text is now set in layout XML as requested
         } else if (!hasStoragePermission()) {
             listViewProjects.setVisibility(View.GONE);
             layoutEmptyState.setVisibility(View.VISIBLE);
@@ -852,6 +848,11 @@ public class MainActivity extends AppCompatActivity {
             startActivity(new Intent(this, SettingsActivity.class));
         });
         
+        view.findViewById(R.id.action_open_about).setOnClickListener(v -> {
+            bottomSheet.dismiss();
+            startActivity(new Intent(this, AboutActivity.class));
+        });
+
         bottomSheet.setContentView(view);
         bottomSheet.show();
     }

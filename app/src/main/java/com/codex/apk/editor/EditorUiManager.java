@@ -46,7 +46,6 @@ public class EditorUiManager {
     private DrawerLayout drawerLayout;
     private NavigationView navigationView;
     private MaterialToolbar toolbar;
-    private TabLayout mainTabLayout;
     private ViewPager2 mainViewPager;
     private FloatingActionButton fabRun;
     private ActionBarDrawerToggle drawerToggle;
@@ -69,7 +68,6 @@ public class EditorUiManager {
             drawerLayout = activity.findViewById(R.id.drawer_layout);
             navigationView = activity.findViewById(R.id.navigation_drawer);
             toolbar = activity.findViewById(R.id.toolbar);
-            mainTabLayout = activity.findViewById(R.id.tab_layout);
             mainViewPager = activity.findViewById(R.id.view_pager);
             fabRun = activity.findViewById(R.id.fab_run_code);
 
@@ -175,61 +173,6 @@ public class EditorUiManager {
         }
     }
 
-    /**
-     * Sets up the main TabLayout and ViewPager2 for switching between "Chat", "Code", and "Preview" fragments.
-     */
-    public void setupMainTabsAndViewPager() {
-        MainPagerAdapter mainPagerAdapter = new MainPagerAdapter(activity);
-        mainViewPager.setAdapter(mainPagerAdapter);
-
-        // Attach TabLayoutMediator to synchronize mainTabLayout with mainViewPager
-        new TabLayoutMediator(mainTabLayout, mainViewPager, (tab, position) -> {
-            if (position == 0) { // Chat tab
-                tab.setText("Chat");
-            } else if (position == 1) { // Code tab
-                tab.setText("Code");
-            } else { // position == 2, Preview tab
-                tab.setText("Preview");
-            }
-        }).attach();
-
-        // Register a callback to hide/show the FAB based on the selected tab
-        mainViewPager.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
-            @Override
-            public void onPageSelected(int position) {
-                super.onPageSelected(position);
-                if (position == 2) { // Preview tab selected
-                    // Ensure preview is updated with the latest content of the currently open code file
-                    PreviewConsoleFragment previewConsoleFragment = activity.getPreviewConsoleFragment();
-                    if (previewConsoleFragment != null) {
-                        String content = activity.getActiveFileContent(); // Get from activity's listener implementation
-                        String fileName = activity.getActiveFileName(); // Get from activity's listener implementation
-                        previewConsoleFragment.updatePreview(content, fileName);
-                    }
-                }
-            }
-        });
-
-        // Handle window insets for drawer content layout
-        View drawerContentLayout = activity.findViewById(R.id.navigation_drawer);
-        if (drawerContentLayout != null) {
-            final int originalPaddingLeft = drawerContentLayout.getPaddingLeft();
-            final int originalPaddingRight = drawerContentLayout.getPaddingRight();
-            final int originalPaddingBottom = drawerContentLayout.getPaddingBottom();
-
-            ViewCompat.setOnApplyWindowInsetsListener(drawerContentLayout, (v, windowInsets) -> {
-                Insets insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
-                v.setPadding(originalPaddingLeft,
-                        insets.top + v.getPaddingTop(), // Add top inset to existing top padding
-                        originalPaddingRight,
-                        originalPaddingBottom);
-                return windowInsets;
-            });
-            drawerContentLayout.requestApplyInsets();
-        } else {
-            Log.e(TAG, "Drawer content layout (R.id.navigation_drawer) not found for inset handling.");
-        }
-    }
 
     /**
      * Runs the code by launching the PreviewActivity.

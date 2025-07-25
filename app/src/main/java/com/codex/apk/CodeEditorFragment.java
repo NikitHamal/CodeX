@@ -15,20 +15,17 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.viewpager2.widget.ViewPager2;
 
-import com.codex.apk.TabAdapter; // Ensure this is the correct import
-import com.google.android.material.tabs.TabLayout;
-import com.google.android.material.tabs.TabLayoutMediator;
+import com.codex.apk.SimpleSoraTabAdapter;
 
 import java.io.File;
 import java.util.List;
 
-public class CodeEditorFragment extends Fragment implements TabAdapter.TabActionListener {
+public class CodeEditorFragment extends Fragment implements SimpleSoraTabAdapter.TabActionListener {
 
     private static final String TAG = "CodeEditorFragment";
 
-    private TabLayout fileTabLayout;
     private ViewPager2 fileViewPager;
-    private TabAdapter tabAdapter;
+    private SimpleSoraTabAdapter tabAdapter;
 
     // New UI elements for indexing progress
     private LinearLayout layoutIndexingProgress;
@@ -87,7 +84,6 @@ public class CodeEditorFragment extends Fragment implements TabAdapter.TabAction
         // Inflate the layout for this fragment
         View view = inflater.inflate(R.layout.layout_code_editor_tab, container, false);
 
-        fileTabLayout = view.findViewById(R.id.file_tab_layout);
         fileViewPager = view.findViewById(R.id.file_view_pager);
 
         // Initialize new UI elements
@@ -116,46 +112,10 @@ public class CodeEditorFragment extends Fragment implements TabAdapter.TabAction
 
         List<TabItem> openTabs = listener.getOpenTabsList();
         // Pass 'this' as TabActionListener so TabAdapter can call back to this fragment
-        tabAdapter = new TabAdapter(getContext(), openTabs, this, listener.getFileManager()); // 'this' refers to CodeEditorFragment
+        tabAdapter = new SimpleSoraTabAdapter(getContext(), openTabs, this, listener.getFileManager()); // 'this' refers to CodeEditorFragment
 
         fileViewPager.setAdapter(tabAdapter);
 
-        // Attach TabLayoutMediator only once here
-        new TabLayoutMediator(fileTabLayout, fileViewPager, (tab, position) -> {
-            if (position < openTabs.size()) {
-                TabItem tabItem = openTabs.get(position);
-                String tabTitle = tabItem.getFileName();
-                if (tabItem.isModified()) {
-                    tabTitle += " *";
-                }
-                tab.setText(tabTitle);
-                tab.setIcon(null); // Remove icon
-            }
-        }).attach();
-
-        // Add listener for tab selection events
-        fileTabLayout.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
-            @Override
-            public void onTabSelected(TabLayout.Tab tab) {
-                // When a tab is selected, set the ViewPager2 to show the corresponding item
-                if (tab.getPosition() < openTabs.size()) {
-                    fileViewPager.setCurrentItem(tab.getPosition());
-                    // Notify listener that the active tab has changed
-                    if (listener != null) {
-                        listener.onActiveTabChanged(openTabs.get(tab.getPosition()).getFile());
-                    }
-                }
-            }
-            @Override
-            public void onTabUnselected(TabLayout.Tab tab) { /* Not needed */ }
-            @Override
-            public void onTabReselected(TabLayout.Tab tab) {
-                // When a tab is reselected (clicked again), show the tab options menu
-                if (listener != null) {
-                    listener.showTabOptionsMenu(tab.view, tab.getPosition());
-                }
-            }
-        });
     }
 
     /**
@@ -201,15 +161,12 @@ public class CodeEditorFragment extends Fragment implements TabAdapter.TabAction
      * It now simply notifies the adapter that its data set has changed.
      */
     public void refreshFileTabLayout() {
-        if (fileTabLayout == null || fileViewPager == null || tabAdapter == null || listener == null) {
+        if (fileViewPager == null || tabAdapter == null || listener == null) {
             Log.e(TAG, "refreshFileTabLayout: One or more UI components or listener are null.");
             return;
         }
         // Simply notify the adapter that data has changed.
-        // The TabLayoutMediator, attached once in setupFileTabsAndViewPager, will handle the update.
         tabAdapter.notifyDataSetChanged();
-        // Request layout pass to ensure UI updates, especially for tab titles/icons
-        fileTabLayout.requestLayout();
     }
 
     /**
@@ -255,19 +212,19 @@ public class CodeEditorFragment extends Fragment implements TabAdapter.TabAction
     }
 
     /**
-     * Returns the TabAdapter instance used by this fragment.
-     * @return The TabAdapter.
+     * Returns the SimpleSoraTabAdapter instance used by this fragment.
+     * @return The SimpleSoraTabAdapter.
      */
-    public TabAdapter getFileTabAdapter() {
+    public SimpleSoraTabAdapter getFileTabAdapter() {
         return tabAdapter;
     }
 
     @Override
     public void onDestroyView() {
         super.onDestroyView();
-        // Clean up resources held by the TabAdapter when the view is destroyed
+        // Clean up resources held by the SimpleSoraTabAdapter when the view is destroyed
         if (tabAdapter != null) {
-            tabAdapter.destroy();
+            tabAdapter.cleanup();
         }
     }
 

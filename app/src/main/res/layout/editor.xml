@@ -35,25 +35,6 @@
             android:elevation="0dp"
             android:outlineProvider="none" />
 
-        <!-- Enhanced Tab Layout -->
-        <com.google.android.material.tabs.TabLayout
-            android:id="@+id/tab_layout"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:background="@color/surface"
-            app:tabMode="scrollable"
-            app:tabGravity="start"
-            app:tabIndicatorColor="@color/primary"
-            app:tabIndicatorHeight="3dp"
-            app:tabIndicatorAnimationMode="elastic"
-            app:tabSelectedTextColor="@color/primary"
-            app:tabTextColor="@color/secondary_text"
-            app:tabRippleColor="@color/primary_container"
-            app:tabIndicatorFullWidth="false"
-            app:tabTextAppearance="@style/TextAppearance.Material3.LabelMedium"
-            android:elevation="0dp"
-            android:outlineProvider="none" />
-
     </com.google.android.material.appbar.AppBarLayout>
 
     <!-- Main Editor Area -->
@@ -62,6 +43,14 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         app:layout_behavior="@string/appbar_scrolling_view_behavior" />
+
+    <com.google.android.material.bottomnavigation.BottomNavigationView
+        android:id="@+id/bottom_navigation"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:background="@color/surface"
+        app:menu="@menu/menu_bottom_navigation" />
 
     <!-- Floating Action Button for Quick Actions -->
     <com.google.android.material.floatingactionbutton.FloatingActionButton

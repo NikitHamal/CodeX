@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='UTF-8' standalone='yes' ?>
 <resources>
-<color name="primary">#2196F3</color>
-<color name="on_primary">#FFFFFF</color>
+<color name="primary">#94CCFF</color>
+<color name="on_primary">#003355</color>
 <color name="primary_container">#00497A</color>
 <color name="on_primary_container">#D1E4FF</color>
 <color name="secondary">#FFB2C8</color>
@@ -34,7 +34,7 @@
 <color name="warning_container">#653B00</color>
 <color name="on_warning_container">#FFDC9F</color>
 <color name="text_primary">#E3E2E6</color>
-<color name="text_secondary">#A7A7A7</color>
+<color name="text_secondary">#BDBDBD</color>
 <color name="text_hint">#808080</color>
 <color name="white">#FFFFFF</color>
 <color name="white_70">#B3FFFFFF</color>

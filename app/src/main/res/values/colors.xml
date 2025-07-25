@@ -4,7 +4,7 @@
     <color name="colorPrimaryDark">#007FAC</color>
     <color name="colorControlHighlight">#C1E8FF</color>
     <color name="colorControlNormal">#007FAC</color>
-    <color name="primary">#0061A4</color>
+    <color name="primary">#007FAC</color>
     <color name="on_primary">#FFFFFF</color>
     <color name="primary_container">#D1E4FF</color>
     <color name="on_primary_container">#001D36</color>
@@ -40,7 +40,7 @@
     <color name="primary_light">#94CCFF</color>
     <color name="accent">#C00055</color>
     <color name="primary_text">#1A1C1E</color>
-    <color name="secondary_text">#43474E</color>
+    <color name="secondary_text">#5A5A5A</color>
     <color name="icons">#FFFFFF</color>
     <color name="divider">#C3C7CF</color>
     <color name="white">#FFFFFF</color>
@@ -48,6 +48,7 @@
     <color name="black">#000000</color>
     <color name="text_primary">#1A1C1E</color>
     <color name="text_secondary">#43474E</color>
+    <color name="text_hint">#73777F</color>
     <color name="surface_tint">#0061A4</color>
     <color name="shadow">#000000</color>
     <color name="surface_container_lowest">#FFFFFF</color>
@@ -79,5 +80,4 @@
     <color name="color_status_renamed">#FFC107</color>
     <color name="info_container">#ADD8E6</color>
     <color name="info">#00008B</color>
-    <color name="text_hint">#808080</color>
 </resources>

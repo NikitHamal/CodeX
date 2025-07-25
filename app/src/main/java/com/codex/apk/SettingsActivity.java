@@ -18,6 +18,7 @@ import androidx.preference.SwitchPreferenceCompat;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import android.content.Context;
 import android.util.AttributeSet;
+import java.util.List;
 
 import com.google.android.material.appbar.MaterialToolbar;
 
@@ -28,6 +29,8 @@ public class SettingsActivity extends AppCompatActivity {
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
+		// Set up theme based on user preferences
+		ThemeManager.setupTheme(this);
 		
 		try {
 			setContentView(R.layout.settings);
@@ -65,11 +68,15 @@ public class SettingsActivity extends AppCompatActivity {
 		com.google.android.material.textfield.TextInputEditText apiKeyEditText = findViewById(R.id.edit_text_api_key);
 		LinearLayout modelSelectorLayout = findViewById(R.id.layout_model_selector);
 		TextView selectedModelText = findViewById(R.id.text_selected_model);
+		LinearLayout themeSelectorLayout = findViewById(R.id.layout_theme_selector);
+		TextView selectedThemeText = findViewById(R.id.text_selected_theme);
 		
 		// Load saved settings
 		SharedPreferences prefs = getSharedPreferences("settings", MODE_PRIVATE);
+		SharedPreferences defaultPrefs = getPreferences(this);
 		String savedApiKey = prefs.getString("gemini_api_key", "");
 		String savedModel = prefs.getString("selected_model", "Gemini 2.5 Flash");
+		String savedTheme = defaultPrefs.getString("app_theme", "light");
 		
 		if (apiKeyEditText != null) {
 			apiKeyEditText.setText(savedApiKey);
@@ -79,11 +86,29 @@ public class SettingsActivity extends AppCompatActivity {
 			selectedModelText.setText(savedModel);
 		}
 		
+		if (selectedThemeText != null) {
+			selectedThemeText.setText(getThemeDisplayName(savedTheme));
+		}
+
 		// Set up model selector click
 		if (modelSelectorLayout != null) {
 			modelSelectorLayout.setOnClickListener(v -> showModelSelector());
 		}
 		
+		// Set up theme selector click
+		if (themeSelectorLayout != null) {
+			themeSelectorLayout.setOnClickListener(v -> showThemeSelector());
+		}
+
+		// Set up about card click
+		com.google.android.material.card.MaterialCardView aboutCard = findViewById(R.id.about_card);
+		if (aboutCard != null) {
+			aboutCard.setOnClickListener(v -> {
+				Intent intent = new Intent(SettingsActivity.this, AboutActivity.class);
+				startActivity(intent);
+			});
+		}
+
 		// Set up save functionality with multiple triggers
 		if (apiKeyEditText != null) {
 			// Save on focus change
@@ -122,23 +147,86 @@ public class SettingsActivity extends AppCompatActivity {
 	}
 	
 	private void showModelSelector() {
-		ModelSelectorBottomSheet modelSelector = ModelSelectorBottomSheet.newInstance(
-			getSharedPreferences("settings", MODE_PRIVATE).getString("selected_model", "Gemini 2.5 Flash"),
-			AIAssistant.AIModel.getAllDisplayNames()
-		);
+		List<String> modelNamesList = AIAssistant.AIModel.getAllDisplayNames();
+		String[] modelNames = modelNamesList.toArray(new String[0]);
+		String currentModel = getSharedPreferences("settings", MODE_PRIVATE).getString("selected_model", "Gemini 2.5 Flash");
+		int selectedIndex = -1;
 		
-		modelSelector.setModelSelectionListener(selectedModelDisplayName -> {
-			TextView selectedModelText = findViewById(R.id.text_selected_model);
-			if (selectedModelText != null) {
-				selectedModelText.setText(selectedModelDisplayName);
+		// Find current model index
+		for (int i = 0; i < modelNames.length; i++) {
+			if (modelNames[i].equals(currentModel)) {
+				selectedIndex = i;
+				break;
 			}
-			getSharedPreferences("settings", MODE_PRIVATE)
-				.edit()
-				.putString("selected_model", selectedModelDisplayName)
-				.apply();
-		});
+		}
 		
-		modelSelector.show(getSupportFragmentManager(), "model_selector");
+		new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+				.setTitle("Select AI Model")
+				.setSingleChoiceItems(modelNames, selectedIndex, (dialog, which) -> {
+					String selectedModelName = modelNames[which];
+					TextView selectedModelText = findViewById(R.id.text_selected_model);
+					if (selectedModelText != null) {
+						selectedModelText.setText(selectedModelName);
+					}
+					getSharedPreferences("settings", MODE_PRIVATE)
+						.edit()
+						.putString("selected_model", selectedModelName)
+						.apply();
+					dialog.dismiss();
+				})
+				.setNegativeButton("Cancel", null)
+				.show();
+	}
+
+	private void showThemeSelector() {
+		String currentTheme = getPreferences(this).getString("app_theme", "light");
+		String[] themeEntries = getResources().getStringArray(R.array.theme_entries);
+		String[] themeValues = getResources().getStringArray(R.array.theme_values);
+
+		int currentIndex = 0;
+		for (int i = 0; i < themeValues.length; i++) {
+			if (themeValues[i].equals(currentTheme)) {
+				currentIndex = i;
+				break;
+			}
+		}
+
+		new MaterialAlertDialogBuilder(this, R.style.AlertDialogCustom)
+			.setTitle("Select Theme")
+			.setSingleChoiceItems(themeEntries, currentIndex, (dialog, which) -> {
+				String selectedTheme = themeValues[which];
+				String selectedThemeDisplay = themeEntries[which];
+
+				TextView selectedThemeText = findViewById(R.id.text_selected_theme);
+				if (selectedThemeText != null) {
+					selectedThemeText.setText(selectedThemeDisplay);
+				}
+
+				// Save the theme preference using default preferences
+				getPreferences(this)
+					.edit()
+					.putString("app_theme", selectedTheme)
+					.apply();
+
+				// Apply theme immediately
+				ThemeManager.switchTheme(this, selectedTheme);
+
+				dialog.dismiss();
+			})
+			.setNegativeButton("Cancel", null)
+			.show();
+	}
+
+	private String getThemeDisplayName(String themeValue) {
+		String[] themeEntries = getResources().getStringArray(R.array.theme_entries);
+		String[] themeValues = getResources().getStringArray(R.array.theme_values);
+
+		for (int i = 0; i < themeValues.length; i++) {
+			if (themeValues[i].equals(themeValue)) {
+				return themeEntries[i];
+			}
+		}
+		return "Light"; // Default
 	}
 
 	public static class SettingsFragment extends PreferenceFragmentCompat {

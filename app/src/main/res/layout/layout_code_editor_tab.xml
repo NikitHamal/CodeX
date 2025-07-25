@@ -31,25 +31,6 @@
             android:textSize="12sp"/>
     </LinearLayout>
 
-    <com.google.android.material.appbar.AppBarLayout
-        android:id="@+id/app_bar_layout_file_tabs"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        app:liftOnScroll="true">
-        <com.google.android.material.tabs.TabLayout
-            android:id="@+id/file_tab_layout"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:background="?attr/colorSurface"
-            app:tabMode="scrollable"
-            app:tabGravity="start"
-            app:tabIndicatorColor="?attr/colorPrimary"
-            app:tabTextColor="?attr/colorOnSurfaceVariant"
-            app:tabSelectedTextColor="?attr/colorPrimary"
-            app:tabIndicatorHeight="3dp"
-            app:tabTextAppearance="@style/TextAppearance.Material3.LabelLarge" />
-    </com.google.android.material.appbar.AppBarLayout>
-
     <androidx.viewpager2.widget.ViewPager2
         android:id="@+id/file_view_pager"
         android:layout_width="match_parent"

@@ -23,6 +23,8 @@ import com.codex.apk.editor.EditorUiManager;
 import com.codex.apk.editor.FileTreeManager;
 import com.codex.apk.editor.TabManager;
 import com.codex.apk.editor.adapters.MainPagerAdapter;
+import com.codex.apk.SimpleSoraTabAdapter;
+import com.google.android.material.bottomnavigation.BottomNavigationView;
 
 import java.io.File;
 import java.io.IOException;
@@ -70,6 +72,8 @@ public class EditorActivity extends AppCompatActivity implements
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        // Set up theme based on user preferences
+        ThemeManager.setupTheme(this);
         setContentView(R.layout.editor);
 
         // Initialize core utilities
@@ -106,7 +110,35 @@ public class EditorActivity extends AppCompatActivity implements
         uiManager.initializeViews();
         uiManager.setupToolbar(); // Toolbar setup is part of UI
         fileTreeManager.setupFileTree(); // File tree setup
-        uiManager.setupMainTabsAndViewPager(); // Main tabs and ViewPager setup
+
+        // Setup BottomNavigationView
+        BottomNavigationView bottomNavigationView = findViewById(R.id.bottom_navigation);
+        ViewPager2 viewPager = findViewById(R.id.view_pager);
+        MainPagerAdapter adapter = new MainPagerAdapter(this);
+        viewPager.setAdapter(adapter);
+
+        bottomNavigationView.setOnNavigationItemSelectedListener(item -> {
+            int itemId = item.getItemId();
+            if (itemId == R.id.navigation_chat) {
+                viewPager.setCurrentItem(0);
+                return true;
+            } else if (itemId == R.id.navigation_editor) {
+                viewPager.setCurrentItem(1);
+                return true;
+            } else if (itemId == R.id.navigation_preview) {
+                viewPager.setCurrentItem(2);
+                return true;
+            }
+            return false;
+        });
+
+        viewPager.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
+            @Override
+            public void onPageSelected(int position) {
+                super.onPageSelected(position);
+                bottomNavigationView.getMenu().getItem(position).setChecked(true);
+            }
+        });
 
         // Open index.html if no tabs are open initially
         if (openTabs.isEmpty()) {
@@ -345,42 +377,6 @@ public class EditorActivity extends AppCompatActivity implements
         }
     }
 
-    public void refreshFileTabLayoutInFragment() {
-        if (codeEditorFragment != null) {
-            codeEditorFragment.refreshFileTabLayout();
-        }
-    }
-
-    public void addFileTabToFragment(TabItem tabItem) {
-        if (codeEditorFragment != null) {
-            codeEditorFragment.addFileTab(tabItem);
-        }
-    }
-
-    public void removeFileTabFromFragment(int position) {
-        if (codeEditorFragment != null) {
-            codeEditorFragment.removeFileTab(position);
-        }
-    }
-
-    public void refreshAllFileTabsInFragment() {
-        if (codeEditorFragment != null) {
-            codeEditorFragment.refreshAllFileTabs();
-        }
-    }
-
-    public void setFileViewPagerCurrentItemInFragment(int position, boolean smoothScroll) {
-        if (codeEditorFragment != null) {
-            codeEditorFragment.setFileViewPagerCurrentItem(position, smoothScroll);
-        }
-    }
-
-    public TabAdapter getFileTabAdapterFromFragment() {
-        if (codeEditorFragment != null) {
-            return codeEditorFragment.getFileTabAdapter();
-        }
-        return null;
-    }
 
     public ViewPager2 getMainViewPager() {
         return uiManager.getMainViewPager();

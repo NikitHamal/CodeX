@@ -8,7 +8,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.EditText;
-import android.widget.ImageButton;
+import com.google.android.material.button.MaterialButton;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -34,7 +34,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 // AIChatFragment now implements ChatMessageAdapter.OnAiActionInteractionListener
-public class AIChatFragment extends Fragment implements ModelSelectorBottomSheet.ModelSelectionListener,
+public class AIChatFragment extends Fragment implements
         ChatMessageAdapter.OnAiActionInteractionListener {
 
     private static final String TAG = "AIChatFragment";
@@ -49,7 +49,7 @@ public class AIChatFragment extends Fragment implements ModelSelectorBottomSheet
     private ChatMessageAdapter chatMessageAdapter;
     private List<ChatMessage> chatHistory;
     private EditText editTextAiPrompt;
-    private ImageButton buttonAiSend;
+    private MaterialButton buttonAiSend;
 
     // New UI elements for empty state and custom model selector
     private LinearLayout layoutEmptyState;
@@ -123,7 +123,26 @@ public class AIChatFragment extends Fragment implements ModelSelectorBottomSheet
         }
 
         chatHistory = new ArrayList<>();
-        loadChatHistoryFromPrefs(); // Load chat history when fragment is created
+    }
+
+    @Override
+    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
+        loadChatHistoryFromPrefs();
+        updateUiVisibility(); // Also call this here to set initial state
+
+        // Additional debugging for view dimensions
+        view.post(() -> {
+            Log.d(TAG, "Fragment view dimensions: " + view.getWidth() + "x" + view.getHeight());
+            if (layoutInputSection != null) {
+                Log.d(TAG, "Input section dimensions: " + layoutInputSection.getWidth() + "x" + layoutInputSection.getHeight());
+                Log.d(TAG, "Input section visibility: " + layoutInputSection.getVisibility());
+            }
+            if (linearPromptInput != null) {
+                Log.d(TAG, "Prompt input dimensions: " + linearPromptInput.getWidth() + "x" + linearPromptInput.getHeight());
+                Log.d(TAG, "Prompt input visibility: " + linearPromptInput.getVisibility());
+            }
+        });
     }
 
     @Nullable
@@ -147,47 +166,115 @@ public class AIChatFragment extends Fragment implements ModelSelectorBottomSheet
             textSelectedModel = view.findViewById(R.id.text_selected_model);
             linearPromptInput = view.findViewById(R.id.linear_prompt_input);
             
+            // Log what we found for debugging
+            Log.d(TAG, "UI Components found: recyclerView=" + (recyclerViewChatHistory != null) +
+                      ", editText=" + (editTextAiPrompt != null) +
+                      ", sendButton=" + (buttonAiSend != null) +
+                      ", emptyState=" + (layoutEmptyState != null) +
+                      ", greeting=" + (textGreeting != null) +
+                      ", inputSection=" + (layoutInputSection != null) +
+                      ", modelSelector=" + (layoutModelSelectorCustom != null) +
+                      ", promptInput=" + (linearPromptInput != null));
+
             // Verify critical components exist
-            if (recyclerViewChatHistory == null || editTextAiPrompt == null || buttonAiSend == null) {
-                throw new RuntimeException("Critical UI components not found in layout");
+            if (recyclerViewChatHistory == null) {
+                throw new RuntimeException("RecyclerView not found in layout");
+            }
+            if (editTextAiPrompt == null) {
+                throw new RuntimeException("EditText not found in layout");
+            }
+            if (buttonAiSend == null) {
+                throw new RuntimeException("Send button not found in layout");
+            }
+            if (layoutEmptyState == null) {
+                throw new RuntimeException("Empty state layout not found");
+            }
+            if (textGreeting == null) {
+                throw new RuntimeException("Greeting text not found");
+            }
+            if (layoutInputSection == null) {
+                throw new RuntimeException("Input section layout not found");
+            }
+            if (layoutModelSelectorCustom == null) {
+                throw new RuntimeException("Model selector layout not found");
+            }
+            if (linearPromptInput == null) {
+                throw new RuntimeException("Prompt input layout not found");
             }
         } catch (Exception e) {
-            Log.e(TAG, "Error initializing UI components", e);
-            // Return a simple error view if layout inflation fails
-            TextView errorView = new TextView(getContext());
-            errorView.setText("Error loading chat interface");
-            errorView.setGravity(android.view.Gravity.CENTER);
-            return errorView;
+            Log.e(TAG, "Error initializing UI components: " + e.getMessage(), e);
+            // Show error in the fragment instead of returning a different view
+            showChatLoadError("Failed to initialize chat interface: " + e.getMessage());
+            return view; // Return the original view but show error state
         }
 
         // Set up RecyclerView
-        chatMessageAdapter = new ChatMessageAdapter(getContext(), chatHistory);
-        chatMessageAdapter.setOnAiActionInteractionListener(this); // Set this fragment as the listener
-        recyclerViewChatHistory.setLayoutManager(new LinearLayoutManager(getContext()));
-        recyclerViewChatHistory.setAdapter(chatMessageAdapter);
+        try {
+            chatMessageAdapter = new ChatMessageAdapter(requireContext(), chatHistory);
+            chatMessageAdapter.setOnAiActionInteractionListener(this); // Set this fragment as the listener
+            recyclerViewChatHistory.setLayoutManager(new LinearLayoutManager(requireContext()));
+            recyclerViewChatHistory.setAdapter(chatMessageAdapter);
+        } catch (Exception e) {
+            Log.e(TAG, "Error setting up RecyclerView", e);
+            showChatLoadError("Failed to initialize chat history: " + e.getMessage());
+            return view;
+        }
 
         // Initialize AI Assistant from listener
         if (listener != null) {
-            aiAssistant = listener.getAIAssistant();
-            if (aiAssistant != null) {
-                // Set initial selected model text
-                textSelectedModel.setText(aiAssistant.getCurrentModel().getDisplayName());
-            } else {
-                Log.e(TAG, "AIAssistant is null from listener!");
+            try {
+                aiAssistant = listener.getAIAssistant();
+                if (aiAssistant != null) {
+                    // Set initial selected model text
+                    if (textSelectedModel != null) {
+                        textSelectedModel.setText(aiAssistant.getCurrentModel().getDisplayName());
+                    }
+                } else {
+                    Log.e(TAG, "AIAssistant is null from listener!");
+                    showChatLoadError("AI Assistant not available. Please check your settings.");
+                    return view;
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Error getting AI Assistant from listener", e);
+                showChatLoadError("Failed to initialize AI Assistant: " + e.getMessage());
+                return view;
             }
         } else {
             Log.e(TAG, "Listener is null in onCreateView!");
+            showChatLoadError("Chat interface not properly connected to editor.");
+            return view;
         }
 
 
         // Set up custom model selector click listener
-        layoutModelSelectorCustom.setOnClickListener(v -> showModelSelectorBottomSheet());
+        if (layoutModelSelectorCustom != null) {
+            layoutModelSelectorCustom.setOnClickListener(v -> showModelSelectorDialog());
+        }
 
         // Set up send button click listener
-        buttonAiSend.setOnClickListener(v -> sendPrompt());
+        if (buttonAiSend != null) {
+            buttonAiSend.setOnClickListener(v -> sendPrompt());
+        }
+
+        // Set up IME action listener for Enter key
+        if (editTextAiPrompt != null) {
+            editTextAiPrompt.setOnEditorActionListener((v, actionId, event) -> {
+                if (actionId == android.view.inputmethod.EditorInfo.IME_ACTION_SEND) {
+                    sendPrompt();
+                    return true;
+                }
+                return false;
+            });
+        }
 
         // Update UI visibility based on chat history
         updateUiVisibility();
+
+        // Force visibility of input section as a safety measure
+        if (layoutInputSection != null) {
+            layoutInputSection.setVisibility(View.VISIBLE);
+            Log.d(TAG, "Input section visibility set to VISIBLE");
+        }
 
         return view;
     }
@@ -198,8 +285,8 @@ public class AIChatFragment extends Fragment implements ModelSelectorBottomSheet
      * @return A unique key for the current project's chat history.
      */
     private String getChatHistoryKey() {
-        if (projectPath == null) {
-            Log.w(TAG, "projectPath is null, using generic chat history key as fallback.");
+        if (projectPath == null || projectPath.isEmpty()) {
+            Log.w(TAG, "projectPath is null or empty, using generic chat history key as fallback.");
             return CHAT_HISTORY_KEY_PREFIX + "generic_fallback"; // Use a distinct fallback
         }
         // Use Base64 encoding of the projectPath to ensure a unique and safe key
@@ -217,29 +304,45 @@ public class AIChatFragment extends Fragment implements ModelSelectorBottomSheet
 
 
     /**
-     * Shows the model selection bottom sheet.
+     * Shows the model selection dialog.
      */
-    private void showModelSelectorBottomSheet() {
+    private void showModelSelectorDialog() {
         if (aiAssistant == null) {
-            Toast.makeText(getContext(), "AI Assistant not initialized.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(requireContext(), "AI Assistant not initialized.", Toast.LENGTH_SHORT).show();
             return;
         }
-        ModelSelectorBottomSheet bottomSheet = ModelSelectorBottomSheet.newInstance(
-                aiAssistant.getCurrentModel().getDisplayName(),
-                AIAssistant.AIModel.getAllDisplayNames()
-        );
-        bottomSheet.setModelSelectionListener(this);
-        bottomSheet.show(getParentFragmentManager(), bottomSheet.getTag());
+
+        List<String> modelNamesList = AIAssistant.AIModel.getAllDisplayNames();
+        String[] modelNames = modelNamesList.toArray(new String[0]);
+        String currentModel = aiAssistant.getCurrentModel().getDisplayName();
+        int selectedIndex = -1;
+
+        // Find current model index
+        for (int i = 0; i < modelNames.length; i++) {
+            if (modelNames[i].equals(currentModel)) {
+                selectedIndex = i;
+                break;
+            }
+        }
+
+        new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+                .setTitle("Select AI Model")
+                .setSingleChoiceItems(modelNames, selectedIndex, (dialog, which) -> {
+                    String selectedModelName = modelNames[which];
+                    onModelSelected(selectedModelName);
+                    dialog.dismiss();
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
     }
 
-    @Override
     public void onModelSelected(String selectedModelDisplayName) {
         if (aiAssistant != null) {
             AIAssistant.AIModel selectedModel = AIAssistant.AIModel.fromDisplayName(selectedModelDisplayName);
             if (selectedModel != null) {
                 aiAssistant.setCurrentModel(selectedModel);
                 textSelectedModel.setText(selectedModel.getDisplayName()); // Update the displayed model name
-                Toast.makeText(getContext(), "AI Model set to: " + selectedModel.getDisplayName(), Toast.LENGTH_SHORT).show();
+                Toast.makeText(requireContext(), "AI Model set to: " + selectedModel.getDisplayName(), Toast.LENGTH_SHORT).show();
             }
         }
     }
@@ -250,7 +353,7 @@ public class AIChatFragment extends Fragment implements ModelSelectorBottomSheet
     private void sendPrompt() {
         String prompt = editTextAiPrompt.getText().toString().trim();
         if (prompt.isEmpty()) {
-            Toast.makeText(getContext(), "Please enter a message.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(requireContext(), "Please enter a message.", Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -362,8 +465,7 @@ public class AIChatFragment extends Fragment implements ModelSelectorBottomSheet
                 currentAiStatusMessage = null; // Clear reference
             }
         } else {
-            // For user messages
-            isAiProcessing = true; // Set processing state to true before sending user prompt
+            // For user messages - don't set processing state here
             chatHistory.add(message);
             chatMessageAdapter.notifyItemInserted(chatHistory.size() - 1);
             recyclerViewChatHistory.scrollToPosition(chatHistory.size() - 1);
@@ -391,18 +493,38 @@ public class AIChatFragment extends Fragment implements ModelSelectorBottomSheet
      */
     private void updateUiVisibility() {
         if (chatHistory.isEmpty()) {
-            layoutEmptyState.setVisibility(View.VISIBLE);
-            recyclerViewChatHistory.setVisibility(View.GONE);
+            if (layoutEmptyState != null) {
+                layoutEmptyState.setVisibility(View.VISIBLE);
+            }
+            if (recyclerViewChatHistory != null) {
+                recyclerViewChatHistory.setVisibility(View.GONE);
+            }
             // For the first message, the prompt hint is different
-            editTextAiPrompt.setHint("How can CodeX help you today?");
-            layoutModelSelectorCustom.setVisibility(View.VISIBLE); // Show model selector initially
-
+            if (editTextAiPrompt != null) {
+                editTextAiPrompt.setHint("How can CodeX help you today?");
+            }
         } else {
-            layoutEmptyState.setVisibility(View.GONE);
-            recyclerViewChatHistory.setVisibility(View.VISIBLE);
+            if (layoutEmptyState != null) {
+                layoutEmptyState.setVisibility(View.GONE);
+            }
+            if (recyclerViewChatHistory != null) {
+                recyclerViewChatHistory.setVisibility(View.VISIBLE);
+            }
             // After the first message, the prompt hint is different
-            editTextAiPrompt.setHint("Reply to CodeX");
-            layoutModelSelectorCustom.setVisibility(View.VISIBLE); // Always show model selector
+            if (editTextAiPrompt != null) {
+                editTextAiPrompt.setHint("Reply to CodeX");
+            }
+        }
+
+        // Always ensure input section components are visible
+        if (layoutInputSection != null) {
+            layoutInputSection.setVisibility(View.VISIBLE);
+        }
+        if (layoutModelSelectorCustom != null) {
+            layoutModelSelectorCustom.setVisibility(View.VISIBLE);
+        }
+        if (linearPromptInput != null) {
+            linearPromptInput.setVisibility(View.VISIBLE);
         }
     }
 

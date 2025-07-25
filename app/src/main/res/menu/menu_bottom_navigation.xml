@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/navigation_chat"
+        android:icon="@drawable/icon_smart_toy_round"
+        android:title="Chat" />
+    <item
+        android:id="@+id/navigation_editor"
+        android:icon="@drawable/icon_code_round"
+        android:title="Editor" />
+    <item
+        android:id="@+id/navigation_preview"
+        android:icon="@drawable/icon_play_arrow_round"
+        android:title="Preview" />
+</menu>

@@ -71,48 +71,7 @@
                         android:text="AI-Powered Code Editor • Create, Import, and Manage Projects"
                         android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
                         android:textColor="@color/secondary_text"
-                        android:gravity="center"
-                        android:layout_marginBottom="16dp" />
-
-                    <!-- Action Buttons Row -->
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:gravity="center"
-                        android:layout_marginTop="8dp">
-
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/button_new_project"
-                            android:layout_width="0dp"
-                            android:layout_height="56dp"
-                            android:layout_weight="1"
-                            android:layout_marginEnd="8dp"
-                            android:text="New Project"
-                            android:textSize="14sp"
-                            android:textAllCaps="false"
-                            app:icon="@drawable/icon_add_round"
-                            app:iconGravity="start"
-                            app:iconSize="20dp"
-                            app:cornerRadius="12dp"
-                            style="@style/Widget.Material3.Button.TonalButton" />
-
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/button_import_project"
-                            android:layout_width="0dp"
-                            android:layout_height="56dp"
-                            android:layout_weight="1"
-                            android:layout_marginStart="8dp"
-                            android:text="Import Project"
-                            android:textSize="14sp"
-                            android:textAllCaps="false"
-                            app:icon="@drawable/icon_upload_round"
-                            app:iconGravity="start"
-                            app:iconSize="20dp"
-                            app:cornerRadius="12dp"
-                            style="@style/Widget.Material3.Button.OutlinedButton" />
-
-                    </LinearLayout>
+                        android:gravity="center" />
 
                 </LinearLayout>
 
@@ -183,32 +142,12 @@
 
                     <TextView
                         android:id="@+id/text_empty_projects"
-                        android:layout_width="wrap_content"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="No projects yet"
+                        android:text="No projects yet. Create or Import your first project!"
                         android:textAppearance="@style/TextAppearance.Material3.HeadlineSmall"
                         android:textColor="@color/secondary_text"
-                        android:layout_marginBottom="8dp" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Create your first project to get started"
-                        android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
-                        android:textColor="@color/secondary_text"
-                        android:gravity="center"
-                        android:layout_marginBottom="24dp" />
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/button_create_first_project"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Create Project"
-                        android:textAllCaps="false"
-                        app:icon="@drawable/icon_add_round"
-                        app:iconGravity="start"
-                        app:cornerRadius="12dp"
-                        style="@style/Widget.Material3.Button" />
+                        android:gravity="center" />
 
                 </LinearLayout>
 
@@ -227,9 +166,11 @@
         android:layout_margin="16dp"
         android:text="Quick Start"
         android:textAllCaps="false"
+        android:textColor="@color/white"
         app:icon="@drawable/icon_rocket_launch_round"
         app:iconSize="20dp"
+        app:iconTint="@color/white"
         app:backgroundTint="@color/primary"
-        app:tint="@color/on_primary" />
+        app:tint="@color/white" />
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

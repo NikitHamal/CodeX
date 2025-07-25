@@ -10,7 +10,7 @@ import androidx.appcompat.widget.PopupMenu;
 import com.codex.apk.EditorActivity;
 import com.codex.apk.FileManager;
 import com.codex.apk.R;
-import com.codex.apk.TabAdapter;
+import com.codex.apk.SimpleSoraTabAdapter;
 import com.codex.apk.TabItem;
 import com.codex.apk.DialogHelper; // Added import for DialogHelper
 import com.codex.apk.DiffUtils; // Assuming DiffUtils is a utility class
@@ -39,7 +39,7 @@ public class TabManager {
     }
 
     public TabItem getActiveTabItem() {
-        TabAdapter tabAdapter = activity.getFileTabAdapterFromFragment();
+        SimpleSoraTabAdapter tabAdapter = activity.getFileTabAdapterFromFragment();
         if (tabAdapter != null) {
             return tabAdapter.getActiveTabItem();
         }

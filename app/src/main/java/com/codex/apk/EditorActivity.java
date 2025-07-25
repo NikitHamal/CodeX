@@ -269,7 +269,6 @@ public class EditorActivity extends AppCompatActivity implements
         tabManager.showTabOptionsMenu(anchorView, position); // Delegate to TabManager
     }
 
-    @Override
     public void onActiveTabContentChanged(String content, String fileName) {
         // No-op
     }

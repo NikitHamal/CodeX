@@ -132,7 +132,11 @@ public class CodeEditorFragment extends Fragment implements SimpleSoraTabAdapter
      */
     @Override
     public void onTabModifiedStateChanged() {
-        refreshFileTabLayout();
+        TabItem activeTab = getActiveTabItem();
+        if (activeTab != null && activeTab.isModified() != activeTab.getLastNotifiedModifiedState()) {
+            refreshFileTabLayout();
+            activeTab.setLastNotifiedModifiedState(activeTab.isModified());
+        }
     }
 
     /**
@@ -172,10 +176,8 @@ public class CodeEditorFragment extends Fragment implements SimpleSoraTabAdapter
             Log.e(TAG, "refreshFileTabLayout: One or more UI components or listener are null.");
             return;
         }
-        int currentPosition = fileViewPager.getCurrentItem();
-        if (currentPosition >= 0 && currentPosition < tabAdapter.getItemCount()) {
-            tabAdapter.notifyItemChanged(currentPosition);
-        }
+        // Simply notify the adapter that data has changed.
+        tabAdapter.notifyDataSetChanged();
     }
 
     /**

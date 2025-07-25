@@ -79,4 +79,5 @@
     <color name="color_status_renamed">#FFC107</color>
     <color name="info_container">#ADD8E6</color>
     <color name="info">#00008B</color>
+    <color name="text_hint">#808080</color>
 </resources>

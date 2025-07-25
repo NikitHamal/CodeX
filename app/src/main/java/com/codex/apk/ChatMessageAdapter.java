@@ -8,6 +8,7 @@ import android.view.ViewGroup;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
+import android.view.animation.DecelerateInterpolator;
 import androidx.annotation.NonNull;
 import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.RecyclerView;
@@ -70,7 +71,23 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
         } else {
             ((AiMessageViewHolder) holder).bind(message, position);
         }
+
+        // Animate newly appearing items for a smoother chat experience
+        if (position > lastAnimatedPosition) {
+            holder.itemView.setAlpha(0f);
+            holder.itemView.setTranslationY(24f);
+            holder.itemView.animate()
+                    .alpha(1f)
+                    .translationY(0f)
+                    .setDuration(250)
+                    .setInterpolator(new android.view.animation.DecelerateInterpolator())
+                    .start();
+            lastAnimatedPosition = position;
+        }
     }
+
+    // Keeps track of the last position that was animated to avoid re-animating while scrolling
+    private int lastAnimatedPosition = -1;
 
     @Override
     public int getItemCount() {
@@ -94,7 +111,6 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
 
         void bind(ChatMessage message) {
             textMessage.setText(message.getContent());
-            cardMessage.setCardBackgroundColor(ContextCompat.getColor(context, R.color.primary_container));
         }
     }
 
@@ -144,7 +160,7 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
         }
 
         void bind(ChatMessage message, int messagePosition) {
-            cardMessage.setCardBackgroundColor(ContextCompat.getColor(context, R.color.surface_container_high));
+            // Card background defined via XML for dynamic theming.
 
             textAiModelName.setText(message.getAiModelName());
 

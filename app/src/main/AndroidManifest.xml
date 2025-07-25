@@ -1,7 +1,6 @@
 
 <manifest
-	xmlns:android="http://schemas.android.com/apk/res/android"
-	package="com.codex.apk">
+	xmlns:android="http://schemas.android.com/apk/res/android">
 	<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
 	<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
 	<uses-permission android:name="android.permission.INTERNET" />
@@ -44,8 +43,7 @@
 			android:supportsPictureInPicture="true" />
 		<activity
 			android:name=".DebugActivity"
-			android:screenOrientation="portrait"
-			android:theme="@style/AppTheme.DebugActivity" />
+			android:screenOrientation="portrait" />
 		<provider
 			android:name="androidx.startup.InitializationProvider"
 			android:authorities="com.codex.apk.androidx-startup"

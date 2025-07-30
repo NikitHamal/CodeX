@@ -30,11 +30,6 @@ public class CodeEditorFragment extends Fragment implements SimpleSoraTabAdapter
     private SimpleSoraTabAdapter tabAdapter;
     private TabLayout tabLayout;
 
-    // New UI elements for indexing progress
-    private LinearLayout layoutIndexingProgress;
-    private ProgressBar progressBarIndexing;
-    private TextView textIndexingStatus;
-
     // Listener to communicate with EditorActivity
     private CodeEditorFragmentListener listener;
 
@@ -55,10 +50,6 @@ public class CodeEditorFragment extends Fragment implements SimpleSoraTabAdapter
         void saveFile(TabItem tabItem);
         void showTabOptionsMenu(View anchorView, int position);
         void onActiveTabChanged(File newFile);
-        void onIndexingStarted(int totalFiles);
-        void onIndexingProgress(int indexedCount, int totalFiles, String currentFile);
-        void onIndexingCompleted();
-        void onIndexingError(String errorMessage);
     }
 
     /**
@@ -89,15 +80,7 @@ public class CodeEditorFragment extends Fragment implements SimpleSoraTabAdapter
         fileViewPager = view.findViewById(R.id.file_view_pager);
         tabLayout = view.findViewById(R.id.tab_layout);
 
-        // Initialize new UI elements
-        layoutIndexingProgress = view.findViewById(R.id.layout_indexing_progress_code_tab);
-        progressBarIndexing = view.findViewById(R.id.progress_bar_indexing_code_tab);
-        textIndexingStatus = view.findViewById(R.id.text_indexing_status_code_tab);
-
         setupFileTabsAndViewPager();
-
-        // Initially hide the progress bar
-        layoutIndexingProgress.setVisibility(View.GONE);
 
         return view;
     }
@@ -236,42 +219,5 @@ public class CodeEditorFragment extends Fragment implements SimpleSoraTabAdapter
     public void onDetach() {
         super.onDetach();
         listener = null; // Clear the listener to prevent memory leaks
-    }
-
-    // --- Indexing progress methods for CodeEditorFragmentListener ---
-    public void onIndexingStarted(int totalFiles) {
-        if (layoutIndexingProgress != null) {
-            layoutIndexingProgress.setVisibility(View.VISIBLE);
-            progressBarIndexing.setMax(totalFiles);
-            progressBarIndexing.setProgress(0);
-            textIndexingStatus.setText("Indexing project (0/" + totalFiles + ")");
-        }
-    }
-
-    public void onIndexingProgress(int indexedCount, int totalFiles, String currentFile) {
-        if (layoutIndexingProgress != null) {
-            layoutIndexingProgress.setVisibility(View.VISIBLE);
-            progressBarIndexing.setMax(totalFiles);
-            progressBarIndexing.setProgress(indexedCount);
-            String statusText = "Indexing " + indexedCount + "/" + totalFiles;
-            if (currentFile != null && !currentFile.isEmpty()) {
-                statusText += " (" + currentFile + ")";
-            }
-            textIndexingStatus.setText(statusText);
-        }
-    }
-
-    public void onIndexingCompleted() {
-        if (layoutIndexingProgress != null) {
-            layoutIndexingProgress.setVisibility(View.GONE);
-        }
-    }
-
-    public void onIndexingError(String errorMessage) {
-        if (layoutIndexingProgress != null) {
-            layoutIndexingProgress.setVisibility(View.GONE);
-            // Optionally show a temporary error message in the UI, or log it
-            Log.e(TAG, "Indexing error: " + errorMessage);
-        }
     }
 }

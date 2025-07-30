@@ -329,43 +329,8 @@ public class MainActivity extends AppCompatActivity {
 
         View dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_new_project, null);
         TextInputEditText editTextProjectName = dialogView.findViewById(R.id.edittext_project_name);
-        MaterialButton buttonTemplateBlank = dialogView.findViewById(R.id.button_template_blank);
-        MaterialButton buttonTemplateBasic = dialogView.findViewById(R.id.button_template_basic);
-        MaterialButton buttonTemplateResponsive = dialogView.findViewById(R.id.button_template_responsive);
 
         final String[] selectedTemplate = {"blank"};
-
-        buttonTemplateBlank.setOnClickListener(v -> {
-            selectedTemplate[0] = "blank";
-            buttonTemplateBlank.setBackgroundTintList(ContextCompat.getColorStateList(this, R.color.primary));
-            buttonTemplateBlank.setTextColor(ContextCompat.getColor(this, R.color.on_primary));
-            buttonTemplateBasic.setBackgroundTintList(ContextCompat.getColorStateList(this, android.R.color.transparent));
-            buttonTemplateBasic.setTextColor(ContextCompat.getColor(this, R.color.primary));
-            buttonTemplateResponsive.setBackgroundTintList(ContextCompat.getColorStateList(this, android.R.color.transparent));
-            buttonTemplateResponsive.setTextColor(ContextCompat.getColor(this, R.color.primary));
-        });
-
-        buttonTemplateBasic.setOnClickListener(v -> {
-            selectedTemplate[0] = "basic";
-            buttonTemplateBlank.setBackgroundTintList(ContextCompat.getColorStateList(this, android.R.color.transparent));
-            buttonTemplateBlank.setTextColor(ContextCompat.getColor(this, R.color.primary));
-            buttonTemplateBasic.setBackgroundTintList(ContextCompat.getColorStateList(this, R.color.primary));
-            buttonTemplateBasic.setTextColor(ContextCompat.getColor(this, R.color.on_primary));
-            buttonTemplateResponsive.setBackgroundTintList(ContextCompat.getColorStateList(this, android.R.color.transparent));
-            buttonTemplateResponsive.setTextColor(ContextCompat.getColor(this, R.color.primary));
-        });
-
-        buttonTemplateResponsive.setOnClickListener(v -> {
-            selectedTemplate[0] = "responsive";
-            buttonTemplateBlank.setBackgroundTintList(ContextCompat.getColorStateList(this, android.R.color.transparent));
-            buttonTemplateBlank.setTextColor(ContextCompat.getColor(this, R.color.primary));
-            buttonTemplateBasic.setBackgroundTintList(ContextCompat.getColorStateList(this, android.R.color.transparent));
-            buttonTemplateBasic.setTextColor(ContextCompat.getColor(this, R.color.primary));
-            buttonTemplateResponsive.setBackgroundTintList(ContextCompat.getColorStateList(this, R.color.primary));
-            buttonTemplateResponsive.setTextColor(ContextCompat.getColor(this, R.color.on_primary));
-        });
-
-        buttonTemplateBlank.performClick();
 
 
         AlertDialog dialog = new MaterialAlertDialogBuilder(this, R.style.AlertDialogCustom)

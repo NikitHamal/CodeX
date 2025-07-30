@@ -129,11 +129,6 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
         MaterialCardView cardMessage;
         LinearLayout fileChangesContainer; // Container for proposed file changes
 
-        // New UI elements for indexing progress
-        ProgressBar progressBarIndexing;
-        TextView textIndexingStatus;
-        LinearLayout layoutIndexingProgress; // Container for progress bar and text
-
         private final OnAiActionInteractionListener listener;
         private final Context context;
 
@@ -152,11 +147,6 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
             layoutSuggestions = itemView.findViewById(R.id.layout_suggestions);
             cardMessage = itemView.findViewById(R.id.card_message);
             fileChangesContainer = itemView.findViewById(R.id.file_changes_container);
-
-            // Initialize new UI elements
-            progressBarIndexing = itemView.findViewById(R.id.progress_bar_indexing);
-            textIndexingStatus = itemView.findViewById(R.id.text_indexing_status);
-            layoutIndexingProgress = itemView.findViewById(R.id.layout_indexing_progress);
         }
 
         void bind(ChatMessage message, int messagePosition) {
@@ -165,30 +155,9 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
             textAiModelName.setText(message.getAiModelName());
 
             // Handle indexing progress messages
-            if (message.getStatus() == ChatMessage.STATUS_INDEXING_PROGRESS) {
-                layoutIndexingProgress.setVisibility(View.VISIBLE);
-                textMessage.setVisibility(View.GONE); // Hide main message content
-                layoutActionButtons.setVisibility(View.GONE);
-                layoutActionSummaries.setVisibility(View.GONE);
-                layoutSuggestions.setVisibility(View.GONE);
-                fileChangesContainer.setVisibility(View.GONE); // Hide file changes section
+            textMessage.setText(message.getContent());
 
-                progressBarIndexing.setMax(message.getIndexingProgressTotal());
-                progressBarIndexing.setProgress(message.getIndexingProgressCurrent());
-
-                String statusText = "Indexing " + message.getIndexingProgressCurrent() + "/" +
-                        message.getIndexingProgressTotal();
-                if (message.getIndexingCurrentFile() != null && !message.getIndexingCurrentFile().isEmpty()) {
-                    statusText += " (" + message.getIndexingCurrentFile() + ")";
-                }
-                textIndexingStatus.setText(statusText);
-
-            } else {
-                layoutIndexingProgress.setVisibility(View.GONE);
-                textMessage.setVisibility(View.VISIBLE); // Show main message content
-                textMessage.setText(message.getContent());
-
-                // Display proposed file changes
+            // Display proposed file changes
                 if (message.getProposedFileChanges() != null && !message.getProposedFileChanges().isEmpty()) {
                     fileChangesContainer.setVisibility(View.VISIBLE);
                     fileChangesContainer.removeAllViews(); // Clear previous views

@@ -173,9 +173,6 @@ public class EditorActivity extends AppCompatActivity implements
         } else if (id == R.id.action_share) {
             uiManager.shareProject();
             return true;
-        } else if (id == R.id.action_index_status) {
-            dialogHelper.showIndexStatusDialog(); // DialogHelper still directly calls this for now
-            return true;
         }
         return super.onOptionsItemSelected(item);
     }

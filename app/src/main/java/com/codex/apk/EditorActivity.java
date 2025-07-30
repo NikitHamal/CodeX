@@ -170,15 +170,6 @@ public class EditorActivity extends AppCompatActivity implements
             Intent settingsIntent = new Intent(this, SettingsActivity.class);
             startActivity(settingsIntent);
             return true;
-        } else if (id == R.id.action_share) {
-            uiManager.shareProject();
-            return true;
-        } else if (id == R.id.action_refresh_index) {
-            aiAssistantManager.refreshCodebaseIndex();
-            return true;
-        } else if (id == R.id.action_index_status) {
-            dialogHelper.showIndexStatusDialog(); // DialogHelper still directly calls this for now
-            return true;
         }
         return super.onOptionsItemSelected(item);
     }
@@ -318,27 +309,6 @@ public class EditorActivity extends AppCompatActivity implements
 
 
 
-    // --- Indexing progress methods (delegating to AiAssistantManager) ---
-
-    @Override
-    public void onIndexingStarted(int totalFiles) {
-        aiAssistantManager.onIndexingStarted(totalFiles);
-    }
-
-    @Override
-    public void onIndexingProgress(int indexedCount, int totalFiles, String currentFile) {
-        aiAssistantManager.onIndexingProgress(indexedCount, totalFiles, currentFile);
-    }
-
-    @Override
-    public void onIndexingCompleted() {
-        aiAssistantManager.onIndexingCompleted();
-    }
-
-    @Override
-    public void onIndexingError(String errorMessage) {
-        aiAssistantManager.onIndexingError(errorMessage);
-    }
 
     // Public methods for managers to call back to EditorActivity for UI updates or core actions
     public void showToast(String message) {

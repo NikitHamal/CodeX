@@ -67,14 +67,6 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
         }
     }
 
-    /**
-     * Triggers a refresh of the AI codebase index.
-     */
-    public void refreshCodebaseIndex() {
-        if (aiAssistant != null) {
-            aiAssistant.refreshCodebaseIndex();
-        }
-    }
 
     /**
      * Sends the user's prompt to the AI Assistant.
@@ -182,7 +174,6 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                     // Refresh open tabs and file tree after changes are applied
                     activity.tabManager.refreshOpenTabsAfterAi(); // Call via activity's TabManager
                     activity.loadFileTree(); // Call via activity's FileTreeManager
-                    refreshCodebaseIndex(); // Re-index after changes
                 });
             } catch (Exception e) {
                 Log.e(TAG, "Error applying AI actions: " + e.getMessage(), e);
@@ -343,59 +334,4 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
         // No-op, AI is thinking message will appear in AIChatFragment
     }
 
-    @Override
-    public void onIndexingStarted(int totalFiles) {
-        activity.runOnUiThread(() -> {
-            AIChatFragment aiChatFragment = activity.getAiChatFragment();
-            CodeEditorFragment codeEditorFragment = activity.getCodeEditorFragment();
-            if (aiChatFragment != null) {
-                aiChatFragment.onIndexingStarted(totalFiles);
-            }
-            if (codeEditorFragment != null) {
-                codeEditorFragment.onIndexingStarted(totalFiles);
-            }
-        });
-    }
-
-    @Override
-    public void onIndexingProgress(int indexedCount, int totalFiles, String currentFile) {
-        activity.runOnUiThread(() -> {
-            AIChatFragment aiChatFragment = activity.getAiChatFragment();
-            CodeEditorFragment codeEditorFragment = activity.getCodeEditorFragment();
-            if (aiChatFragment != null) {
-                aiChatFragment.onIndexingProgress(indexedCount, totalFiles, currentFile);
-            }
-            if (codeEditorFragment != null) {
-                codeEditorFragment.onIndexingProgress(indexedCount, totalFiles, currentFile);
-            }
-        });
-    }
-
-    @Override
-    public void onIndexingCompleted() {
-        activity.runOnUiThread(() -> {
-            AIChatFragment aiChatFragment = activity.getAiChatFragment();
-            CodeEditorFragment codeEditorFragment = activity.getCodeEditorFragment();
-            if (aiChatFragment != null) {
-                aiChatFragment.onIndexingCompleted();
-            }
-            if (codeEditorFragment != null) {
-                codeEditorFragment.onIndexingCompleted();
-            }
-        });
-    }
-
-    @Override
-    public void onIndexingError(String errorMessage) {
-        activity.runOnUiThread(() -> {
-            AIChatFragment aiChatFragment = activity.getAiChatFragment();
-            CodeEditorFragment codeEditorFragment = activity.getCodeEditorFragment();
-            if (aiChatFragment != null) {
-                aiChatFragment.onIndexingError(errorMessage);
-            }
-            if (codeEditorFragment != null) {
-                codeEditorFragment.onIndexingError(errorMessage);
-            }
-        });
-    }
 }

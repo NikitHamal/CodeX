@@ -71,7 +71,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
         android:text="Open From Device"
-        app:icon="@android:drawable/ic_menu_folder"
+        app:icon="@drawable/icon_folder_round"
         app:iconGravity="textStart"
         app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Full" />
 

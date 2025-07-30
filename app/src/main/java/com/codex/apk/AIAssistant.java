@@ -8,9 +8,6 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 
-import com.codex.apk.codebase.FileChangeListener;
-import com.codex.apk.codebase.FileMetadata;
-import com.codex.apk.codebase.FileWatcher;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -32,7 +29,7 @@ import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 
-public class AIAssistant implements FileChangeListener { // Implement FileChangeListener
+public class AIAssistant {
 	public enum AIModel {
 		// Latest Gemini 2.x Models
 		GEMINI_2_5_FLASH("gemini-2.5-flash", "Gemini 2.5 Flash"),
@@ -196,9 +193,7 @@ public class AIAssistant implements FileChangeListener { // Implement FileChange
 	private final GeminiParser geminiParser;
 	private final DeepseekParser deepseekParser;
 	
-	private final CodebaseIndexer codebaseIndexer;
 	private final FileManager fileManager;
-	private FileWatcher fileWatcher; // New FileWatcher instance
 
 	// Store current file info used for the prompt to pass to AiProcessor
 	private String currentFileNameForPromptContext;
@@ -233,11 +228,6 @@ public class AIAssistant implements FileChangeListener { // Implement FileChange
 		void onAiRequestCompleted();
 		void onAiContextBuildingStarted();
 		void onAiContextBuildingCompleted();
-		// New methods for indexing progress
-		void onIndexingStarted(int totalFiles);
-		void onIndexingProgress(int indexedCount, int totalFiles, String currentFile);
-		void onIndexingCompleted();
-		void onIndexingError(String errorMessage);
 	}
 
 	public AIAssistant(Context context, String initialApiKey, File projectDir, String projectName,
@@ -256,64 +246,12 @@ public class AIAssistant implements FileChangeListener { // Implement FileChange
 		this.fileManager = new FileManager(context, projectDir);
 		this.geminiParser = new GeminiParser(context);
 		this.deepseekParser = new DeepseekParser(context);
-		
-
-		// Initialize CodebaseIndexer with a listener to report progress
-		this.codebaseIndexer = new CodebaseIndexer(projectDir, fileManager, new CodebaseIndexer.IndexingListener() {
-			@Override
-			public void onIndexingStarted(int totalFiles) {
-				if (AIAssistant.this.listener != null) {
-					AIAssistant.this.listener.onIndexingStarted(totalFiles);
-				}
-			}
-
-			@Override
-			public void onIndexingProgress(int indexedCount, int totalFiles, String currentFile) {
-				if (AIAssistant.this.listener != null) {
-					AIAssistant.this.listener.onIndexingProgress(indexedCount, totalFiles, currentFile);
-				}
-			}
-
-			@Override
-			public void onIndexingCompleted() {
-				if (AIAssistant.this.listener != null) {
-					AIAssistant.this.listener.onIndexingCompleted();
-				}
-			}
-
-			@Override
-			public void onIndexingError(String errorMessage) {
-				if (AIAssistant.this.listener != null) {
-					AIAssistant.this.listener.onIndexingError(errorMessage);
-				}
-			}
-		});
-
-		// Start initial indexing
-		executorService.execute(() -> {
-			codebaseIndexer.indexProject();
-			Log.d(TAG, "Initial project indexing completed");
-		});
-
-		// Initialize and start FileWatcher
-		try {
-			this.fileWatcher = new FileWatcher(projectDir, this); // 'this' refers to AIAssistant implementing FileChangeListener
-			this.fileWatcher.start();
-			Log.d(TAG, "FileWatcher initialized and started.");
-		} catch (IOException e) {
-			Log.e(TAG, "Failed to initialize FileWatcher: " + e.getMessage(), e);
-			// Optionally notify listener about file watcher error
-		}
 	}
 
 	/**
 	 * Cleans up resources when the assistant is no longer needed.
 	 */
 	public void shutdown() {
-		if (fileWatcher != null) {
-			fileWatcher.stop();
-			Log.d(TAG, "FileWatcher stopped during shutdown.");
-		}
 		// ExecutorService shutdown is handled by EditorActivity
 	}
 
@@ -647,7 +585,6 @@ public class AIAssistant implements FileChangeListener { // Implement FileChange
 		contextBuilder.append("PROJECT_ROOT: ").append(projectDir.getAbsolutePath()).append("\n\n");
 
 		contextBuilder.append("=== CODEBASE OVERVIEW ===\n");
-		contextBuilder.append(codebaseIndexer.getCodebaseSummary()).append("\n");
 
 		boolean isRootDirectoryContext = (currentFileName == null || currentFileName.isEmpty() || currentFileName.equals(projectDir.getName()));
 
@@ -662,45 +599,10 @@ public class AIAssistant implements FileChangeListener { // Implement FileChange
 			contextBuilder.append("=== CURRENT FILE CONTEXT (").append(currentFileName).append(") ===\n");
 			contextBuilder.append("IMPORTANT: All modifications for '").append(currentFileName).append("' MUST be based on the 'CONTENT' block below.\n");
 
-			if (!relativePath.isEmpty()) {
-				contextBuilder.append(codebaseIndexer.getFileSummary(relativePath)).append("\n");
-
-				// Add symbol context for the current file
-				List<String> symbolsDefinedInCurrentFile = codebaseIndexer.getSymbolsDefinedInFile(relativePath);
-				if (!symbolsDefinedInCurrentFile.isEmpty()) {
-					contextBuilder.append("\nSymbols Defined in This File:\n");
-					for (String symbol : symbolsDefinedInCurrentFile) {
-						contextBuilder.append("  - ").append(symbol).append("\n");
-					}
-				}
-
-				List<String> symbolsUsedInCurrentFile = codebaseIndexer.getSymbolsUsedInFile(relativePath);
-				if (!symbolsUsedInCurrentFile.isEmpty()) {
-					contextBuilder.append("\nSymbols Used in This File:\n");
-					for (String symbol : symbolsUsedInCurrentFile) {
-						contextBuilder.append("  - ").append(symbol);
-						List<String> definitions = codebaseIndexer.getSymbolDefinitions(symbol);
-						if (!definitions.isEmpty()) {
-							contextBuilder.append(" (Defined in: ").append(String.join(", ", definitions)).append(")");
-						}
-						contextBuilder.append("\n");
-					}
-				}
-
-			} else {
-				contextBuilder.append("Summary not available for current file path.\n");
-			}
-
 			contextBuilder.append("CONTENT:\n```\n")
 					.append(currentFileContent != null ? currentFileContent : "// File content not available or file is empty.")
 					.append("\n```\n\n");
 
-			contextBuilder.append("=== RELATED FILES (to current file) ===\n");
-			if (!relativePath.isEmpty()) {
-				contextBuilder.append(codebaseIndexer.getRelatedFilesSummary(relativePath)).append("\n");
-			} else {
-				contextBuilder.append("Related files summary not available for current file path.\n");
-			}
 		} else {
 			contextBuilder.append("=== GENERAL PROJECT CONTEXT (NO SPECIFIC FILE OPEN) ===\n");
 			contextBuilder.append("The user is likely referring to the project in general or the root directory.\n");
@@ -747,34 +649,8 @@ public class AIAssistant implements FileChangeListener { // Implement FileChange
 		return contextBuilder.toString();
 	}
 
-	public void refreshCodebaseIndex() {
-		executorService.execute(() -> {
-			codebaseIndexer.indexProject(); // This now performs incremental indexing
-			Log.d(TAG, "Codebase index refreshed (incrementally)");
-		});
-	}
-
 	private void handleException(Exception e) {
 		Log.e(TAG, "Unhandled exception in AIAssistant: " + e.getMessage(), e);
 		if (listener != null) listener.onAiError("Unexpected internal error: " + e.getMessage());
-	}
-
-	// --- FileChangeListener implementations ---
-	@Override
-	public void onFileCreated(File file) {
-		Log.d(TAG, "File created event: " + file.getAbsolutePath());
-		refreshCodebaseIndex(); // Trigger incremental indexing
-	}
-
-	@Override
-	public void onFileModified(File file) {
-		Log.d(TAG, "File modified event: " + file.getAbsolutePath());
-		refreshCodebaseIndex(); // Trigger incremental indexing
-	}
-
-	@Override
-	public void onFileDeleted(File file) {
-		Log.d(TAG, "File deleted event: " + file.getAbsolutePath());
-		refreshCodebaseIndex(); // Trigger incremental indexing
 	}
 }

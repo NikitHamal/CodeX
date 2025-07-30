@@ -329,44 +329,43 @@ public class MainActivity extends AppCompatActivity {
 
         View dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_new_project, null);
         TextInputEditText editTextProjectName = dialogView.findViewById(R.id.edittext_project_name);
-        MaterialButton buttonTemplateBlank = dialogView.findViewById(R.id.button_template_blank);
-        MaterialButton buttonTemplateBasic = dialogView.findViewById(R.id.button_template_basic);
-        MaterialButton buttonTemplateResponsive = dialogView.findViewById(R.id.button_template_responsive);
+        com.google.android.material.card.MaterialCardView cardTemplateBlank = dialogView.findViewById(R.id.card_template_blank);
+        com.google.android.material.card.MaterialCardView cardTemplateBasic = dialogView.findViewById(R.id.card_template_basic);
+        com.google.android.material.card.MaterialCardView cardTemplateResponsive = dialogView.findViewById(R.id.card_template_responsive);
 
         final String[] selectedTemplate = {"blank"};
 
-        buttonTemplateBlank.setOnClickListener(v -> {
-            selectedTemplate[0] = "blank";
-            buttonTemplateBlank.setBackgroundTintList(ContextCompat.getColorStateList(this, R.color.primary));
-            buttonTemplateBlank.setTextColor(ContextCompat.getColor(this, R.color.on_primary));
-            buttonTemplateBasic.setBackgroundTintList(ContextCompat.getColorStateList(this, android.R.color.transparent));
-            buttonTemplateBasic.setTextColor(ContextCompat.getColor(this, R.color.primary));
-            buttonTemplateResponsive.setBackgroundTintList(ContextCompat.getColorStateList(this, android.R.color.transparent));
-            buttonTemplateResponsive.setTextColor(ContextCompat.getColor(this, R.color.primary));
-        });
+        View.OnClickListener templateClickListener = view -> {
+            // Reset all cards to default state
+            cardTemplateBlank.setStrokeColor(ContextCompat.getColor(this, R.color.outline));
+            cardTemplateBlank.setStrokeWidth(1);
+            cardTemplateBasic.setStrokeColor(ContextCompat.getColor(this, R.color.outline));
+            cardTemplateBasic.setStrokeWidth(1);
+            cardTemplateResponsive.setStrokeColor(ContextCompat.getColor(this, R.color.outline));
+            cardTemplateResponsive.setStrokeWidth(1);
 
-        buttonTemplateBasic.setOnClickListener(v -> {
-            selectedTemplate[0] = "basic";
-            buttonTemplateBlank.setBackgroundTintList(ContextCompat.getColorStateList(this, android.R.color.transparent));
-            buttonTemplateBlank.setTextColor(ContextCompat.getColor(this, R.color.primary));
-            buttonTemplateBasic.setBackgroundTintList(ContextCompat.getColorStateList(this, R.color.primary));
-            buttonTemplateBasic.setTextColor(ContextCompat.getColor(this, R.color.on_primary));
-            buttonTemplateResponsive.setBackgroundTintList(ContextCompat.getColorStateList(this, android.R.color.transparent));
-            buttonTemplateResponsive.setTextColor(ContextCompat.getColor(this, R.color.primary));
-        });
+            // Set the selected card to the active state
+            if (view.getId() == R.id.card_template_blank) {
+                selectedTemplate[0] = "blank";
+                cardTemplateBlank.setStrokeColor(ContextCompat.getColor(this, R.color.primary));
+                cardTemplateBlank.setStrokeWidth(2);
+            } else if (view.getId() == R.id.card_template_basic) {
+                selectedTemplate[0] = "basic";
+                cardTemplateBasic.setStrokeColor(ContextCompat.getColor(this, R.color.primary));
+                cardTemplateBasic.setStrokeWidth(2);
+            } else if (view.getId() == R.id.card_template_responsive) {
+                selectedTemplate[0] = "responsive";
+                cardTemplateResponsive.setStrokeColor(ContextCompat.getColor(this, R.color.primary));
+                cardTemplateResponsive.setStrokeWidth(2);
+            }
+        };
 
-        buttonTemplateResponsive.setOnClickListener(v -> {
-            selectedTemplate[0] = "responsive";
-            buttonTemplateBlank.setBackgroundTintList(ContextCompat.getColorStateList(this, android.R.color.transparent));
-            buttonTemplateBlank.setTextColor(ContextCompat.getColor(this, R.color.primary));
-            buttonTemplateBasic.setBackgroundTintList(ContextCompat.getColorStateList(this, android.R.color.transparent));
-            buttonTemplateBasic.setTextColor(ContextCompat.getColor(this, R.color.primary));
-            buttonTemplateResponsive.setBackgroundTintList(ContextCompat.getColorStateList(this, R.color.primary));
-            buttonTemplateResponsive.setTextColor(ContextCompat.getColor(this, R.color.on_primary));
-        });
+        cardTemplateBlank.setOnClickListener(templateClickListener);
+        cardTemplateBasic.setOnClickListener(templateClickListener);
+        cardTemplateResponsive.setOnClickListener(templateClickListener);
 
-        buttonTemplateBlank.performClick();
-
+        // Set initial selection
+        cardTemplateBlank.performClick();
 
         AlertDialog dialog = new MaterialAlertDialogBuilder(this, R.style.AlertDialogCustom)
                 .setTitle("Create New Project")

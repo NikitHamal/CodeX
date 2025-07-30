@@ -465,7 +465,8 @@ public class AIChatFragment extends Fragment implements
                 currentAiStatusMessage = null; // Clear reference
             }
         } else {
-            // For user messages - don't set processing state here
+            // For user messages, simply add them to the history.
+            // The AI processing state is managed separately and should not be set here.
             chatHistory.add(message);
             chatMessageAdapter.notifyItemInserted(chatHistory.size() - 1);
             recyclerViewChatHistory.scrollToPosition(chatHistory.size() - 1);
@@ -737,21 +738,18 @@ public class AIChatFragment extends Fragment implements
     }
 
     public void onIndexingCompleted() {
-        // Replace the indexing message with "AI is thinking..." or just remove it if AI is not thinking
+        // When indexing is completed, just remove the "Indexing..." message.
+        // Do not replace it with "AI is thinking..." as no prompt has been sent.
         if (currentAiStatusMessage != null && currentAiStatusMessage.getStatus() == ChatMessage.STATUS_INDEXING_PROGRESS) {
             int index = chatHistory.indexOf(currentAiStatusMessage);
             if (index != -1) {
-                // Replace with "AI is thinking..." message
-                ChatMessage thinkingMessage = new ChatMessage(ChatMessage.SENDER_AI, "AI is thinking...", System.currentTimeMillis());
-                chatHistory.set(index, thinkingMessage);
-                currentAiStatusMessage = thinkingMessage;
-                chatMessageAdapter.notifyItemChanged(index);
-                recyclerViewChatHistory.scrollToPosition(index);
+                chatHistory.remove(index);
+                chatMessageAdapter.notifyItemRemoved(index);
             }
-        } else {
-            // If no indexing message was active, just ensure AI is processing is true for the next AI message
-            isAiProcessing = true; // This will make the next AI message replace the "AI is thinking..."
         }
+        // Reset the processing state, as indexing is finished.
+        isAiProcessing = false;
+        currentAiStatusMessage = null;
     }
 
     public void onIndexingError(String errorMessage) {

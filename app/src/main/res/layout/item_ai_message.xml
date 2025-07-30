@@ -34,33 +34,6 @@
                 android:layout_marginBottom="4dp"
                 android:text="AI Model: Gemini 2.0 Flash" />
 
-            <LinearLayout
-                android:id="@+id/layout_indexing_progress"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:paddingTop="4dp"
-                android:paddingBottom="4dp"
-                android:visibility="gone">
-                <ProgressBar
-                    android:id="@+id/progress_bar_indexing"
-                    style="?android:attr/progressBarStyleHorizontal"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:indeterminate="false"
-                    android:max="100"
-                    android:progress="0"
-                    android:layout_marginBottom="4dp"/>
-
-                <TextView
-                    android:id="@+id/text_indexing_status"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Indexing project (0/100)"
-                    android:textColor="?attr/colorOnSurfaceVariant"
-                    android:textSize="12sp"/>
-            </LinearLayout>
-
             <TextView
                 android:id="@+id/text_message"
                 android:layout_width="wrap_content"

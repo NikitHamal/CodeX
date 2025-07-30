@@ -22,9 +22,6 @@ public class ChatMessage {
     public static final int STATUS_ACCEPTED = 1; // User accepted the AI's proposed actions
     public static final int STATUS_DISCARDED = 2; // User discarded the AI's proposed actions
 
-    // New status for indexing progress
-    public static final int STATUS_INDEXING_PROGRESS = 3;
-
     private int sender; // SENDER_USER or SENDER_AI
     private String content; // Message text for user, explanation for AI
     private List<String> actionSummaries; // For AI messages, list of actions taken (brief)
@@ -36,11 +33,6 @@ public class ChatMessage {
     private String rawAiResponseJson; // The raw JSON response from the AI model
     private List<FileActionDetail> proposedFileChanges; // Parsed list of proposed file changes
     private int status; // Current status of the AI message (e.g., PENDING_APPROVAL, ACCEPTED, DISCARDED)
-
-    // New fields for indexing progress
-    private int indexingProgressCurrent;
-    private int indexingProgressTotal;
-    private String indexingCurrentFile;
 
 
     /**
@@ -54,9 +46,6 @@ public class ChatMessage {
         this.actionSummaries = new ArrayList<>();
         this.suggestions = new ArrayList<>();
         this.proposedFileChanges = new ArrayList<>();
-        this.indexingProgressCurrent = 0;
-        this.indexingProgressTotal = 0;
-        this.indexingCurrentFile = null;
     }
 
     /**
@@ -74,28 +63,7 @@ public class ChatMessage {
         this.rawAiResponseJson = rawAiResponseJson;
         this.proposedFileChanges = proposedFileChanges != null ? new ArrayList<>(proposedFileChanges) : new ArrayList<>();
         this.status = status;
-        this.indexingProgressCurrent = 0;
-        this.indexingProgressTotal = 0;
-        this.indexingCurrentFile = null;
     }
-
-    /**
-     * Constructor for AI indexing progress messages.
-     */
-    public ChatMessage(int sender, String content, long timestamp, int indexingProgressCurrent,
-                       int indexingProgressTotal, String indexingCurrentFile) {
-        this.sender = sender;
-        this.content = content;
-        this.timestamp = timestamp;
-        this.status = STATUS_INDEXING_PROGRESS;
-        this.indexingProgressCurrent = indexingProgressCurrent;
-        this.indexingProgressTotal = indexingProgressTotal;
-        this.indexingCurrentFile = indexingCurrentFile;
-        this.actionSummaries = new ArrayList<>();
-        this.suggestions = new ArrayList<>();
-        this.proposedFileChanges = new ArrayList<>();
-    }
-
 
     // Getters
     public int getSender() { return sender; }
@@ -107,9 +75,6 @@ public class ChatMessage {
     public String getRawAiResponseJson() { return rawAiResponseJson; }
     public List<FileActionDetail> getProposedFileChanges() { return proposedFileChanges; }
     public int getStatus() { return status; }
-    public int getIndexingProgressCurrent() { return indexingProgressCurrent; }
-    public int getIndexingProgressTotal() { return indexingProgressTotal; }
-    public String getIndexingCurrentFile() { return indexingCurrentFile; }
 
 
     // Setters (for updating message properties after creation, e.g., status)
@@ -117,12 +82,6 @@ public class ChatMessage {
     public void setStatus(int status) { this.status = status; }
     public void setActionSummaries(List<String> actionSummaries) { this.actionSummaries = actionSummaries; }
     public void setProposedFileChanges(List<FileActionDetail> proposedFileChanges) { this.proposedFileChanges = proposedFileChanges; }
-    public void setIndexingProgress(int current, int total, String currentFile) {
-        this.indexingProgressCurrent = current;
-        this.indexingProgressTotal = total;
-        this.indexingCurrentFile = currentFile;
-        this.status = STATUS_INDEXING_PROGRESS; // Ensure status is set correctly
-    }
 
 
     /**
@@ -210,12 +169,6 @@ public class ChatMessage {
                 map.put("proposedFileChanges", null);
             }
 
-            // Include indexing progress fields if applicable
-            if (status == STATUS_INDEXING_PROGRESS) {
-                map.put("indexingProgressCurrent", indexingProgressCurrent);
-                map.put("indexingProgressTotal", indexingProgressTotal);
-                map.put("indexingCurrentFile", indexingCurrentFile);
-            }
         }
         return map;
     }
@@ -280,20 +233,8 @@ public class ChatMessage {
                 }
             }
 
-            // Handle indexing progress fields
-            int indexingProgressCurrent = map.containsKey("indexingProgressCurrent") ? ((Number) map.get("indexingProgressCurrent")).intValue() : 0;
-            int indexingProgressTotal = map.containsKey("indexingProgressTotal") ? ((Number) map.get("indexingProgressTotal")).intValue() : 0;
-            String indexingCurrentFile = (String) map.get("indexingCurrentFile");
-
-
-            // If it's an indexing progress message, use its specific constructor
-            if (status == STATUS_INDEXING_PROGRESS) {
-                return new ChatMessage(sender, content, timestamp,
-                        indexingProgressCurrent, indexingProgressTotal, indexingCurrentFile);
-            } else {
-                return new ChatMessage(sender, content, actionSummaries, suggestions, aiModelName,
-                        timestamp, rawAiResponseJson, proposedFileChanges, status);
-            }
+            return new ChatMessage(sender, content, actionSummaries, suggestions, aiModelName,
+                    timestamp, rawAiResponseJson, proposedFileChanges, status);
         } else {
             return new ChatMessage(sender, content, timestamp);
         }

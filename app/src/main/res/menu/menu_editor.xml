@@ -21,14 +21,4 @@
         android:icon="@drawable/ic_share"
         android:title="Share"
         app:showAsAction="never" />
-    <item
-        android:id="@+id/action_refresh_index"
-        android:icon="@drawable/ic_refresh"
-        android:title="Refresh AI Index"
-        app:showAsAction="never" />
-    <item
-        android:id="@+id/action_index_status"
-        android:icon="@drawable/ic_info"
-        android:title="AI Index Status"
-        app:showAsAction="never" />
 </menu>

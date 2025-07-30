@@ -63,9 +63,9 @@ public class AIChatFragment extends Fragment implements
     private AIChatFragmentListener listener; // Keep the listener interface
     private AIAssistant aiAssistant; // This will be obtained from the listener
 
-    // To manage the "AI is thinking..." message and indexing progress
-    private ChatMessage currentAiStatusMessage = null; // Can be "thinking" or "indexing"
-    public boolean isAiProcessing = false; // True if AI is thinking or indexing
+    // To manage the "AI is thinking..." message
+    private ChatMessage currentAiStatusMessage = null;
+    public boolean isAiProcessing = false;
 
     private String projectPath; // New field to store the current project's path
 
@@ -365,8 +365,7 @@ public class AIChatFragment extends Fragment implements
 
     /**
      * Adds a message to the chat history and updates the RecyclerView.
-     * This method handles both user and AI messages, including the "AI is thinking..." state
-     * and "Indexing progress" state.
+     * This method handles both user and AI messages, including the "AI is thinking..." state.
      * @param message The ChatMessage object to add.
      */
     public void addMessage(ChatMessage message) {
@@ -383,35 +382,7 @@ public class AIChatFragment extends Fragment implements
             return;
         }
         if (message.getSender() == ChatMessage.SENDER_AI) {
-            if (message.getStatus() == ChatMessage.STATUS_INDEXING_PROGRESS) {
-                // Handle indexing progress message
-                if (!isAiProcessing) {
-                    // First indexing message, add it
-                    chatHistory.add(message);
-                    currentAiStatusMessage = message;
-                    isAiProcessing = true;
-                    chatMessageAdapter.notifyItemInserted(chatHistory.size() - 1);
-                    recyclerViewChatHistory.scrollToPosition(chatHistory.size() - 1);
-                } else if (currentAiStatusMessage != null && currentAiStatusMessage.getStatus() == ChatMessage.STATUS_INDEXING_PROGRESS) {
-                    // Subsequent indexing message, update existing one
-                    int index = chatHistory.indexOf(currentAiStatusMessage);
-                    if (index != -1) {
-                        currentAiStatusMessage.setIndexingProgress(
-                                message.getIndexingProgressCurrent(),
-                                message.getIndexingProgressTotal(),
-                                message.getIndexingCurrentFile()
-                        );
-                        chatMessageAdapter.notifyItemChanged(index);
-                        recyclerViewChatHistory.scrollToPosition(index);
-                    } else {
-                        // Fallback if currentAiStatusMessage somehow lost its position
-                        chatHistory.add(message);
-                        currentAiStatusMessage = message;
-                        chatMessageAdapter.notifyItemInserted(chatHistory.size() - 1);
-                        recyclerViewChatHistory.scrollToPosition(chatHistory.size() - 1);
-                    }
-                }
-            } else if (message.getContent().equals("AI is thinking...")) {
+            if (message.getContent().equals("AI is thinking...")) {
                 // Handle "AI is thinking..." message
                 if (!isAiProcessing) {
                     chatHistory.add(message);
@@ -419,20 +390,6 @@ public class AIChatFragment extends Fragment implements
                     isAiProcessing = true;
                     chatMessageAdapter.notifyItemInserted(chatHistory.size() - 1);
                     recyclerViewChatHistory.scrollToPosition(chatHistory.size() - 1);
-                } else if (currentAiStatusMessage != null && currentAiStatusMessage.getStatus() == ChatMessage.STATUS_INDEXING_PROGRESS) {
-                    // If currently showing indexing progress, replace it with "AI is thinking..."
-                    int index = chatHistory.indexOf(currentAiStatusMessage);
-                    if (index != -1) {
-                        chatHistory.set(index, message);
-                        currentAiStatusMessage = message;
-                        chatMessageAdapter.notifyItemChanged(index);
-                        recyclerViewChatHistory.scrollToPosition(index);
-                    } else {
-                        chatHistory.add(message);
-                        currentAiStatusMessage = message;
-                        chatMessageAdapter.notifyItemInserted(chatHistory.size() - 1);
-                        recyclerViewChatHistory.scrollToPosition(chatHistory.size() - 1);
-                    }
                 } else {
                     // If AI is already thinking, just update the existing thinking message (no new insertion)
                     Log.d(TAG, "AI is already thinking, not adding new 'thinking' message.");

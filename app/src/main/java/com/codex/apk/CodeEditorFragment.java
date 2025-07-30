@@ -55,6 +55,10 @@ public class CodeEditorFragment extends Fragment implements SimpleSoraTabAdapter
         void saveFile(TabItem tabItem);
         void showTabOptionsMenu(View anchorView, int position);
         void onActiveTabChanged(File newFile);
+        void onIndexingStarted(int totalFiles);
+        void onIndexingProgress(int indexedCount, int totalFiles, String currentFile);
+        void onIndexingCompleted();
+        void onIndexingError(String errorMessage);
     }
 
     /**
@@ -234,4 +238,40 @@ public class CodeEditorFragment extends Fragment implements SimpleSoraTabAdapter
         listener = null; // Clear the listener to prevent memory leaks
     }
 
+    // --- Indexing progress methods for CodeEditorFragmentListener ---
+    public void onIndexingStarted(int totalFiles) {
+        if (layoutIndexingProgress != null) {
+            layoutIndexingProgress.setVisibility(View.VISIBLE);
+            progressBarIndexing.setMax(totalFiles);
+            progressBarIndexing.setProgress(0);
+            textIndexingStatus.setText("Indexing project (0/" + totalFiles + ")");
+        }
+    }
+
+    public void onIndexingProgress(int indexedCount, int totalFiles, String currentFile) {
+        if (layoutIndexingProgress != null) {
+            layoutIndexingProgress.setVisibility(View.VISIBLE);
+            progressBarIndexing.setMax(totalFiles);
+            progressBarIndexing.setProgress(indexedCount);
+            String statusText = "Indexing " + indexedCount + "/" + totalFiles;
+            if (currentFile != null && !currentFile.isEmpty()) {
+                statusText += " (" + currentFile + ")";
+            }
+            textIndexingStatus.setText(statusText);
+        }
+    }
+
+    public void onIndexingCompleted() {
+        if (layoutIndexingProgress != null) {
+            layoutIndexingProgress.setVisibility(View.GONE);
+        }
+    }
+
+    public void onIndexingError(String errorMessage) {
+        if (layoutIndexingProgress != null) {
+            layoutIndexingProgress.setVisibility(View.GONE);
+            // Optionally show a temporary error message in the UI, or log it
+            Log.e(TAG, "Indexing error: " + errorMessage);
+        }
+    }
 }

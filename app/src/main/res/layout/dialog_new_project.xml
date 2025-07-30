@@ -5,74 +5,76 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:padding="24dp">
-
-    <com.google.android.material.textfield.TextInputLayout
+    android:padding="24dp"
+    android:background="@color/surface_container"> <com.google.android.material.textfield.TextInputLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:hint="Project Name"
         style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-        app:boxStrokeColor="@color/primary"
-        app:hintTextColor="@color/on_surface_variant">
-
-        <com.google.android.material.textfield.TextInputEditText
+        app:boxStrokeColor="@color/primary" app:hintTextColor="@color/on_surface_variant"> <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/edittext_project_name"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:inputType="text"
             android:maxLines="1"
-            android:textColor="@color/on_surface"
-            android:textColorHint="@color/on_surface_variant" />
-    </com.google.android.material.textfield.TextInputLayout>
+            android:textColor="@color/on_surface" android:textColorHint="@color/on_surface_variant" /> </com.google.android.material.textfield.TextInputLayout>
 
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Choose a Template"
+        android:text="Choose Template"
         android:textSize="16sp"
-        android:textColor="@color/on_surface"
-        android:layout_marginTop="24dp"
+        android:textColor="@color/on_surface" android:layout_marginTop="24dp"
         android:layout_marginBottom="12dp"
         android:textStyle="bold" />
 
-    <com.google.android.material.chip.ChipGroup
-        android:id="@+id/chip_group_templates"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        app:singleSelection="true">
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:weightSum="3">
 
-        <com.google.android.material.chip.Chip
-            android:id="@+id/chip_template_blank"
-            style="@style/Widget.MaterialComponents.Chip.Choice"
-            android:layout_width="wrap_content"
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/button_template_blank"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_weight="1"
             android:text="Blank"
-            android:checked="true"/>
+            android:textAllCaps="false"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_marginEnd="6dp"
+            app:strokeWidth="2dp"
+            app:strokeColor="@color/primary" android:textColor="@color/primary" app:cornerRadius="8dp"
+            android:backgroundTint="@android:color/transparent" />
 
-        <com.google.android.material.chip.Chip
-            android:id="@+id/chip_template_basic"
-            style="@style/Widget.MaterialComponents.Chip.Choice"
-            android:layout_width="wrap_content"
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/button_template_basic"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:text="Basic" />
+            android:layout_weight="1"
+            android:text="Basic"
+            android:textAllCaps="false"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_marginStart="6dp"
+            android:layout_marginEnd="6dp"
+            app:strokeWidth="2dp"
+            app:strokeColor="@color/primary" android:textColor="@color/primary" app:cornerRadius="8dp"
+            android:backgroundTint="@android:color/transparent" />
 
-        <com.google.android.material.chip.Chip
-            android:id="@+id/chip_template_responsive"
-            style="@style/Widget.MaterialComponents.Chip.Choice"
-            android:layout_width="wrap_content"
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/button_template_responsive"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:text="Responsive" />
-    </com.google.android.material.chip.ChipGroup>
+            android:layout_weight="1"
+            android:text="Responsive"
+            android:textAllCaps="false"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_marginStart="6dp"
+            app:strokeWidth="2dp"
+            app:strokeColor="@color/primary" android:textColor="@color/primary" app:cornerRadius="8dp"
+            android:backgroundTint="@android:color/transparent" />
 
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/button_open_from_device"
-        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:text="Open From Device"
-        app:icon="@drawable/icon_folder_round"
-        app:iconGravity="textStart"
-        app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Full" />
+    </LinearLayout>
 
 </LinearLayout>

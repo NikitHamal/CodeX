@@ -50,10 +50,6 @@ public class TabManager {
      * @param file The file to open.
      */
     public void openFile(File file) {
-        if (activity.getCodeEditorFragment() == null) {
-            activity.showToast("Editor is still loading, please wait.");
-            return;
-        }
         if (!file.isFile() || !file.exists()) {
             activity.showToast("Cannot open: File does not exist or is a directory.");
             return;

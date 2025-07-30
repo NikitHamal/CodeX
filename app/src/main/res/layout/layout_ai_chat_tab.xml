@@ -93,43 +93,60 @@
         android:visibility="visible"
         android:layout_gravity="bottom">
 
-        <!-- Model Selector -->
+        <!-- Model Selector and Settings -->
         <LinearLayout
-            android:id="@+id/layout_model_selector_custom"
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:gravity="center_vertical"
-            android:paddingHorizontal="12dp"
-            android:paddingVertical="8dp"
-            android:background="@drawable/rounded_edittext_background"
-            android:layout_marginBottom="12dp"
-            android:clickable="true"
-            android:focusable="true"
-            android:foreground="?attr/selectableItemBackground">
+            android:layout_marginBottom="12dp">
 
-            <ImageView
-                android:layout_width="20dp"
-                android:layout_height="20dp"
-                android:src="@drawable/icon_smart_toy_round"
-                app:tint="@color/primary"
-                android:layout_marginEnd="12dp" />
-
-            <TextView
-                android:id="@+id/text_selected_model"
+            <!-- Model Selector -->
+            <LinearLayout
+                android:id="@+id/layout_model_selector_custom"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Gemini 2.5 Flash"
-                android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
-                android:textColor="@color/on_surface"
-                android:textStyle="bold" />
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingHorizontal="12dp"
+                android:paddingVertical="8dp"
+                android:background="@drawable/rounded_edittext_background"
+                android:clickable="true"
+                android:focusable="true"
+                android:foreground="?attr/selectableItemBackground">
 
+                <TextView
+                    android:id="@+id/text_selected_model"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Gemini 2.5 Flash"
+                    android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
+                    android:textColor="@color/on_surface"
+                    android:textSize="12sp" />
+
+                <ImageView
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
+                    android:src="@drawable/icon_arrow_drop_down_round"
+                    app:tint="@color/secondary_text" />
+
+            </LinearLayout>
+
+            <!-- Settings/Tune Button -->
             <ImageView
-                android:layout_width="18dp"
-                android:layout_height="18dp"
-                android:src="@drawable/icon_arrow_drop_down_round"
-                app:tint="@color/secondary_text" />
+                android:id="@+id/button_ai_settings"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:src="@drawable/icon_tune_round"
+                android:background="@drawable/rounded_edittext_background"
+                android:clickable="true"
+                android:focusable="true"
+                android:foreground="?attr/selectableItemBackground"
+                android:padding="8dp"
+                android:layout_marginStart="12dp"
+                app:tint="@color/on_surface_variant" />
 
         </LinearLayout>
 

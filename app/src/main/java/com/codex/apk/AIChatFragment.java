@@ -8,6 +8,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.EditText;
+import android.widget.ImageView;
 import com.google.android.material.button.MaterialButton;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -21,6 +22,8 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.card.MaterialCardView;
+import com.google.android.material.bottomsheet.BottomSheetDialog;
+import com.google.android.material.materialswitch.MaterialSwitch;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
@@ -59,6 +62,12 @@ public class AIChatFragment extends Fragment implements
     private LinearLayout layoutModelSelectorCustom;
     private TextView textSelectedModel;
     private LinearLayout linearPromptInput;
+    private ImageView buttonAiSettings;
+
+    // Model picker dialog components
+    private BottomSheetDialog modelPickerDialog;
+    private BottomSheetDialog aiSettingsDialog;
+    private BottomSheetDialog webSourcesDialog;
 
     private AIChatFragmentListener listener; // Keep the listener interface
     private AIAssistant aiAssistant; // This will be obtained from the listener
@@ -161,6 +170,7 @@ public class AIChatFragment extends Fragment implements
             layoutModelSelectorCustom = view.findViewById(R.id.layout_model_selector_custom);
             textSelectedModel = view.findViewById(R.id.text_selected_model);
             linearPromptInput = view.findViewById(R.id.linear_prompt_input);
+            buttonAiSettings = view.findViewById(R.id.button_ai_settings);
             
             // Log what we found for debugging
             Log.d(TAG, "UI Components found: recyclerView=" + (recyclerViewChatHistory != null) +
@@ -244,7 +254,12 @@ public class AIChatFragment extends Fragment implements
 
         // Set up custom model selector click listener
         if (layoutModelSelectorCustom != null) {
-            layoutModelSelectorCustom.setOnClickListener(v -> showModelSelectorDialog());
+            layoutModelSelectorCustom.setOnClickListener(v -> showModelPickerDialog());
+        }
+
+        // Set up AI settings button click listener
+        if (buttonAiSettings != null) {
+            buttonAiSettings.setOnClickListener(v -> showAiSettingsDialog());
         }
 
         // Set up send button click listener
@@ -616,6 +631,154 @@ public class AIChatFragment extends Fragment implements
             Log.e(TAG, "Error parsing chat history JSON during import", e);
         }
         return false;
+    }
+
+    /**
+     * Shows the new model picker dialog with provider sections and refresh functionality
+     */
+    private void showModelPickerDialog() {
+        if (aiAssistant == null) return;
+        
+        modelPickerDialog = new BottomSheetDialog(requireContext());
+        View dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_model_picker, null);
+        modelPickerDialog.setContentView(dialogView);
+        
+        // Initialize RecyclerViews for each provider
+        RecyclerView googleModels = dialogView.findViewById(R.id.recycler_google_models);
+        RecyclerView huggingfaceModels = dialogView.findViewById(R.id.recycler_huggingface_models);
+        RecyclerView alibabaModels = dialogView.findViewById(R.id.recycler_alibaba_models);
+        RecyclerView zModels = dialogView.findViewById(R.id.recycler_z_models);
+        
+        ImageView refreshAlibaba = dialogView.findViewById(R.id.button_refresh_alibaba);
+        ImageView refreshZ = dialogView.findViewById(R.id.button_refresh_z);
+        ImageView closeButton = dialogView.findViewById(R.id.button_close);
+        
+        // Set up adapters for each provider
+        setupProviderModels(googleModels, AIAssistant.AIProvider.GOOGLE);
+        setupProviderModels(huggingfaceModels, AIAssistant.AIProvider.HUGGINGFACE);
+        setupProviderModels(alibabaModels, AIAssistant.AIProvider.ALIBABA);
+        setupProviderModels(zModels, AIAssistant.AIProvider.Z);
+        
+        // Set up refresh listeners
+        refreshAlibaba.setOnClickListener(v -> {
+            aiAssistant.refreshModelsForProvider(AIAssistant.AIProvider.ALIBABA, new AIAssistant.RefreshCallback() {
+                @Override
+                public void onRefreshComplete(boolean success, String message) {
+                    requireActivity().runOnUiThread(() -> {
+                        Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show();
+                        if (success) {
+                            setupProviderModels(alibabaModels, AIAssistant.AIProvider.ALIBABA);
+                        }
+                    });
+                }
+            });
+        });
+        
+        refreshZ.setOnClickListener(v -> {
+            aiAssistant.refreshModelsForProvider(AIAssistant.AIProvider.Z, new AIAssistant.RefreshCallback() {
+                @Override
+                public void onRefreshComplete(boolean success, String message) {
+                    requireActivity().runOnUiThread(() -> {
+                        Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show();
+                        if (success) {
+                            setupProviderModels(zModels, AIAssistant.AIProvider.Z);
+                        }
+                    });
+                }
+            });
+        });
+        
+        closeButton.setOnClickListener(v -> modelPickerDialog.dismiss());
+        
+        modelPickerDialog.show();
+    }
+    
+    /**
+     * Sets up models for a specific provider in the RecyclerView
+     */
+    private void setupProviderModels(RecyclerView recyclerView, AIAssistant.AIProvider provider) {
+        var modelsByProvider = AIAssistant.AIModel.getModelsByProvider();
+        var providerModels = modelsByProvider.get(provider);
+        
+        if (providerModels != null && !providerModels.isEmpty()) {
+            ModelPickerAdapter adapter = new ModelPickerAdapter(providerModels, aiAssistant.getCurrentModel(), 
+                model -> {
+                    aiAssistant.setCurrentModel(model);
+                    textSelectedModel.setText(model.getDisplayName());
+                    modelPickerDialog.dismiss();
+                    
+                    // Update settings dialog state based on new model capabilities
+                    updateSettingsButtonState();
+                });
+            
+            recyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
+            recyclerView.setAdapter(adapter);
+            recyclerView.setVisibility(View.VISIBLE);
+        } else {
+            recyclerView.setVisibility(View.GONE);
+        }
+    }
+    
+    /**
+     * Shows the AI settings dialog with thinking mode and web search toggles
+     */
+    private void showAiSettingsDialog() {
+        if (aiAssistant == null) return;
+        
+        aiSettingsDialog = new BottomSheetDialog(requireContext());
+        View dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.bottom_sheet_ai_settings, null);
+        aiSettingsDialog.setContentView(dialogView);
+        
+        MaterialSwitch switchThinking = dialogView.findViewById(R.id.switch_thinking_mode);
+        MaterialSwitch switchWebSearch = dialogView.findViewById(R.id.switch_web_search);
+        
+        // Get current model capabilities
+        AIAssistant.ModelCapabilities capabilities = aiAssistant.getCurrentModel().getCapabilities();
+        
+        // Set up thinking mode toggle
+        switchThinking.setChecked(aiAssistant.isThinkingModeEnabled());
+        switchThinking.setEnabled(capabilities.supportsThinking);
+        switchThinking.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            aiAssistant.setThinkingModeEnabled(isChecked);
+        });
+        
+        // Set up web search toggle
+        switchWebSearch.setChecked(aiAssistant.isWebSearchEnabled());
+        switchWebSearch.setEnabled(capabilities.supportsWebSearch);
+        switchWebSearch.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            aiAssistant.setWebSearchEnabled(isChecked);
+        });
+        
+        aiSettingsDialog.show();
+    }
+    
+    /**
+     * Shows the web sources dialog with clickable links
+     */
+    private void showWebSourcesDialog(java.util.List<AIAssistant.WebSource> webSources) {
+        webSourcesDialog = new BottomSheetDialog(requireContext());
+        View dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.bottom_sheet_web_sources, null);
+        webSourcesDialog.setContentView(dialogView);
+        
+        RecyclerView recyclerWebSources = dialogView.findViewById(R.id.recycler_web_sources);
+        WebSourcesAdapter adapter = new WebSourcesAdapter(webSources);
+        recyclerWebSources.setLayoutManager(new LinearLayoutManager(requireContext()));
+        recyclerWebSources.setAdapter(adapter);
+        
+        webSourcesDialog.show();
+    }
+    
+    /**
+     * Updates the settings button state based on current model capabilities
+     */
+    private void updateSettingsButtonState() {
+        if (buttonAiSettings == null || aiAssistant == null) return;
+        
+        AIAssistant.ModelCapabilities capabilities = aiAssistant.getCurrentModel().getCapabilities();
+        boolean hasSettings = capabilities.supportsThinking || capabilities.supportsWebSearch;
+        
+        buttonAiSettings.setEnabled(hasSettings);
+        buttonAiSettings.setAlpha(hasSettings ? 1.0f : 0.5f);
     }
 
     // Add fallback error UI for chat loading

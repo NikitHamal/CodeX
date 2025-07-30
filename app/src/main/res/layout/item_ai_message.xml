@@ -8,41 +8,113 @@
     android:paddingTop="4dp"
     android:paddingBottom="4dp">
 
-    <com.google.android.material.card.MaterialCardView
-        android:id="@+id/card_message"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginEnd="48dp"
-        android:layout_marginStart="0dp"
-        app:cardElevation="0dp"
-        app:strokeWidth="0dp"
-        app:shapeAppearanceOverlay="@style/ShapeAppearance.ChatBubble.AI"
-        app:cardBackgroundColor="@color/surface_container_high">
+        android:orientation="vertical">
 
+        <!-- Model Name with Background -->
+        <TextView
+            android:id="@+id/text_ai_model_name"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Gemini 2.0 Flash"
+            android:textColor="@color/on_primary_container"
+            android:textSize="12sp"
+            android:background="@drawable/rounded_model_name_background"
+            android:paddingHorizontal="12dp"
+            android:paddingVertical="6dp"
+            android:layout_marginBottom="8dp" />
+
+        <!-- Thinking Section (Collapsible) -->
         <LinearLayout
+            android:id="@+id/layout_thinking_section"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="12dp">
+            android:layout_marginBottom="8dp"
+            android:visibility="gone">
+
+            <!-- Thinking Header -->
+            <LinearLayout
+                android:id="@+id/layout_thinking_header"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:clickable="true"
+                android:focusable="true"
+                android:background="?attr/selectableItemBackground"
+                android:paddingVertical="8dp">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Thoughts"
+                    android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
+                    android:textColor="@color/on_surface"
+                    android:textSize="12sp" />
+
+                <ImageView
+                    android:id="@+id/icon_thinking_expand"
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:src="@drawable/icon_expand_more_round"
+                    app:tint="@color/on_surface_variant" />
+
+            </LinearLayout>
+
+            <!-- Thinking Content -->
+            <TextView
+                android:id="@+id/text_thinking_content"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColor="@color/on_surface_variant"
+                android:textSize="12sp"
+                android:lineSpacingExtra="2dp"
+                android:visibility="gone"
+                android:text="AI thinking process will appear here..." />
+
+        </LinearLayout>
+
+        <!-- Main AI Message Content -->
+
+        <TextView
+            android:id="@+id/text_message"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="@color/on_surface"
+            android:textSize="14sp"
+            android:textStyle="normal"
+            android:layout_marginBottom="8dp"
+            android:text="AI Explanation will go here." />
+
+        <!-- Web Sources Section -->
+        <LinearLayout
+            android:id="@+id/layout_web_sources"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="8dp"
+            android:visibility="gone">
 
             <TextView
-                android:id="@+id/text_ai_model_name"
+                android:id="@+id/button_web_sources"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textColor="?attr/colorOnSurfaceVariant"
-                android:textSize="10sp"
-                android:layout_marginBottom="4dp"
-                android:text="AI Model: Gemini 2.0 Flash" />
+                android:text="Web sources"
+                android:textAppearance="@style/TextAppearance.Material3.BodySmall"
+                android:textColor="@color/primary"
+                android:background="@drawable/rounded_web_sources_background"
+                android:paddingHorizontal="12dp"
+                android:paddingVertical="6dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:foreground="?attr/selectableItemBackground" />
 
-            <TextView
-                android:id="@+id/text_message"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:textColor="?attr/colorOnSurface"
-                android:textSize="14sp"
-                android:textStyle="normal"
-                android:layout_marginBottom="8dp"
-                android:text="AI Explanation will go here." />
+        </LinearLayout>
 
             <LinearLayout
                 android:id="@+id/layout_proposed_file_changes"
@@ -151,6 +223,5 @@
 
             </LinearLayout>
 
-        </LinearLayout>
-    </com.google.android.material.card.MaterialCardView>
+    </LinearLayout>
 </LinearLayout>

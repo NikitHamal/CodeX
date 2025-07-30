@@ -159,11 +159,6 @@ public class DialogHelper {
 		new MaterialAlertDialogBuilder(context)
 		.setTitle("Codebase Index Status")
 		.setMessage("The codebase index helps the AI understand your project structure. It updates automatically when files change.")
-		.setPositiveButton("Force Refresh", (dialog, which) -> {
-			if (editorActivity != null && editorActivity.aiAssistantManager != null) {
-				editorActivity.aiAssistantManager.refreshCodebaseIndex(); // Call through AiAssistantManager
-			}
-		})
 		.setNegativeButton("OK", null)
 		.show();
 	}

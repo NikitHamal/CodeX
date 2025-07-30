@@ -52,4 +52,14 @@ dependencies {
 	implementation 'io.github.Rosemoe.sora-editor:editor:0.23.5'
 	implementation 'io.github.Rosemoe.sora-editor:language-textmate:0.23.5'
 	implementation 'io.github.Rosemoe.sora-editor:language-java:0.23.5'
+	
+	// Markwon for markdown formatting
+	implementation 'io.noties.markwon:core:4.6.2'
+	implementation 'io.noties.markwon:ext-strikethrough:4.6.2'
+	implementation 'io.noties.markwon:ext-tables:4.6.2'
+	implementation 'io.noties.markwon:ext-tasklist:4.6.2'
+	implementation 'io.noties.markwon:html:4.6.2'
+	implementation 'io.noties.markwon:image:4.6.2'
+	implementation 'io.noties.markwon:linkify:4.6.2'
+	implementation 'io.noties.markwon:syntax-highlight:4.6.2'
 }

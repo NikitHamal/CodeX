@@ -17,8 +17,10 @@ import com.google.gson.Gson;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
+
+import com.codex.apk.editor.AiAssistantManager;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -143,7 +145,31 @@ public class AIAssistant {
 		QWEN2_5_CODER_32B("qwen2.5-coder-32b-instruct", "Qwen2.5-Coder-32B-Instruct", AIProvider.ALIBABA,
 			new ModelCapabilities(true, false, true, true, true, false, true, 131072, 8192)),
 		QWEN2_5_72B("qwen2.5-72b-instruct", "Qwen2.5-72B-Instruct", AIProvider.ALIBABA,
-			new ModelCapabilities(true, false, true, true, true, false, true, 131072, 8192));
+			new ModelCapabilities(true, false, true, true, true, false, true, 131072, 8192)),
+		
+		// Z/GLM Models
+		GLM_4_PLUS("glm-4-plus", "GLM-4-Plus", AIProvider.Z,
+			new ModelCapabilities(true, false, true, true, false, false, true, 128000, 4096)),
+		GLM_4_0520("glm-4-0520", "GLM-4-0520", AIProvider.Z,
+			new ModelCapabilities(true, false, true, true, false, false, true, 128000, 4096)),
+		GLM_4_LONG("glm-4-long", "GLM-4-Long", AIProvider.Z,
+			new ModelCapabilities(false, false, false, true, false, false, false, 1000000, 4096)),
+		GLM_4_AIRX("glm-4-airx", "GLM-4-AirX", AIProvider.Z,
+			new ModelCapabilities(false, false, true, true, false, false, true, 128000, 4096)),
+		GLM_4_AIR("glm-4-air", "GLM-4-Air", AIProvider.Z,
+			new ModelCapabilities(false, false, true, true, false, false, true, 128000, 4096)),
+		GLM_4_FLASH("glm-4-flash", "GLM-4-Flash", AIProvider.Z,
+			new ModelCapabilities(false, false, true, true, false, false, true, 128000, 4096)),
+		GLM_4V_PLUS("glm-4v-plus", "GLM-4V-Plus", AIProvider.Z,
+			new ModelCapabilities(true, false, true, true, true, false, true, 128000, 4096)),
+		GLM_4V("glm-4v", "GLM-4V", AIProvider.Z,
+			new ModelCapabilities(false, false, true, true, true, false, true, 128000, 4096)),
+		COGVIEW_3_PLUS("cogview-3-plus", "CogView-3-Plus", AIProvider.Z,
+			new ModelCapabilities(false, false, false, false, false, false, false, 0, 0)),
+		COGVIDEOX("cogvideox", "CogVideoX", AIProvider.Z,
+			new ModelCapabilities(false, false, false, false, false, true, false, 0, 0)),
+		GLM_4_ALLTOOLS("glm-4-alltools", "GLM-4-AllTools", AIProvider.Z,
+			new ModelCapabilities(false, false, true, true, false, false, true, 128000, 4096));
 
 		private final String modelId;
 		private final String displayName;
@@ -246,7 +272,11 @@ public class AIAssistant {
 	// API configurations
 	private static final String QWEN_BASE_URL = "https://chat.qwen.ai/api/v2";
 	private static final String QWEN_AUTH_TOKEN = ""; // Will be configured
-	private static final String GLM_BASE_URL = ""; // Will be configured when glm.txt is available
+	private static final String GLM_BASE_URL = "https://open.bigmodel.cn/api/paas/v4";
+	private static final String GLM_AUTH_TOKEN = ""; // Will be configured
+	
+	// GLM API client
+	private GLMApiClient glmApiClient;
 	
 	// Listener for AI responses
 	public interface AIResponseListener {
@@ -272,6 +302,16 @@ public class AIAssistant {
 
 	private AIResponseListener responseListener;
 
+	// Legacy interface for compatibility with AiAssistantManager
+	public interface AIActionListener {
+		void onAiActionsProcessed(String rawAiResponseJson, String explanation, List<String> suggestions, 
+			List<ChatMessage.FileActionDetail> proposedFileChanges, String aiModelDisplayName);
+		void onAiError(String errorMessage);
+		void onAiRequestStarted();
+	}
+	
+	private AIActionListener actionListener;
+	
 	public AIAssistant(Context context) {
 		this.context = context;
 		this.currentModel = AIModel.GEMINI_2_5_FLASH; // Default model
@@ -283,6 +323,68 @@ public class AIAssistant {
 			.writeTimeout(30, TimeUnit.SECONDS)
 			.readTimeout(60, TimeUnit.SECONDS)
 			.build();
+			
+		// Initialize GLM API client
+		this.glmApiClient = new GLMApiClient();
+		this.glmApiClient.setApiKey(GLM_AUTH_TOKEN);
+	}
+	
+	// Legacy constructor for compatibility with AiAssistantManager
+	public AIAssistant(Context context, String apiKey, File projectDir, String projectName, 
+		ExecutorService executorService, AIActionListener actionListener) {
+		this(context);
+		this.actionListener = actionListener;
+		this.currentProjectPath = projectDir != null ? projectDir.getAbsolutePath() : "";
+		
+		// Set up the response listener to bridge to the action listener
+		setResponseListener(new AIResponseListener() {
+			private StringBuilder thinkingContentBuilder = new StringBuilder();
+			private StringBuilder mainContentBuilder = new StringBuilder();
+			private List<WebSource> collectedWebSources = new ArrayList<>();
+			
+			@Override
+			public void onResponse(String response, boolean isThinking, boolean isWebSearch, List<WebSource> webSources) {
+				if (actionListener != null) {
+					// Convert WebSource to ChatMessage.WebSource
+					List<ChatMessage.WebSource> chatWebSources = new ArrayList<>();
+					for (WebSource source : webSources) {
+						chatWebSources.add(new ChatMessage.WebSource(
+							source.getUrl(), source.getTitle(), source.getSnippet(), source.getFavicon()));
+					}
+					
+					// Convert to enhanced format if the action listener supports it
+					if (actionListener instanceof AiAssistantManager) {
+						((AiAssistantManager) actionListener).onAiActionsProcessed(
+							null, response, new ArrayList<>(), new ArrayList<>(), 
+							currentModel.getDisplayName(), 
+							thinkingContentBuilder.length() > 0 ? thinkingContentBuilder.toString() : null,
+							chatWebSources);
+					} else {
+						// Fallback to legacy format
+						actionListener.onAiActionsProcessed(null, response, new ArrayList<>(), new ArrayList<>(), 
+							currentModel.getDisplayName());
+					}
+				}
+			}
+			
+			@Override
+			public void onError(String error) {
+				if (actionListener != null) {
+					actionListener.onAiError(error);
+				}
+			}
+			
+			@Override
+			public void onStreamUpdate(String partialResponse, boolean isThinking) {
+				if (isThinking) {
+					thinkingContentBuilder.setLength(0);
+					thinkingContentBuilder.append(partialResponse);
+				} else {
+					mainContentBuilder.setLength(0);
+					mainContentBuilder.append(partialResponse);
+				}
+			}
+		});
 	}
 	
 	// Getters and setters
@@ -362,9 +464,18 @@ public class AIAssistant {
 	}
 	
 	private void refreshGLMModels(RefreshCallback callback) {
-		// Placeholder for GLM model refresh
-		// Will be implemented when glm.txt is available
-		callback.onRefreshComplete(true, "GLM models refreshed (placeholder)");
+		glmApiClient.fetchModels(new GLMApiClient.GLMModelsCallback() {
+			@Override
+			public void onModelsLoaded(List<GLMApiClient.GLMModel> models) {
+				// Update the AIModel enum with GLM models if needed
+				callback.onRefreshComplete(true, "GLM models refreshed successfully (" + models.size() + " models)");
+			}
+			
+			@Override
+			public void onError(String error) {
+				callback.onRefreshComplete(false, "Failed to refresh GLM models: " + error);
+			}
+		});
 	}
 
 	/**
@@ -447,9 +558,10 @@ public class AIAssistant {
 	}
 	
 	private void createGLMConversation(String initialMessage, CreateConversationCallback callback) {
-		// Placeholder for GLM conversation creation
-		// Will be implemented when glm.txt is available
-		callback.onConversationCreated("glm_placeholder_conversation_id");
+		// GLM doesn't require separate conversation creation, use message-based approach
+		String conversationId = "glm_" + System.currentTimeMillis();
+		setConversationId(conversationId);
+		callback.onConversationCreated(conversationId);
 	}
 
 	/**
@@ -620,11 +732,66 @@ public class AIAssistant {
 	}
 	
 	private void sendGLMMessage(String message, List<File> attachments) {
-		// Placeholder for GLM message sending
-		// Will be implemented when glm.txt is available
-		if (responseListener != null) {
-			responseListener.onResponse("GLM response placeholder for: " + message, false, false, new ArrayList<>());
+		String conversationId = getConversationId();
+		
+		if (conversationId == null) {
+			// Create new conversation first
+			createNewConversation(message, newConversationId -> {
+				if (newConversationId != null) {
+					performGLMCompletion(message, attachments);
+				} else if (responseListener != null) {
+					responseListener.onError("Failed to create GLM conversation");
+				}
+			});
+		} else {
+			performGLMCompletion(message, attachments);
 		}
+	}
+	
+	private void performGLMCompletion(String message, List<File> attachments) {
+		// Find corresponding GLM model
+		GLMApiClient.GLMModel glmModel = findGLMModel(currentModel);
+		if (glmModel == null) {
+			if (responseListener != null) {
+				responseListener.onError("Current model is not a GLM model");
+			}
+			return;
+		}
+		
+		glmApiClient.sendStreamingChatCompletion(glmModel, message, thinkingModeEnabled, webSearchEnabled,
+			new GLMApiClient.GLMResponseListener() {
+				@Override
+				public void onResponse(String response, boolean isThinking, List<WebSource> webSources) {
+					if (responseListener != null) {
+						responseListener.onResponse(response, isThinking, webSources.size() > 0, webSources);
+					}
+				}
+				
+				@Override
+				public void onError(String error) {
+					if (responseListener != null) {
+						responseListener.onError(error);
+					}
+				}
+				
+				@Override
+				public void onStreamUpdate(String partialResponse, boolean isThinking) {
+					if (responseListener != null) {
+						responseListener.onStreamUpdate(partialResponse, isThinking);
+					}
+				}
+			});
+	}
+	
+	private GLMApiClient.GLMModel findGLMModel(AIModel aiModel) {
+		// Map AIModel to GLMModel based on model ID
+		String modelId = aiModel.getModelId();
+		for (GLMApiClient.GLMModel glmModel : GLMApiClient.GLMModel.values()) {
+			if (glmModel.getModelId().equals(modelId)) {
+				return glmModel;
+			}
+		}
+		return null;
 	}
 	
 	private void sendGoogleMessage(String message, List<File> attachments) {

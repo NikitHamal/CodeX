@@ -260,6 +260,13 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
     // --- Implement AIAssistant.AIActionListener methods to pass updates to AIChatFragment ---
     @Override
     public void onAiActionsProcessed(String rawAiResponseJson, String explanation, List<String> suggestions, List<ChatMessage.FileActionDetail> proposedFileChanges, String aiModelDisplayName) {
+        onAiActionsProcessed(rawAiResponseJson, explanation, suggestions, proposedFileChanges, aiModelDisplayName, null, null);
+    }
+    
+    // Enhanced version with thinking content and web sources
+    public void onAiActionsProcessed(String rawAiResponseJson, String explanation, List<String> suggestions, 
+                                   List<ChatMessage.FileActionDetail> proposedFileChanges, String aiModelDisplayName,
+                                   String thinkingContent, List<ChatMessage.WebSource> webSources) {
         activity.runOnUiThread(() -> {
             if (activity.getAiChatFragment() != null) {
                 ChatMessage aiMessage = new ChatMessage(
@@ -273,6 +280,15 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                         proposedFileChanges,
                         ChatMessage.STATUS_PENDING_APPROVAL
                 );
+                
+                // Set thinking content and web sources
+                if (thinkingContent != null && !thinkingContent.trim().isEmpty()) {
+                    aiMessage.setThinkingContent(thinkingContent);
+                }
+                if (webSources != null && !webSources.isEmpty()) {
+                    aiMessage.setWebSources(webSources);
+                }
+                
                 activity.getAiChatFragment().addMessage(aiMessage); // Add to local list and UI
                 activity.getAiChatFragment().saveChatHistoryToPrefs(); // Save to SharedPreferences
             }

@@ -1,10 +1,13 @@
 package com.codex.apk;
 
 import android.content.Context;
+import android.content.Intent;
 import android.graphics.drawable.GradientDrawable;
+import android.net.Uri;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
@@ -14,6 +17,7 @@ import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.RecyclerView;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.card.MaterialCardView;
+import com.google.android.material.bottomsheet.BottomSheetDialog;
 
 import java.util.List;
 
@@ -128,9 +132,17 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
         LinearLayout layoutSuggestions; // To display suggestions
         MaterialCardView cardMessage;
         LinearLayout fileChangesContainer; // Container for proposed file changes
-
+        
+        // New fields for thinking and web sources
+        LinearLayout layoutThinkingSection;
+        TextView textThinkingContent;
+        ImageView iconThinkingExpand;
+        LinearLayout layoutWebSources;
+        MaterialButton buttonWebSources;
+        
         private final OnAiActionInteractionListener listener;
         private final Context context;
+        private MarkdownFormatter markdownFormatter;
 
         AiMessageViewHolder(View itemView, OnAiActionInteractionListener listener) {
             super(itemView);
@@ -147,6 +159,36 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
             layoutSuggestions = itemView.findViewById(R.id.layout_suggestions);
             cardMessage = itemView.findViewById(R.id.card_message);
             fileChangesContainer = itemView.findViewById(R.id.file_changes_container);
+            
+            // Initialize new thinking and web sources views
+            layoutThinkingSection = itemView.findViewById(R.id.layout_thinking_section);
+            textThinkingContent = itemView.findViewById(R.id.text_thinking_content);
+            iconThinkingExpand = itemView.findViewById(R.id.icon_thinking_expand);
+            layoutWebSources = itemView.findViewById(R.id.layout_web_sources);
+            buttonWebSources = itemView.findViewById(R.id.button_web_sources);
+            
+            // Initialize markdown formatter
+            markdownFormatter = MarkdownFormatter.getInstance(context);
+        }
+        
+        private void showWebSourcesDialog(List<ChatMessage.WebSource> webSources) {
+            // Create and show web sources dialog
+            View dialogView = LayoutInflater.from(context).inflate(R.layout.bottom_sheet_web_sources, null);
+            RecyclerView recyclerView = dialogView.findViewById(R.id.recycler_web_sources);
+            
+            // Convert ChatMessage.WebSource to AIAssistant.WebSource for adapter compatibility
+            java.util.List<AIAssistant.WebSource> aiWebSources = new java.util.ArrayList<>();
+            for (ChatMessage.WebSource source : webSources) {
+                aiWebSources.add(new AIAssistant.WebSource(
+                    source.getUrl(), source.getTitle(), source.getSnippet(), source.getFavicon()));
+            }
+            
+            WebSourcesAdapter adapter = new WebSourcesAdapter(aiWebSources);
+            recyclerView.setAdapter(adapter);
+            
+            BottomSheetDialog dialog = new BottomSheetDialog(context);
+            dialog.setContentView(dialogView);
+            dialog.show();
         }
 
         void bind(ChatMessage message, int messagePosition) {
@@ -154,8 +196,50 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
 
             textAiModelName.setText(message.getAiModelName());
 
-            // Handle indexing progress messages
-            textMessage.setText(message.getContent());
+            // Handle indexing progress messages and apply markdown formatting
+            String content = message.getContent();
+            if (content != null && !content.isEmpty()) {
+                String processedContent = markdownFormatter.preprocessMarkdown(content);
+                markdownFormatter.setMarkdown(textMessage, processedContent);
+            } else {
+                textMessage.setText("");
+            }
+            
+            // Handle thinking content
+            if (message.getThinkingContent() != null && !message.getThinkingContent().trim().isEmpty()) {
+                layoutThinkingSection.setVisibility(View.VISIBLE);
+                String processedThinking = markdownFormatter.preprocessMarkdown(message.getThinkingContent());
+                markdownFormatter.setThinkingMarkdown(textThinkingContent, processedThinking);
+                
+                // Set up thinking section collapse/expand (initially collapsed)
+                textThinkingContent.setVisibility(View.GONE);
+                iconThinkingExpand.setRotation(0f);
+                
+                View thinkingHeader = layoutThinkingSection.findViewById(R.id.layout_thinking_header);
+                if (thinkingHeader != null) {
+                    thinkingHeader.setOnClickListener(v -> {
+                        boolean currentlyExpanded = textThinkingContent.getVisibility() == View.VISIBLE;
+                        if (currentlyExpanded) {
+                            textThinkingContent.setVisibility(View.GONE);
+                            iconThinkingExpand.animate().rotation(0f).setDuration(200).start();
+                        } else {
+                            textThinkingContent.setVisibility(View.VISIBLE);
+                            iconThinkingExpand.animate().rotation(180f).setDuration(200).start();
+                        }
+                    });
+                }
+            } else {
+                layoutThinkingSection.setVisibility(View.GONE);
+            }
+            
+            // Handle web sources
+            if (message.getWebSources() != null && !message.getWebSources().isEmpty()) {
+                layoutWebSources.setVisibility(View.VISIBLE);
+                buttonWebSources.setText("Web sources (" + message.getWebSources().size() + ")");
+                buttonWebSources.setOnClickListener(v -> showWebSourcesDialog(message.getWebSources()));
+            } else {
+                layoutWebSources.setVisibility(View.GONE);
+            }
 
             // Display proposed file changes
                 if (message.getProposedFileChanges() != null && !message.getProposedFileChanges().isEmpty()) {

@@ -33,6 +33,39 @@ public class ChatMessage {
     private String rawAiResponseJson; // The raw JSON response from the AI model
     private List<FileActionDetail> proposedFileChanges; // Parsed list of proposed file changes
     private int status; // Current status of the AI message (e.g., PENDING_APPROVAL, ACCEPTED, DISCARDED)
+    
+    // New fields for thinking mode and web search
+    private String thinkingContent; // The thinking/reasoning content from AI
+    private List<WebSource> webSources; // Web sources used in the response
+    
+    /**
+     * Web source data class
+     */
+    public static class WebSource {
+        private String url;
+        private String title;
+        private String snippet;
+        private String favicon;
+        
+        public WebSource(String url, String title, String snippet, String favicon) {
+            this.url = url;
+            this.title = title;
+            this.snippet = snippet;
+            this.favicon = favicon;
+        }
+        
+        // Getters
+        public String getUrl() { return url; }
+        public String getTitle() { return title; }
+        public String getSnippet() { return snippet; }
+        public String getFavicon() { return favicon; }
+        
+        // Setters
+        public void setUrl(String url) { this.url = url; }
+        public void setTitle(String title) { this.title = title; }
+        public void setSnippet(String snippet) { this.snippet = snippet; }
+        public void setFavicon(String favicon) { this.favicon = favicon; }
+    }
 
 
     /**
@@ -46,6 +79,7 @@ public class ChatMessage {
         this.actionSummaries = new ArrayList<>();
         this.suggestions = new ArrayList<>();
         this.proposedFileChanges = new ArrayList<>();
+        this.webSources = new ArrayList<>();
     }
 
     /**
@@ -63,6 +97,7 @@ public class ChatMessage {
         this.rawAiResponseJson = rawAiResponseJson;
         this.proposedFileChanges = proposedFileChanges != null ? new ArrayList<>(proposedFileChanges) : new ArrayList<>();
         this.status = status;
+        this.webSources = new ArrayList<>();
     }
 
     // Getters
@@ -75,6 +110,8 @@ public class ChatMessage {
     public String getRawAiResponseJson() { return rawAiResponseJson; }
     public List<FileActionDetail> getProposedFileChanges() { return proposedFileChanges; }
     public int getStatus() { return status; }
+    public String getThinkingContent() { return thinkingContent; }
+    public List<WebSource> getWebSources() { return webSources; }
 
 
     // Setters (for updating message properties after creation, e.g., status)
@@ -82,6 +119,8 @@ public class ChatMessage {
     public void setStatus(int status) { this.status = status; }
     public void setActionSummaries(List<String> actionSummaries) { this.actionSummaries = actionSummaries; }
     public void setProposedFileChanges(List<FileActionDetail> proposedFileChanges) { this.proposedFileChanges = proposedFileChanges; }
+    public void setThinkingContent(String thinkingContent) { this.thinkingContent = thinkingContent; }
+    public void setWebSources(List<WebSource> webSources) { this.webSources = webSources; }
 
 
     /**

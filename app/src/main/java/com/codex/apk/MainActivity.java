@@ -65,6 +65,7 @@ public class MainActivity extends AppCompatActivity {
     private static final int REQUEST_CODE_STORAGE_PERMISSION = 101;
     private static final int REQUEST_CODE_MANAGE_EXTERNAL_STORAGE = 102;
     private static final int REQUEST_CODE_PICK_ZIP_FILE = 103;
+    private static final int REQUEST_CODE_PICK_FOLDER = 104;
     private static final String PREFS_NAME = "project_prefs";
     private static final String PROJECTS_LIST_KEY = "projects_list";
     private static final String CHAT_HISTORY_FILE_NAME = "chat_history.json";
@@ -243,6 +244,109 @@ public class MainActivity extends AppCompatActivity {
             } else {
                 Toast.makeText(this, "Failed to get file URI for import.", Toast.LENGTH_SHORT).show();
             }
+        } else if (requestCode == REQUEST_CODE_PICK_FOLDER && resultCode == RESULT_OK && data != null) {
+            Uri uri = data.getData();
+            if (uri != null) {
+                handleOpenFromDevice(uri);
+            } else {
+                Toast.makeText(this, "Failed to get folder URI.", Toast.LENGTH_SHORT).show();
+            }
+        }
+    }
+
+    private void openFolderPicker() {
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
+        startActivityForResult(intent, REQUEST_CODE_PICK_FOLDER);
+    }
+
+    private void handleOpenFromDevice(Uri folderUri) {
+        new CopyFolderTask().execute(folderUri);
+    }
+
+    private class CopyFolderTask extends android.os.AsyncTask<Uri, Integer, File> {
+
+        private AlertDialog progressDialog;
+
+        @Override
+        protected void onPreExecute() {
+            super.onPreExecute();
+            View dialogView = LayoutInflater.from(MainActivity.this).inflate(R.layout.dialog_progress, null);
+            TextView title = dialogView.findViewById(R.id.text_progress_title);
+            title.setText("Importing Project");
+            progressDialog = new MaterialAlertDialogBuilder(MainActivity.this)
+                .setView(dialogView)
+                .setCancelable(false)
+                .create();
+            progressDialog.show();
+        }
+
+        @Override
+        protected File doInBackground(Uri... uris) {
+            Uri folderUri = uris[0];
+            androidx.documentfile.provider.DocumentFile sourceFolder = androidx.documentfile.provider.DocumentFile.fromTreeUri(MainActivity.this, folderUri);
+
+            if (sourceFolder == null) {
+                return null;
+            }
+
+            File projectsDir = new File(Environment.getExternalStorageDirectory(), "CodeX/Projects");
+            File destFolder = new File(projectsDir, sourceFolder.getName());
+
+            try {
+                copyDocumentFile(sourceFolder, destFolder);
+                return destFolder;
+            } catch (IOException e) {
+                Log.e(TAG, "Error copying folder", e);
+                return null;
+            }
+        }
+
+        private void copyDocumentFile(androidx.documentfile.provider.DocumentFile sourceFile, File destinationFile) throws IOException {
+            if (sourceFile.isDirectory()) {
+                if (!destinationFile.exists()) {
+                    destinationFile.mkdirs();
+                }
+
+                androidx.documentfile.provider.DocumentFile[] files = sourceFile.listFiles();
+                if (files == null) return;
+
+                for (androidx.documentfile.provider.DocumentFile file : files) {
+                    copyDocumentFile(file, new File(destinationFile, file.getName()));
+                }
+            } else {
+                try (java.io.InputStream in = getContentResolver().openInputStream(sourceFile.getUri());
+                     java.io.OutputStream out = new java.io.FileOutputStream(destinationFile)) {
+                    byte[] buffer = new byte[1024];
+                    int length;
+                    while ((length = in.read(buffer)) > 0) {
+                        out.write(buffer, 0, length);
+                    }
+                }
+            }
+        }
+
+        @Override
+        protected void onPostExecute(File destFolder) {
+            super.onPostExecute(destFolder);
+            progressDialog.dismiss();
+            if (destFolder != null) {
+                long creationTime = System.currentTimeMillis();
+                SimpleDateFormat sdf = new SimpleDateFormat("MMM dd,yyyy HH:mm", Locale.getDefault());
+                String lastModifiedStr = sdf.format(new Date(creationTime));
+
+                HashMap<String, Object> newProject = new HashMap<>();
+                newProject.put("name", destFolder.getName());
+                newProject.put("path", destFolder.getAbsolutePath());
+                newProject.put("lastModified", lastModifiedStr);
+                newProject.put("lastModifiedTimestamp", creationTime);
+
+                projectsList.add(0, newProject);
+                saveProjectsList();
+                Toast.makeText(MainActivity.this, "Project '" + destFolder.getName() + "' imported.", Toast.LENGTH_SHORT).show();
+                openProject(destFolder.getAbsolutePath(), destFolder.getName());
+            } else {
+                Toast.makeText(MainActivity.this, "Error importing project.", Toast.LENGTH_LONG).show();
+            }
         }
     }
 
@@ -255,34 +359,77 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
+        // 1. Load projects from SharedPreferences
         SharedPreferences prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         String json = prefs.getString(PROJECTS_LIST_KEY, null);
         Gson gson = new Gson();
         Type type = new TypeToken<ArrayList<HashMap<String, Object>>>() {}.getType();
         ArrayList<HashMap<String, Object>> loadedList = gson.fromJson(json, type);
+        if (loadedList == null) {
+            loadedList = new ArrayList<>();
+        }
 
-        projectsList.clear();
-        if (loadedList != null) {
-            for (HashMap<String, Object> project : loadedList) {
-                String path = (String) project.get("path");
-                if (path != null && new File(path).exists()) {
-                    projectsList.add(project);
+        // 2. Get the actual project directories from the filesystem
+        File projectsDir = new File(Environment.getExternalStorageDirectory(), "CodeX/Projects");
+        if (!projectsDir.exists()) {
+            projectsDir.mkdirs();
+        }
+        File[] projectDirs = projectsDir.listFiles(File::isDirectory);
+
+        // 3. Synchronize the lists
+        ArrayList<HashMap<String, Object>> syncedList = new ArrayList<>();
+        ArrayList<String> existingProjectPaths = new ArrayList<>();
+
+        if (projectDirs != null) {
+            for (File projectDir : projectDirs) {
+                existingProjectPaths.add(projectDir.getAbsolutePath());
+                HashMap<String, Object> project = findProjectByPath(loadedList, projectDir.getAbsolutePath());
+                if (project != null) {
+                    // Project exists in both SharedPreferences and filesystem
+                    syncedList.add(project);
                 } else {
-                    Log.w(TAG, "Project directory not found, removing from list: " + path);
+                    // Project exists in filesystem but not in SharedPreferences, create a new entry
+                    long creationTime = projectDir.lastModified();
+                    SimpleDateFormat sdf = new SimpleDateFormat("MMM dd,yyyy HH:mm", Locale.getDefault());
+                    String lastModifiedStr = sdf.format(new Date(creationTime));
+
+                    HashMap<String, Object> newProject = new HashMap<>();
+                    newProject.put("name", projectDir.getName());
+                    newProject.put("path", projectDir.getAbsolutePath());
+                    newProject.put("lastModified", lastModifiedStr);
+                    newProject.put("lastModifiedTimestamp", creationTime);
+                    syncedList.add(newProject);
                 }
             }
-            // Fix for ClassCastException: java.lang.Double cannot be cast to java.lang.Long
-            // Safely retrieve and cast lastModifiedTimestamp to long
-            Collections.sort(projectsList, (p1, p2) -> {
-                Number timestamp1 = (Number) p1.getOrDefault("lastModifiedTimestamp", 0L);
-                Number timestamp2 = (Number) p2.getOrDefault("lastModifiedTimestamp", 0L);
-                long date1 = timestamp1.longValue();
-                long date2 = timestamp2.longValue();
-                return Long.compare(date2, date1);
-            });
         }
+
+        // 4. Update the main projectsList
+        projectsList.clear();
+        projectsList.addAll(syncedList);
+
+        // 5. Sort the list by last modified timestamp
+        Collections.sort(projectsList, (p1, p2) -> {
+            Number timestamp1 = (Number) p1.getOrDefault("lastModifiedTimestamp", 0L);
+            Number timestamp2 = (Number) p2.getOrDefault("lastModifiedTimestamp", 0L);
+            long date1 = timestamp1.longValue();
+            long date2 = timestamp2.longValue();
+            return Long.compare(date2, date1);
+        });
+
+        // 6. Save the synchronized list back to SharedPreferences
+        saveProjectsList();
+
         projectsAdapter.notifyDataSetChanged();
         updateEmptyStateVisibility();
+    }
+
+    private HashMap<String, Object> findProjectByPath(ArrayList<HashMap<String, Object>> projectList, String path) {
+        for (HashMap<String, Object> project : projectList) {
+            if (path.equals(project.get("path"))) {
+                return project;
+            }
+        }
+        return null;
     }
 
     private void saveProjectsList() {
@@ -329,43 +476,8 @@ public class MainActivity extends AppCompatActivity {
 
         View dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_new_project, null);
         TextInputEditText editTextProjectName = dialogView.findViewById(R.id.edittext_project_name);
-        com.google.android.material.card.MaterialCardView cardTemplateBlank = dialogView.findViewById(R.id.card_template_blank);
-        com.google.android.material.card.MaterialCardView cardTemplateBasic = dialogView.findViewById(R.id.card_template_basic);
-        com.google.android.material.card.MaterialCardView cardTemplateResponsive = dialogView.findViewById(R.id.card_template_responsive);
-
-        final String[] selectedTemplate = {"blank"};
-
-        View.OnClickListener templateClickListener = view -> {
-            // Reset all cards to default state
-            cardTemplateBlank.setStrokeColor(ContextCompat.getColor(this, R.color.outline));
-            cardTemplateBlank.setStrokeWidth(1);
-            cardTemplateBasic.setStrokeColor(ContextCompat.getColor(this, R.color.outline));
-            cardTemplateBasic.setStrokeWidth(1);
-            cardTemplateResponsive.setStrokeColor(ContextCompat.getColor(this, R.color.outline));
-            cardTemplateResponsive.setStrokeWidth(1);
-
-            // Set the selected card to the active state
-            if (view.getId() == R.id.card_template_blank) {
-                selectedTemplate[0] = "blank";
-                cardTemplateBlank.setStrokeColor(ContextCompat.getColor(this, R.color.primary));
-                cardTemplateBlank.setStrokeWidth(2);
-            } else if (view.getId() == R.id.card_template_basic) {
-                selectedTemplate[0] = "basic";
-                cardTemplateBasic.setStrokeColor(ContextCompat.getColor(this, R.color.primary));
-                cardTemplateBasic.setStrokeWidth(2);
-            } else if (view.getId() == R.id.card_template_responsive) {
-                selectedTemplate[0] = "responsive";
-                cardTemplateResponsive.setStrokeColor(ContextCompat.getColor(this, R.color.primary));
-                cardTemplateResponsive.setStrokeWidth(2);
-            }
-        };
-
-        cardTemplateBlank.setOnClickListener(templateClickListener);
-        cardTemplateBasic.setOnClickListener(templateClickListener);
-        cardTemplateResponsive.setOnClickListener(templateClickListener);
-
-        // Set initial selection
-        cardTemplateBlank.performClick();
+        com.google.android.material.chip.ChipGroup chipGroup = dialogView.findViewById(R.id.chip_group_templates);
+        MaterialButton buttonOpenFromDevice = dialogView.findViewById(R.id.button_open_from_device);
 
         AlertDialog dialog = new MaterialAlertDialogBuilder(this, R.style.AlertDialogCustom)
                 .setTitle("Create New Project")
@@ -373,6 +485,11 @@ public class MainActivity extends AppCompatActivity {
                 .setPositiveButton("Create", null)
                 .setNegativeButton("Cancel", null)
                 .create();
+
+        buttonOpenFromDevice.setOnClickListener(v -> {
+            dialog.dismiss();
+            openFolderPicker();
+        });
 
         dialog.setOnShowListener(dialogInterface -> {
             MaterialButton positiveButton = (MaterialButton) dialog.getButton(AlertDialog.BUTTON_POSITIVE);
@@ -391,7 +508,7 @@ public class MainActivity extends AppCompatActivity {
                     return;
                 }
 
-                File projectsDir = new File(Environment.getExternalStorageDirectory(), "CodeX_Projects");
+                File projectsDir = new File(Environment.getExternalStorageDirectory(), "CodeX/Projects");
                 if (!projectsDir.exists()) {
                     projectsDir.mkdirs();
                 }
@@ -407,7 +524,17 @@ public class MainActivity extends AppCompatActivity {
                         throw new IOException("Failed to create project directory.");
                     }
 
-                    createTemplateFiles(newProjectDir, projectName, selectedTemplate[0]);
+                    String selectedTemplate;
+                    int checkedChipId = chipGroup.getCheckedChipId();
+                    if (checkedChipId == R.id.chip_template_basic) {
+                        selectedTemplate = "basic";
+                    } else if (checkedChipId == R.id.chip_template_responsive) {
+                        selectedTemplate = "responsive";
+                    } else {
+                        selectedTemplate = "blank";
+                    }
+
+                    createTemplateFiles(newProjectDir, projectName, selectedTemplate);
 
                     long creationTime = System.currentTimeMillis();
                     SimpleDateFormat sdf = new SimpleDateFormat("MMM dd,yyyy HH:mm", Locale.getDefault());
@@ -551,7 +678,7 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
-        File exportDir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "CodeX_Exports");
+        File exportDir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "CodeX/Exports");
         if (!exportDir.exists()) {
             exportDir.mkdirs();
             Log.d(TAG, "Created export directory: " + exportDir.getAbsolutePath());
@@ -695,7 +822,7 @@ public class MainActivity extends AppCompatActivity {
      */
     private void handleImportZipFile(Uri uri) {
         try {
-            File projectsDir = new File(Environment.getExternalStorageDirectory(), "CodeX_Projects");
+            File projectsDir = new File(Environment.getExternalStorageDirectory(), "CodeX/Projects");
             if (!projectsDir.exists()) {
                 projectsDir.mkdirs();
             }

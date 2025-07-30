@@ -33,119 +33,46 @@
         android:textColor="@color/on_surface"
         android:layout_marginTop="24dp"
         android:layout_marginBottom="12dp"
-        android.textStyle="bold" />
+        android:textStyle="bold" />
 
-    <GridLayout
+    <com.google.android.material.chip.ChipGroup
+        android:id="@+id/chip_group_templates"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:columnCount="3"
-        android:orientation="horizontal">
+        app:singleSelection="true">
 
-        <com.google.android.material.card.MaterialCardView
-            android:id="@+id/card_template_blank"
-            android:layout_width="0dp"
+        <com.google.android.material.chip.Chip
+            android:id="@+id/chip_template_blank"
+            style="@style/Widget.MaterialComponents.Chip.Choice"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_columnWeight="1"
-            android:layout_margin="4dp"
-            app:cardElevation="2dp"
-            app:cardCornerRadius="8dp"
-            app:strokeWidth="2dp"
-            app:strokeColor="@color/primary"
-            android:clickable="true"
-            android:focusable="true">
+            android:text="Blank"
+            android:checked="true"/>
 
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp"
-                android:gravity="center">
-
-                <ImageView
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:src="@android:drawable/ic_menu_add"
-                    app:tint="@color/primary" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Blank"
-                    android:layout_marginTop="8dp"
-                    android:textColor="@color/on_surface" />
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
-
-        <com.google.android.material.card.MaterialCardView
-            android:id="@+id/card_template_basic"
-            android:layout_width="0dp"
+        <com.google.android.material.chip.Chip
+            android:id="@+id/chip_template_basic"
+            style="@style/Widget.MaterialComponents.Chip.Choice"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_columnWeight="1"
-            android:layout_margin="4dp"
-            app:cardElevation="2dp"
-            app:cardCornerRadius="8dp"
-            app:strokeWidth="1dp"
-            app:strokeColor="@color/outline"
-            android:clickable="true"
-            android:focusable="true">
+            android:text="Basic" />
 
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp"
-                android:gravity="center">
-
-                <ImageView
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:src="@android:drawable/ic_menu_agenda"
-                    app:tint="@color/on_surface_variant"/>
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Basic"
-                    android:layout_marginTop="8dp"
-                    android:textColor="@color/on_surface" />
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
-
-        <com.google.android.material.card.MaterialCardView
-            android:id="@+id/card_template_responsive"
-            android:layout_width="0dp"
+        <com.google.android.material.chip.Chip
+            android:id="@+id/chip_template_responsive"
+            style="@style/Widget.MaterialComponents.Chip.Choice"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_columnWeight="1"
-            android:layout_margin="4dp"
-            app:cardElevation="2dp"
-            app:cardCornerRadius="8dp"
-            app:strokeWidth="1dp"
-            app:strokeColor="@color/outline"
-            android:clickable="true"
-            android:focusable="true">
+            android:text="Responsive" />
+    </com.google.android.material.chip.ChipGroup>
 
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp"
-                android:gravity="center">
-
-                <ImageView
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:src="@android:drawable/ic_menu_manage"
-                    app:tint="@color/on_surface_variant"/>
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Responsive"
-                    android:layout_marginTop="8dp"
-                    android:textColor="@color/on_surface" />
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
-
-    </GridLayout>
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/button_open_from_device"
+        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="Open From Device"
+        app:icon="@android:drawable/ic_menu_folder"
+        app:iconGravity="textStart"
+        app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Full" />
 
 </LinearLayout>

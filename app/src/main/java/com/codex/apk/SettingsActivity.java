@@ -408,7 +408,7 @@ public class SettingsActivity extends AppCompatActivity {
 	
 	// Helper method to get preferences
 	public static SharedPreferences getPreferences(android.content.Context context) {
-		return PreferenceManager.getDefaultSharedPreferences(context);
+		return context.getSharedPreferences("settings", MODE_PRIVATE);
 	}
 	
 	// Helper methods to get specific settings

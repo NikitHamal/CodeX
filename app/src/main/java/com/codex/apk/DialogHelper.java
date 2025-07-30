@@ -155,18 +155,6 @@ public class DialogHelper {
 		.show();
 	}
 
-	public void showIndexStatusDialog() {
-		new MaterialAlertDialogBuilder(context)
-		.setTitle("Codebase Index Status")
-		.setMessage("The codebase index helps the AI understand your project structure. It updates automatically when files change.")
-		.setPositiveButton("Force Refresh", (dialog, which) -> {
-			if (editorActivity != null && editorActivity.aiAssistantManager != null) {
-				editorActivity.aiAssistantManager.refreshCodebaseIndex(); // Call through AiAssistantManager
-			}
-		})
-		.setNegativeButton("OK", null)
-		.show();
-	}
 
 	public void showApiKeyDialog(String preferenceKey, String dialogTitle, Runnable onSave) {
 		View dialogView = LayoutInflater.from(context).inflate(R.layout.dialog_api_key, null);

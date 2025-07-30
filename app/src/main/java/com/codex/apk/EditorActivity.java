@@ -309,6 +309,27 @@ public class EditorActivity extends AppCompatActivity implements
 
 
 
+    // --- Indexing progress methods (delegating to AiAssistantManager) ---
+
+    @Override
+    public void onIndexingStarted(int totalFiles) {
+        aiAssistantManager.onIndexingStarted(totalFiles);
+    }
+
+    @Override
+    public void onIndexingProgress(int indexedCount, int totalFiles, String currentFile) {
+        aiAssistantManager.onIndexingProgress(indexedCount, totalFiles, currentFile);
+    }
+
+    @Override
+    public void onIndexingCompleted() {
+        aiAssistantManager.onIndexingCompleted();
+    }
+
+    @Override
+    public void onIndexingError(String errorMessage) {
+        aiAssistantManager.onIndexingError(errorMessage);
+    }
 
     // Public methods for managers to call back to EditorActivity for UI updates or core actions
     public void showToast(String message) {

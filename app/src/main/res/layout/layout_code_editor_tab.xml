@@ -5,31 +5,6 @@
     android:layout_height="match_parent"
     android:orientation="vertical">
 
-    <LinearLayout
-        android:id="@+id/layout_indexing_progress_code_tab"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="8dp"
-        android:background="?attr/colorPrimaryContainer"
-        android:visibility="gone"> <ProgressBar
-            android:id="@+id/progress_bar_indexing_code_tab"
-            style="?android:attr/progressBarStyleHorizontal"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:indeterminate="false"
-            android:max="100"
-            android:progress="0"
-            android:layout_marginBottom="4dp"/>
-
-        <TextView
-            android:id="@+id/text_indexing_status_code_tab"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Indexing project (0/100)"
-            android:textColor="?attr/colorOnPrimaryContainer"
-            android:textSize="12sp"/>
-    </LinearLayout>
 
     <com.google.android.material.tabs.TabLayout
         android:id="@+id/tab_layout"

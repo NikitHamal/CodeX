@@ -80,6 +80,10 @@ public class AIChatFragment extends Fragment implements
         void onAiDiscardActions(int messagePosition, ChatMessage message);
         void onReapplyActions(int messagePosition, ChatMessage message);
         void onAiFileChangeClicked(ChatMessage.FileActionDetail fileActionDetail);
+        void onIndexingStarted(int totalFiles);
+        void onIndexingProgress(int indexedCount, int totalFiles, String currentFile);
+        void onIndexingCompleted();
+        void onIndexingError(String errorMessage);
     }
 
     /**
@@ -709,5 +713,61 @@ public class AIChatFragment extends Fragment implements
         if (listener != null) {
             listener.onAiFileChangeClicked(fileActionDetail);
         }
+    }
+
+    // --- Indexing progress methods for AIChatFragmentListener ---
+    public void onIndexingStarted(int totalFiles) {
+        // Add a new message for indexing start
+        addMessage(new ChatMessage(ChatMessage.SENDER_AI, "Indexing project...", System.currentTimeMillis(), 0, totalFiles, null));
+    }
+
+    public void onIndexingProgress(int indexedCount, int totalFiles, String currentFile) {
+        // Update the existing indexing message
+        if (currentAiStatusMessage != null && currentAiStatusMessage.getStatus() == ChatMessage.STATUS_INDEXING_PROGRESS) {
+            currentAiStatusMessage.setIndexingProgress(indexedCount, totalFiles, currentFile);
+            int index = chatHistory.indexOf(currentAiStatusMessage);
+            if (index != -1) {
+                chatMessageAdapter.notifyItemChanged(index);
+                recyclerViewChatHistory.scrollToPosition(index);
+            }
+        } else {
+            // Fallback: if no indexing message exists, add one
+            addMessage(new ChatMessage(ChatMessage.SENDER_AI, "Indexing project...", System.currentTimeMillis(), indexedCount, totalFiles, currentFile));
+        }
+    }
+
+    public void onIndexingCompleted() {
+        // Replace the indexing message with "AI is thinking..." or just remove it if AI is not thinking
+        if (currentAiStatusMessage != null && currentAiStatusMessage.getStatus() == ChatMessage.STATUS_INDEXING_PROGRESS) {
+            int index = chatHistory.indexOf(currentAiStatusMessage);
+            if (index != -1) {
+                // Replace with "AI is thinking..." message
+                ChatMessage thinkingMessage = new ChatMessage(ChatMessage.SENDER_AI, "AI is thinking...", System.currentTimeMillis());
+                chatHistory.set(index, thinkingMessage);
+                currentAiStatusMessage = thinkingMessage;
+                chatMessageAdapter.notifyItemChanged(index);
+                recyclerViewChatHistory.scrollToPosition(index);
+            }
+        } else {
+            // If no indexing message was active, just ensure AI is processing is true for the next AI message
+            isAiProcessing = true; // This will make the next AI message replace the "AI is thinking..."
+        }
+    }
+
+    public void onIndexingError(String errorMessage) {
+        // Replace the indexing message with an error message
+        if (currentAiStatusMessage != null && currentAiStatusMessage.getStatus() == ChatMessage.STATUS_INDEXING_PROGRESS) {
+            int index = chatHistory.indexOf(currentAiStatusMessage);
+            if (index != -1) {
+                chatHistory.set(index, new ChatMessage(ChatMessage.SENDER_AI, "Indexing error: " + errorMessage, System.currentTimeMillis()));
+                chatMessageAdapter.notifyItemChanged(index);
+                recyclerViewChatHistory.scrollToPosition(index);
+            }
+        } else {
+            // Fallback: add a new error message
+            addMessage(new ChatMessage(ChatMessage.SENDER_AI, "Indexing error: " + errorMessage, System.currentTimeMillis()));
+        }
+        isAiProcessing = false; // Reset processing state on error
+        currentAiStatusMessage = null; // Clear reference
     }
 }

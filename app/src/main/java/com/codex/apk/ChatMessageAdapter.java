@@ -130,7 +130,6 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
         MaterialButton buttonReapply;
         LinearLayout layoutActionSummaries; // To display action summaries (Actions Performed)
         LinearLayout layoutSuggestions; // To display suggestions
-        MaterialCardView cardMessage;
         LinearLayout fileChangesContainer; // Container for proposed file changes
         
         // New fields for thinking and web sources
@@ -157,7 +156,6 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
             buttonReapply = itemView.findViewById(R.id.button_reapply);
             layoutActionSummaries = itemView.findViewById(R.id.layout_action_summaries);
             layoutSuggestions = itemView.findViewById(R.id.layout_suggestions);
-            cardMessage = itemView.findViewById(R.id.card_message);
             fileChangesContainer = itemView.findViewById(R.id.file_changes_container);
             
             // Initialize new thinking and web sources views

@@ -188,7 +188,23 @@ public class ModelSelectorBottomSheet extends BottomSheetDialogFragment {
                 // Get AIModel enum from display name to access capabilities
                 AIAssistant.AIModel aiModel = AIAssistant.AIModel.fromDisplayName(model);
                 if (aiModel != null) {
-                    modelCapabilities.setText(aiModel.getCapabilities());
+                    AIAssistant.ModelCapabilities capabilities = aiModel.getCapabilities();
+                    StringBuilder capabilitiesText = new StringBuilder();
+                    
+                    if (capabilities.supportsThinking) capabilitiesText.append("Thinking, ");
+                    if (capabilities.supportsWebSearch) capabilitiesText.append("Web Search, ");
+                    if (capabilities.supportsVision) capabilitiesText.append("Vision, ");
+                    if (capabilities.supportsDocument) capabilitiesText.append("Documents, ");
+                    if (capabilities.supportsVideo) capabilitiesText.append("Video, ");
+                    if (capabilities.supportsAudio) capabilitiesText.append("Audio, ");
+                    if (capabilities.supportsCitations) capabilitiesText.append("Citations, ");
+                    
+                    // Remove trailing comma and space
+                    if (capabilitiesText.length() > 0) {
+                        capabilitiesText.setLength(capabilitiesText.length() - 2);
+                    }
+                    
+                    modelCapabilities.setText(capabilitiesText.toString());
                     
                     // Show/hide feature badges
                     boolean hasFeatures = false;

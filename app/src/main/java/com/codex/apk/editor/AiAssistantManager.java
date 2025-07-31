@@ -334,17 +334,14 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
         });
     }
 
-    @Override
     public void onAiRequestCompleted() {
         // No specific UI update needed here, as the final response is added by onAiActionsProcessed or onAiError
     }
 
-    @Override
     public void onAiContextBuildingStarted() {
         // No-op, progress is shown via indexing status in AIChatFragment
     }
 
-    @Override
     public void onAiContextBuildingCompleted() {
         // No-op, AI is thinking message will appear in AIChatFragment
     }

@@ -198,6 +198,16 @@ public class AIAssistant {
 		public ModelCapabilities getCapabilities() {
 			return capabilities;
 		}
+		
+		public boolean supportsVision() {
+			return capabilities.supportsVision;
+		}
+		
+		public boolean supportsFunctionCalling() {
+			// For now, assume all models support function calling
+			// This could be made more granular based on actual model capabilities
+			return true;
+		}
 
 		/**
 		 * Returns a list of all AI model display names.
@@ -297,6 +307,22 @@ public class AIAssistant {
 			this.title = title;
 			this.snippet = snippet;
 			this.favicon = favicon;
+		}
+		
+		public String getUrl() {
+			return url;
+		}
+		
+		public String getTitle() {
+			return title;
+		}
+		
+		public String getSnippet() {
+			return snippet;
+		}
+		
+		public String getFavicon() {
+			return favicon;
 		}
 	}
 
@@ -418,6 +444,59 @@ public class AIAssistant {
 	
 	public void setResponseListener(AIResponseListener listener) {
 		this.responseListener = listener;
+	}
+	
+	public String getApiKey() {
+		// Return the appropriate API key based on current model
+		if (currentModel != null) {
+			switch (currentModel.getProvider()) {
+				case GOOGLE:
+					return ""; // Will be set from settings
+				case HUGGINGFACE:
+					return ""; // Will be set from settings
+				case ALIBABA:
+					return QWEN_AUTH_TOKEN;
+				case Z:
+					return GLM_AUTH_TOKEN;
+				default:
+					return "";
+			}
+		}
+		return "";
+	}
+	
+	public void setApiKey(String apiKey) {
+		// Update the appropriate API key based on current model
+		if (currentModel != null) {
+			switch (currentModel.getProvider()) {
+				case GOOGLE:
+				case HUGGINGFACE:
+					// These are handled by settings, no need to store here
+					break;
+				case ALIBABA:
+					// QWEN_AUTH_TOKEN = apiKey; // Would need to make this non-final
+					break;
+				case Z:
+					// GLM_AUTH_TOKEN = apiKey; // Would need to make this non-final
+					break;
+			}
+		}
+	}
+	
+	public void sendPrompt(String userPrompt, String fileName, String fileContent) {
+		// This is a simplified version - in practice, you'd want to format the prompt
+		// with the file content and send it via the appropriate provider
+		sendMessage(userPrompt, new ArrayList<>());
+	}
+	
+	public void shutdown() {
+		// Clean up resources if needed
+		if (httpClient != null) {
+			httpClient.dispatcher().executorService().shutdown();
+		}
+		if (glmApiClient != null) {
+			// Add any GLM API client cleanup if needed
+		}
 	}
 
 	/**

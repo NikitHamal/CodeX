@@ -34,7 +34,7 @@ public class MarkdownFormatter {
                 .usePlugin(HtmlPlugin.create())
                 .usePlugin(ImagesPlugin.create())
                 .usePlugin(LinkifyPlugin.create())
-                .usePlugin(SyntaxHighlightPlugin.create(new Prism4j(), createCodeTheme()))
+                .usePlugin(SyntaxHighlightPlugin.create(new Prism4j(new GrammarLocator()), createCodeTheme()))
                 .build();
         
         // Create simplified markwon instance for thinking content (no images, simpler formatting)
@@ -84,13 +84,13 @@ public class MarkdownFormatter {
      */
     private Prism4jTheme createCodeTheme() {
         return Prism4jTheme.builder()
-                .withColor(Prism4jTheme.Default.COMMENT, Color.parseColor("#6A737D"))
-                .withColor(Prism4jTheme.Default.KEYWORD, Color.parseColor("#D73A49"))
-                .withColor(Prism4jTheme.Default.STRING, Color.parseColor("#032F62"))
-                .withColor(Prism4jTheme.Default.NUMBER, Color.parseColor("#005CC5"))
-                .withColor(Prism4jTheme.Default.FUNCTION, Color.parseColor("#6F42C1"))
-                .withColor(Prism4jTheme.Default.PUNCTUATION, Color.parseColor("#24292E"))
-                .withColor(Prism4jTheme.Default.LITERAL, Color.parseColor("#E36209"))
+                .withColor(Prism4jTheme.Type.COMMENT, Color.parseColor("#6A737D"))
+                .withColor(Prism4jTheme.Type.KEYWORD, Color.parseColor("#D73A49"))
+                .withColor(Prism4jTheme.Type.STRING, Color.parseColor("#032F62"))
+                .withColor(Prism4jTheme.Type.NUMBER, Color.parseColor("#005CC5"))
+                .withColor(Prism4jTheme.Type.FUNCTION, Color.parseColor("#6F42C1"))
+                .withColor(Prism4jTheme.Type.PUNCTUATION, Color.parseColor("#24292E"))
+                .withColor(Prism4jTheme.Type.LITERAL, Color.parseColor("#E36209"))
                 .build();
     }
     

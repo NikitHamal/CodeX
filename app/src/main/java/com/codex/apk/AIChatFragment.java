@@ -697,8 +697,8 @@ public class AIChatFragment extends Fragment implements
      * Sets up models for a specific provider in the RecyclerView
      */
     private void setupProviderModels(RecyclerView recyclerView, AIAssistant.AIProvider provider) {
-        var modelsByProvider = AIAssistant.AIModel.getModelsByProvider();
-        var providerModels = modelsByProvider.get(provider);
+        Map<AIAssistant.AIProvider, List<AIAssistant.AIModel>> modelsByProvider = AIAssistant.AIModel.getModelsByProvider();
+        List<AIAssistant.AIModel> providerModels = modelsByProvider.get(provider);
         
         if (providerModels != null && !providerModels.isEmpty()) {
             ModelPickerAdapter adapter = new ModelPickerAdapter(providerModels, aiAssistant.getCurrentModel(), 

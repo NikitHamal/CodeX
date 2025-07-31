@@ -606,10 +606,11 @@ public class AIAssistant {
 				requestBody.addProperty("chat_type", webSearchEnabled ? "search" : "t2t");
 				requestBody.addProperty("timestamp", System.currentTimeMillis());
 				
+				String qwenToken = SettingsActivity.getHuggingFaceToken(context);
 				Request request = new Request.Builder()
 					.url(QWEN_BASE_URL + "/chats/new")
 					.post(RequestBody.create(requestBody.toString(), MediaType.parse("application/json")))
-					.addHeader("authorization", "Bearer " + QWEN_AUTH_TOKEN)
+					.addHeader("authorization", "Bearer " + qwenToken)
 					.addHeader("content-type", "application/json")
 					.addHeader("accept", "application/json")
 					.build();
@@ -716,10 +717,11 @@ public class AIAssistant {
 				messages.add(messageObj);
 				requestBody.add("messages", messages);
 				
+				String qwenToken = SettingsActivity.getHuggingFaceToken(context);
 				Request request = new Request.Builder()
 					.url(QWEN_BASE_URL + "/chat/completions?chat_id=" + conversationId)
 					.post(RequestBody.create(requestBody.toString(), MediaType.parse("application/json")))
-					.addHeader("authorization", "Bearer " + QWEN_AUTH_TOKEN)
+					.addHeader("authorization", "Bearer " + qwenToken)
 					.addHeader("content-type", "application/json")
 					.addHeader("accept", "*/*")
 					.build();

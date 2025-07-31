@@ -17,6 +17,12 @@
             app:summary="Enter your Hugging Face token" 
             app:dialogTitle="Enter Hugging Face Token" 
             app:iconSpaceReserved="false"/>
+        <EditTextPreference
+            app:key="qwen_api_token"
+            app:title="Qwen API Token"
+            app:summary="Enter your Qwen API token"
+            app:dialogTitle="Enter Qwen API Token"
+            app:iconSpaceReserved="false"/>
         <SwitchPreferenceCompat app:key="ai_history" app:title="Save AI History" app:summary="Save history of AI prompts and responses" app:defaultValue="true" app:iconSpaceReserved="false"/>
     </PreferenceCategory>
 </PreferenceScreen>

@@ -373,6 +373,29 @@ public class SettingsActivity extends AppCompatActivity {
 				});
 			}
 			
+			// Qwen API Token preference
+			EditTextPreference qwenTokenPreference = findPreference("qwen_api_token");
+			if (qwenTokenPreference != null) {
+				qwenTokenPreference.setSummaryProvider((Preference.SummaryProvider<EditTextPreference>) preference -> {
+					String value = preference.getText();
+					if (value == null || value.isEmpty()) {
+						return "Using default token";
+					} else {
+						return "Custom token is set";
+					}
+				});
+
+				qwenTokenPreference.setOnPreferenceChangeListener((preference, newValue) -> {
+					String token = (String) newValue;
+					if (token.isEmpty()) {
+						Toast.makeText(getContext(), "Using default Qwen token", Toast.LENGTH_SHORT).show();
+					} else {
+						Toast.makeText(getContext(), "Qwen API token updated", Toast.LENGTH_SHORT).show();
+					}
+					return true;
+				});
+			}
+
 			
 			// Auto save preference
 			SwitchPreferenceCompat autoSavePreference = findPreference("auto_save");
@@ -466,6 +489,10 @@ public class SettingsActivity extends AppCompatActivity {
 		return getPreferences(context).getString("huggingface_token", "");
 	}
 	
+	public static String getQwenApiToken(Context context) {
+		return getPreferences(context).getString("qwen_api_token", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjhiYjQ1NjVmLTk3NjUtNDQwNi04OWQ5LTI3NmExMTIxMjBkNiIsImxhc3RfcGFzc3dvcmRfY2hhbmdlIjoxNzUwNjYwODczLCJleHAiOjE3NTU4NDg1NDh9.pb0IybY9tQkriqMUOos72FKtZM3G4p1_aDzwqqh5zX4");
+	}
+
 	public static boolean isAutoSaveEnabled(android.content.Context context) {
 		return getPreferences(context).getBoolean("auto_save", true);
 	}

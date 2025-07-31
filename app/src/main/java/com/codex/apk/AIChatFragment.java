@@ -542,6 +542,9 @@ public class AIChatFragment extends Fragment implements
      * Saves chat history to SharedPreferences using the project-specific key.
      */
     public void saveChatHistoryToPrefs() {
+        if (!isAdded()) {
+            return;
+        }
         SharedPreferences prefs = requireContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         SharedPreferences.Editor editor = prefs.edit();
         Gson gson = new Gson();

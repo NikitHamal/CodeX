@@ -124,6 +124,8 @@
                     android:text="Gemini 2.5 Flash"
                     android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
                     android:textColor="@color/on_surface"
+                    android:maxLines="2"
+                    android:ellipsize="end"
                     android:textSize="12sp" />
 
                 <ImageView

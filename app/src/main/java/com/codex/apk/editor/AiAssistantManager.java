@@ -14,6 +14,8 @@ import com.codex.apk.FileManager;
 import com.codex.apk.SettingsActivity;
 import com.codex.apk.TabItem;
 import com.codex.apk.DiffUtils; // Assuming DiffUtils is available
+import android.content.SharedPreferences;
+
 
 import java.io.File;
 import java.io.IOException;
@@ -47,6 +49,14 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
         String apiKey = SettingsActivity.getGeminiApiKey(activity); // May be blank at start – that's fine
         // Initialize AIAssistant, passing 'this' as the AIActionListener
         this.aiAssistant = new AIAssistant(activity, apiKey, projectDir, projectName, executorService, this);
+
+        // Load default model from settings and apply it
+        SharedPreferences settingsPrefs = activity.getSharedPreferences("settings", Context.MODE_PRIVATE);
+        String defaultModelName = settingsPrefs.getString("selected_model", AIAssistant.AIModel.GEMINI_2_5_FLASH.getDisplayName());
+        AIAssistant.AIModel defaultModel = AIAssistant.AIModel.fromDisplayName(defaultModelName);
+        if (defaultModel != null) {
+            this.aiAssistant.setCurrentModel(defaultModel);
+        }
     }
 
     public AIAssistant getAIAssistant() {

@@ -303,11 +303,18 @@ public class AIAssistant {
 	private GLMApiClient glmApiClient;
 	
 	// Listener for AI responses
-	public interface AIResponseListener {
-		void onResponse(String response, boolean isThinking, boolean isWebSearch, List<WebSource> webSources);
-		void onError(String error);
-		void onStreamUpdate(String partialResponse, boolean isThinking);
-	}
+	    public interface AIResponseListener {
+        void onResponse(String response, boolean isThinking, boolean isWebSearch, List<WebSource> webSources);
+        void onError(String error);
+        void onStreamUpdate(String partialResponse, boolean isThinking);
+    }
+
+    public interface AIActionListener {
+        void onAiActionsProcessed(String rawAiResponseJson, String explanation, List<String> suggestions, 
+                                 List<ChatMessage.FileActionDetail> proposedFileChanges, String aiModelDisplayName);
+        void onAiError(String errorMessage);
+        void onAiRequestStarted();
+    }
 	
 	// Web source data class
 	public static class WebSource {
@@ -341,15 +348,6 @@ public class AIAssistant {
 	}
 
 	private AIResponseListener responseListener;
-
-	// Legacy interface for compatibility with AiAssistantManager
-	public interface AIActionListener {
-		void onAiActionsProcessed(String rawAiResponseJson, String explanation, List<String> suggestions, 
-			List<ChatMessage.FileActionDetail> proposedFileChanges, String aiModelDisplayName);
-		void onAiError(String errorMessage);
-		void onAiRequestStarted();
-	}
-	
 	private AIActionListener actionListener;
 	
 	public AIAssistant(Context context) {
@@ -474,6 +472,10 @@ public class AIAssistant {
 	
 	public void setResponseListener(AIResponseListener listener) {
 		this.responseListener = listener;
+	}
+
+	public void setActionListener(AIActionListener listener) {
+		this.actionListener = listener;
 	}
 	
 	public String getApiKey() {
@@ -1157,7 +1159,7 @@ public class AIAssistant {
      * Executes a received tool call synchronously against the local workspace.
      * Returns JSON string to pass back to the model.
      */
-    private String executeToolCall(String name, JsonObject args) {
+    public String executeToolCall(String name, JsonObject args) {
         JsonObject result = new JsonObject();
         try {
             switch (name) {

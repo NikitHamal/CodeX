@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 
+import com.codex.apk.ToolSpec;
 import com.codex.apk.editor.AiAssistantManager;
 import java.util.List;
 import java.util.ArrayList;
@@ -278,6 +279,11 @@ public class AIAssistant {
 	private AIModel currentModel;
 	private final OkHttpClient httpClient;
 	private final Gson gson;
+
+	private File projectDir;
+
+	// List of tools/function schemas the model is allowed to call.
+	private java.util.List<ToolSpec> enabledTools = new java.util.ArrayList<>();
 	
 	// API configurations
 	private static final String QWEN_BASE_URL = "https://chat.qwen.ai/api/v2";
@@ -368,6 +374,7 @@ public class AIAssistant {
 		ExecutorService executorService, AIActionListener actionListener) {
 		this(context);
 		this.actionListener = actionListener;
+		this.projectDir = projectDir;
 		this.currentProjectPath = projectDir != null ? projectDir.getAbsolutePath() : "";
 		
 		// Set up the response listener to bridge to the action listener
@@ -417,6 +424,14 @@ public class AIAssistant {
 					mainContentBuilder.setLength(0);
 					mainContentBuilder.append(partialResponse);
 				}
+
+				// Real-time UI update
+				EditorActivity act = context instanceof EditorActivity ? (EditorActivity) context : null;
+				if (act != null && act.getAiChatFragment() != null) {
+					act.runOnUiThread(() -> {
+						act.getAiChatFragment().updateThinkingMessage(partialResponse);
+					});
+				}
 			}
 		});
 	}
@@ -448,6 +463,13 @@ public class AIAssistant {
 	
 	public void setCurrentModel(AIModel model) {
 		this.currentModel = model;
+	}
+
+	/**
+	 * Supply the list of function tools that should be advertised to the model.
+	 */
+	public void setEnabledTools(java.util.List<ToolSpec> tools) {
+		this.enabledTools = tools != null ? tools : new java.util.ArrayList<>();
 	}
 	
 	public void setResponseListener(AIResponseListener listener) {
@@ -746,6 +768,13 @@ public class AIAssistant {
 				
 				// Build message array
 				JsonArray messages = new JsonArray();
+
+				// System instruction prompting model to leverage the function tools for file manipulation
+				JsonObject systemMsg = new JsonObject();
+				systemMsg.addProperty("role", "system");
+				systemMsg.addProperty("content", "You are CodexAgent, an AI assistant inside a code editor.\n\n- If the user's request requires changing the workspace (create, update, delete, rename files/folders) call the matching FUNCTION tool: createFile, updateFile, deleteFile, renameFile.\n- A tool call must be the only content in your assistant message (no additional text alongside it).\n- If no workspace change is needed, answer normally in plain text.\n- Think step by step internally, but output only the final answer or the function_call.\n- When multiple file operations are required emit them one by one in separate tool calls so the host can apply them incrementally.");
+				messages.add(systemMsg);
+
 				JsonObject messageObj = new JsonObject();
 				messageObj.addProperty("role", "user");
 				messageObj.addProperty("content", message);
@@ -773,6 +802,11 @@ public class AIAssistant {
 				
 				messages.add(messageObj);
 				requestBody.add("messages", messages);
+
+				// --- Function calling support ---
+				if (currentModel.supportsFunctionCalling() && enabledTools != null && !enabledTools.isEmpty()) {
+					requestBody.add("tools", ToolSpec.toJsonArray(enabledTools));
+				}
 				
 				// Get Qwen token with fallback to default
 				String customToken = SettingsActivity.getQwenApiToken(context);
@@ -824,6 +858,10 @@ public class AIAssistant {
 		StringBuilder thinkingContent = new StringBuilder();
 		StringBuilder answerContent = new StringBuilder();
 		List<WebSource> webSources = new ArrayList<>();
+
+        // --- function call accumulation state ---
+        String pendingFuncName = null;
+        StringBuilder pendingFuncArgs = new StringBuilder();
 		
 		String line;
 		while ((line = response.body().source().readUtf8Line()) != null) {
@@ -839,10 +877,37 @@ public class AIAssistant {
 						if (choices.size() > 0) {
 							JsonObject choice = choices.get(0).getAsJsonObject();
 							JsonObject delta = choice.getAsJsonObject("delta");
+
+                            String status = delta.has("status") ? delta.get("status").getAsString() : "";
+
+                            // Handle tool / function calling
+                            if (delta.has("function_call")) {
+                                JsonObject fc = delta.getAsJsonObject("function_call");
+                                if (fc.has("name")) {
+                                    pendingFuncName = fc.get("name").getAsString();
+                                }
+                                if (fc.has("arguments")) {
+                                    pendingFuncArgs.append(fc.get("arguments").getAsString());
+                                }
+                                if ("finished".equals(status)) {
+                                    // we have full call – execute
+                                    try {
+                                        JsonObject argsJson = JsonParser.parseString(pendingFuncArgs.toString()).getAsJsonObject();
+                                        String resultJson = executeToolCall(pendingFuncName, argsJson);
+                                        // Send result back to model and continue streaming follow-up
+                                        sendFunctionResult(choice, pendingFuncName, resultJson, webSources);
+                                    } catch (Exception e) {
+                                        Log.e("AIAssistant", "Tool execution failed", e);
+                                    }
+                                    // reset
+                                    pendingFuncName = null;
+                                    pendingFuncArgs.setLength(0);
+                                }
+                                continue; // skip further processing for this chunk
+                            }
 							
 							String content = delta.has("content") ? delta.get("content").getAsString() : "";
 							String phase = delta.has("phase") ? delta.get("phase").getAsString() : "";
-							String status = delta.has("status") ? delta.get("status").getAsString() : "";
 							
 							if ("think".equals(phase)) {
 								thinkingContent.append(content);
@@ -890,6 +955,121 @@ public class AIAssistant {
 			}
 		}
 	}
+
+    /**
+     * Executes a received tool call synchronously against the local workspace.
+     * Returns JSON string to pass back to the model.
+     */
+    private String executeToolCall(String name, JsonObject args) {
+        JsonObject result = new JsonObject();
+        try {
+            switch (name) {
+                case "createFile": {
+                    String path = args.get("path").getAsString();
+                    String content = args.get("content").getAsString();
+                    java.io.File file = new java.io.File(projectDir, path);
+                    file.getParentFile().mkdirs();
+                    java.nio.file.Files.write(file.toPath(), content.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                    result.addProperty("ok", true);
+                    result.addProperty("message", "File created: " + path);
+                    break;
+                }
+                case "updateFile": {
+                    String path = args.get("path").getAsString();
+                    String content = args.get("content").getAsString();
+                    java.io.File file = new java.io.File(projectDir, path);
+                    java.nio.file.Files.write(file.toPath(), content.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                    result.addProperty("ok", true);
+                    result.addProperty("message", "File updated: " + path);
+                    break;
+                }
+                case "deleteFile": {
+                    String path = args.get("path").getAsString();
+                    java.io.File file = new java.io.File(projectDir, path);
+                    boolean deleted = file.isDirectory() ? deleteRecursively(file) : file.delete();
+                    result.addProperty("ok", deleted);
+                    result.addProperty("message", "Deleted: " + path);
+                    break;
+                }
+                case "renameFile": {
+                    String oldPath = args.get("oldPath").getAsString();
+                    String newPath = args.get("newPath").getAsString();
+                    java.io.File oldFile = new java.io.File(projectDir, oldPath);
+                    java.io.File newFile = new java.io.File(projectDir, newPath);
+                    newFile.getParentFile().mkdirs();
+                    boolean ok = oldFile.renameTo(newFile);
+                    result.addProperty("ok", ok);
+                    result.addProperty("message", "Renamed to: " + newPath);
+                    break;
+                }
+                default:
+                    result.addProperty("ok", false);
+                    result.addProperty("error", "Unknown tool: " + name);
+            }
+        } catch (Exception ex) {
+            result.addProperty("ok", false);
+            result.addProperty("error", ex.getMessage());
+        }
+        return result.toString();
+    }
+
+    private boolean deleteRecursively(java.io.File f) {
+        if (f.isDirectory()) {
+            for (java.io.File c : java.util.Objects.requireNonNull(f.listFiles())) {
+                deleteRecursively(c);
+            }
+        }
+        return f.delete();
+    }
+
+    /**
+     * Sends a synthetic function result message back to Qwen so it can continue.
+     */
+    private void sendFunctionResult(JsonObject originalChoice, String funcName, String funcResultJson, List<WebSource> webSources) {
+        try {
+            JsonObject functionMsg = new JsonObject();
+            functionMsg.addProperty("role", "function");
+            functionMsg.addProperty("name", funcName);
+            functionMsg.addProperty("content", funcResultJson);
+
+            JsonArray msgs = new JsonArray();
+            msgs.add(functionMsg);
+
+            JsonObject body = new JsonObject();
+            body.addProperty("stream", true);
+            body.addProperty("incremental_output", true);
+            body.addProperty("chat_id", getConversationId());
+            body.add("messages", msgs);
+
+            // re-use tools array so model can call further tools
+            if (!enabledTools.isEmpty()) body.add("tools", ToolSpec.toJsonArray(enabledTools));
+
+            // Get Qwen token
+            String qwenToken = getQwenToken();
+
+            Request req = new Request.Builder()
+                    .url(QWEN_BASE_URL + "/chat/completions?chat_id=" + getConversationId())
+                    .post(RequestBody.create(body.toString(), MediaType.parse("application/json")))
+                    .addHeader("authorization", "Bearer " + qwenToken)
+                    .addHeader("content-type", "application/json")
+                    .addHeader("accept", "*/*")
+                    .build();
+
+            httpClient.newCall(req).enqueue(new okhttp3.Callback() {
+                @Override public void onFailure(@NonNull okhttp3.Call call, @NonNull IOException e) {
+                    Log.e("AIAssistant", "Failed to send function result", e);
+                }
+                @Override public void onResponse(@NonNull okhttp3.Call call, @NonNull Response response) throws IOException {
+                    if (response.isSuccessful() && response.body() != null) {
+                        // Continue processing stream recursively
+                        processQwenStreamResponse(response);
+                    }
+                }
+            });
+        } catch (Exception e) {
+            Log.e("AIAssistant", "Error sending function result", e);
+        }
+    }
 	
 	private void sendGLMMessage(String message, List<File> attachments) {
 		String conversationId = getConversationId();

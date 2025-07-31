@@ -442,6 +442,19 @@ public class AIChatFragment extends Fragment implements
         updateUiVisibility(); // Update UI after adding message
     }
 
+    /**
+     * Updates the content of the current streaming AI message (either thinking or answer phase).
+     * Called on the UI thread.
+     */
+    public void updateThinkingMessage(String newContent) {
+        if (!isAiProcessing || currentAiStatusMessage == null) return;
+        currentAiStatusMessage.setContent(newContent);
+        int idx = chatHistory.indexOf(currentAiStatusMessage);
+        if (idx != -1 && chatMessageAdapter != null) {
+            chatMessageAdapter.notifyItemChanged(idx);
+            recyclerViewChatHistory.scrollToPosition(idx);
+        }
+    }
 
     /**
      * Updates an existing message in the chat history and notifies the adapter.

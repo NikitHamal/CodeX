@@ -11,6 +11,7 @@ import com.codex.apk.ChatMessage;
 import com.codex.apk.CodeEditorFragment;
 import com.codex.apk.EditorActivity;
 import com.codex.apk.FileManager;
+import com.codex.apk.ToolSpec;
 import com.codex.apk.SettingsActivity;
 import com.codex.apk.TabItem;
 import com.codex.apk.DiffUtils; // Assuming DiffUtils is available
@@ -49,6 +50,9 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
         String apiKey = SettingsActivity.getGeminiApiKey(activity); // May be blank at start – that's fine
         // Initialize AIAssistant, passing 'this' as the AIActionListener
         this.aiAssistant = new AIAssistant(activity, apiKey, projectDir, projectName, executorService, this);
+
+        // Advertise default filesystem manipulation tools to the assistant so the model can invoke them.
+        this.aiAssistant.setEnabledTools(com.codex.apk.ToolSpec.defaultFileTools());
 
         // Load default model from settings and apply it
         SharedPreferences settingsPrefs = activity.getSharedPreferences("settings", Context.MODE_PRIVATE);

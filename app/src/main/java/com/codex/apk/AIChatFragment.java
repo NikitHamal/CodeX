@@ -36,7 +36,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.List;
 
 // AIChatFragment now implements ChatMessageAdapter.OnAiActionInteractionListener
 public class AIChatFragment extends Fragment implements

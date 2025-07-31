@@ -16,6 +16,9 @@ import io.noties.markwon.linkify.LinkifyPlugin;
 import io.noties.markwon.syntax.Prism4jTheme;
 import io.noties.markwon.syntax.SyntaxHighlightPlugin;
 import io.noties.prism4j.Prism4j;
+import io.noties.prism4j.Prism4jGrammarLocator;
+import io.noties.prism4j.Prism4jTheme;
+import io.noties.prism4j.Prism4jThemeDefault;
 import io.noties.prism4j.annotations.PrismBundle;
 
 @PrismBundle(includeAll = true)
@@ -34,7 +37,7 @@ public class MarkdownFormatter {
                 .usePlugin(HtmlPlugin.create())
                 .usePlugin(ImagesPlugin.create())
                 .usePlugin(LinkifyPlugin.create())
-                .usePlugin(SyntaxHighlightPlugin.create(new Prism4j(new GrammarLocator()), createCodeTheme()))
+                .usePlugin(SyntaxHighlightPlugin.create(new Prism4j(new Prism4jGrammarLocator()), createCodeTheme()))
                 .build();
         
         // Create simplified markwon instance for thinking content (no images, simpler formatting)
@@ -83,15 +86,7 @@ public class MarkdownFormatter {
      * Creates a dark theme for code syntax highlighting
      */
     private Prism4jTheme createCodeTheme() {
-        return Prism4jTheme.builder()
-                .withColor(Prism4jTheme.Type.COMMENT, Color.parseColor("#6A737D"))
-                .withColor(Prism4jTheme.Type.KEYWORD, Color.parseColor("#D73A49"))
-                .withColor(Prism4jTheme.Type.STRING, Color.parseColor("#032F62"))
-                .withColor(Prism4jTheme.Type.NUMBER, Color.parseColor("#005CC5"))
-                .withColor(Prism4jTheme.Type.FUNCTION, Color.parseColor("#6F42C1"))
-                .withColor(Prism4jTheme.Type.PUNCTUATION, Color.parseColor("#24292E"))
-                .withColor(Prism4jTheme.Type.LITERAL, Color.parseColor("#E36209"))
-                .build();
+        return Prism4jThemeDefault.create();
     }
     
     /**

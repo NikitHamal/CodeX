@@ -133,8 +133,8 @@
                     android:visibility="gone">
 
                     <ImageView
-                        android:layout_width="120dp"
-                        android:layout_height="120dp"
+                        android:layout_width="80dp"
+                        android:layout_height="80dp"
                         android:src="@drawable/icon_folder_open_round"
                         android:alpha="0.3"
                         app:tint="@color/secondary_text"
@@ -145,7 +145,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:text="No projects yet. Create or Import your first project!"
-                        android:textAppearance="@style/TextAppearance.Material3.HeadlineSmall"
+                        android:textAppearance="@style/TextAppearance.Material3.TitleLarge"
                         android:textColor="@color/secondary_text"
                         android:gravity="center" />
 

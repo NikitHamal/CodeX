@@ -69,7 +69,18 @@ public class EditorUiManager {
             navigationView = activity.findViewById(R.id.navigation_drawer);
             toolbar = activity.findViewById(R.id.toolbar);
             mainViewPager = activity.findViewById(R.id.view_pager);
-            // FAB was removed from layout, no longer needed
+
+            // Setup refresh button
+            View refreshButton = activity.findViewById(R.id.btn_refresh_file_tree);
+            if (refreshButton != null) {
+                refreshButton.setOnClickListener(v -> {
+                    if (activity.fileTreeManager != null) {
+                        activity.fileTreeManager.rebuildFileTree();
+                        Toast.makeText(activity, "File tree refreshed", Toast.LENGTH_SHORT).show();
+                    }
+                });
+            }
+
         } catch (Exception e) {
             Log.e("EditorUiManager", "Error initializing views: " + e.getMessage(), e);
             Toast.makeText(activity, "Error initializing UI components", Toast.LENGTH_SHORT).show();

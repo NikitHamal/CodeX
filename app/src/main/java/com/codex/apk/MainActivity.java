@@ -105,6 +105,8 @@ public class MainActivity extends AppCompatActivity {
             getSupportActionBar().setTitle("CodeX"); // Set title as per screenshot
         }
 
+        migrateOldProjects();
+
         projectsList = new ArrayList<>();
         projectsAdapter = new ProjectsAdapter(this, projectsList, this);
         listViewProjects.setAdapter(projectsAdapter);
@@ -255,6 +257,8 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
+        syncProjectsFromFilesystem();
+
         SharedPreferences prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         String json = prefs.getString(PROJECTS_LIST_KEY, null);
         Gson gson = new Gson();
@@ -357,7 +361,7 @@ public class MainActivity extends AppCompatActivity {
                     return;
                 }
 
-                File projectsDir = new File(Environment.getExternalStorageDirectory(), "CodeX_Projects");
+                File projectsDir = new File(Environment.getExternalStorageDirectory(), "CodeX/Projects");
                 if (!projectsDir.exists()) {
                     projectsDir.mkdirs();
                 }
@@ -406,8 +410,7 @@ public class MainActivity extends AppCompatActivity {
         FileManager fileManager = new FileManager(this, projectDir);
 
         if ("blank".equals(templateType)) {
-            fileManager.writeFileContent(new File(projectDir, "index.html"),
-                    templateManager.getBlankHtmlTemplate(projectName));
+            // Do nothing for a truly blank project
         } else if ("basic".equals(templateType)) {
             fileManager.writeFileContent(new File(projectDir, "index.html"),
                     templateManager.getBasicHtmlTemplate(projectName));
@@ -517,7 +520,7 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
-        File exportDir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "CodeX_Exports");
+        File exportDir = new File(Environment.getExternalStorageDirectory(), "CodeX/Exports");
         if (!exportDir.exists()) {
             exportDir.mkdirs();
             Log.d(TAG, "Created export directory: " + exportDir.getAbsolutePath());
@@ -661,7 +664,7 @@ public class MainActivity extends AppCompatActivity {
      */
     private void handleImportZipFile(Uri uri) {
         try {
-            File projectsDir = new File(Environment.getExternalStorageDirectory(), "CodeX_Projects");
+            File projectsDir = new File(Environment.getExternalStorageDirectory(), "CodeX/Projects");
             if (!projectsDir.exists()) {
                 projectsDir.mkdirs();
             }
@@ -820,5 +823,58 @@ public class MainActivity extends AppCompatActivity {
 
         bottomSheet.setContentView(view);
         bottomSheet.show();
+    }
+
+    private void migrateOldProjects() {
+        File oldProjectsDir = new File(Environment.getExternalStorageDirectory(), "CodeX_Projects");
+        File newProjectsDir = new File(Environment.getExternalStorageDirectory(), "CodeX/Projects");
+
+        if (oldProjectsDir.exists() && oldProjectsDir.isDirectory()) {
+            if (!newProjectsDir.exists()) {
+                newProjectsDir.mkdirs();
+            }
+            File[] projects = oldProjectsDir.listFiles();
+            if (projects != null) {
+                for (File project : projects) {
+                    File newProject = new File(newProjectsDir, project.getName());
+                    if (!newProject.exists()) {
+                        project.renameTo(newProject);
+                    }
+                }
+            }
+            deleteRecursive(oldProjectsDir);
+        }
+    }
+
+    private void syncProjectsFromFilesystem() {
+        if (!hasStoragePermission()) {
+            return;
+        }
+        File projectsDir = new File(Environment.getExternalStorageDirectory(), "CodeX/Projects");
+        if (!projectsDir.exists() || !projectsDir.isDirectory()) {
+            return;
+        }
+
+        ArrayList<HashMap<String, Object>> filesystemProjects = new ArrayList<>();
+        File[] projectDirs = projectsDir.listFiles(File::isDirectory);
+
+        if (projectDirs != null) {
+            for (File projectDir : projectDirs) {
+                long lastModified = projectDir.lastModified();
+                SimpleDateFormat sdf = new SimpleDateFormat("MMM dd,yyyy HH:mm", Locale.getDefault());
+                String lastModifiedStr = sdf.format(new Date(lastModified));
+
+                HashMap<String, Object> project = new HashMap<>();
+                project.put("name", projectDir.getName());
+                project.put("path", projectDir.getAbsolutePath());
+                project.put("lastModified", lastModifiedStr);
+                project.put("lastModifiedTimestamp", lastModified);
+                filesystemProjects.add(project);
+            }
+        }
+
+        projectsList.clear();
+        projectsList.addAll(filesystemProjects);
+        saveProjectsList();
     }
 }

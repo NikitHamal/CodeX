@@ -146,6 +146,17 @@
                 android:layout_marginStart="8dp"
                 android:focusable="true"
                 android:clickable="true" />
+
+            <!-- Refresh Button -->
+            <ImageView
+                android:id="@+id/btn_refresh_file_tree"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:src="@drawable/icon_refresh_round"
+                android:contentDescription="Refresh File Tree"
+                android:layout_marginStart="8dp"
+                android:focusable="true"
+                android:clickable="true" />
         </LinearLayout>
 
         <!-- Divider -->

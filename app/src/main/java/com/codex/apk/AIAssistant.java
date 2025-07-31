@@ -769,10 +769,44 @@ public class AIAssistant {
 				// Build message array
 				JsonArray messages = new JsonArray();
 
-				// System instruction prompting model to leverage the function tools for file manipulation
+				// Enhanced system instruction for function calling
 				JsonObject systemMsg = new JsonObject();
 				systemMsg.addProperty("role", "system");
-				systemMsg.addProperty("content", "You are CodexAgent, an AI assistant inside a code editor.\n\n- If the user's request requires changing the workspace (create, update, delete, rename files/folders) call the matching FUNCTION tool: createFile, updateFile, deleteFile, renameFile.\n- A tool call must be the only content in your assistant message (no additional text alongside it).\n- If no workspace change is needed, answer normally in plain text.\n- Think step by step internally, but output only the final answer or the function_call.\n- When multiple file operations are required emit them one by one in separate tool calls so the host can apply them incrementally.");
+				
+				// Check if function calling is enabled
+				if (currentModel.supportsFunctionCalling() && enabledTools != null && !enabledTools.isEmpty()) {
+					// Enhanced system prompt for function calling
+					systemMsg.addProperty("content", 
+						"You are CodexAgent, an AI assistant inside a code editor.\n\n" +
+						"IMPORTANT: When the user requests file operations (create, update, delete, rename files/folders), " +
+						"you MUST respond with a JSON object containing the action details.\n\n" +
+						"JSON Response Format:\n" +
+						"{\n" +
+						"  \"action\": \"file_operation\",\n" +
+						"  \"operations\": [\n" +
+						"    {\n" +
+						"      \"type\": \"createFile|updateFile|deleteFile|renameFile\",\n" +
+						"      \"path\": \"file/path.txt\",\n" +
+						"      \"content\": \"file content\",\n" +
+						"      \"oldPath\": \"old/path.txt\",\n" +
+						"      \"newPath\": \"new/path.txt\"\n" +
+						"    }\n" +
+						"  ],\n" +
+						"  \"explanation\": \"Brief explanation of what was done\",\n" +
+						"  \"suggestions\": [\"suggestion1\", \"suggestion2\"]\n" +
+						"}\n\n" +
+						"For non-file operations, respond normally in plain text.\n" +
+						"Always think step by step but output only the final JSON or text response.");
+				} else {
+					// Standard system prompt for non-function calling
+					systemMsg.addProperty("content", 
+						"You are CodexAgent, an AI assistant inside a code editor.\n\n" +
+						"- If the user's request requires changing the workspace (create, update, delete, rename files/folders) " +
+						"respond with detailed instructions on what files to create or modify.\n" +
+						"- Provide clear explanations and suggestions for improvements.\n" +
+						"- Think step by step internally, but output only the final answer.");
+				}
+				
 				messages.add(systemMsg);
 
 				JsonObject messageObj = new JsonObject();
@@ -803,9 +837,13 @@ public class AIAssistant {
 				messages.add(messageObj);
 				requestBody.add("messages", messages);
 
-				// --- Function calling support ---
+				// --- Enhanced Function calling support ---
 				if (currentModel.supportsFunctionCalling() && enabledTools != null && !enabledTools.isEmpty()) {
 					requestBody.add("tools", ToolSpec.toJsonArray(enabledTools));
+					// Add tool choice to force function calling when needed
+					JsonObject toolChoice = new JsonObject();
+					toolChoice.addProperty("type", "auto");
+					requestBody.add("tool_choice", toolChoice);
 				}
 				
 				// Get Qwen token with fallback to default
@@ -862,6 +900,10 @@ public class AIAssistant {
         // --- function call accumulation state ---
         String pendingFuncName = null;
         StringBuilder pendingFuncArgs = new StringBuilder();
+        
+        // --- JSON response accumulation state ---
+        StringBuilder jsonResponseBuilder = new StringBuilder();
+        boolean isJsonResponse = false;
 		
 		String line;
 		while ((line = response.body().source().readUtf8Line()) != null) {
@@ -909,18 +951,30 @@ public class AIAssistant {
 							String content = delta.has("content") ? delta.get("content").getAsString() : "";
 							String phase = delta.has("phase") ? delta.get("phase").getAsString() : "";
 							
-							if ("think".equals(phase)) {
-								thinkingContent.append(content);
-								if (responseListener != null) {
-									responseListener.onStreamUpdate(thinkingContent.toString(), true);
+							// Check if this might be a JSON response
+							if (QwenResponseParser.looksLikeJson(content)) {
+								isJsonResponse = true;
+								jsonResponseBuilder.append(content);
+							} else if (isJsonResponse) {
+								// Continue accumulating JSON
+								jsonResponseBuilder.append(content);
+							} else {
+								// Regular text response
+								if ("think".equals(phase)) {
+									thinkingContent.append(content);
+									if (responseListener != null) {
+										responseListener.onStreamUpdate(thinkingContent.toString(), true);
+									}
+								} else if ("answer".equals(phase)) {
+									answerContent.append(content);
+									if (responseListener != null) {
+										responseListener.onStreamUpdate(answerContent.toString(), false);
+									}
 								}
-							} else if ("answer".equals(phase)) {
-								answerContent.append(content);
-								if (responseListener != null) {
-									responseListener.onStreamUpdate(answerContent.toString(), false);
-								}
-							} else if ("web_search".equals(phase)) {
-								// Handle web search results
+							}
+							
+							// Handle web search results
+							if ("web_search".equals(phase)) {
 								if (choice.has("extra")) {
 									JsonObject extra = choice.getAsJsonObject("extra");
 									if (extra.has("web_search_info")) {
@@ -939,11 +993,53 @@ public class AIAssistant {
 							}
 							
 							if ("finished".equals(status)) {
-								if (responseListener != null) {
-									responseListener.onResponse(answerContent.toString(), 
-										thinkingContent.length() > 0, 
-										webSources.size() > 0, 
-										webSources);
+								// Process final response
+								if (isJsonResponse) {
+									// Handle JSON response for file operations
+									try {
+										String jsonResponse = jsonResponseBuilder.toString();
+										QwenResponseParser.ParsedResponse parsedResponse = QwenResponseParser.parseResponse(jsonResponse);
+										
+										if (parsedResponse != null && parsedResponse.isValid) {
+											if ("file_operation".equals(parsedResponse.action)) {
+												// Process file operations using the parser
+												processFileOperationsFromParsedResponse(parsedResponse);
+											} else {
+												// Regular JSON response
+												if (responseListener != null) {
+													responseListener.onResponse(jsonResponse, 
+														thinkingContent.length() > 0, 
+														webSources.size() > 0, 
+														webSources);
+												}
+											}
+										} else {
+											// Invalid JSON, treat as regular text
+											if (responseListener != null) {
+												responseListener.onResponse(jsonResponse, 
+													thinkingContent.length() > 0, 
+													webSources.size() > 0, 
+													webSources);
+											}
+										}
+									} catch (Exception e) {
+										Log.e("AIAssistant", "Failed to parse JSON response", e);
+										// Fallback to treating as regular text
+										if (responseListener != null) {
+											responseListener.onResponse(jsonResponseBuilder.toString(), 
+												thinkingContent.length() > 0, 
+												webSources.size() > 0, 
+												webSources);
+										}
+									}
+								} else {
+									// Regular text response
+									if (responseListener != null) {
+										responseListener.onResponse(answerContent.toString(), 
+											thinkingContent.length() > 0, 
+											webSources.size() > 0, 
+											webSources);
+									}
 								}
 								break;
 							}
@@ -955,6 +1051,107 @@ public class AIAssistant {
 			}
 		}
 	}
+
+    /**
+     * Processes file operations from a parsed response and executes them.
+     */
+    private void processFileOperationsFromParsedResponse(QwenResponseParser.ParsedResponse parsedResponse) {
+        try {
+            List<ChatMessage.FileActionDetail> fileActions = QwenResponseParser.toFileActionDetails(parsedResponse);
+            
+            // Execute each operation
+            for (ChatMessage.FileActionDetail actionDetail : fileActions) {
+                try {
+                    executeFileOperation(actionDetail);
+                } catch (Exception e) {
+                    Log.e("AIAssistant", "Failed to execute file operation: " + actionDetail.type, e);
+                }
+            }
+            
+            // Notify listeners about the processed actions
+            if (actionListener != null) {
+                actionListener.onAiActionsProcessed(
+                    "JSON Response", // We don't have the original JSON here
+                    parsedResponse.explanation,
+                    parsedResponse.suggestions,
+                    fileActions,
+                    currentModel.getDisplayName()
+                );
+            }
+            
+        } catch (Exception e) {
+            Log.e("AIAssistant", "Failed to process file operations from parsed response", e);
+        }
+    }
+
+    /**
+     * Processes file operations from a JSON response and executes them.
+     */
+    private void processFileOperationsFromJson(JsonObject jsonObj) {
+        try {
+            String explanation = jsonObj.has("explanation") ? jsonObj.get("explanation").getAsString() : "";
+            List<String> suggestions = new ArrayList<>();
+            if (jsonObj.has("suggestions")) {
+                JsonArray suggestionsArray = jsonObj.getAsJsonArray("suggestions");
+                for (int i = 0; i < suggestionsArray.size(); i++) {
+                    suggestions.add(suggestionsArray.get(i).getAsString());
+                }
+            }
+            
+            List<ChatMessage.FileActionDetail> fileActions = new ArrayList<>();
+            
+            if (jsonObj.has("operations")) {
+                JsonArray operations = jsonObj.getAsJsonArray("operations");
+                for (int i = 0; i < operations.size(); i++) {
+                    JsonObject operation = operations.get(i).getAsJsonObject();
+                    String type = operation.get("type").getAsString();
+                    String path = operation.has("path") ? operation.get("path").getAsString() : "";
+                    String content = operation.has("content") ? operation.get("content").getAsString() : "";
+                    String oldPath = operation.has("oldPath") ? operation.get("oldPath").getAsString() : "";
+                    String newPath = operation.has("newPath") ? operation.get("newPath").getAsString() : "";
+                    
+                    // Create FileActionDetail
+                    ChatMessage.FileActionDetail actionDetail = new ChatMessage.FileActionDetail(
+                        type, path, oldPath, newPath, "", content, 0, 0, null
+                    );
+                    fileActions.add(actionDetail);
+                    
+                    // Execute the operation
+                    try {
+                        executeFileOperation(actionDetail);
+                    } catch (Exception e) {
+                        Log.e("AIAssistant", "Failed to execute file operation: " + type, e);
+                    }
+                }
+            }
+            
+            // Notify listeners about the processed actions
+            if (actionListener != null) {
+                actionListener.onAiActionsProcessed(
+                    jsonObj.toString(),
+                    explanation,
+                    suggestions,
+                    fileActions,
+                    currentModel.getDisplayName()
+                );
+            }
+            
+        } catch (Exception e) {
+            Log.e("AIAssistant", "Failed to process file operations from JSON", e);
+        }
+    }
+    
+    /**
+     * Executes a single file operation using the AiProcessor.
+     */
+    private void executeFileOperation(ChatMessage.FileActionDetail actionDetail) throws Exception {
+        if (projectDir == null) {
+            throw new IllegalStateException("Project directory not set");
+        }
+        
+        AiProcessor processor = new AiProcessor(projectDir, context);
+        processor.applyFileAction(actionDetail);
+    }
 
     /**
      * Executes a received tool call synchronously against the local workspace.
@@ -1000,6 +1197,45 @@ public class AIAssistant {
                     boolean ok = oldFile.renameTo(newFile);
                     result.addProperty("ok", ok);
                     result.addProperty("message", "Renamed to: " + newPath);
+                    break;
+                }
+                case "readFile": {
+                    String path = args.get("path").getAsString();
+                    java.io.File file = new java.io.File(projectDir, path);
+                    if (!file.exists()) {
+                        result.addProperty("ok", false);
+                        result.addProperty("error", "File not found: " + path);
+                    } else {
+                        String content = new String(java.nio.file.Files.readAllBytes(file.toPath()), 
+                                                  java.nio.charset.StandardCharsets.UTF_8);
+                        result.addProperty("ok", true);
+                        result.addProperty("content", content);
+                        result.addProperty("message", "File read: " + path);
+                    }
+                    break;
+                }
+                case "listFiles": {
+                    String path = args.get("path").getAsString();
+                    java.io.File dir = new java.io.File(projectDir, path);
+                    if (!dir.exists() || !dir.isDirectory()) {
+                        result.addProperty("ok", false);
+                        result.addProperty("error", "Directory not found: " + path);
+                    } else {
+                        JsonArray files = new JsonArray();
+                        java.io.File[] fileList = dir.listFiles();
+                        if (fileList != null) {
+                            for (java.io.File f : fileList) {
+                                JsonObject fileInfo = new JsonObject();
+                                fileInfo.addProperty("name", f.getName());
+                                fileInfo.addProperty("type", f.isDirectory() ? "directory" : "file");
+                                fileInfo.addProperty("size", f.length());
+                                files.add(fileInfo);
+                            }
+                        }
+                        result.addProperty("ok", true);
+                        result.add("files", files);
+                        result.addProperty("message", "Directory listed: " + path);
+                    }
                     break;
                 }
                 default:

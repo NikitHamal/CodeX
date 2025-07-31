@@ -63,7 +63,6 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
         if (!updatedApiKey.equals(currentApiKeyInAssistant)) {
             Log.i(TAG, "API Key changed in settings. Updating AIAssistant API key.");
             aiAssistant.setApiKey(updatedApiKey); // Just update the key, no need to re-create
-            activity.showToast("API Key updated. AI Assistant re-initialized.");
         }
     }
 

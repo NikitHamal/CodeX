@@ -137,7 +137,7 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
         TextView textThinkingContent;
         ImageView iconThinkingExpand;
         LinearLayout layoutWebSources;
-        MaterialButton buttonWebSources;
+        TextView buttonWebSources;
         
         private final OnAiActionInteractionListener listener;
         private final Context context;

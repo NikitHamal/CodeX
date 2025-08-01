@@ -23,7 +23,7 @@ import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 
-public class QwenApiClient {
+public class QwenApiClient implements ApiClient {
     private static final String TAG = "QwenApiClient";
     private static final String PREFS_NAME = "ai_chat_prefs";
     private static final String QWEN_CONVERSATION_STATE_KEY_PREFIX = "qwen_conv_state_";
@@ -53,7 +53,8 @@ public class QwenApiClient {
         this.gson = new Gson();
     }
 
-    public void sendMessage(String message, AIAssistant.AIModel model, List<ChatMessage> history, QwenConversationState state, boolean thinkingModeEnabled, boolean webSearchEnabled, List<ToolSpec> enabledTools) {
+    @Override
+    public void sendMessage(String message, AIModel model, List<ChatMessage> history, QwenConversationState state, boolean thinkingModeEnabled, boolean webSearchEnabled, List<ToolSpec> enabledTools, List<File> attachments) {
         new Thread(() -> {
             try {
                 String conversationId = startOrContinueConversation(state, model, webSearchEnabled);
@@ -230,16 +231,7 @@ public class QwenApiClient {
     }
 
     private JsonObject createSystemMessage(List<ToolSpec> enabledTools) {
-        JsonObject systemMsg = new JsonObject();
-        systemMsg.addProperty("role", "system");
-        if (!enabledTools.isEmpty()) {
-            // This is the strict, JSON-enforcing prompt.
-            systemMsg.addProperty("content", "You are CodexAgent, an AI assistant inside a code editor. Your primary function is to help users by performing file operations. When a user asks for changes to the project, you MUST respond with a single JSON object. This is not optional. The JSON object must have the following structure: {\"action\": \"file_operation\", \"operations\": [{\"type\": \"createFile\", \"path\": \"path/to/new_file.html\", \"content\": \"<html>...</html>\"}, {\"type\": \"updateFile\", \"path\": \"path/to/existing_file.js\", \"content\": \"// new javascript content\"}], \"explanation\": \"A brief summary of the changes you made.\", \"suggestions\": [\"Add a CSS file for styling.\", \"Implement a dark mode toggle.\"]}. - The `operations` array can contain multiple operations of different types (`createFile`, `updateFile`, `deleteFile`, `renameFile`). - For `renameFile`, include `oldPath` and `newPath`. - For `deleteFile`, only `path` is required. - Do not include any other text or formatting outside of the JSON object. Your entire response must be the JSON object itself.");
-        } else {
-            // This is the general-purpose prompt for when no tools are enabled.
-            systemMsg.addProperty("content", "You are CodexAgent, an AI assistant inside a code editor. - If the user's request requires changing the workspace (create, update, delete, rename files/folders) respond with detailed instructions on what files to create or modify. - Provide clear explanations and suggestions for improvements. - Think step by step internally, but output only the final answer.");
-        }
-        return systemMsg;
+        return PromptManager.createSystemMessage(enabledTools);
     }
 
     private JsonObject createUserMessage(String message, AIAssistant.AIModel model, boolean thinkingModeEnabled, boolean webSearchEnabled) {
@@ -403,55 +395,6 @@ public class QwenApiClient {
             }
         }
         return f.delete();
-    }
-
-    private void sendFunctionResult(JsonObject originalChoice, String funcName, String funcResultJson, List<AIAssistant.WebSource> webSources, QwenConversationState state, AIAssistant.AIModel model) {
-        try {
-            JsonObject functionMsg = new JsonObject();
-            functionMsg.addProperty("role", "function");
-            functionMsg.addProperty("name", funcName);
-            functionMsg.addProperty("content", funcResultJson);
-
-            JsonArray msgs = new JsonArray();
-            msgs.add(functionMsg);
-
-            JsonObject body = new JsonObject();
-            body.addProperty("stream", true);
-            body.addProperty("incremental_output", true);
-            body.addProperty("chat_id", state.getConversationId());
-            body.add("messages", msgs);
-
-            // re-use tools array so model can call further tools
-            // if (!enabledTools.isEmpty()) body.add("tools", ToolSpec.toJsonArray(enabledTools));
-
-            // Get Qwen token
-            String qwenToken = getQwenToken();
-
-            Request req = new Request.Builder()
-                    .url(QWEN_BASE_URL + "/chat/completions?chat_id=" + state.getConversationId())
-                    .post(RequestBody.create(body.toString(), MediaType.parse("application/json")))
-                    .addHeader("authorization", "Bearer " + qwenToken)
-                    .addHeader("content-type", "application/json")
-                    .addHeader("accept", "*/*")
-                    .build();
-
-            httpClient.newCall(req).enqueue(new okhttp3.Callback() {
-                @Override
-                public void onFailure(okhttp3.Call call, IOException e) {
-                    Log.e(TAG, "Failed to send function result", e);
-                }
-
-                @Override
-                public void onResponse(okhttp3.Call call, Response response) throws IOException {
-                    if (response.isSuccessful() && response.body() != null) {
-                        // Continue processing stream recursively
-                        processQwenStreamResponse(response, state, model);
-                    }
-                }
-            });
-        } catch (Exception e) {
-            Log.e(TAG, "Error sending function result", e);
-        }
     }
 
     private String extractJsonFromCodeBlock(String content) {

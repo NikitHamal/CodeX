@@ -115,45 +115,31 @@ public class DialogHelper {
 		});
 	}
 
-	public void showUnsavedChangesDialog(Runnable onSave, Runnable onDiscard) {
-		new MaterialAlertDialogBuilder(context)
-		.setTitle("Unsaved Changes")
-		.setMessage("You have unsaved changes. Do you want to save them before exiting?")
-		.setPositiveButton("Save All", (dialog, which) -> onSave.run())
-		.setNegativeButton("Discard", (dialog, which) -> onDiscard.run())
-		.setNeutralButton("Cancel", null)
-		.show();
-	}
+	private void showConfirmationDialog(String title, String message, String positiveText, Runnable onPositive, String negativeText, Runnable onNegative) {
+        new MaterialAlertDialogBuilder(context)
+            .setTitle(title)
+            .setMessage(message)
+            .setPositiveButton(positiveText, (dialog, which) -> onPositive.run())
+            .setNegativeButton(negativeText, (dialog, which) -> onNegative.run())
+            .setNeutralButton("Cancel", null)
+            .show();
+    }
 
-	public void showTabCloseConfirmationDialog(String fileName, Runnable onSave, Runnable onDiscard) {
-		new MaterialAlertDialogBuilder(context)
-		.setTitle("Unsaved Changes")
-		.setMessage("Save changes to " + fileName + "?")
-		.setPositiveButton("Save", (dialog, which) -> onSave.run())
-		.setNegativeButton("Discard", (dialog, which) -> onDiscard.run())
-		.setNeutralButton("Cancel", null)
-		.show();
-	}
+    public void showUnsavedChangesDialog(Runnable onSave, Runnable onDiscard) {
+        showConfirmationDialog("Unsaved Changes", "You have unsaved changes. Do you want to save them before exiting?", "Save All", onSave, "Discard", onDiscard);
+    }
 
-	public void showCloseOtherTabsDialog(Runnable onSaveAll, Runnable onDiscardAll) {
-		new MaterialAlertDialogBuilder(context)
-		.setTitle("Unsaved Changes")
-		.setMessage("Save changes in other tabs before closing?")
-		.setPositiveButton("Save All Other", (dialog, which) -> onSaveAll.run())
-		.setNegativeButton("Discard All Other", (dialog, which) -> onDiscardAll.run())
-		.setNeutralButton("Cancel", null)
-		.show();
-	}
+    public void showTabCloseConfirmationDialog(String fileName, Runnable onSave, Runnable onDiscard) {
+        showConfirmationDialog("Unsaved Changes", "Save changes to " + fileName + "?", "Save", onSave, "Discard", onDiscard);
+    }
 
-	public void showCloseAllTabsDialog(Runnable onSaveAll, Runnable onDiscardAll) {
-		new MaterialAlertDialogBuilder(context)
-		.setTitle("Unsaved Changes")
-		.setMessage("Save all changes before closing tabs?")
-		.setPositiveButton("Save All", (dialog, which) -> onSaveAll.run())
-		.setNegativeButton("Discard All", (dialog, which) -> onDiscardAll.run())
-		.setNeutralButton("Cancel", null)
-		.show();
-	}
+    public void showCloseOtherTabsDialog(Runnable onSaveAll, Runnable onDiscardAll) {
+        showConfirmationDialog("Unsaved Changes", "Save changes in other tabs before closing?", "Save All Other", onSaveAll, "Discard All Other", onDiscardAll);
+    }
+
+    public void showCloseAllTabsDialog(Runnable onSaveAll, Runnable onDiscardAll) {
+        showConfirmationDialog("Unsaved Changes", "Save all changes before closing tabs?", "Save All", onSaveAll, "Discard All", onDiscardAll);
+    }
 
 	public void showIndexStatusDialog() {
 		new MaterialAlertDialogBuilder(context)

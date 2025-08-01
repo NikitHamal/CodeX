@@ -26,6 +26,35 @@
             android:paddingVertical="6dp"
             android:layout_marginBottom="8dp" />
 
+        <!-- AI Typing Indicator -->
+        <LinearLayout
+            android:id="@+id/layout_typing_indicator"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingHorizontal="12dp"
+            android:paddingVertical="10dp"
+            android:background="@drawable/rounded_container_background"
+            android:layout_marginBottom="8dp"
+            android:visibility="gone">
+
+            <ProgressBar
+                android:id="@+id/typing_progress_bar"
+                style="?android:attr/progressBarStyleSmall"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="8dp" />
+
+            <TextView
+                android:id="@+id/text_typing_indicator"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="AI is typing..."
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:textSize="14sp" />
+        </LinearLayout>
+
         <!-- Thinking Section (Collapsible) -->
         <LinearLayout
             android:id="@+id/layout_thinking_section"
@@ -163,25 +192,6 @@
                 </LinearLayout>
 
             <LinearLayout
-                android:id="@+id/layout_suggestions"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:layout_marginTop="16dp"
-                android:visibility="gone">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Suggestions:"
-                    android:textColor="?attr/colorOnSurfaceVariant"
-                    android:textSize="12sp"
-                    android:textStyle="normal"
-                    android:layout_marginBottom="4dp"/>
-
-                </LinearLayout>
-
-            <LinearLayout
                 android:id="@+id/layout_action_buttons"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -199,7 +209,7 @@
                     android:textColor="@color/error"
                     app:strokeColor="@color/error"
                     app:strokeWidth="1dp"
-                    app:cornerRadius="8dp"
+                    app:cornerRadius="20dp"
                     android:layout_marginEnd="8dp" />
 
                 <com.google.android.material.button.MaterialButton
@@ -210,7 +220,7 @@
                     android:text="Accept"
                     android:textColor="@color/on_primary"
                     android:backgroundTint="@color/primary"
-                    app:cornerRadius="8dp" />
+                    app:cornerRadius="20dp" />
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/button_reapply"
@@ -220,7 +230,7 @@
                     android:text="Reapply"
                     android:textColor="@color/on_primary"
                     android:backgroundTint="@color/primary"
-                    app:cornerRadius="8dp"
+                    app:cornerRadius="20dp"
                     android:visibility="gone" />
 
             </LinearLayout>

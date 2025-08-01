@@ -2,17 +2,15 @@
 <resources>
     <!-- ShapeAppearance overlay for AI (left-aligned) bubble -->
     <style name="ShapeAppearance.ChatBubble.AI" parent="@style/ShapeAppearance.Material3.MediumComponent">
-        <!-- Rounded everywhere except bottom-right to create a subtle tail effect -->
         <item name="cornerFamily">rounded</item>
-        <item name="cornerSize">16dp</item>
-        <item name="cornerSizeBottomRight">2dp</item>
+        <item name="cornerSize">20dp</item>
+        <item name="cornerSizeBottomRight">4dp</item>
     </style>
 
     <!-- ShapeAppearance overlay for User (right-aligned) bubble -->
     <style name="ShapeAppearance.ChatBubble.User" parent="@style/ShapeAppearance.Material3.MediumComponent">
-        <!-- Rounded everywhere except bottom-left to create a subtle tail effect -->
         <item name="cornerFamily">rounded</item>
-        <item name="cornerSize">16dp</item>
-        <item name="cornerSizeBottomLeft">2dp</item>
+        <item name="cornerSize">20dp</item>
+        <item name="cornerSizeBottomLeft">4dp</item>
     </style>
 </resources>

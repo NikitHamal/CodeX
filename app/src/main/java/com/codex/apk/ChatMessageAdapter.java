@@ -129,15 +129,16 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
         MaterialButton buttonDiscard;
         MaterialButton buttonReapply;
         LinearLayout layoutActionSummaries; // To display action summaries (Actions Performed)
-        LinearLayout layoutSuggestions; // To display suggestions
         RecyclerView fileChangesContainer; // Container for proposed file changes
         
-        // New fields for thinking and web sources
+        // New fields for thinking, web sources and typing indicator
         LinearLayout layoutThinkingSection;
         TextView textThinkingContent;
         ImageView iconThinkingExpand;
         LinearLayout layoutWebSources;
         TextView buttonWebSources;
+        LinearLayout layoutTypingIndicator;
+        TextView textTypingIndicator;
         
         private final OnAiActionInteractionListener listener;
         private final Context context;
@@ -155,15 +156,16 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
             buttonDiscard = itemView.findViewById(R.id.button_discard);
             buttonReapply = itemView.findViewById(R.id.button_reapply);
             layoutActionSummaries = itemView.findViewById(R.id.layout_action_summaries);
-            layoutSuggestions = itemView.findViewById(R.id.layout_suggestions);
             fileChangesContainer = itemView.findViewById(R.id.file_changes_container);
             
-            // Initialize new thinking and web sources views
+            // Initialize new thinking, web sources and typing indicator views
             layoutThinkingSection = itemView.findViewById(R.id.layout_thinking_section);
             textThinkingContent = itemView.findViewById(R.id.text_thinking_content);
             iconThinkingExpand = itemView.findViewById(R.id.icon_thinking_expand);
             layoutWebSources = itemView.findViewById(R.id.layout_web_sources);
             buttonWebSources = itemView.findViewById(R.id.button_web_sources);
+            layoutTypingIndicator = itemView.findViewById(R.id.layout_typing_indicator);
+            textTypingIndicator = itemView.findViewById(R.id.text_typing_indicator);
             
             // Initialize markdown formatter
             markdownFormatter = MarkdownFormatter.getInstance(context);
@@ -190,158 +192,91 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
         }
 
         void bind(ChatMessage message, int messagePosition) {
-            // Card background defined via XML for dynamic theming.
+            String aiThinkingString = context.getString(R.string.ai_is_thinking);
+            boolean isTyping = message.getContent() != null && message.getContent().equals(aiThinkingString);
 
-            textAiModelName.setText(message.getAiModelName());
+            // Toggle visibility based on whether the AI is typing
+            layoutTypingIndicator.setVisibility(isTyping ? View.VISIBLE : View.GONE);
+            textMessage.setVisibility(isTyping ? View.GONE : View.VISIBLE);
+            layoutThinkingSection.setVisibility(isTyping ? View.GONE : (message.getThinkingContent() != null && !message.getThinkingContent().trim().isEmpty() ? View.VISIBLE : View.GONE));
+            layoutWebSources.setVisibility(isTyping ? View.GONE : (message.getWebSources() != null && !message.getWebSources().isEmpty() ? View.VISIBLE : View.GONE));
+            itemView.findViewById(R.id.layout_proposed_file_changes).setVisibility(isTyping ? View.GONE : (message.getProposedFileChanges() != null && !message.getProposedFileChanges().isEmpty() ? View.VISIBLE : View.GONE));
+            layoutActionSummaries.setVisibility(isTyping ? View.GONE : (message.getActionSummaries() != null && !message.getActionSummaries().isEmpty() ? View.VISIBLE : View.GONE));
+            layoutActionButtons.setVisibility(isTyping ? View.GONE : (message.getProposedFileChanges() != null && !message.getProposedFileChanges().isEmpty() ? View.VISIBLE : View.GONE));
 
-            // Handle indexing progress messages and apply markdown formatting
-            String content = message.getContent();
-            if (content != null && !content.isEmpty()) {
-                String processedContent = markdownFormatter.preprocessMarkdown(content);
-                markdownFormatter.setMarkdown(textMessage, processedContent);
+            if (isTyping) {
+                // If AI is typing, we just show the indicator and the model name.
+                textAiModelName.setText(message.getAiModelName());
+                textTypingIndicator.setText(message.getContent()); // You can update this text dynamically if needed
             } else {
-                textMessage.setText("");
-            }
-            
-            // Handle thinking content
-            if (message.getThinkingContent() != null && !message.getThinkingContent().trim().isEmpty()) {
-                layoutThinkingSection.setVisibility(View.VISIBLE);
-                String processedThinking = markdownFormatter.preprocessMarkdown(message.getThinkingContent());
-                markdownFormatter.setThinkingMarkdown(textThinkingContent, processedThinking);
-                
-                // Set up thinking section collapse/expand (initially collapsed)
-                textThinkingContent.setVisibility(View.GONE);
-                iconThinkingExpand.setRotation(0f);
-                
-                View thinkingHeader = layoutThinkingSection.findViewById(R.id.layout_thinking_header);
-                if (thinkingHeader != null) {
-                    thinkingHeader.setOnClickListener(v -> {
-                        boolean currentlyExpanded = textThinkingContent.getVisibility() == View.VISIBLE;
-                        if (currentlyExpanded) {
-                            textThinkingContent.setVisibility(View.GONE);
-                            iconThinkingExpand.animate().rotation(0f).setDuration(200).start();
-                        } else {
-                            textThinkingContent.setVisibility(View.VISIBLE);
-                            iconThinkingExpand.animate().rotation(180f).setDuration(200).start();
-                        }
-                    });
+                // If it's a regular message, bind all data as before.
+                textAiModelName.setText(message.getAiModelName());
+
+                // Handle main content
+                String content = message.getContent();
+                if (content != null && !content.isEmpty()) {
+                    String processedContent = markdownFormatter.preprocessMarkdown(content);
+                    markdownFormatter.setMarkdown(textMessage, processedContent);
+                } else {
+                    textMessage.setText("");
                 }
-            } else {
-                layoutThinkingSection.setVisibility(View.GONE);
-            }
-            
-            // Handle web sources
-            if (message.getWebSources() != null && !message.getWebSources().isEmpty()) {
-                layoutWebSources.setVisibility(View.VISIBLE);
-                buttonWebSources.setText("Web sources (" + message.getWebSources().size() + ")");
-                buttonWebSources.setOnClickListener(v -> showWebSourcesDialog(message.getWebSources()));
-            } else {
-                layoutWebSources.setVisibility(View.GONE);
-            }
 
-            // Display proposed file changes
-            LinearLayout layoutProposedFileChanges = itemView.findViewById(R.id.layout_proposed_file_changes);
-            if (message.getProposedFileChanges() != null && !message.getProposedFileChanges().isEmpty()) {
-                android.util.Log.d("ChatMessageAdapter", "Binding " + message.getProposedFileChanges().size() + " file changes");
-                layoutProposedFileChanges.setVisibility(View.VISIBLE);
-                FileActionAdapter fileActionAdapter = new FileActionAdapter(message.getProposedFileChanges(), fileActionDetail -> {
-                    if (listener != null) {
-                        listener.onFileChangeClicked(fileActionDetail);
+                // Handle thinking content
+                if (layoutThinkingSection.getVisibility() == View.VISIBLE) {
+                    String processedThinking = markdownFormatter.preprocessMarkdown(message.getThinkingContent());
+                    markdownFormatter.setThinkingMarkdown(textThinkingContent, processedThinking);
+                    textThinkingContent.setVisibility(View.GONE);
+                    iconThinkingExpand.setRotation(0f);
+                    View thinkingHeader = layoutThinkingSection.findViewById(R.id.layout_thinking_header);
+                    if (thinkingHeader != null) {
+                        thinkingHeader.setOnClickListener(v -> {
+                            boolean currentlyExpanded = textThinkingContent.getVisibility() == View.VISIBLE;
+                            textThinkingContent.setVisibility(currentlyExpanded ? View.GONE : View.VISIBLE);
+                            iconThinkingExpand.animate().rotation(currentlyExpanded ? 0f : 180f).setDuration(200).start();
+                        });
                     }
-                });
-                fileChangesContainer.setAdapter(fileActionAdapter);
-            } else {
-                android.util.Log.d("ChatMessageAdapter", "No file changes to bind");
-                layoutProposedFileChanges.setVisibility(View.GONE);
-            }
-
-            // Display action summaries (Actions Performed)
-            if (message.getActionSummaries() != null && !message.getActionSummaries().isEmpty()) {
-                layoutActionSummaries.setVisibility(View.VISIBLE);
-                // The RecyclerView is now responsible for displaying the file changes.
-                // The summaries can be simple text or a more complex layout if needed.
-                // For now, we'll just show a simple text summary.
-                layoutActionSummaries.removeAllViews(); // Clear previous views
-                TextView header = new TextView(context);
-                header.setText("Actions Performed:");
-                header.setTextColor(ContextCompat.getColor(context, R.color.on_surface_variant));
-                header.setTextSize(12);
-                layoutActionSummaries.addView(header);
-
-                for(String summary : message.getActionSummaries()) {
-                    TextView summaryView = new TextView(context);
-                    summaryView.setText("• " + summary);
-                    summaryView.setTextColor(ContextCompat.getColor(context, R.color.on_surface_variant));
-                    summaryView.setTextSize(12);
-                    layoutActionSummaries.addView(summaryView);
                 }
 
-            } else {
-                layoutActionSummaries.setVisibility(View.GONE);
-            }
+                // Handle web sources
+                if (layoutWebSources.getVisibility() == View.VISIBLE) {
+                    buttonWebSources.setText("Web sources (" + message.getWebSources().size() + ")");
+                    buttonWebSources.setOnClickListener(v -> showWebSourcesDialog(message.getWebSources()));
+                }
 
-                // Display suggestions if available
-                if (message.getSuggestions() != null && !message.getSuggestions().isEmpty()) {
-                    layoutSuggestions.setVisibility(View.VISIBLE);
-                    layoutSuggestions.removeAllViews(); // Clear previous views
+                // Handle proposed file changes
+                if (itemView.findViewById(R.id.layout_proposed_file_changes).getVisibility() == View.VISIBLE) {
+                    FileActionAdapter fileActionAdapter = new FileActionAdapter(message.getProposedFileChanges(), fileActionDetail -> {
+                        if (listener != null) listener.onFileChangeClicked(fileActionDetail);
+                    });
+                    fileChangesContainer.setAdapter(fileActionAdapter);
+                }
 
+                // Handle action summaries
+                if (layoutActionSummaries.getVisibility() == View.VISIBLE) {
+                    layoutActionSummaries.removeAllViews();
                     TextView header = new TextView(context);
-                    header.setText("Suggestions:");
+                    header.setText("Actions Performed:");
                     header.setTextColor(ContextCompat.getColor(context, R.color.on_surface_variant));
-                    header.setTextSize(12); // Use 12sp as defined in XML
-                    header.setPadding(0, (int) context.getResources().getDimension(R.dimen.padding_small), 0, (int) context.getResources().getDimension(R.dimen.padding_extra_small));
-                    layoutSuggestions.addView(header);
-
-                    for (String suggestion : message.getSuggestions()) {
-                        TextView tv = new TextView(context);
-                        tv.setText("• " + suggestion);
-                        tv.setTextColor(ContextCompat.getColor(context, R.color.on_surface_variant));
-                        tv.setTextSize(12); // Use 12sp as defined in XML
-                        layoutSuggestions.addView(tv);
+                    header.setTextSize(12);
+                    layoutActionSummaries.addView(header);
+                    for(String summary : message.getActionSummaries()) {
+                        TextView summaryView = new TextView(context);
+                        summaryView.setText("• " + summary);
+                        summaryView.setTextColor(ContextCompat.getColor(context, R.color.on_surface_variant));
+                        summaryView.setTextSize(12);
+                        layoutActionSummaries.addView(summaryView);
                     }
-                } else {
-                    layoutSuggestions.setVisibility(View.GONE);
                 }
 
-                // Handle action buttons visibility based on message status
-                if (message.getProposedFileChanges() != null && !message.getProposedFileChanges().isEmpty()) {
-                    layoutActionButtons.setVisibility(View.VISIBLE);
-                    if (message.getStatus() == ChatMessage.STATUS_PENDING_APPROVAL) {
-                        buttonAccept.setVisibility(View.VISIBLE);
-                        buttonDiscard.setVisibility(View.VISIBLE);
-                        buttonReapply.setVisibility(View.GONE);
-                    } else if (message.getStatus() == ChatMessage.STATUS_ACCEPTED) {
-                        buttonAccept.setVisibility(View.GONE);
-                        buttonDiscard.setVisibility(View.GONE);
-                        buttonReapply.setVisibility(View.GONE);
-                    } else if (message.getStatus() == ChatMessage.STATUS_DISCARDED) {
-                        buttonAccept.setVisibility(View.GONE);
-                        buttonDiscard.setVisibility(View.GONE);
-                        buttonReapply.setVisibility(View.VISIBLE);
-                    } else {
-                        layoutActionButtons.setVisibility(View.GONE);
-                    }
+                // Handle action buttons
+                if (layoutActionButtons.getVisibility() == View.VISIBLE) {
+                    buttonAccept.setVisibility(message.getStatus() == ChatMessage.STATUS_PENDING_APPROVAL ? View.VISIBLE : View.GONE);
+                    buttonDiscard.setVisibility(message.getStatus() == ChatMessage.STATUS_PENDING_APPROVAL ? View.VISIBLE : View.GONE);
+                    buttonReapply.setVisibility(message.getStatus() == ChatMessage.STATUS_DISCARDED ? View.VISIBLE : View.GONE);
 
-                    // Set click listeners for buttons
-                    buttonAccept.setOnClickListener(v -> {
-                        if (listener != null) {
-                            listener.onAcceptClicked(messagePosition, message);
-                        }
-                    });
-
-                    buttonDiscard.setOnClickListener(v -> {
-                        if (listener != null) {
-                            listener.onDiscardClicked(messagePosition, message);
-                        }
-                    });
-
-                    buttonReapply.setOnClickListener(v -> {
-                        if (listener != null) {
-                            listener.onReapplyClicked(messagePosition, message);
-                        }
-                    });
-                } else {
-                    layoutActionButtons.setVisibility(View.GONE);
+                    buttonAccept.setOnClickListener(v -> { if (listener != null) listener.onAcceptClicked(messagePosition, message); });
+                    buttonDiscard.setOnClickListener(v -> { if (listener != null) listener.onDiscardClicked(messagePosition, message); });
+                    buttonReapply.setOnClickListener(v -> { if (listener != null) listener.onReapplyClicked(messagePosition, message); });
                 }
             }
         }

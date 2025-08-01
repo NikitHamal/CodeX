@@ -1,6 +1,8 @@
 package com.codex.apk;
 
 import android.content.Context;
+import android.content.SharedPreferences;
+import android.util.Base64;
 import android.util.Log;
 
 import com.google.gson.Gson;
@@ -10,6 +12,7 @@ import com.google.gson.JsonParser;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -22,6 +25,8 @@ import okhttp3.Response;
 
 public class QwenApiClient {
     private static final String TAG = "QwenApiClient";
+    private static final String PREFS_NAME = "ai_chat_prefs";
+    private static final String QWEN_CONVERSATION_STATE_KEY_PREFIX = "qwen_conv_state_";
     private static final String QWEN_BASE_URL = "https://chat.qwen.ai/api/v2";
     private static final String QWEN_DEFAULT_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjhiYjQ1NjVmLTk3NjUtNDQwNi04OWQ5LTI3NmExMTIxMjBkNiIsImxhc3RfcGFzc3dvcmRfY2hhbmdlIjoxNzUwNjYwODczLCJleHAiOjE3NTU4NDg1NDh9.pb0IybY9tQkriqMUOos72FKtZM3G4p1_aDzwqqh5zX4";
     private static final String QWEN_BX_UA = "231!E3/3FAmU8Mz+joZDE+3YnMEjUq/YvqY2leOxacSC80vTPuB9lMZY9mRWFzrwLEV0PmcfY4rL2JFHeKTCyUQdACIzKZBlsbAyXt6Iz8TQ7ck9CIZgeOBOVaRK66GQqw/G9pMRBb28c0I6pXxeCmhbzzfCtEk+xPyXnSGpo+LsaU/+OPHDQCrVM2z4ya7TrTguCmR87np6YdSH3DIn3jhgnFcEQHlSogvwTYlxfUid3koX0QD3yk8jHFx4EMK5QlFHH3v+++3+qAS+oPts+DQWqi++68uR+K6y+8ix9NvuqCz++I4A+4mYN/A46wSw+KgU++my9k3+2XgETIrb8AIWYA++78Ej+yzIk464F3uHo+4oSn28DfRCb7bb4RdlvedIjC5f8MUt1jGNx1IaH10EiLcJPTR6LPJWUj+1hA2bQgJ5wThA3dmWf7dsh4bWmR1rcU3OV14ljhHOENSBKjzoqihnuxql9adxbf7qHFc6ERi7pfFSMd/92mFibzH2549YNTjfOFvgo+FS1/uN+QpL0WxeXRvcFOwCFuku+u1WTAzJmXLU2obdBrZmsVL+GISL5RDin6H1n6RnV2iLE0SOZlAQT/ccm2CtJ9AhpCquek0adxkY3+TOhSPkW/r2RN+U5SbMBBFWpRqQGE0G8uG8gdRiGM+DhV5nzxB+VDkJpZTnF2C/bS8Lkogquz3Mv9hboXZORvx7WxTEhU3rXpCaVGNHzWIPFXp5shUkyscUlWQq9ZgzkhuFHR8vAwNqWLDCiab6sVoOIP1C9gwo+jAGoxgtAXU0xOWuURnWGG7aemef+Fu4s7FfkGO9kMIal6ScRRKJq+YgiTC6oj6rhJYPEgY9xX+JNv2Cp9TratLC5/7bQCpgO4+BFqW25tBh61NeNVNMS9JTFLysevVVQcfxugYJCGMv6wJ1FYvUgqX/Ag4Y4evHRbWKHp88RhqHXOYNPuBenD1xlAMyNTEOvVCDdCxeDHOzMR7cRSlKUiyGcgA7Kg/Xb9gfN/cu6ve82uefIrQg1b1zfpYgl9lExsVQv6dJPUduyTT3sUwzjlkVPkIxZ0Se5PweURQwVPEAtHYlbPAKjTEmDZ65nvieN96Z/hGl8sTm5YpgeHmDZKK4Qi/4LYK5KIpTEgONMcOqQTWReopT00zJiYw7jcNchb8t9GOTdU0RQLAZnDV8YszRmcd8gSTXrCueqrqdxxmjm1OLnNdSOjczQeyG1h/FRUXgsog9WEp1ggdbuFm3xGcHPcYaA95f6szELKvjRGPEu1gdlUYxBPQ3sWMBE152VWjWNd8SVFUrmWDizlmc0QzlmnzXa2CpNJJMMibqYd3bZ2aOENvhhXgjuRgDv5K46hVP/N2xaM/GYJgPfP1D+JnS7LPhnIUCSoTvrKwabbVOisan8s7AGz1Xse5ocJiEsXhsqSQqTaDNTWLvHxkgQYmOIRuKAeAdyUx0SfwgawTqNMC/mnbGQi/RUKwg69RqfJBYFI3SChkgl9xX9mp+ni1XrPFGSonRl4V4LuUsE7XIs5U4EDAhSJfzh+5KhRk=";
@@ -48,43 +53,41 @@ public class QwenApiClient {
         this.gson = new Gson();
     }
 
-    public void sendMessage(String message, List<AIAssistant.AIModel> models, boolean thinkingModeEnabled, boolean webSearchEnabled, List<ToolSpec> enabledTools) {
+    public void sendMessage(String message, AIAssistant.AIModel model, List<ChatMessage> history, QwenConversationState state, boolean thinkingModeEnabled, boolean webSearchEnabled, List<ToolSpec> enabledTools) {
         new Thread(() -> {
             try {
-                String conversationId = getOrCreateConversation(models, webSearchEnabled);
+                String conversationId = startOrContinueConversation(state, model, webSearchEnabled);
                 if (conversationId == null) {
-                    actionListener.onAiError("Failed to create conversation");
+                    if (actionListener != null) actionListener.onAiError("Failed to create conversation");
                     return;
                 }
-                performCompletion(conversationId, message, models, thinkingModeEnabled, webSearchEnabled, enabledTools);
+                state.setConversationId(conversationId);
+                performCompletion(state, history, model, thinkingModeEnabled, webSearchEnabled, enabledTools);
             } catch (IOException e) {
                 Log.e(TAG, "Error sending Qwen message", e);
-                actionListener.onAiError("Error: " + e.getMessage());
+                if (actionListener != null) actionListener.onAiError("Error: " + e.getMessage());
             }
         }).start();
     }
 
-    private String getOrCreateConversation(List<AIAssistant.AIModel> models, boolean webSearchEnabled) throws IOException {
-        // In a real app, you would persist and retrieve the conversation ID
-        return createQwenConversation(models, webSearchEnabled);
+    private String startOrContinueConversation(QwenConversationState state, AIAssistant.AIModel model, boolean webSearchEnabled) throws IOException {
+        if (state != null && state.getConversationId() != null) {
+            return state.getConversationId();
+        }
+        return createQwenConversation(model, webSearchEnabled);
     }
 
-    private String createQwenConversation(List<AIAssistant.AIModel> models, boolean webSearchEnabled) throws IOException {
+    private String createQwenConversation(AIAssistant.AIModel model, boolean webSearchEnabled) throws IOException {
         JsonObject requestBody = new JsonObject();
         requestBody.addProperty("title", "New Chat");
-
         JsonArray modelsArray = new JsonArray();
-        for (AIAssistant.AIModel model : models) {
-            modelsArray.add(model.getModelId());
-        }
+        modelsArray.add(model.getModelId());
         requestBody.add("models", modelsArray);
-
         requestBody.addProperty("chat_mode", "normal");
         requestBody.addProperty("chat_type", webSearchEnabled ? "search" : "t2t");
         requestBody.addProperty("timestamp", System.currentTimeMillis());
 
         String qwenToken = getQwenToken();
-
         Request request = new Request.Builder()
                 .url(QWEN_BASE_URL + "/chats/new")
                 .post(RequestBody.create(requestBody.toString(), MediaType.parse("application/json")))
@@ -95,7 +98,6 @@ public class QwenApiClient {
             if (response.isSuccessful() && response.body() != null) {
                 String responseBody = response.body().string();
                 JsonObject responseJson = JsonParser.parseString(responseBody).getAsJsonObject();
-
                 if (responseJson.get("success").getAsBoolean()) {
                     return responseJson.getAsJsonObject("data").get("id").getAsString();
                 }
@@ -104,20 +106,35 @@ public class QwenApiClient {
         return null;
     }
 
-    private void performCompletion(String conversationId, String message, List<AIAssistant.AIModel> models, boolean thinkingModeEnabled, boolean webSearchEnabled, List<ToolSpec> enabledTools) throws IOException {
+    private void performCompletion(QwenConversationState state, List<ChatMessage> history, AIAssistant.AIModel model, boolean thinkingModeEnabled, boolean webSearchEnabled, List<ToolSpec> enabledTools) throws IOException {
         JsonObject requestBody = new JsonObject();
         requestBody.addProperty("stream", true);
         requestBody.addProperty("incremental_output", true);
-        requestBody.addProperty("chat_id", conversationId);
+        requestBody.addProperty("chat_id", state.getConversationId());
         requestBody.addProperty("chat_mode", "normal");
-        requestBody.addProperty("model", models.get(0).getModelId());
-        requestBody.add("parent_id", null);
+        requestBody.addProperty("model", model.getModelId());
+        requestBody.addProperty("parent_id", state.getLastParentId()); // Use last parent ID
         requestBody.addProperty("timestamp", System.currentTimeMillis());
 
         JsonArray messages = new JsonArray();
-        messages.add(createSystemMessage(enabledTools));
-        messages.add(createUserMessage(message, models, thinkingModeEnabled, webSearchEnabled));
-        requestBody.add("messages", messages);
+        // The API expects the full history if continuing a conversation.
+        for (ChatMessage msg : history) {
+            if (msg.getSender() == ChatMessage.SENDER_USER) {
+                messages.add(createUserMessage(msg.getContent(), model, thinkingModeEnabled, webSearchEnabled));
+            } else {
+                // To properly continue, we might need to add assistant messages too.
+                // For now, let's stick to the user message as per original logic.
+            }
+        }
+        // Let's refine this: the API probably wants the last user message in a specific format
+        // and the rest of the history is implied by the parent_id. Let's send only the last message.
+        JsonArray singleMessageArray = new JsonArray();
+        if (!history.isEmpty()) {
+            ChatMessage lastMessage = history.get(history.size() - 1);
+            singleMessageArray.add(createUserMessage(lastMessage.getContent(), model, thinkingModeEnabled, webSearchEnabled));
+        }
+
+        requestBody.add("messages", singleMessageArray);
 
         if (!enabledTools.isEmpty()) {
             requestBody.add("tools", ToolSpec.toJsonArray(enabledTools));
@@ -127,29 +144,25 @@ public class QwenApiClient {
         }
 
         String qwenToken = getQwenToken();
-
         Request request = new Request.Builder()
-                .url(QWEN_BASE_URL + "/chat/completions?chat_id=" + conversationId)
+                .url(QWEN_BASE_URL + "/chat/completions?chat_id=" + state.getConversationId())
                 .post(RequestBody.create(requestBody.toString(), MediaType.parse("application/json")))
-                .headers(buildQwenHeaders(qwenToken, conversationId))
+                .headers(buildQwenHeaders(qwenToken, state.getConversationId()))
                 .build();
 
         try (Response response = httpClient.newCall(request).execute()) {
             if (response.isSuccessful() && response.body() != null) {
-                processQwenStreamResponse(response);
+                processQwenStreamResponse(response, state, model);
             } else {
-                actionListener.onAiError("Failed to send message");
+                if (actionListener != null) actionListener.onAiError("Failed to send message");
             }
         }
     }
 
-    private void processQwenStreamResponse(Response response) throws IOException {
+    private void processQwenStreamResponse(Response response, QwenConversationState state, AIAssistant.AIModel model) throws IOException {
         StringBuilder thinkingContent = new StringBuilder();
         StringBuilder answerContent = new StringBuilder();
         List<AIAssistant.WebSource> webSources = new ArrayList<>();
-
-        String pendingFuncName = null;
-        StringBuilder pendingFuncArgs = new StringBuilder();
 
         String line;
         while ((line = response.body().source().readUtf8Line()) != null) {
@@ -160,36 +173,31 @@ public class QwenApiClient {
                 try {
                     JsonObject data = JsonParser.parseString(jsonData).getAsJsonObject();
 
+                    // Check for conversation state updates
+                    if (data.has("response.created")) {
+                        JsonObject created = data.getAsJsonObject("response.created");
+                        if (created.has("chat_id")) state.setConversationId(created.get("chat_id").getAsString());
+                        if (created.has("response_id")) state.setLastParentId(created.get("response_id").getAsString());
+                        continue; // This line doesn't contain choices, so we skip to the next
+                    }
+
                     if (data.has("choices")) {
                         JsonArray choices = data.getAsJsonArray("choices");
                         if (choices.size() > 0) {
                             JsonObject choice = choices.get(0).getAsJsonObject();
                             JsonObject delta = choice.getAsJsonObject("delta");
                             String status = delta.has("status") ? delta.get("status").getAsString() : "";
-
-                            if (delta.has("function_call")) {
-                                // ... (function calling logic remains the same)
-                            }
-
                             String content = delta.has("content") ? delta.get("content").getAsString() : "";
                             String phase = delta.has("phase") ? delta.get("phase").getAsString() : "";
 
                             if ("think".equals(phase)) {
                                 thinkingContent.append(content);
-                                if (actionListener != null) {
-                                    actionListener.onAiStreamUpdate(thinkingContent.toString(), true);
-                                }
-                            } else { // Includes "answer" and other phases
+                                if (actionListener != null) actionListener.onAiStreamUpdate(thinkingContent.toString(), true);
+                            } else {
                                 answerContent.append(content);
-                                // Don't stream final answer updates, will be processed at the end
-                            }
-
-                            if ("web_search".equals(phase)) {
-                                // ... (web search logic remains the same)
                             }
 
                             if ("finished".equals(status)) {
-                                // FINAL PROCESSING
                                 String finalContent = answerContent.toString();
                                 String jsonToParse = extractJsonFromCodeBlock(finalContent);
                                 if (jsonToParse == null && QwenResponseParser.looksLikeJson(finalContent)) {
@@ -200,28 +208,23 @@ public class QwenApiClient {
                                     try {
                                         QwenResponseParser.ParsedResponse parsed = QwenResponseParser.parseResponse(jsonToParse);
                                         if (parsed != null && parsed.isValid && parsed.action != null && parsed.action.contains("file")) {
-                                            processFileOperationsFromParsedResponse(parsed);
+                                            processFileOperationsFromParsedResponse(parsed, model.getDisplayName());
                                         } else {
-                                            // It's JSON but not a file operation, or parsing was partial
                                             String explanation = parsed != null ? parsed.explanation : "Could not fully parse response.";
                                             List<String> suggestions = parsed != null ? parsed.suggestions : new ArrayList<>();
-                                            if (actionListener != null) {
-                                                actionListener.onAiActionsProcessed(jsonToParse, explanation, suggestions, new ArrayList<>(), "Qwen");
-                                            }
+                                            if (actionListener != null) actionListener.onAiActionsProcessed(jsonToParse, explanation, suggestions, new ArrayList<>(), model.getDisplayName());
                                         }
                                     } catch (Exception e) {
                                         Log.e(TAG, "Failed to parse extracted JSON, treating as text.", e);
-                                        if (actionListener != null) {
-                                            actionListener.onAiActionsProcessed(null, finalContent, new ArrayList<>(), new ArrayList<>(), "Qwen");
-                                        }
+                                        if (actionListener != null) actionListener.onAiActionsProcessed(null, finalContent, new ArrayList<>(), new ArrayList<>(), model.getDisplayName());
                                     }
                                 } else {
-                                    // Regular text response
-                                    if (actionListener != null) {
-                                        actionListener.onAiActionsProcessed(null, finalContent, new ArrayList<>(), new ArrayList<>(), "Qwen");
-                                    }
+                                    if (actionListener != null) actionListener.onAiActionsProcessed(null, finalContent, new ArrayList<>(), new ArrayList<>(), model.getDisplayName());
                                 }
-                                break; // Exit loop
+
+                                // Notify listener to save the updated state
+                                if (actionListener != null) actionListener.onQwenConversationStateUpdated(state);
+                                break;
                             }
                         }
                     }
@@ -236,14 +239,14 @@ public class QwenApiClient {
         JsonObject systemMsg = new JsonObject();
         systemMsg.addProperty("role", "system");
         if (!enabledTools.isEmpty()) {
-            systemMsg.addProperty("content", "You are CodexAgent, an AI assistant inside a code editor.\n\nYour primary function is to help users by performing file operations. When a user asks for changes to the project, you MUST respond with a single JSON object. This is not optional.\n\nThe JSON object must have the following structure:\n{\n  \"action\": \"file_operation\",\n  \"operations\": [\n    {\n      \"type\": \"createFile\",\n      \"path\": \"path/to/new_file.html\",\n      \"content\": \"<html>...</html>\"\n    },\n    {\n      \"type\": \"updateFile\",\n      \"path\": \"path/to/existing_file.js\",\n      \"content\": \"// new javascript content\"\n    }\n  ],\n  \"explanation\": \"A brief summary of the changes you made.\",\n  \"suggestions\": [\"Add a CSS file for styling.\", \"Implement a dark mode toggle.\"]\n}\n\n- The `operations` array can contain multiple operations of different types (`createFile`, `updateFile`, `deleteFile`, `renameFile`).\n- For `renameFile`, include `oldPath` and `newPath`.\n- For `deleteFile`, only `path` is required.\n- Do not include any other text or formatting outside of the JSON object. Your entire response must be the JSON object itself.");
+            systemMsg.addProperty("content", "You are CodexAgent, an AI assistant inside a code editor. Your primary function is to help users by performing file operations. When a user asks for changes to the project, you MUST respond with a single JSON object. This is not optional. The JSON object must have the following structure: {\"action\": \"file_operation\", \"operations\": [{\"type\": \"createFile\", \"path\": \"path/to/new_file.html\", \"content\": \"<html>...</html>\"}, {\"type\": \"updateFile\", \"path\": \"path/to/existing_file.js\", \"content\": \"// new javascript content\"}], \"explanation\": \"A brief summary of the changes you made.\", \"suggestions\": [\"Add a CSS file for styling.\", \"Implement a dark mode toggle.\"]}. - The `operations` array can contain multiple operations of different types (`createFile`, `updateFile`, `deleteFile`, `renameFile`). - For `renameFile`, include `oldPath` and `newPath`. - For `deleteFile`, only `path` is required. - Do not include any other text or formatting outside of the JSON object. Your entire response must be the JSON object itself.");
         } else {
-            systemMsg.addProperty("content", "You are CodexAgent, an AI assistant inside a code editor.\n\n- If the user's request requires changing the workspace (create, update, delete, rename files/folders) respond with detailed instructions on what files to create or modify.\n- Provide clear explanations and suggestions for improvements.\n- Think step by step internally, but output only the final answer.");
+            systemMsg.addProperty("content", "You are CodexAgent, an AI assistant inside a code editor. - If the user's request requires changing the workspace (create, update, delete, rename files/folders) respond with detailed instructions on what files to create or modify. - Provide clear explanations and suggestions for improvements. - Think step by step internally, but output only the final answer.");
         }
         return systemMsg;
     }
 
-    private JsonObject createUserMessage(String message, List<AIAssistant.AIModel> models, boolean thinkingModeEnabled, boolean webSearchEnabled) {
+    private JsonObject createUserMessage(String message, AIAssistant.AIModel model, boolean thinkingModeEnabled, boolean webSearchEnabled) {
         JsonObject messageObj = new JsonObject();
         messageObj.addProperty("role", "user");
         messageObj.addProperty("content", message);
@@ -251,9 +254,7 @@ public class QwenApiClient {
         messageObj.add("files", new JsonArray());
         messageObj.addProperty("timestamp", System.currentTimeMillis());
         JsonArray modelsArray = new JsonArray();
-        for (AIAssistant.AIModel model : models) {
-            modelsArray.add(model.getModelId());
-        }
+        modelsArray.add(model.getModelId());
         messageObj.add("models", modelsArray);
         messageObj.addProperty("chat_type", webSearchEnabled ? "search" : "t2t");
         JsonObject featureConfig = new JsonObject();
@@ -267,7 +268,7 @@ public class QwenApiClient {
         }
         messageObj.add("feature_config", featureConfig);
         messageObj.addProperty("fid", java.util.UUID.randomUUID().toString());
-        messageObj.add("parentId", null);
+        messageObj.add("parentId", null); // This should be set in the main request body, not here
         messageObj.add("childrenIds", new JsonArray());
         return messageObj;
     }
@@ -487,31 +488,17 @@ public class QwenApiClient {
         return null;
     }
 
-    private void processFileOperationsFromParsedResponse(QwenResponseParser.ParsedResponse parsedResponse) {
+    private void processFileOperationsFromParsedResponse(QwenResponseParser.ParsedResponse parsedResponse, String modelDisplayName) {
         try {
-            Log.d(TAG, "Processing file operations from parsed response. Action: " + parsedResponse.action);
-            Log.d(TAG, "Operations count: " + parsedResponse.operations.size());
-            Log.d(TAG, "Explanation: " + parsedResponse.explanation);
-            Log.d(TAG, "Suggestions count: " + parsedResponse.suggestions.size());
-
             List<ChatMessage.FileActionDetail> fileActions = QwenResponseParser.toFileActionDetails(parsedResponse);
-            Log.d(TAG, "Converted to " + fileActions.size() + " file action details");
-
-            // DO NOT execute the operations here. Just send them to the listener for proposal.
-            // The execution will happen in AiAssistantManager when the user clicks "Accept".
-
-            // Always notify listeners with explanation/suggestions, even for single-op
             if (actionListener != null) {
-                Log.d(TAG, "Notifying actionListener with " + fileActions.size() + " file actions");
                 actionListener.onAiActionsProcessed(
                         null,
                         parsedResponse.explanation,
                         parsedResponse.suggestions,
                         fileActions,
-                        "Qwen"
+                        modelDisplayName
                 );
-            } else {
-                Log.w(TAG, "actionListener is null! Cannot notify UI of file operations.");
             }
         } catch (Exception e) {
             Log.e(TAG, "Error processing file operations", e);

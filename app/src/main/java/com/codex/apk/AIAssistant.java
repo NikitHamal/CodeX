@@ -298,6 +298,7 @@ public class AIAssistant {
         void onAiRequestStarted();
         void onAiStreamUpdate(String partialResponse, boolean isThinking);
         void onAiRequestCompleted();
+        void onQwenConversationStateUpdated(QwenConversationState state);
     }
 	
 	// Web source data class
@@ -442,7 +443,13 @@ public class AIAssistant {
 	public void sendPrompt(String userPrompt, String fileName, String fileContent) {
 		// This is a simplified version - in practice, you'd want to format the prompt
 		// with the file content and send it via the appropriate provider
-		sendMessage(userPrompt, new ArrayList<>());
+		sendMessage(userPrompt, new ArrayList<>(), null, null);
+	}
+
+	public void sendPrompt(String userPrompt, List<ChatMessage> chatHistory, QwenConversationState qwenState, String fileName, String fileContent) {
+		// This is a simplified version - in practice, you'd want to format the prompt
+		// with the file content and send it via the appropriate provider
+		sendMessage(userPrompt, new ArrayList<>(), chatHistory, qwenState);
 	}
 	
 	public void shutdown() {
@@ -531,11 +538,9 @@ public class AIAssistant {
 	/**
 	 * Sends a message using the appropriate provider API
 	 */
-	public void sendMessage(String message, List<File> attachments) {
+	public void sendMessage(String message, List<File> attachments, List<ChatMessage> chatHistory, QwenConversationState qwenState) {
 		if (currentModel.getProvider() == AIProvider.ALIBABA) {
-            List<AIModel> models = new ArrayList<>();
-            models.add(currentModel);
-			qwenApiClient.sendMessage(message, models, thinkingModeEnabled, webSearchEnabled, enabledTools);
+			qwenApiClient.sendMessage(message, currentModel, chatHistory, qwenState, thinkingModeEnabled, webSearchEnabled, enabledTools);
 		} else if (currentModel.getProvider() == AIProvider.Z) {
 			sendGLMMessage(message, attachments);
 		} else {

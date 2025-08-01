@@ -3,9 +3,10 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:paddingTop="8dp"
-    android:paddingBottom="8dp"
-    android:paddingHorizontal="16dp">
+    android:paddingTop="4dp"
+    android:paddingBottom="4dp"
+    android:paddingStart="8dp"
+    android:paddingEnd="8dp">
 
     <com.google.android.material.card.MaterialCardView
         android:id="@+id/user_message_card_view"
@@ -15,7 +16,9 @@
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constrainedWidth="true"
         app:layout_constraintHorizontal_bias="1.0"
-        app:cardElevation="1dp"
+        app:layout_constraintWidth_max="0dp"
+        app:layout_constraintWidth_percent="0.8"
+        app:cardElevation="0dp"
         app:strokeWidth="0dp"
         app:shapeAppearanceOverlay="@style/ShapeAppearance.ChatBubble.User"
         app:cardBackgroundColor="?attr/colorPrimary">
@@ -24,10 +27,10 @@
             android:id="@+id/text_message_content"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:paddingHorizontal="16dp"
-            android:paddingVertical="10dp"
+            android:paddingHorizontal="12dp"
+            android:paddingVertical="8dp"
             android:textColor="?attr/colorOnPrimary"
-            android:textSize="15sp"
+            android:textSize="14sp"
             android:lineSpacingExtra="4dp"
             android:text="This is a user message example."
             android:textIsSelectable="true" />

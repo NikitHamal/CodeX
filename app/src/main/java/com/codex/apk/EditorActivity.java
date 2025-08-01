@@ -288,9 +288,9 @@ public class EditorActivity extends AppCompatActivity implements
     }
 
     @Override
-    public void sendAiPrompt(String userPrompt) {
+    public void sendAiPrompt(String userPrompt, List<ChatMessage> chatHistory, QwenConversationState qwenState) {
         tabManager.getActiveTabItem(); // Ensure active tab is retrieved before sending prompt
-        aiAssistantManager.sendAiPrompt(userPrompt, tabManager.getActiveTabItem()); // Delegate to AiAssistantManager
+        aiAssistantManager.sendAiPrompt(userPrompt, chatHistory, qwenState, tabManager.getActiveTabItem()); // Delegate to AiAssistantManager
     }
 
     // Removed direct delegation of onAiErrorReceived, onAiRequestStarted, onAiRequestCompleted
@@ -316,6 +316,13 @@ public class EditorActivity extends AppCompatActivity implements
     @Override
     public void onAiFileChangeClicked(ChatMessage.FileActionDetail fileActionDetail) {
         aiAssistantManager.onAiFileChangeClicked(fileActionDetail); // Delegate to AiAssistantManager
+    }
+
+    @Override
+    public void onQwenConversationStateUpdated(QwenConversationState state) {
+        if (aiChatFragment != null) {
+            aiChatFragment.onQwenConversationStateUpdated(state);
+        }
     }
 
     // Public methods for managers to call back to EditorActivity for UI updates or core actions

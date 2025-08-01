@@ -44,8 +44,9 @@ public class AIChatFragment extends Fragment implements
     private static final String TAG = "AIChatFragment";
     private static final String PREFS_NAME = "ai_chat_prefs";
     private static final String ARG_PROJECT_PATH = "project_path";
-    // CHAT_HISTORY_KEY will now be a prefix, actual key will include projectPath
+    // Key prefixes for project-specific data
     private static final String CHAT_HISTORY_KEY_PREFIX = "chat_history_";
+    private static final String QWEN_CONVERSATION_STATE_KEY_PREFIX = "qwen_conv_state_";
     // Old generic key for migration purposes
     private static final String OLD_GENERIC_CHAT_HISTORY_KEY = "chat_history";
 
@@ -79,6 +80,7 @@ public class AIChatFragment extends Fragment implements
     public boolean isAiProcessing = false;
 
     private String projectPath; // New field to store the current project's path
+    private QwenConversationState qwenConversationState; // To manage Qwen conversation state
 
     /**
      * Interface for actions related to AI chat that need to be handled by the parent activity.
@@ -86,11 +88,12 @@ public class AIChatFragment extends Fragment implements
      */
     public interface AIChatFragmentListener {
         AIAssistant getAIAssistant();
-        void sendAiPrompt(String userPrompt);
+        void sendAiPrompt(String userPrompt, List<ChatMessage> chatHistory, QwenConversationState qwenState);
         void onAiAcceptActions(int messagePosition, ChatMessage message);
         void onAiDiscardActions(int messagePosition, ChatMessage message);
         void onReapplyActions(int messagePosition, ChatMessage message);
         void onAiFileChangeClicked(ChatMessage.FileActionDetail fileActionDetail);
+        void onQwenConversationStateUpdated(QwenConversationState state);
     }
 
     /**
@@ -130,12 +133,13 @@ public class AIChatFragment extends Fragment implements
         }
 
         chatHistory = new ArrayList<>();
+        qwenConversationState = new QwenConversationState(); // Initialize with empty state
     }
 
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
-        loadChatHistoryFromPrefs();
+        loadChatState(); // Load both history and conversation state
         updateUiVisibility(); // Also call this here to set initial state
 
         // Additional debugging for view dimensions
@@ -297,21 +301,18 @@ public class AIChatFragment extends Fragment implements
      * This ensures chat history is isolated per project.
      * @return A unique key for the current project's chat history.
      */
-    private String getChatHistoryKey() {
+    private String getProjectSpecificKey(String prefix) {
         if (projectPath == null || projectPath.isEmpty()) {
-            Log.w(TAG, "projectPath is null or empty, using generic chat history key as fallback.");
-            return CHAT_HISTORY_KEY_PREFIX + "generic_fallback"; // Use a distinct fallback
+            Log.w(TAG, "projectPath is null or empty, using generic key as fallback for prefix: " + prefix);
+            return prefix + "generic_fallback";
         }
-        // Use Base64 encoding of the projectPath to ensure a unique and safe key
         try {
             byte[] pathBytes = projectPath.getBytes("UTF-8");
-            // Use Base64.NO_WRAP to prevent newlines and Base64.URL_SAFE for URL-friendly characters
             String encodedPath = Base64.encodeToString(pathBytes, Base64.NO_WRAP | Base64.URL_SAFE);
-            return CHAT_HISTORY_KEY_PREFIX + encodedPath;
+            return prefix + encodedPath;
         } catch (UnsupportedEncodingException e) {
             Log.e(TAG, "UTF-8 encoding not supported, falling back to simple sanitization.", e);
-            // Fallback to simple sanitization if Base64 fails (highly unlikely on Android)
-            return CHAT_HISTORY_KEY_PREFIX + projectPath.replaceAll("[^a-zA-Z0-9_]", "_");
+            return prefix + projectPath.replaceAll("[^a-zA-Z0-9_]", "_");
         }
     }
 
@@ -370,14 +371,15 @@ public class AIChatFragment extends Fragment implements
             return;
         }
 
-        // Create user message
+        // Create user message and add it to history *before* sending
         ChatMessage userMsg = new ChatMessage(ChatMessage.SENDER_USER, prompt, System.currentTimeMillis());
         addMessage(userMsg);
         editTextAiPrompt.setText("");
 
-        // Notify activity to send prompt to AI
+        // Notify activity to send prompt to AI, passing the current history and conversation state
         if (listener != null) {
-            listener.sendAiPrompt(prompt);
+            // Pass a copy of the history to avoid concurrent modification issues
+            listener.sendAiPrompt(prompt, new ArrayList<>(chatHistory), qwenConversationState);
         }
     }
 
@@ -486,7 +488,7 @@ public class AIChatFragment extends Fragment implements
         if (position >= 0 && position < chatHistory.size()) {
             chatHistory.set(position, updatedMessage);
             chatMessageAdapter.notifyItemChanged(position);
-            saveChatHistoryToPrefs(); // Save updated history
+            saveChatState(); // Save updated history and state
         }
     }
 
@@ -535,55 +537,75 @@ public class AIChatFragment extends Fragment implements
      * If no history is found for the project-specific key, it attempts to migrate
      * history from the old generic key.
      */
-    public void loadChatHistoryFromPrefs() {
+    /**
+     * Loads both chat history and Qwen conversation state from SharedPreferences.
+     */
+    public void loadChatState() {
         SharedPreferences prefs = requireContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         Gson gson = new Gson();
-        Type type = new TypeToken<List<ChatMessage>>() {}.getType();
+        Type historyType = new TypeToken<List<ChatMessage>>() {}.getType();
 
-        // 1. Try to load from the project-specific key
-        String projectSpecificJson = prefs.getString(getChatHistoryKey(), null);
-        if (projectSpecificJson != null) {
-            List<ChatMessage> loadedHistory = gson.fromJson(projectSpecificJson, type);
+        // 1. Load Chat History (with migration logic)
+        String historyKey = getProjectSpecificKey(CHAT_HISTORY_KEY_PREFIX);
+        String historyJson = prefs.getString(historyKey, null);
+        if (historyJson != null) {
+            List<ChatMessage> loadedHistory = gson.fromJson(historyJson, historyType);
             if (loadedHistory != null) {
                 chatHistory.clear();
                 chatHistory.addAll(loadedHistory);
                 Log.d(TAG, "Loaded chat history for project: " + projectPath);
-                return; // History found for this project, no migration needed
+            }
+        } else {
+            // Migration from old generic key
+            String oldGenericJson = prefs.getString(OLD_GENERIC_CHAT_HISTORY_KEY, null);
+            if (oldGenericJson != null) {
+                List<ChatMessage> loadedHistory = gson.fromJson(oldGenericJson, historyType);
+                if (loadedHistory != null && !loadedHistory.isEmpty()) {
+                    chatHistory.clear();
+                    chatHistory.addAll(loadedHistory);
+                    Log.d(TAG, "Migrating chat history from old key for project: " + projectPath);
+                    // The next save will use the new project-specific key
+                }
+            } else {
+                Log.d(TAG, "No chat history found for project: " + projectPath + ". Starting fresh.");
             }
         }
 
-        // 2. If no project-specific history, try to load from the old generic key (for migration)
-        String oldGenericJson = prefs.getString(OLD_GENERIC_CHAT_HISTORY_KEY, null);
-        if (oldGenericJson != null) {
-            List<ChatMessage> loadedHistory = gson.fromJson(oldGenericJson, type);
-            if (loadedHistory != null && !loadedHistory.isEmpty()) {
-                chatHistory.clear();
-                chatHistory.addAll(loadedHistory);
-                Log.d(TAG, "Migrating chat history from old generic key for project: " + projectPath);
-                // Immediately save to the new project-specific key
-                saveChatHistoryToPrefs();
-                // Optionally, remove the old generic key's data to clean up.
-                // For now, we'll leave it to avoid accidental data loss for other projects
-                // that haven't been opened yet and migrated.
-                // prefs.edit().remove(OLD_GENERIC_CHAT_HISTORY_KEY).apply();
-            }
+        // 2. Load Qwen Conversation State
+        String qwenStateKey = getProjectSpecificKey(QWEN_CONVERSATION_STATE_KEY_PREFIX);
+        String qwenStateJson = prefs.getString(qwenStateKey, null);
+        if (qwenStateJson != null) {
+            qwenConversationState = QwenConversationState.fromJson(qwenStateJson);
+            Log.d(TAG, "Loaded Qwen conversation state for project: " + projectPath);
+        } else {
+            qwenConversationState = new QwenConversationState(); // Start with a fresh state
+            Log.d(TAG, "No Qwen conversation state found for project: " + projectPath);
         }
-        Log.d(TAG, "No chat history found for project: " + projectPath + ". Starting fresh.");
     }
 
     /**
-     * Saves chat history to SharedPreferences using the project-specific key.
+     * Saves both chat history and Qwen conversation state to SharedPreferences.
      */
-    public void saveChatHistoryToPrefs() {
-        if (!isAdded()) {
+    public void saveChatState() {
+        if (!isAdded() || getContext() == null) {
             return;
         }
         SharedPreferences prefs = requireContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         SharedPreferences.Editor editor = prefs.edit();
         Gson gson = new Gson();
-        String json = gson.toJson(chatHistory);
-        editor.putString(getChatHistoryKey(), json); // Use project-specific key
+
+        // 1. Save Chat History
+        String historyKey = getProjectSpecificKey(CHAT_HISTORY_KEY_PREFIX);
+        String historyJson = gson.toJson(chatHistory);
+        editor.putString(historyKey, historyJson);
+
+        // 2. Save Qwen Conversation State
+        String qwenStateKey = getProjectSpecificKey(QWEN_CONVERSATION_STATE_KEY_PREFIX);
+        String qwenStateJson = qwenConversationState.toJson();
+        editor.putString(qwenStateKey, qwenStateJson);
+
         editor.apply();
+        Log.d(TAG, "Saved chat state for project: " + projectPath);
     }
 
     /**
@@ -865,6 +887,18 @@ public class AIChatFragment extends Fragment implements
     public void onFileChangeClicked(ChatMessage.FileActionDetail fileActionDetail) {
         if (listener != null) {
             listener.onAiFileChangeClicked(fileActionDetail);
+        }
+    }
+
+    /**
+     * Called from the parent activity when the Qwen API client has an updated conversation state.
+     * @param state The new state to be persisted.
+     */
+    public void onQwenConversationStateUpdated(QwenConversationState state) {
+        if (state != null) {
+            this.qwenConversationState = state;
+            saveChatState(); // Persist the new state immediately
+            Log.d(TAG, "Qwen conversation state updated and saved.");
         }
     }
 }

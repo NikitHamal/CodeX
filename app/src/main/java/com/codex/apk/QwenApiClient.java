@@ -71,14 +71,14 @@ public class QwenApiClient implements ApiClient {
         }).start();
     }
 
-    private String startOrContinueConversation(QwenConversationState state, AIAssistant.AIModel model, boolean webSearchEnabled) throws IOException {
+    private String startOrContinueConversation(QwenConversationState state, AIModel model, boolean webSearchEnabled) throws IOException {
         if (state != null && state.getConversationId() != null) {
             return state.getConversationId();
         }
         return createQwenConversation(model, webSearchEnabled);
     }
 
-    private String createQwenConversation(AIAssistant.AIModel model, boolean webSearchEnabled) throws IOException {
+    private String createQwenConversation(AIModel model, boolean webSearchEnabled) throws IOException {
         JsonObject requestBody = new JsonObject();
         requestBody.addProperty("title", "New Chat");
         JsonArray modelsArray = new JsonArray();
@@ -107,7 +107,7 @@ public class QwenApiClient implements ApiClient {
         return null;
     }
 
-    private void performCompletion(QwenConversationState state, List<ChatMessage> history, AIAssistant.AIModel model, boolean thinkingModeEnabled, boolean webSearchEnabled, List<ToolSpec> enabledTools) throws IOException {
+    private void performCompletion(QwenConversationState state, List<ChatMessage> history, AIModel model, boolean thinkingModeEnabled, boolean webSearchEnabled, List<ToolSpec> enabledTools) throws IOException {
         JsonObject requestBody = new JsonObject();
         requestBody.addProperty("stream", true);
         requestBody.addProperty("incremental_output", true);
@@ -154,10 +154,10 @@ public class QwenApiClient implements ApiClient {
         }
     }
 
-    private void processQwenStreamResponse(Response response, QwenConversationState state, AIAssistant.AIModel model) throws IOException {
+    private void processQwenStreamResponse(Response response, QwenConversationState state, AIModel model) throws IOException {
         StringBuilder thinkingContent = new StringBuilder();
         StringBuilder answerContent = new StringBuilder();
-        List<AIAssistant.WebSource> webSources = new ArrayList<>();
+        List<WebSource> webSources = new ArrayList<>();
 
         String line;
         while ((line = response.body().source().readUtf8Line()) != null) {
@@ -234,7 +234,7 @@ public class QwenApiClient implements ApiClient {
         return PromptManager.createSystemMessage(enabledTools);
     }
 
-    private JsonObject createUserMessage(String message, AIAssistant.AIModel model, boolean thinkingModeEnabled, boolean webSearchEnabled) {
+    private JsonObject createUserMessage(String message, AIModel model, boolean thinkingModeEnabled, boolean webSearchEnabled) {
         JsonObject messageObj = new JsonObject();
         messageObj.addProperty("role", "user");
         messageObj.addProperty("content", message);

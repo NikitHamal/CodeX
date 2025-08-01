@@ -87,8 +87,8 @@ public class GLMApiClient {
         public int getMaxContextLength() { return maxContextLength; }
         public int getMaxGenerationLength() { return maxGenerationLength; }
         
-        public AIAssistant.ModelCapabilities toModelCapabilities() {
-            return new AIAssistant.ModelCapabilities(
+        public ModelCapabilities toModelCapabilities() {
+            return new ModelCapabilities(
                 supportsThinking, supportsWebSearch, supportsVision, supportsDocument,
                 supportsVideo, supportsAudio, supportsCitations, maxContextLength, maxGenerationLength
             );
@@ -96,7 +96,7 @@ public class GLMApiClient {
     }
     
     public interface GLMResponseListener {
-        void onResponse(String response, boolean isThinking, List<AIAssistant.WebSource> webSources);
+        void onResponse(String response, boolean isThinking, List<WebSource> webSources);
         void onError(String error);
         void onStreamUpdate(String partialResponse, boolean isThinking);
     }
@@ -266,7 +266,7 @@ public class GLMApiClient {
                     boolean isThinking = message.has("thinking") && message.get("thinking").getAsBoolean();
                     
                     // Extract web sources if available
-                    List<AIAssistant.WebSource> webSources = extractWebSources(response);
+                    List<WebSource> webSources = extractWebSources(response);
                     
                     listener.onResponse(content, isThinking, webSources);
                 }
@@ -283,7 +283,7 @@ public class GLMApiClient {
     private void processGLMStreamResponse(Response response, GLMResponseListener listener) throws IOException {
         StringBuilder fullContent = new StringBuilder();
         StringBuilder thinkingContent = new StringBuilder();
-        List<AIAssistant.WebSource> webSources = new ArrayList<>();
+        List<WebSource> webSources = new ArrayList<>();
         
         String line;
         while ((line = response.body().source().readUtf8Line()) != null) {
@@ -330,14 +330,14 @@ public class GLMApiClient {
     /**
      * Extracts web sources from GLM response
      */
-    private List<AIAssistant.WebSource> extractWebSources(JsonObject response) {
-        List<AIAssistant.WebSource> sources = new ArrayList<>();
+    private List<WebSource> extractWebSources(JsonObject response) {
+        List<WebSource> sources = new ArrayList<>();
         
         if (response.has("web_search") && response.getAsJsonObject("web_search").has("results")) {
             JsonArray results = response.getAsJsonObject("web_search").getAsJsonArray("results");
             for (int i = 0; i < results.size(); i++) {
                 JsonObject result = results.get(i).getAsJsonObject();
-                sources.add(new AIAssistant.WebSource(
+                sources.add(new WebSource(
                     result.get("url").getAsString(),
                     result.get("title").getAsString(),
                     result.has("snippet") ? result.get("snippet").getAsString() : "",

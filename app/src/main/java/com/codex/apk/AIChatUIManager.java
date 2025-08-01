@@ -100,19 +100,19 @@ public class AIChatUIManager {
         ImageView refreshZ = dialogView.findViewById(R.id.button_refresh_z);
         ImageView closeButton = dialogView.findViewById(R.id.button_close);
 
-        setupProviderModels(googleModels, AIAssistant.AIProvider.GOOGLE, aiAssistant);
-        setupProviderModels(huggingfaceModels, AIAssistant.AIProvider.HUGGINGFACE, aiAssistant);
-        setupProviderModels(alibabaModels, AIAssistant.AIProvider.ALIBABA, aiAssistant);
-        setupProviderModels(zModels, AIAssistant.AIProvider.Z, aiAssistant);
+        setupProviderModels(googleModels, AIProvider.GOOGLE, aiAssistant);
+        setupProviderModels(huggingfaceModels, AIProvider.HUGGINGFACE, aiAssistant);
+        setupProviderModels(alibabaModels, AIProvider.ALIBABA, aiAssistant);
+        setupProviderModels(zModels, AIProvider.Z, aiAssistant);
 
         refreshAlibaba.setOnClickListener(v -> {
-            aiAssistant.refreshModelsForProvider(AIAssistant.AIProvider.ALIBABA, new AIAssistant.RefreshCallback() {
+            aiAssistant.refreshModelsForProvider(AIProvider.ALIBABA, new AIAssistant.RefreshCallback() {
                 @Override
                 public void onRefreshComplete(boolean success, String message) {
                     fragment.requireActivity().runOnUiThread(() -> {
                         Toast.makeText(context, message, Toast.LENGTH_SHORT).show();
                         if (success) {
-                            setupProviderModels(alibabaModels, AIAssistant.AIProvider.ALIBABA, aiAssistant);
+                            setupProviderModels(alibabaModels, AIProvider.ALIBABA, aiAssistant);
                         }
                     });
                 }
@@ -120,13 +120,13 @@ public class AIChatUIManager {
         });
 
         refreshZ.setOnClickListener(v -> {
-            aiAssistant.refreshModelsForProvider(AIAssistant.AIProvider.Z, new AIAssistant.RefreshCallback() {
+            aiAssistant.refreshModelsForProvider(AIProvider.Z, new AIAssistant.RefreshCallback() {
                 @Override
                 public void onRefreshComplete(boolean success, String message) {
                     fragment.requireActivity().runOnUiThread(() -> {
                         Toast.makeText(context, message, Toast.LENGTH_SHORT).show();
                         if (success) {
-                            setupProviderModels(zModels, AIAssistant.AIProvider.Z, aiAssistant);
+                            setupProviderModels(zModels, AIProvider.Z, aiAssistant);
                         }
                     });
                 }
@@ -138,9 +138,9 @@ public class AIChatUIManager {
         modelPickerDialog.show();
     }
 
-    private void setupProviderModels(RecyclerView recyclerView, AIAssistant.AIProvider provider, AIAssistant aiAssistant) {
-        Map<AIAssistant.AIProvider, List<AIAssistant.AIModel>> modelsByProvider = AIAssistant.AIModel.getModelsByProvider();
-        List<AIAssistant.AIModel> providerModels = modelsByProvider.get(provider);
+    private void setupProviderModels(RecyclerView recyclerView, AIProvider provider, AIAssistant aiAssistant) {
+        Map<AIProvider, List<AIModel>> modelsByProvider = AIModel.getModelsByProvider();
+        List<AIModel> providerModels = modelsByProvider.get(provider);
 
         if (providerModels != null && !providerModels.isEmpty()) {
             ModelPickerAdapter adapter = new ModelPickerAdapter(providerModels, aiAssistant.getCurrentModel(),
@@ -169,7 +169,7 @@ public class AIChatUIManager {
         MaterialSwitch switchThinking = dialogView.findViewById(R.id.switch_thinking_mode);
         MaterialSwitch switchWebSearch = dialogView.findViewById(R.id.switch_web_search);
 
-        AIAssistant.ModelCapabilities capabilities = aiAssistant.getCurrentModel().getCapabilities();
+        ModelCapabilities capabilities = aiAssistant.getCurrentModel().getCapabilities();
 
         switchThinking.setChecked(aiAssistant.isThinkingModeEnabled());
         switchThinking.setEnabled(capabilities.supportsThinking);
@@ -185,7 +185,7 @@ public class AIChatUIManager {
     public void updateSettingsButtonState(AIAssistant aiAssistant) {
         if (buttonAiSettings == null || aiAssistant == null) return;
 
-        AIAssistant.ModelCapabilities capabilities = aiAssistant.getCurrentModel().getCapabilities();
+        ModelCapabilities capabilities = aiAssistant.getCurrentModel().getCapabilities();
         boolean hasSettings = capabilities.supportsThinking || capabilities.supportsWebSearch;
 
         buttonAiSettings.setEnabled(hasSettings);

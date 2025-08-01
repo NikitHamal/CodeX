@@ -14,15 +14,15 @@ import java.util.List;
 
 public class ModelPickerAdapter extends RecyclerView.Adapter<ModelPickerAdapter.ModelViewHolder> {
     
-    private List<AIAssistant.AIModel> models;
-    private AIAssistant.AIModel selectedModel;
+    private List<AIModel> models;
+    private AIModel selectedModel;
     private OnModelSelectedListener listener;
     
     public interface OnModelSelectedListener {
-        void onModelSelected(AIAssistant.AIModel model);
+        void onModelSelected(AIModel model);
     }
     
-    public ModelPickerAdapter(List<AIAssistant.AIModel> models, AIAssistant.AIModel selectedModel, OnModelSelectedListener listener) {
+    public ModelPickerAdapter(List<AIModel> models, AIModel selectedModel, OnModelSelectedListener listener) {
         this.models = models;
         this.selectedModel = selectedModel;
         this.listener = listener;
@@ -37,7 +37,7 @@ public class ModelPickerAdapter extends RecyclerView.Adapter<ModelPickerAdapter.
     
     @Override
     public void onBindViewHolder(@NonNull ModelViewHolder holder, int position) {
-        AIAssistant.AIModel model = models.get(position);
+        AIModel model = models.get(position);
         holder.bind(model, model == selectedModel);
     }
     
@@ -46,7 +46,7 @@ public class ModelPickerAdapter extends RecyclerView.Adapter<ModelPickerAdapter.
         return models.size();
     }
     
-    public void updateSelectedModel(AIAssistant.AIModel model) {
+    public void updateSelectedModel(AIModel model) {
         this.selectedModel = model;
         notifyDataSetChanged();
     }
@@ -67,7 +67,7 @@ public class ModelPickerAdapter extends RecyclerView.Adapter<ModelPickerAdapter.
             });
         }
         
-        public void bind(AIAssistant.AIModel model, boolean isSelected) {
+        public void bind(AIModel model, boolean isSelected) {
             radioModel.setChecked(isSelected);
             textModelName.setText(model.getDisplayName());
         }

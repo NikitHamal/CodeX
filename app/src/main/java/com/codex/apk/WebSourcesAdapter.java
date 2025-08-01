@@ -15,9 +15,9 @@ import java.util.List;
 
 public class WebSourcesAdapter extends RecyclerView.Adapter<WebSourcesAdapter.WebSourceViewHolder> {
     
-    private List<AIAssistant.WebSource> webSources;
+    private List<WebSource> webSources;
     
-    public WebSourcesAdapter(List<AIAssistant.WebSource> webSources) {
+    public WebSourcesAdapter(List<WebSource> webSources) {
         this.webSources = webSources;
     }
     
@@ -30,7 +30,7 @@ public class WebSourcesAdapter extends RecyclerView.Adapter<WebSourcesAdapter.We
     
     @Override
     public void onBindViewHolder(@NonNull WebSourceViewHolder holder, int position) {
-        AIAssistant.WebSource source = webSources.get(position);
+        WebSource source = webSources.get(position);
         holder.bind(source);
     }
     
@@ -53,13 +53,13 @@ public class WebSourcesAdapter extends RecyclerView.Adapter<WebSourcesAdapter.We
             textUrl = itemView.findViewById(R.id.text_url);
             
             itemView.setOnClickListener(v -> {
-                AIAssistant.WebSource source = webSources.get(getAdapterPosition());
+                WebSource source = webSources.get(getAdapterPosition());
                 Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(source.url));
                 itemView.getContext().startActivity(intent);
             });
         }
         
-        public void bind(AIAssistant.WebSource source) {
+        public void bind(WebSource source) {
             textTitle.setText(source.title);
             textSnippet.setText(source.snippet);
             textUrl.setText(source.url);

@@ -117,24 +117,18 @@ public class QwenApiClient {
         requestBody.addProperty("timestamp", System.currentTimeMillis());
 
         JsonArray messages = new JsonArray();
-        // The API expects the full history if continuing a conversation.
-        for (ChatMessage msg : history) {
-            if (msg.getSender() == ChatMessage.SENDER_USER) {
-                messages.add(createUserMessage(msg.getContent(), model, thinkingModeEnabled, webSearchEnabled));
-            } else {
-                // To properly continue, we might need to add assistant messages too.
-                // For now, let's stick to the user message as per original logic.
-            }
-        }
-        // Let's refine this: the API probably wants the last user message in a specific format
-        // and the rest of the history is implied by the parent_id. Let's send only the last message.
-        JsonArray singleMessageArray = new JsonArray();
-        if (!history.isEmpty()) {
-            ChatMessage lastMessage = history.get(history.size() - 1);
-            singleMessageArray.add(createUserMessage(lastMessage.getContent(), model, thinkingModeEnabled, webSearchEnabled));
+        // If this is the first message of a conversation, add the system prompt.
+        if (state.getLastParentId() == null) {
+            messages.add(createSystemMessage(enabledTools));
         }
 
-        requestBody.add("messages", singleMessageArray);
+        // Add the latest user message
+        if (!history.isEmpty()) {
+            ChatMessage lastMessage = history.get(history.size() - 1);
+            messages.add(createUserMessage(lastMessage.getContent(), model, thinkingModeEnabled, webSearchEnabled));
+        }
+
+        requestBody.add("messages", messages);
 
         if (!enabledTools.isEmpty()) {
             requestBody.add("tools", ToolSpec.toJsonArray(enabledTools));
@@ -239,8 +233,10 @@ public class QwenApiClient {
         JsonObject systemMsg = new JsonObject();
         systemMsg.addProperty("role", "system");
         if (!enabledTools.isEmpty()) {
+            // This is the strict, JSON-enforcing prompt.
             systemMsg.addProperty("content", "You are CodexAgent, an AI assistant inside a code editor. Your primary function is to help users by performing file operations. When a user asks for changes to the project, you MUST respond with a single JSON object. This is not optional. The JSON object must have the following structure: {\"action\": \"file_operation\", \"operations\": [{\"type\": \"createFile\", \"path\": \"path/to/new_file.html\", \"content\": \"<html>...</html>\"}, {\"type\": \"updateFile\", \"path\": \"path/to/existing_file.js\", \"content\": \"// new javascript content\"}], \"explanation\": \"A brief summary of the changes you made.\", \"suggestions\": [\"Add a CSS file for styling.\", \"Implement a dark mode toggle.\"]}. - The `operations` array can contain multiple operations of different types (`createFile`, `updateFile`, `deleteFile`, `renameFile`). - For `renameFile`, include `oldPath` and `newPath`. - For `deleteFile`, only `path` is required. - Do not include any other text or formatting outside of the JSON object. Your entire response must be the JSON object itself.");
         } else {
+            // This is the general-purpose prompt for when no tools are enabled.
             systemMsg.addProperty("content", "You are CodexAgent, an AI assistant inside a code editor. - If the user's request requires changing the workspace (create, update, delete, rename files/folders) respond with detailed instructions on what files to create or modify. - Provide clear explanations and suggestions for improvements. - Think step by step internally, but output only the final answer.");
         }
         return systemMsg;

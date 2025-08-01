@@ -411,7 +411,7 @@ public class AIAssistant {
 				case HUGGINGFACE:
 					return ""; // Will be set from settings
 				case ALIBABA:
-					return QWEN_AUTH_TOKEN;
+					return SettingsActivity.getQwenApiToken(context);
 				case Z:
 					return GLM_AUTH_TOKEN;
 				default:

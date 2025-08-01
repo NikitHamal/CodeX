@@ -43,6 +43,7 @@ public class AIChatFragment extends Fragment implements
 
     private static final String TAG = "AIChatFragment";
     private static final String PREFS_NAME = "ai_chat_prefs";
+    private static final String ARG_PROJECT_PATH = "project_path";
     // CHAT_HISTORY_KEY will now be a prefix, actual key will include projectPath
     private static final String CHAT_HISTORY_KEY_PREFIX = "chat_history_";
     // Old generic key for migration purposes
@@ -100,7 +101,7 @@ public class AIChatFragment extends Fragment implements
     public static AIChatFragment newInstance(String projectPath) {
         AIChatFragment fragment = new AIChatFragment();
         Bundle args = new Bundle();
-        args.putString(fragment.getString(R.string.project_path), projectPath);
+        args.putString(ARG_PROJECT_PATH, projectPath);
         fragment.setArguments(args);
         return fragment;
     }
@@ -121,11 +122,11 @@ public class AIChatFragment extends Fragment implements
         super.onCreate(savedInstanceState);
         // Retrieve projectPath from arguments
         if (getArguments() != null) {
-            projectPath = getArguments().getString(getString(R.string.project_path));
+            projectPath = getArguments().getString(ARG_PROJECT_PATH);
         } else {
             Log.e(TAG, "projectPath not provided to AIChatFragment!");
             // Fallback for safety, though this should ideally not happen
-            projectPath = getString(R.string.default_project);
+            projectPath = "default_project"; // Cannot use getString here
         }
 
         chatHistory = new ArrayList<>();

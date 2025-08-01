@@ -96,7 +96,7 @@ public class ProjectsAdapter extends RecyclerView.Adapter<ProjectsAdapter.Projec
                     String projectPath = (String) project.get("path");
                     String projectName = (String) project.get("name");
                     if (projectPath != null && projectName != null) {
-                        mainActivity.exportProject(new File(projectPath), projectName);
+                        mainActivity.getImportExportManager().exportProject(new File(projectPath), projectName);
                     } else {
                         Toast.makeText(context, context.getString(R.string.error_invalid_project_data_for_export), Toast.LENGTH_SHORT).show();
                     }
@@ -157,7 +157,7 @@ public class ProjectsAdapter extends RecyclerView.Adapter<ProjectsAdapter.Projec
                         return;
                     }
 
-                    mainActivity.renameFileOrDir(oldDir, newDir);
+                    mainActivity.getProjectManager().renameFileOrDir(oldDir, newDir);
                     dialog.dismiss();
                 });
             });
@@ -179,7 +179,7 @@ public class ProjectsAdapter extends RecyclerView.Adapter<ProjectsAdapter.Projec
                     .setMessage(context.getString(R.string.are_you_sure_you_want_to_delete_project, projectName))
                     .setPositiveButton(context.getString(R.string.delete), (dialog, which) -> {
                         File projectDir = new File(projectPath);
-                        mainActivity.deleteProjectDirectory(projectDir);
+                        mainActivity.getProjectManager().deleteProjectDirectory(projectDir);
                     })
                     .setNegativeButton(context.getString(R.string.cancel), null)
                     .show();

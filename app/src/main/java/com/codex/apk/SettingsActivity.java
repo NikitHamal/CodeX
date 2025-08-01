@@ -189,7 +189,7 @@ public class SettingsActivity extends AppCompatActivity {
 	}
 	
 	private void showModelSelector() {
-		List<String> modelNamesList = AIAssistant.AIModel.getAllDisplayNames();
+		List<String> modelNamesList = AIModel.getAllDisplayNames();
 		String[] modelNames = modelNamesList.toArray(new String[0]);
 		String currentModel = getSharedPreferences("settings", MODE_PRIVATE).getString("selected_model", "Gemini 2.5 Flash");
 		int selectedIndex = -1;

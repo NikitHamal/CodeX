@@ -56,8 +56,8 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
 
         // Load default model from settings and apply it
         SharedPreferences settingsPrefs = activity.getSharedPreferences("settings", Context.MODE_PRIVATE);
-        String defaultModelName = settingsPrefs.getString("selected_model", AIAssistant.AIModel.GEMINI_2_5_FLASH.getDisplayName());
-        AIAssistant.AIModel defaultModel = AIAssistant.AIModel.fromDisplayName(defaultModelName);
+        String defaultModelName = settingsPrefs.getString("selected_model", AIModel.GEMINI_2_5_FLASH.getDisplayName());
+        AIModel defaultModel = AIModel.fromDisplayName(defaultModelName);
         if (defaultModel != null) {
             this.aiAssistant.setCurrentModel(defaultModel);
         }
@@ -250,7 +250,7 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
     // Enhanced version with thinking content and web sources
     public void onAiActionsProcessed(String rawAiResponseJson, String explanation, List<String> suggestions, 
                                    List<ChatMessage.FileActionDetail> proposedFileChanges, String aiModelDisplayName,
-                                   String thinkingContent, List<ChatMessage.WebSource> webSources) {
+                                   String thinkingContent, List<WebSource> webSources) {
         Log.d(TAG, "onAiActionsProcessed called with:");
         Log.d(TAG, "  - Explanation: " + explanation);
         Log.d(TAG, "  - Suggestions count: " + (suggestions != null ? suggestions.size() : 0));

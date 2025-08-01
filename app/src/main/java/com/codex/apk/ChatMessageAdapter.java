@@ -176,10 +176,10 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
             View dialogView = LayoutInflater.from(context).inflate(R.layout.bottom_sheet_web_sources, null);
             RecyclerView recyclerView = dialogView.findViewById(R.id.recycler_web_sources);
             
-            // Convert ChatMessage.WebSource to AIAssistant.WebSource for adapter compatibility
-            java.util.List<AIAssistant.WebSource> aiWebSources = new java.util.ArrayList<>();
+            // Convert ChatMessage.WebSource to WebSource for adapter compatibility
+            java.util.List<WebSource> aiWebSources = new java.util.ArrayList<>();
             for (ChatMessage.WebSource source : webSources) {
-                aiWebSources.add(new AIAssistant.WebSource(
+                aiWebSources.add(new WebSource(
                     source.getUrl(), source.getTitle(), source.getSnippet(), source.getFavicon()));
             }
             

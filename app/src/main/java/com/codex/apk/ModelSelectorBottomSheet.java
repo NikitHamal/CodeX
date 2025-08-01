@@ -186,9 +186,9 @@ public class ModelSelectorBottomSheet extends BottomSheetDialogFragment {
                 modelName.setText(model);
                 
                 // Get AIModel enum from display name to access capabilities
-                AIAssistant.AIModel aiModel = AIAssistant.AIModel.fromDisplayName(model);
+                AIModel aiModel = AIModel.fromDisplayName(model);
                 if (aiModel != null) {
-                    AIAssistant.ModelCapabilities capabilities = aiModel.getCapabilities();
+                    ModelCapabilities capabilities = aiModel.getCapabilities();
                     StringBuilder capabilitiesText = new StringBuilder();
                     
                     if (capabilities.supportsThinking) capabilitiesText.append("Thinking, ");
@@ -226,9 +226,9 @@ public class ModelSelectorBottomSheet extends BottomSheetDialogFragment {
                     }
                     
                     // Latest model indicator
-                    if (aiModel == AIAssistant.AIModel.GEMINI_2_5_FLASH || 
-                        aiModel == AIAssistant.AIModel.GEMINI_2_5_PRO ||
-                        aiModel == AIAssistant.AIModel.GEMINI_2_0_FLASH_EXP) {
+                    if (aiModel == AIModel.GEMINI_2_5_FLASH ||
+                        aiModel == AIModel.GEMINI_2_5_PRO ||
+                        aiModel == AIModel.GEMINI_2_0_FLASH_EXP) {
                         latestChip.setVisibility(View.VISIBLE);
                         hasFeatures = true;
                     } else {

@@ -28,9 +28,9 @@ public class MainActivity extends AppCompatActivity {
     private ArrayList<HashMap<String, Object>> projectsList;
     private ProjectsAdapter projectsAdapter;
 
-    private ProjectManager projectManager;
-    private PermissionManager permissionManager;
-    private ProjectImportExportManager importExportManager;
+    public ProjectManager projectManager;
+    public PermissionManager permissionManager;
+    public ProjectImportExportManager importExportManager;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -169,5 +169,13 @@ public class MainActivity extends AppCompatActivity {
 
     public PermissionManager getPermissionManager() {
         return permissionManager;
+    }
+
+    public ProjectImportExportManager getImportExportManager() {
+        return importExportManager;
+    }
+
+    public void onPermissionsGranted() {
+        projectManager.loadProjectsList();
     }
 }

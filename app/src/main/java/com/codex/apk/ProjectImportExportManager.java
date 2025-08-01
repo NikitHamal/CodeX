@@ -50,7 +50,7 @@ public class ProjectImportExportManager {
 
             File zipFile = new File(exportDir, projectName + ".codex");
             File chatHistoryFile = new File(projectDir, CHAT_HISTORY_FILE_NAME);
-            boolean chatExported = AIChatFragment.exportChatHistoryToJson(context, projectDir.getAbsolutePath(), chatHistoryFile);
+            boolean chatExported = AIChatHistoryManager.exportChatHistoryToJson(context, projectDir.getAbsolutePath(), chatHistoryFile);
 
             try {
                 zipDirectory(projectDir, zipFile);
@@ -104,7 +104,7 @@ public class ProjectImportExportManager {
 
                 File importedChatHistoryFile = new File(newProjectDir, CHAT_HISTORY_FILE_NAME);
                 if (importedChatHistoryFile.exists()) {
-                    AIChatFragment.importChatHistoryFromJson(context, newProjectDir.getAbsolutePath(), importedChatHistoryFile);
+                    AIChatHistoryManager.importChatHistoryFromJson(context, newProjectDir.getAbsolutePath(), importedChatHistoryFile);
                     importedChatHistoryFile.delete();
                 }
 

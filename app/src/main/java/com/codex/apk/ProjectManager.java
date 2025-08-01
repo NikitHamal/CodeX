@@ -45,7 +45,7 @@ public class ProjectManager {
     }
 
     public void loadProjectsList() {
-        if (!mainActivity.hasStoragePermission()) {
+        if (!mainActivity.getPermissionManager().hasStoragePermission()) {
             Log.w(TAG, "Cannot load projects: Storage permission not granted.");
             projectsList.clear();
             if (projectsAdapter != null) {
@@ -83,17 +83,17 @@ public class ProjectManager {
 
     public void deleteProjectDirectory(File projectDir) {
         new Thread(() -> {
-            if (!mainActivity.hasStoragePermission()) {
+            if (!mainActivity.getPermissionManager().hasStoragePermission()) {
                 mainActivity.runOnUiThread(() -> {
                     Toast.makeText(context, context.getString(R.string.storage_permission_required_to_delete_projects), Toast.LENGTH_LONG).show();
-                    mainActivity.checkAndRequestPermissions();
+                    mainActivity.getPermissionManager().checkAndRequestPermissions();
                 });
                 return;
             }
             String projectPath = projectDir.getAbsolutePath();
             boolean deleted = deleteRecursive(projectDir);
             if (deleted) {
-                AIChatFragment.deleteChatStateForProject(context, projectPath);
+                AIChatHistoryManager.deleteChatStateForProject(context, projectPath);
             }
             mainActivity.runOnUiThread(() -> {
                 if (deleted) {
@@ -109,7 +109,7 @@ public class ProjectManager {
     public void renameFileOrDir(File oldFile, File newFile) {
         new Thread(() -> {
             try {
-                if (!mainActivity.hasStoragePermission()) {
+                if (!mainActivity.getPermissionManager().hasStoragePermission()) {
                     throw new IOException(context.getString(R.string.storage_permission_not_granted_cannot_rename));
                 }
                 if (!oldFile.exists()) {
@@ -143,9 +143,9 @@ public class ProjectManager {
     }
 
     public void showNewProjectDialog() {
-        if (!mainActivity.hasStoragePermission()) {
+        if (!mainActivity.getPermissionManager().hasStoragePermission()) {
             Toast.makeText(context, context.getString(R.string.please_grant_storage_permission), Toast.LENGTH_LONG).show();
-            mainActivity.checkAndRequestPermissions();
+            mainActivity.getPermissionManager().checkAndRequestPermissions();
             return;
         }
 
@@ -213,7 +213,7 @@ public class ProjectManager {
     }
 
     private void syncProjectsFromFilesystem() {
-        if (!mainActivity.hasStoragePermission()) {
+        if (!mainActivity.getPermissionManager().hasStoragePermission()) {
             return;
         }
         File projectsDir = new File(Environment.getExternalStorageDirectory(), "CodeX/Projects");

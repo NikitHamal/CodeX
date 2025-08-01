@@ -430,12 +430,16 @@ public class MainActivity extends AppCompatActivity {
                 });
                 return;
             }
+            String projectPath = projectDir.getAbsolutePath();
             boolean deleted = deleteRecursive(projectDir);
+            if (deleted) {
+                // Delete associated chat history
+                AIChatFragment.deleteChatStateForProject(this, projectPath);
+            }
             runOnUiThread(() -> {
                 if (deleted) {
-                    projectsList.removeIf(project -> projectDir.getAbsolutePath().equals(project.get("path")));
-                    saveProjectsList();
                     Toast.makeText(this, getString(R.string.project_deleted), Toast.LENGTH_SHORT).show();
+                    loadProjectsList(); // Reload the list to reflect the deletion
                 } else {
                     Toast.makeText(this, getString(R.string.failed_to_delete_project), Toast.LENGTH_SHORT).show();
                 }
@@ -476,11 +480,7 @@ public class MainActivity extends AppCompatActivity {
                     }
                     runOnUiThread(() -> {
                         saveProjectsList(); // Save the updated project list
-                        // Also update chat history key if the project was renamed
-                        // This is a bit more complex as AIChatFragment manages its own SharedPreferences key.
-                        // A simpler approach for now is to rely on the projectPath being updated in the project list
-                        // and the AIChatFragment's loadChatHistoryFromPrefs logic to handle migration if needed.
-                        // For a robust solution, you might need a dedicated method in AIChatFragment to update its key.
+                        loadProjectsList(); // Reload the list to reflect the rename
                     });
                 } else {
                     throw new IOException(getString(R.string.failed_to_rename, oldFile.getAbsolutePath(), newFile.getAbsolutePath()));
@@ -654,7 +654,7 @@ public class MainActivity extends AppCompatActivity {
         }
 
         Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
-        intent.setType("application/zip"); // Filter for zip files
+        intent.setType("*/*"); // Allow all file types
         intent.addCategory(Intent.CATEGORY_OPENABLE);
         try {
             startActivityForResult(Intent.createChooser(intent, getString(R.string.select_project_to_import)), REQUEST_CODE_PICK_ZIP_FILE);

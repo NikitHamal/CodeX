@@ -901,4 +901,36 @@ public class AIChatFragment extends Fragment implements
             Log.d(TAG, "Qwen conversation state updated and saved.");
         }
     }
+
+    /**
+     * Deletes the chat history and conversation state for a specific project.
+     * This is a static method so it can be called from MainActivity upon project deletion.
+     * @param context The application context.
+     * @param projectPath The absolute path of the project to delete data for.
+     */
+    public static void deleteChatStateForProject(Context context, String projectPath) {
+        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        SharedPreferences.Editor editor = prefs.edit();
+
+        // Generate the project-specific keys
+        String historyKey;
+        String qwenStateKey;
+        try {
+            byte[] pathBytes = projectPath.getBytes("UTF-8");
+            String encodedPath = Base64.encodeToString(pathBytes, Base64.NO_WRAP | Base64.URL_SAFE);
+            historyKey = CHAT_HISTORY_KEY_PREFIX + encodedPath;
+            qwenStateKey = QWEN_CONVERSATION_STATE_KEY_PREFIX + encodedPath;
+        } catch (UnsupportedEncodingException e) {
+            Log.e(TAG, "UTF-8 encoding not supported, falling back to simple sanitization for key generation.", e);
+            historyKey = CHAT_HISTORY_KEY_PREFIX + projectPath.replaceAll("[^a-zA-Z0-9_]", "_");
+            qwenStateKey = QWEN_CONVERSATION_STATE_KEY_PREFIX + projectPath.replaceAll("[^a-zA-Z0-9_]", "_");
+        }
+
+        // Remove the keys from SharedPreferences
+        editor.remove(historyKey);
+        editor.remove(qwenStateKey);
+        editor.apply();
+
+        Log.d(TAG, "Deleted chat state for project: " + projectPath);
+    }
 }

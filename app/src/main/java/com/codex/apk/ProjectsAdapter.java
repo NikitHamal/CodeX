@@ -148,14 +148,10 @@ public class ProjectsAdapter extends BaseAdapter {
                     return;
                 }
 
-                try {
-                    mainActivity.renameFileOrDir(oldDir, newDir); // Delegate to MainActivity
-                    // MainActivity will update its list and trigger loadProjectsList on resume
-                    dialog.dismiss();
-                    Toast.makeText(context, context.getString(R.string.project_renamed_to, newName), Toast.LENGTH_SHORT).show();
-                } catch (IOException e) { // This is the line where the error was
-                    Toast.makeText(context, context.getString(R.string.failed_to_rename_project, e.getMessage()), Toast.LENGTH_LONG).show();
-                }
+                mainActivity.renameFileOrDir(oldDir, newDir); // Delegate to MainActivity
+                // MainActivity will update its list and trigger loadProjectsList on resume
+                dialog.dismiss();
+                Toast.makeText(context, context.getString(R.string.project_renamed_to, newName), Toast.LENGTH_SHORT).show();
             });
         });
         dialog.show();

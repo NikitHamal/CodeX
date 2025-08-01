@@ -497,15 +497,8 @@ public class QwenApiClient {
             List<ChatMessage.FileActionDetail> fileActions = QwenResponseParser.toFileActionDetails(parsedResponse);
             Log.d(TAG, "Converted to " + fileActions.size() + " file action details");
 
-            // Execute each operation (single or multi)
-            for (ChatMessage.FileActionDetail actionDetail : fileActions) {
-                try {
-                    Log.d(TAG, "Executing file operation: " + actionDetail.type + " -> " + actionDetail.path);
-                    executeFileOperation(actionDetail);
-                } catch (Exception e) {
-                    Log.e(TAG, "Failed to execute file operation: " + actionDetail.type, e);
-                }
-            }
+            // DO NOT execute the operations here. Just send them to the listener for proposal.
+            // The execution will happen in AiAssistantManager when the user clicks "Accept".
 
             // Always notify listeners with explanation/suggestions, even for single-op
             if (actionListener != null) {
@@ -552,11 +545,6 @@ public class QwenApiClient {
                             type, path, oldPath, newPath, "", content, 0, 0, null
                     );
                     fileActions.add(actionDetail);
-                    try {
-                        executeFileOperation(actionDetail);
-                    } catch (Exception e) {
-                        Log.e(TAG, "Failed to execute file operation: " + type, e);
-                    }
                 }
             }
             // If there are no operations but the JSON is valid, still notify the UI with explanation/suggestions

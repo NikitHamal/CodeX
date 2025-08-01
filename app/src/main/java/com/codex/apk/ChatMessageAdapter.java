@@ -240,8 +240,10 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
             }
 
             // Display proposed file changes
+            LinearLayout layoutProposedFileChanges = itemView.findViewById(R.id.layout_proposed_file_changes);
             if (message.getProposedFileChanges() != null && !message.getProposedFileChanges().isEmpty()) {
-                fileChangesContainer.setVisibility(View.VISIBLE);
+                android.util.Log.d("ChatMessageAdapter", "Binding " + message.getProposedFileChanges().size() + " file changes");
+                layoutProposedFileChanges.setVisibility(View.VISIBLE);
                 FileActionAdapter fileActionAdapter = new FileActionAdapter(message.getProposedFileChanges(), fileActionDetail -> {
                     if (listener != null) {
                         listener.onFileChangeClicked(fileActionDetail);
@@ -249,7 +251,8 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
                 });
                 fileChangesContainer.setAdapter(fileActionAdapter);
             } else {
-                fileChangesContainer.setVisibility(View.GONE);
+                android.util.Log.d("ChatMessageAdapter", "No file changes to bind");
+                layoutProposedFileChanges.setVisibility(View.GONE);
             }
 
             // Display action summaries (Actions Performed)

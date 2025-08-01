@@ -718,10 +718,10 @@ public class MainActivity extends AppCompatActivity {
 
                 // Get the display name of the file to use as project name
                 String fileName = getFileNameFromUri(uri);
-                String projectName = fileName.endsWith(".codex") ? fileName.substring(0, fileName.length() - ".codex".length()) :
+                String projectNameStr = fileName.endsWith(".codex") ? fileName.substring(0, fileName.length() - ".codex".length()) :
                         fileName.endsWith(".zip") ? fileName.substring(0, fileName.length() - ".zip".length()) :
                                 fileName;
-                projectName = projectName.replaceAll("[^a-zA-Z0-9_.-]", "_"); // Sanitize project name
+                final String projectName = projectNameStr.replaceAll("[^a-zA-Z0-9_.-]", "_"); // Sanitize project name
 
                 File newProjectDir = new File(projectsDir, projectName);
                 if (newProjectDir.exists()) {

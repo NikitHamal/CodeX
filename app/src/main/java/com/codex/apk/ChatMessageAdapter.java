@@ -130,7 +130,7 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
         MaterialButton buttonReapply;
         LinearLayout layoutActionSummaries; // To display action summaries (Actions Performed)
         LinearLayout layoutSuggestions; // To display suggestions
-        LinearLayout fileChangesContainer; // Container for proposed file changes
+        RecyclerView fileChangesContainer; // Container for proposed file changes
         
         // New fields for thinking and web sources
         LinearLayout layoutThinkingSection;
@@ -240,186 +240,42 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
             }
 
             // Display proposed file changes
-                if (message.getProposedFileChanges() != null && !message.getProposedFileChanges().isEmpty()) {
-                    fileChangesContainer.setVisibility(View.VISIBLE);
-                    fileChangesContainer.removeAllViews(); // Clear previous views
-
-                    // Add "Proposed File Changes:" header
-                    TextView header = new TextView(context);
-                    header.setText("Proposed File Changes:");
-                    header.setTextColor(ContextCompat.getColor(context, R.color.on_surface_variant));
-                    header.setTextSize(12); // Use 12sp as defined in XML
-                    header.setPadding(0, (int) context.getResources().getDimension(R.dimen.padding_small), 0, (int) context.getResources().getDimension(R.dimen.padding_extra_small));
-                    fileChangesContainer.addView(header);
-
-                    for (ChatMessage.FileActionDetail detail : message.getProposedFileChanges()) {
-                        View fileChangeItemView = LayoutInflater.from(context).inflate(R.layout.item_ai_file_change, fileChangesContainer, false);
-                        TextView fileNameTextView = fileChangeItemView.findViewById(R.id.text_file_name);
-                        TextView fileChangeLabel = fileChangeItemView.findViewById(R.id.text_change_label);
-                        MaterialCardView fileChangeCardView = (MaterialCardView) fileChangeItemView; // The root of item_ai_file_change.xml is a MaterialCardView
-
-                        fileNameTextView.setText(detail.path != null ? detail.path : detail.oldPath + " to " + detail.newPath);
-
-                        String labelText = "";
-                        int labelBgColorResId;
-                        int strokeColorResId;
-
-                        switch (detail.type) {
-                            case "createFile":
-                                labelText = "New";
-                                labelBgColorResId = R.color.success_container;
-                                strokeColorResId = R.color.success;
-                                fileChangeCardView.setCardBackgroundColor(ContextCompat.getColor(context, R.color.success_container));
-                                fileChangeCardView.setStrokeColor(ContextCompat.getColor(context, strokeColorResId));
-                                break;
-                            case "deleteFile":
-                                labelText = "Deleted";
-                                labelBgColorResId = R.color.error_container;
-                                strokeColorResId = R.color.error;
-                                fileChangeCardView.setCardBackgroundColor(ContextCompat.getColor(context, R.color.error_container));
-                                fileChangeCardView.setStrokeColor(ContextCompat.getColor(context, strokeColorResId));
-                                break;
-                            case "modifyLines":
-                            case "updateFile":
-                                labelText = "Updated";
-                                labelBgColorResId = R.color.primary_container;
-                                strokeColorResId = R.color.primary;
-                                fileChangeCardView.setCardBackgroundColor(ContextCompat.getColor(context, R.color.primary_container));
-                                fileChangeCardView.setStrokeColor(ContextCompat.getColor(context, strokeColorResId));
-                                break;
-                            case "renameFile":
-                                labelText = "Renamed";
-                                labelBgColorResId = R.color.warning_container;
-                                strokeColorResId = R.color.warning;
-                                fileChangeCardView.setCardBackgroundColor(ContextCompat.getColor(context, R.color.warning_container));
-                                fileChangeCardView.setStrokeColor(ContextCompat.getColor(context, strokeColorResId));
-                                break;
-                            default:
-                                labelText = ""; // No label for unknown types
-                                labelBgColorResId = android.R.color.transparent;
-                                strokeColorResId = R.color.outline;
-                                fileChangeCardView.setCardBackgroundColor(ContextCompat.getColor(context, R.color.surface_container));
-                                fileChangeCardView.setStrokeColor(ContextCompat.getColor(context, strokeColorResId));
-                                break;
-                        }
-
-                        if (!labelText.isEmpty()) {
-                            fileChangeLabel.setText(labelText);
-                            fileChangeLabel.setVisibility(View.VISIBLE);
-                            // Set background color for the label using GradientDrawable
-                            GradientDrawable labelBackground = (GradientDrawable) fileChangeLabel.getBackground();
-                            if (labelBackground == null) {
-                                labelBackground = new GradientDrawable();
-                                labelBackground.setShape(GradientDrawable.RECTANGLE);
-                                labelBackground.setCornerRadius(context.getResources().getDimension(R.dimen.corner_radius_small));
-                                fileChangeLabel.setBackground(labelBackground);
-                            }
-                            labelBackground.setColor(ContextCompat.getColor(context, labelBgColorResId));
-                            fileChangeLabel.setTextColor(ContextCompat.getColor(context, R.color.white)); // Ensure text color is white for labels
-                        } else {
-                            fileChangeLabel.setVisibility(View.GONE);
-                        }
-
-                        fileChangeItemView.setOnClickListener(v -> {
-                            if (listener != null) {
-                                listener.onFileChangeClicked(detail);
-                            }
-                        });
-                        fileChangesContainer.addView(fileChangeItemView);
+            if (message.getProposedFileChanges() != null && !message.getProposedFileChanges().isEmpty()) {
+                fileChangesContainer.setVisibility(View.VISIBLE);
+                FileActionAdapter fileActionAdapter = new FileActionAdapter(message.getProposedFileChanges(), fileActionDetail -> {
+                    if (listener != null) {
+                        listener.onFileChangeClicked(fileActionDetail);
                     }
-                } else {
-                    fileChangesContainer.setVisibility(View.GONE);
+                });
+                fileChangesContainer.setAdapter(fileActionAdapter);
+            } else {
+                fileChangesContainer.setVisibility(View.GONE);
+            }
+
+            // Display action summaries (Actions Performed)
+            if (message.getActionSummaries() != null && !message.getActionSummaries().isEmpty()) {
+                layoutActionSummaries.setVisibility(View.VISIBLE);
+                // The RecyclerView is now responsible for displaying the file changes.
+                // The summaries can be simple text or a more complex layout if needed.
+                // For now, we'll just show a simple text summary.
+                layoutActionSummaries.removeAllViews(); // Clear previous views
+                TextView header = new TextView(context);
+                header.setText("Actions Performed:");
+                header.setTextColor(ContextCompat.getColor(context, R.color.on_surface_variant));
+                header.setTextSize(12);
+                layoutActionSummaries.addView(header);
+
+                for(String summary : message.getActionSummaries()) {
+                    TextView summaryView = new TextView(context);
+                    summaryView.setText("• " + summary);
+                    summaryView.setTextColor(ContextCompat.getColor(context, R.color.on_surface_variant));
+                    summaryView.setTextSize(12);
+                    layoutActionSummaries.addView(summaryView);
                 }
 
-                // Display action summaries (Actions Performed)
-                if (message.getActionSummaries() != null && !message.getActionSummaries().isEmpty()) {
-                    layoutActionSummaries.setVisibility(View.VISIBLE);
-                    layoutActionSummaries.removeAllViews(); // Clear previous views
-
-                    TextView header = new TextView(context);
-                    header.setText("Actions Performed:");
-                    header.setTextColor(ContextCompat.getColor(context, R.color.on_surface_variant));
-                    header.setTextSize(12); // Use 12sp as defined in XML
-                    header.setPadding(0, (int) context.getResources().getDimension(R.dimen.padding_small), 0, (int) context.getResources().getDimension(R.dimen.padding_extra_small));
-                    layoutActionSummaries.addView(header);
-
-                    for (ChatMessage.FileActionDetail detail : message.getProposedFileChanges()) {
-                        View fileChangeItemView = LayoutInflater.from(context).inflate(R.layout.item_ai_file_change, layoutActionSummaries, false);
-                        TextView fileNameTextView = fileChangeItemView.findViewById(R.id.text_file_name);
-                        TextView fileChangeLabel = fileChangeItemView.findViewById(R.id.text_change_label);
-                        MaterialCardView fileChangeCardView = (MaterialCardView) fileChangeItemView;
-
-                        fileNameTextView.setText(detail.path != null ? detail.path : detail.oldPath + " to " + detail.newPath);
-
-                        String labelText = "";
-                        int labelBgColorResId;
-                        int strokeColorResId;
-
-                        switch (detail.type) {
-                            case "createFile":
-                                labelText = "New";
-                                labelBgColorResId = R.color.success_container;
-                                strokeColorResId = R.color.success;
-                                fileChangeCardView.setCardBackgroundColor(ContextCompat.getColor(context, R.color.success_container));
-                                fileChangeCardView.setStrokeColor(ContextCompat.getColor(context, strokeColorResId));
-                                break;
-                            case "deleteFile":
-                                labelText = "Deleted";
-                                labelBgColorResId = R.color.error_container;
-                                strokeColorResId = R.color.error;
-                                fileChangeCardView.setCardBackgroundColor(ContextCompat.getColor(context, R.color.error_container));
-                                fileChangeCardView.setStrokeColor(ContextCompat.getColor(context, strokeColorResId));
-                                break;
-                            case "modifyLines":
-                            case "updateFile":
-                                labelText = "Updated";
-                                labelBgColorResId = R.color.primary_container;
-                                strokeColorResId = R.color.primary;
-                                fileChangeCardView.setCardBackgroundColor(ContextCompat.getColor(context, R.color.primary_container));
-                                fileChangeCardView.setStrokeColor(ContextCompat.getColor(context, strokeColorResId));
-                                break;
-                            case "renameFile":
-                                labelText = "Renamed";
-                                labelBgColorResId = R.color.warning_container;
-                                strokeColorResId = R.color.warning;
-                                fileChangeCardView.setCardBackgroundColor(ContextCompat.getColor(context, R.color.warning_container));
-                                fileChangeCardView.setStrokeColor(ContextCompat.getColor(context, strokeColorResId));
-                                break;
-                            default:
-                                labelText = ""; // No label for unknown types
-                                labelBgColorResId = android.R.color.transparent;
-                                strokeColorResId = R.color.outline;
-                                fileChangeCardView.setCardBackgroundColor(ContextCompat.getColor(context, R.color.surface_container));
-                                fileChangeCardView.setStrokeColor(ContextCompat.getColor(context, strokeColorResId));
-                                break;
-                        }
-
-                        if (!labelText.isEmpty()) {
-                            fileChangeLabel.setText(labelText);
-                            fileChangeLabel.setVisibility(View.VISIBLE);
-                            GradientDrawable labelBackground = (GradientDrawable) fileChangeLabel.getBackground();
-                            if (labelBackground == null) {
-                                labelBackground = new GradientDrawable();
-                                labelBackground.setShape(GradientDrawable.RECTANGLE);
-                                labelBackground.setCornerRadius(context.getResources().getDimension(R.dimen.corner_radius_small));
-                                fileChangeLabel.setBackground(labelBackground);
-                            }
-                            labelBackground.setColor(ContextCompat.getColor(context, labelBgColorResId));
-                            fileChangeLabel.setTextColor(ContextCompat.getColor(context, R.color.white));
-                        } else {
-                            fileChangeLabel.setVisibility(View.GONE);
-                        }
-
-                        fileChangeItemView.setOnClickListener(v -> {
-                            if (listener != null) {
-                                listener.onFileChangeClicked(detail);
-                            }
-                        });
-                        layoutActionSummaries.addView(fileChangeItemView);
-                    }
-                } else {
-                    layoutActionSummaries.setVisibility(View.GONE);
-                }
+            } else {
+                layoutActionSummaries.setVisibility(View.GONE);
+            }
 
                 // Display suggestions if available
                 if (message.getSuggestions() != null && !message.getSuggestions().isEmpty()) {

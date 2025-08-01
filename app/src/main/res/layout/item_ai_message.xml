@@ -74,7 +74,8 @@
                 android:textSize="12sp"
                 android:lineSpacingExtra="2dp"
                 android:visibility="gone"
-                android:text="AI thinking process will appear here..." />
+                android:text="AI thinking process will appear here..."
+                android:textIsSelectable="true" />
 
         </LinearLayout>
 
@@ -88,7 +89,8 @@
             android:textSize="14sp"
             android:textStyle="normal"
             android:layout_marginBottom="8dp"
-            android:text="AI Explanation will go here." />
+            android:text="AI Explanation will go here."
+            android:textIsSelectable="true" />
 
         <!-- Web Sources Section -->
         <LinearLayout

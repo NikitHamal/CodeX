@@ -1099,26 +1099,20 @@ public class AIAssistant {
                     suggestions.add(suggestionsArray.get(i).getAsString());
                 }
             }
-            
             List<ChatMessage.FileActionDetail> fileActions = new ArrayList<>();
-            
             if (jsonObj.has("operations")) {
                 JsonArray operations = jsonObj.getAsJsonArray("operations");
                 for (int i = 0; i < operations.size(); i++) {
                     JsonObject operation = operations.get(i).getAsJsonObject();
-                    String type = operation.get("type").getAsString();
+                    String type = operation.has("type") ? operation.get("type").getAsString() : "";
                     String path = operation.has("path") ? operation.get("path").getAsString() : "";
                     String content = operation.has("content") ? operation.get("content").getAsString() : "";
                     String oldPath = operation.has("oldPath") ? operation.get("oldPath").getAsString() : "";
                     String newPath = operation.has("newPath") ? operation.get("newPath").getAsString() : "";
-                    
-                    // Create FileActionDetail
                     ChatMessage.FileActionDetail actionDetail = new ChatMessage.FileActionDetail(
                         type, path, oldPath, newPath, "", content, 0, 0, null
                     );
                     fileActions.add(actionDetail);
-                    
-                    // Execute the operation
                     try {
                         executeFileOperation(actionDetail);
                     } catch (Exception e) {
@@ -1126,8 +1120,7 @@ public class AIAssistant {
                     }
                 }
             }
-            
-            // Notify listeners about the processed actions
+            // If there are no operations but the JSON is valid, still notify the UI with explanation/suggestions
             if (actionListener != null) {
                 actionListener.onAiActionsProcessed(
                     jsonObj.toString(),
@@ -1137,7 +1130,6 @@ public class AIAssistant {
                     currentModel.getDisplayName()
                 );
             }
-            
         } catch (Exception e) {
             Log.e("AIAssistant", "Failed to process file operations from JSON", e);
         }

@@ -29,6 +29,7 @@
             android:textColor="?attr/colorOnPrimary"
             android:textSize="15sp"
             android:lineSpacingExtra="4dp"
-            android:text="This is a user message example." />
+            android:text="This is a user message example."
+            android:textIsSelectable="true" />
     </com.google.android.material.card.MaterialCardView>
 </androidx.constraintlayout.widget.ConstraintLayout>

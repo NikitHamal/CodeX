@@ -220,7 +220,7 @@
 
                     <LinearLayout
                         android:id="@+id/layout_model_selector"
-                        android:layout_width="match_parent"
+                        android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:orientation="horizontal"
                         android:gravity="center_vertical"

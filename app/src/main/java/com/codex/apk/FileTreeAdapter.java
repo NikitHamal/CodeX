@@ -162,18 +162,12 @@ public class FileTreeAdapter extends RecyclerView.Adapter<FileTreeAdapter.ViewHo
                 Toast.makeText(context, context.getString(R.string.name_already_exists), Toast.LENGTH_SHORT).show();
                 return;
             }
-            try {
-                editorActivity.renameFileOrDir(oldFile, newFile); // Call through EditorActivity
+            editorActivity.renameFileOrDir(oldFile, newFile); // Call through EditorActivity
 
-                // The logic to update open tabs is now handled by editorActivity.renameFileOrDir
-                // and its internal call to refreshOpenTabsAfterFileOperation.
-                // So, remove the direct tab update logic here.
-                // editorActivity.loadFileTree() and editorActivity.refreshFileTabLayoutInFragment() are called by renameFileOrDir.
-
-            } catch (IOException e) {
-                Log.e(TAG, "Error renaming from adapter", e);
-                Toast.makeText(context, context.getString(R.string.rename_failed, e.getMessage()), Toast.LENGTH_LONG).show();
-            }
+            // The logic to update open tabs is now handled by editorActivity.renameFileOrDir
+            // and its internal call to refreshOpenTabsAfterFileOperation.
+            // So, remove the direct tab update logic here.
+            // editorActivity.loadFileTree() and editorActivity.refreshFileTabLayoutInFragment() are called by renameFileOrDir.
         })
         .setNegativeButton(context.getString(R.string.cancel), null)
         .show();
@@ -184,18 +178,12 @@ public class FileTreeAdapter extends RecyclerView.Adapter<FileTreeAdapter.ViewHo
         .setTitle(item.isDirectory() ? context.getString(R.string.delete_folder) : context.getString(R.string.delete_file))
         .setMessage(context.getString(R.string.are_you_sure_you_want_to_delete, item.getName()))
         .setPositiveButton(context.getString(R.string.delete), (dialog, which) -> {
-            try {
-                editorActivity.deleteFileByPath(item.getFile()); // Call through EditorActivity
+            editorActivity.deleteFileByPath(item.getFile()); // Call through EditorActivity
 
-                // The logic to close open tabs is now handled by editorActivity.deleteFileByPath
-                // and its internal call to refreshOpenTabsAfterFileOperation.
-                // So, remove the direct tab close logic here.
-                // editorActivity.loadFileTree() is called by deleteFileByPath.
-
-            } catch (IOException e) {
-                Log.e(TAG, "Error deleting from adapter", e);
-                Toast.makeText(context, context.getString(R.string.delete_failed, e.getMessage()), Toast.LENGTH_LONG).show();
-            }
+            // The logic to close open tabs is now handled by editorActivity.deleteFileByPath
+            // and its internal call to refreshOpenTabsAfterFileOperation.
+            // So, remove the direct tab close logic here.
+            // editorActivity.loadFileTree() is called by deleteFileByPath.
         })
         .setNegativeButton(context.getString(R.string.cancel), null)
         .show();

@@ -154,12 +154,16 @@ public class QwenResponseParser {
      */
     public static boolean looksLikeJson(String response) {
         if (response == null || response.trim().isEmpty()) {
+            Log.d(TAG, "looksLikeJson: response is null or empty");
             return false;
         }
         
         String trimmed = response.trim();
-        return (trimmed.startsWith("{") && trimmed.endsWith("}")) ||
-               (trimmed.startsWith("[") && trimmed.endsWith("]"));
+        boolean isJson = (trimmed.startsWith("{") && trimmed.endsWith("}")) ||
+                        (trimmed.startsWith("[") && trimmed.endsWith("]"));
+        
+        Log.d(TAG, "looksLikeJson: checking '" + trimmed.substring(0, Math.min(50, trimmed.length())) + "...' -> " + isJson);
+        return isJson;
     }
 
     /**

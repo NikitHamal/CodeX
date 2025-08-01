@@ -937,20 +937,27 @@ public class AIAssistant {
 							String content = delta.has("content") ? delta.get("content").getAsString() : "";
 							String phase = delta.has("phase") ? delta.get("phase").getAsString() : "";
 							
+							Log.d("AIAssistant", "Received content chunk: " + content.substring(0, Math.min(100, content.length())) + "...");
+							Log.d("AIAssistant", "Phase: " + phase + ", isJsonResponse: " + isJsonResponse);
+							
 							// Check if this might be a JSON response
 							if (QwenResponseParser.looksLikeJson(content)) {
+								Log.d("AIAssistant", "Content looks like JSON, setting isJsonResponse = true");
 								isJsonResponse = true;
 								jsonResponseBuilder.append(content);
 							} else if (isJsonResponse) {
+								Log.d("AIAssistant", "Continuing to accumulate JSON content");
 								// Continue accumulating JSON
 								jsonResponseBuilder.append(content);
 							} else {
 								// Check if content contains JSON wrapped in code blocks
 								String extractedJson = extractJsonFromCodeBlock(content);
 								if (extractedJson != null) {
+									Log.d("AIAssistant", "Extracted JSON from code block, setting isJsonResponse = true");
 									isJsonResponse = true;
 									jsonResponseBuilder.append(extractedJson);
 								} else {
+									Log.d("AIAssistant", "Treating as regular text content");
 									// Regular text response
 									if ("think".equals(phase)) {
 										thinkingContent.append(content);
@@ -987,10 +994,12 @@ public class AIAssistant {
 							
 							if ("finished".equals(status)) {
 								// Process final response
+								Log.d("AIAssistant", "Processing final response. isJsonResponse: " + isJsonResponse);
 								if (isJsonResponse) {
 									// Handle JSON response for file operations
 									try {
 										String jsonResponse = jsonResponseBuilder.toString();
+										Log.d("AIAssistant", "Final JSON response: " + jsonResponse.substring(0, Math.min(200, jsonResponse.length())) + "...");
 										QwenResponseParser.ParsedResponse parsedResponse = QwenResponseParser.parseResponse(jsonResponse);
 										
 										if (parsedResponse != null && parsedResponse.isValid) {
@@ -1064,6 +1073,7 @@ public class AIAssistant {
 										}
 									}
 								} else {
+									Log.d("AIAssistant", "Processing as regular text response");
 									// Regular text response
 									if (responseListener != null) {
 										responseListener.onResponse(answerContent.toString(), 

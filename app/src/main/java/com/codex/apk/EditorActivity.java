@@ -22,6 +22,7 @@ import com.codex.apk.editor.AiAssistantManager;
 import com.codex.apk.editor.EditorUiManager;
 import com.codex.apk.editor.FileTreeManager;
 import com.codex.apk.editor.TabManager;
+import com.codex.apk.editor.EditorViewModel;
 import com.codex.apk.editor.adapters.MainPagerAdapter;
 import com.codex.apk.SimpleSoraTabAdapter;
 import com.google.android.material.tabs.TabLayout;

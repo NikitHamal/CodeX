@@ -291,13 +291,6 @@ public class AIAssistant {
 	// GLM API client
 	private GLMApiClient glmApiClient;
 	
-	// Listener for AI responses
-	    public interface AIResponseListener {
-        void onResponse(String response, boolean isThinking, boolean isWebSearch, List<WebSource> webSources);
-        void onError(String error);
-        void onStreamUpdate(String partialResponse, boolean isThinking);
-    }
-
     public interface AIActionListener {
         void onAiActionsProcessed(String rawAiResponseJson, String explanation, List<String> suggestions,
                                  List<ChatMessage.FileActionDetail> proposedFileChanges, String aiModelDisplayName);
@@ -356,8 +349,6 @@ public class AIAssistant {
 		// Initialize GLM API client
 		this.glmApiClient = new GLMApiClient();
 		this.glmApiClient.setApiKey(GLM_AUTH_TOKEN);
-
-        this.qwenApiClient = new QwenApiClient(context, actionListener, projectDir);
 	}
 	
 	// Legacy constructor for compatibility with AiAssistantManager
@@ -367,54 +358,8 @@ public class AIAssistant {
 		this.actionListener = actionListener;
 		this.projectDir = projectDir;
 		this.currentProjectPath = projectDir != null ? projectDir.getAbsolutePath() : "";
-		
-		// Set up the response listener to bridge to the action listener
-		setResponseListener(new AIResponseListener() {
-			private StringBuilder thinkingContentBuilder = new StringBuilder();
-			private StringBuilder mainContentBuilder = new StringBuilder();
-			private List<WebSource> collectedWebSources = new ArrayList<>();
-			
-			@Override
-			public void onResponse(String response, boolean isThinking, boolean isWebSearch, List<WebSource> webSources) {
-				if (actionListener != null) {
-					// Convert WebSource to ChatMessage.WebSource
-					List<ChatMessage.WebSource> chatWebSources = new ArrayList<>();
-					for (WebSource source : webSources) {
-						chatWebSources.add(new ChatMessage.WebSource(
-								source.getUrl(), source.getTitle(), source.getSnippet(), source.getFavicon()));
-					}
 
-					// Convert to enhanced format if the action listener supports it
-					if (actionListener instanceof AiAssistantManager) {
-						((AiAssistantManager) actionListener).onAiActionsProcessed(
-								null, response, new ArrayList<>(), new ArrayList<>(),
-								currentModel.getDisplayName(),
-								thinkingContentBuilder.length() > 0 ? thinkingContentBuilder.toString() : null,
-								chatWebSources);
-					} else {
-						// Fallback to legacy format
-						actionListener.onAiActionsProcessed(null, response, new ArrayList<>(), new ArrayList<>(),
-								currentModel.getDisplayName());
-					}
-                    actionListener.onAiRequestCompleted();
-				}
-			}
-
-			@Override
-			public void onError(String error) {
-				if (actionListener != null) {
-					actionListener.onAiError(error);
-                    actionListener.onAiRequestCompleted();
-				}
-			}
-			
-			@Override
-			public void onStreamUpdate(String partialResponse, boolean isThinking) {
-				if (actionListener != null) {
-                    actionListener.onAiStreamUpdate(partialResponse, isThinking);
-                }
-			}
-		});
+		this.qwenApiClient = new QwenApiClient(context, actionListener, projectDir);
 	}
 	
 	// Getters and setters
@@ -514,9 +459,8 @@ public class AIAssistant {
 	 * Refreshes model list for dynamic providers (Qwen and Z)
 	 */
 	public void refreshModelsForProvider(AIProvider provider, RefreshCallback callback) {
-		if (provider == AIProvider.ALIBABA) {
-			refreshQwenModels(callback);
-		} else if (provider == AIProvider.Z) {
+		// TODO: Implement refresh logic for Qwen if needed via qwenApiClient
+		if (provider == AIProvider.Z) {
 			refreshGLMModels(callback);
 		} else {
 			callback.onRefreshComplete(false, "Provider does not support refresh");
@@ -560,21 +504,14 @@ public class AIAssistant {
 		conversationIds.put(key, conversationId);
 	}
 
-	private String getQwenToken() {
-		String customToken = SettingsActivity.getQwenApiToken(context);
-		return customToken.isEmpty() ? QWEN_DEFAULT_TOKEN : customToken;
-	}
-
 	/**
 	 * Creates a new conversation for the current model/provider
 	 */
 	private void createNewConversation(String initialMessage, CreateConversationCallback callback) {
-		if (currentModel.getProvider() == AIProvider.ALIBABA) {
-			createQwenConversation(initialMessage, callback);
-		} else if (currentModel.getProvider() == AIProvider.Z) {
+		if (currentModel.getProvider() == AIProvider.Z) {
 			createGLMConversation(initialMessage, callback);
 		} else {
-			// For other providers, use existing logic
+			// For other providers (Google, Qwen), conversation is managed by their respective clients
 			callback.onConversationCreated(null);
 		}
 	}
@@ -644,8 +581,8 @@ public class AIAssistant {
 			createNewConversation(message, newConversationId -> {
 				if (newConversationId != null) {
 					performGLMCompletion(message, attachments);
-				} else if (responseListener != null) {
-					responseListener.onError("Failed to create GLM conversation");
+				} else if (actionListener != null) {
+					actionListener.onAiError("Failed to create GLM conversation");
 				}
 			});
 		} else {
@@ -657,32 +594,38 @@ public class AIAssistant {
 		// Find corresponding GLM model
 		GLMApiClient.GLMModel glmModel = findGLMModel(currentModel);
 		if (glmModel == null) {
-			if (responseListener != null) {
-				responseListener.onError("Current model is not a GLM model");
+			if (actionListener != null) {
+				actionListener.onAiError("Current model is not a GLM model");
 			}
 			return;
 		}
 		
+		// Bridge GLM's listener to our AIActionListener
 		glmApiClient.sendStreamingChatCompletion(glmModel, message, thinkingModeEnabled, webSearchEnabled,
 			new GLMApiClient.GLMResponseListener() {
 				@Override
 				public void onResponse(String response, boolean isThinking, List<WebSource> webSources) {
-					if (responseListener != null) {
-						responseListener.onResponse(response, isThinking, webSources.size() > 0, webSources);
+					if (actionListener != null) {
+                        List<ChatMessage.FileActionDetail> fileActions = new ArrayList<>();
+                        // Note: Basic GLM response doesn't include structured file actions, so we pass an empty list.
+                        // The response is treated as the main "explanation".
+                        actionListener.onAiActionsProcessed(null, response, new ArrayList<>(), fileActions, currentModel.getDisplayName());
+                        actionListener.onAiRequestCompleted();
 					}
 				}
 				
 				@Override
 				public void onError(String error) {
-					if (responseListener != null) {
-						responseListener.onError(error);
+					if (actionListener != null) {
+						actionListener.onAiError(error);
+                        actionListener.onAiRequestCompleted();
 					}
 				}
 				
 				@Override
 				public void onStreamUpdate(String partialResponse, boolean isThinking) {
-					if (responseListener != null) {
-						responseListener.onStreamUpdate(partialResponse, isThinking);
+					if (actionListener != null) {
+						actionListener.onAiStreamUpdate(partialResponse, isThinking);
 					}
 				}
 			});
@@ -702,8 +645,9 @@ public class AIAssistant {
 	private void sendGoogleMessage(String message, List<File> attachments) {
 		// Keep existing Google/Gemini implementation
 		// This would be the existing logic from the original AIAssistant class
-		if (responseListener != null) {
-			responseListener.onResponse("Google response placeholder for: " + message, false, false, new ArrayList<>());
+		if (actionListener != null) {
+			actionListener.onAiActionsProcessed(null, "Google response placeholder for: " + message, new ArrayList<>(), new ArrayList<>(), currentModel.getDisplayName());
+            actionListener.onAiRequestCompleted();
 		}
 	}
 }

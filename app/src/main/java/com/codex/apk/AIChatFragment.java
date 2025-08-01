@@ -459,6 +459,23 @@ public class AIChatFragment extends Fragment implements
     }
 
     /**
+     * Hides/removes the "AI is thinking..." message from the chat.
+     * Called on the UI thread when the AI response is complete.
+     */
+    public void hideThinkingMessage() {
+        if (!isAiProcessing || currentAiStatusMessage == null) return;
+
+        int index = chatHistory.indexOf(currentAiStatusMessage);
+        if (index != -1) {
+            chatHistory.remove(index);
+            chatMessageAdapter.notifyItemRemoved(index);
+        }
+
+        isAiProcessing = false;
+        currentAiStatusMessage = null;
+    }
+
+    /**
      * Updates an existing message in the chat history and notifies the adapter.
      * This is used to update the status of AI messages (e.g., after Accept/Discard).
      * @param position The position of the message to update.

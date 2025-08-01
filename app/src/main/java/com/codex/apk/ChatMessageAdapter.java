@@ -281,3 +281,4 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
             }
         }
     }
+}

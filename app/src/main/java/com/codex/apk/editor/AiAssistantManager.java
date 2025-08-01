@@ -281,7 +281,7 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                 
                 Log.d(TAG, "Adding AI message to chat fragment with status: " + aiMessage.getStatus());
                 activity.getAiChatFragment().addMessage(aiMessage); // Add to local list and UI
-                activity.getAiChatFragment().saveChatHistoryToPrefs(); // Save to SharedPreferences
+                activity.getAiChatFragment().saveChatState(); // Save to SharedPreferences
             } else {
                 Log.w(TAG, "AiChatFragment is null! Cannot add message to UI.");
             }
@@ -304,7 +304,7 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                         ChatMessage.STATUS_NONE
                 );
                 aiChatFragment.addMessage(aiErrorMessage);
-                aiChatFragment.saveChatHistoryToPrefs();
+                aiChatFragment.saveChatState();
             }
         });
     }

@@ -409,7 +409,7 @@ public class QwenApiClient {
         return f.delete();
     }
 
-    private void sendFunctionResult(JsonObject originalChoice, String funcName, String funcResultJson, List<AIAssistant.WebSource> webSources) {
+    private void sendFunctionResult(JsonObject originalChoice, String funcName, String funcResultJson, List<AIAssistant.WebSource> webSources, QwenConversationState state, AIAssistant.AIModel model) {
         try {
             JsonObject functionMsg = new JsonObject();
             functionMsg.addProperty("role", "function");
@@ -422,7 +422,7 @@ public class QwenApiClient {
             JsonObject body = new JsonObject();
             body.addProperty("stream", true);
             body.addProperty("incremental_output", true);
-            body.addProperty("chat_id", "some_chat_id"); // Replace with actual chat ID
+            body.addProperty("chat_id", state.getConversationId());
             body.add("messages", msgs);
 
             // re-use tools array so model can call further tools
@@ -432,7 +432,7 @@ public class QwenApiClient {
             String qwenToken = getQwenToken();
 
             Request req = new Request.Builder()
-                    .url(QWEN_BASE_URL + "/chat/completions?chat_id=" + "some_chat_id") // Replace with actual chat ID
+                    .url(QWEN_BASE_URL + "/chat/completions?chat_id=" + state.getConversationId())
                     .post(RequestBody.create(body.toString(), MediaType.parse("application/json")))
                     .addHeader("authorization", "Bearer " + qwenToken)
                     .addHeader("content-type", "application/json")
@@ -449,7 +449,7 @@ public class QwenApiClient {
                 public void onResponse(okhttp3.Call call, Response response) throws IOException {
                     if (response.isSuccessful() && response.body() != null) {
                         // Continue processing stream recursively
-                        processQwenStreamResponse(response);
+                        processQwenStreamResponse(response, state, model);
                     }
                 }
             });

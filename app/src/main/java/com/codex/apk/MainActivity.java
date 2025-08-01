@@ -55,6 +55,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
@@ -257,34 +258,55 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
+        // First sync from filesystem to get all current projects
         syncProjectsFromFilesystem();
 
+        // Then load from SharedPreferences to merge with any additional metadata
         SharedPreferences prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         String json = prefs.getString(PROJECTS_LIST_KEY, null);
         Gson gson = new Gson();
         Type type = new TypeToken<ArrayList<HashMap<String, Object>>>() {}.getType();
         ArrayList<HashMap<String, Object>> loadedList = gson.fromJson(json, type);
 
-        projectsList.clear();
         if (loadedList != null) {
-            for (HashMap<String, Object> project : loadedList) {
+            // Create a map of existing projects by path for quick lookup
+            Map<String, HashMap<String, Object>> existingProjectsMap = new HashMap<>();
+            for (HashMap<String, Object> project : projectsList) {
                 String path = (String) project.get("path");
-                if (path != null && new File(path).exists()) {
-                    projectsList.add(project);
-                } else {
-                    Log.w(TAG, "Project directory not found, removing from list: " + path);
+                if (path != null) {
+                    existingProjectsMap.put(path, project);
                 }
             }
-            // Fix for ClassCastException: java.lang.Double cannot be cast to java.lang.Long
-            // Safely retrieve and cast lastModifiedTimestamp to long
-            Collections.sort(projectsList, (p1, p2) -> {
-                Number timestamp1 = (Number) p1.getOrDefault("lastModifiedTimestamp", 0L);
-                Number timestamp2 = (Number) p2.getOrDefault("lastModifiedTimestamp", 0L);
-                long date1 = timestamp1.longValue();
-                long date2 = timestamp2.longValue();
-                return Long.compare(date2, date1);
-            });
+            
+            // Merge loaded projects with existing ones, keeping the most recent data
+            for (HashMap<String, Object> loadedProject : loadedList) {
+                String path = (String) loadedProject.get("path");
+                if (path != null && new File(path).exists()) {
+                    HashMap<String, Object> existingProject = existingProjectsMap.get(path);
+                    if (existingProject != null) {
+                        // Update existing project with any additional metadata from SharedPreferences
+                        for (Map.Entry<String, Object> entry : loadedProject.entrySet()) {
+                            if (!entry.getKey().equals("path") && !entry.getKey().equals("name")) {
+                                existingProject.put(entry.getKey(), entry.getValue());
+                            }
+                        }
+                    } else {
+                        // Add new project that exists on filesystem but wasn't in our list
+                        projectsList.add(loadedProject);
+                    }
+                }
+            }
         }
+        
+        // Sort by last modified timestamp (most recent first)
+        Collections.sort(projectsList, (p1, p2) -> {
+            Number timestamp1 = (Number) p1.getOrDefault("lastModifiedTimestamp", 0L);
+            Number timestamp2 = (Number) p2.getOrDefault("lastModifiedTimestamp", 0L);
+            long date1 = timestamp1.longValue();
+            long date2 = timestamp2.longValue();
+            return Long.compare(date2, date1);
+        });
+        
         projectsAdapter.notifyDataSetChanged();
         updateEmptyStateVisibility();
     }
@@ -873,8 +895,20 @@ public class MainActivity extends AppCompatActivity {
             }
         }
 
+        // Create a map of existing projects by path
+        Map<String, HashMap<String, Object>> existingProjectsMap = new HashMap<>();
+        for (HashMap<String, Object> project : projectsList) {
+            String path = (String) project.get("path");
+            if (path != null) {
+                existingProjectsMap.put(path, project);
+            }
+        }
+        
+        // Clear and rebuild the list with filesystem projects
         projectsList.clear();
         projectsList.addAll(filesystemProjects);
+        
+        // Save the updated list
         saveProjectsList();
     }
 }

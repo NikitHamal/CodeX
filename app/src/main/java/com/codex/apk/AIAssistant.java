@@ -961,16 +961,23 @@ public class AIAssistant {
 								// Continue accumulating JSON
 								jsonResponseBuilder.append(content);
 							} else {
-								// Regular text response
-								if ("think".equals(phase)) {
-									thinkingContent.append(content);
-									if (responseListener != null) {
-										responseListener.onStreamUpdate(thinkingContent.toString(), true);
-									}
-								} else if ("answer".equals(phase)) {
-									answerContent.append(content);
-									if (responseListener != null) {
-										responseListener.onStreamUpdate(answerContent.toString(), false);
+								// Check if content contains JSON wrapped in code blocks
+								String extractedJson = extractJsonFromCodeBlock(content);
+								if (extractedJson != null) {
+									isJsonResponse = true;
+									jsonResponseBuilder.append(extractedJson);
+								} else {
+									// Regular text response
+									if ("think".equals(phase)) {
+										thinkingContent.append(content);
+										if (responseListener != null) {
+											responseListener.onStreamUpdate(thinkingContent.toString(), true);
+										}
+									} else if ("answer".equals(phase)) {
+										answerContent.append(content);
+										if (responseListener != null) {
+											responseListener.onStreamUpdate(answerContent.toString(), false);
+										}
 									}
 								}
 							}
@@ -1007,9 +1014,36 @@ public class AIAssistant {
 												// Process file operations using the parser
 												processFileOperationsFromParsedResponse(parsedResponse);
 											} else {
-												// Regular JSON response
+												// Regular JSON response - extract explanation and suggestions
+												String explanation = parsedResponse.explanation;
+												List<String> suggestions = parsedResponse.suggestions;
+												
+												// Create a user-friendly message from the JSON
+												StringBuilder userMessage = new StringBuilder();
+												if (explanation != null && !explanation.isEmpty()) {
+													userMessage.append(explanation);
+												}
+												
+												if (!suggestions.isEmpty()) {
+													if (userMessage.length() > 0) {
+														userMessage.append("\n\nSuggestions:\n");
+													} else {
+														userMessage.append("Suggestions:\n");
+													}
+													for (int i = 0; i < suggestions.size(); i++) {
+														userMessage.append("• ").append(suggestions.get(i));
+														if (i < suggestions.size() - 1) {
+															userMessage.append("\n");
+														}
+													}
+												}
+												
+												if (userMessage.length() == 0) {
+													userMessage.append("Response processed successfully.");
+												}
+												
 												if (responseListener != null) {
-													responseListener.onResponse(jsonResponse, 
+													responseListener.onResponse(userMessage.toString(), 
 														thinkingContent.length() > 0, 
 														webSources.size() > 0, 
 														webSources);
@@ -1250,6 +1284,39 @@ public class AIAssistant {
             }
         }
         return f.delete();
+    }
+
+    /**
+     * Extracts JSON from code blocks like ```json ... ```
+     */
+    private String extractJsonFromCodeBlock(String content) {
+        if (content == null || content.trim().isEmpty()) {
+            return null;
+        }
+        
+        // Look for ```json ... ``` pattern
+        String jsonPattern = "```json\\s*([\\s\\S]*?)```";
+        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile(jsonPattern, java.util.regex.Pattern.CASE_INSENSITIVE);
+        java.util.regex.Matcher matcher = pattern.matcher(content);
+        
+        if (matcher.find()) {
+            return matcher.group(1).trim();
+        }
+        
+        // Also check for ``` ... ``` pattern (without json specifier)
+        String genericPattern = "```\\s*([\\s\\S]*?)```";
+        pattern = java.util.regex.Pattern.compile(genericPattern);
+        matcher = pattern.matcher(content);
+        
+        if (matcher.find()) {
+            String extracted = matcher.group(1).trim();
+            // Check if the extracted content looks like JSON
+            if (QwenResponseParser.looksLikeJson(extracted)) {
+                return extracted;
+            }
+        }
+        
+        return null;
     }
 
     /**

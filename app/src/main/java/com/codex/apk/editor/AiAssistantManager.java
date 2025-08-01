@@ -356,15 +356,23 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
         });
     }
 
+    @Override
+    public void onAiStreamUpdate(String partialResponse, boolean isThinking) {
+        activity.runOnUiThread(() -> {
+            AIChatFragment chatFragment = activity.getAiChatFragment();
+            if (chatFragment != null) {
+                chatFragment.updateThinkingMessage(partialResponse);
+            }
+        });
+    }
+
+    @Override
     public void onAiRequestCompleted() {
-        // No specific UI update needed here, as the final response is added by onAiActionsProcessed or onAiError
-    }
-
-    public void onAiContextBuildingStarted() {
-        // No-op, progress is shown via indexing status in AIChatFragment
-    }
-
-    public void onAiContextBuildingCompleted() {
-        // No-op, AI is thinking message will appear in AIChatFragment
+        activity.runOnUiThread(() -> {
+            AIChatFragment chatFragment = activity.getAiChatFragment();
+            if (chatFragment != null) {
+                chatFragment.hideThinkingMessage();
+            }
+        });
     }
 }

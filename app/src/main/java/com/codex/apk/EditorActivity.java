@@ -60,13 +60,14 @@ public class EditorActivity extends AppCompatActivity implements
     private DialogHelper dialogHelper; // DialogHelper is a core utility, might stay here or be managed by a dedicated utility manager
     private ExecutorService executorService; // ExecutorService is a core utility, might stay here or be managed by a dedicated utility manager
 
-    // Data lists (these will now be managed by TabManager and FileTreeManager)
-    // Kept here for initialization and passing to managers, managers will operate on them.
-    private List<FileItem> fileItems = new ArrayList<>(); // Managed by FileTreeManager
-    private List<TabItem> openTabs = new ArrayList<>(); // Managed by TabManager
+    private EditorViewModel viewModel;
 
     // In onCreate or fragment setup logic, ensure chat fragment is attached and visible
     // Remove ensureChatFragment and its call in onCreate, as there is no fragment_container_chat in the layout.
+
+    public ExecutorService getExecutorService() {
+        return executorService;
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -81,14 +82,14 @@ public class EditorActivity extends AppCompatActivity implements
         projectName = getIntent().getStringExtra("projectName");
 
         if (projectPath == null || projectName == null) {
-            Toast.makeText(this, "Error: Project information missing.", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, getString(R.string.error_project_information_missing), Toast.LENGTH_LONG).show();
             finish();
             return;
         }
 
         projectDir = new File(projectPath);
         if (!projectDir.exists() || !projectDir.isDirectory()) {
-            Toast.makeText(this, "Invalid project directory: " + projectPath + ". Please select a valid project.", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, getString(R.string.invalid_project_directory, projectPath), Toast.LENGTH_LONG).show();
             finish();
             return;
         }
@@ -97,11 +98,14 @@ public class EditorActivity extends AppCompatActivity implements
         // DialogHelper will need references to the new managers for its callbacks, and it needs EditorActivity
         dialogHelper = new DialogHelper(this, fileManager, this);
 
+        // Initialize ViewModel
+        viewModel = new androidx.lifecycle.ViewModelProvider(this).get(EditorViewModel.class);
+
         // Initialize managers, passing necessary dependencies
         // Pass 'this' (EditorActivity) to managers so they can access Activity-level context and methods
-        uiManager = new EditorUiManager(this, projectDir, fileManager, dialogHelper, executorService, openTabs);
-        fileTreeManager = new FileTreeManager(this, fileManager, dialogHelper, fileItems, openTabs);
-        tabManager = new TabManager(this, fileManager, dialogHelper, openTabs);
+        uiManager = new EditorUiManager(this, projectDir, fileManager, dialogHelper, executorService, viewModel.getOpenTabs());
+        fileTreeManager = new FileTreeManager(this, fileManager, dialogHelper, viewModel.getFileItems(), viewModel.getOpenTabs());
+        tabManager = new TabManager(this, fileManager, dialogHelper, viewModel.getOpenTabs());
         // Pass projectDir to AiAssistantManager for FileWatcher initialization
         aiAssistantManager = new AiAssistantManager(this, projectDir, projectName, fileManager, executorService);
 
@@ -120,16 +124,16 @@ public class EditorActivity extends AppCompatActivity implements
         // Connect TabLayout with ViewPager2
         new TabLayoutMediator(tabLayout, viewPager, (tab, position) -> {
             if (position == 0) {
-                tab.setText("Chat");
+                tab.setText(getString(R.string.chat));
             } else if (position == 1) {
-                tab.setText("Editor");
+                tab.setText(getString(R.string.editor));
             }
         }).attach();
     }
 
     public void onCodeEditorFragmentReady() {
         // Open index.html if no tabs are open initially
-        if (openTabs.isEmpty()) {
+        if (viewModel.getOpenTabs().isEmpty()) {
             File indexHtml = new File(projectDir, "index.html");
             if (indexHtml.exists() && indexHtml.isFile()) {
                 tabManager.openFile(indexHtml); // Use tabManager to open file
@@ -366,11 +370,11 @@ public class EditorActivity extends AppCompatActivity implements
         fileTreeManager.showNewFolderDialog(parentDirectory);
     }
 
-    public void renameFileOrDir(File oldFile, File newFile) throws IOException {
+    public void renameFileOrDir(File oldFile, File newFile) {
         fileTreeManager.renameFileOrDir(oldFile, newFile);
     }
 
-    public void deleteFileByPath(File fileOrDirectory) throws IOException {
+    public void deleteFileByPath(File fileOrDirectory) {
         fileTreeManager.deleteFileByPath(fileOrDirectory);
     }
 

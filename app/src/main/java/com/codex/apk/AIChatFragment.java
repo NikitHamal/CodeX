@@ -100,7 +100,7 @@ public class AIChatFragment extends Fragment implements
     public static AIChatFragment newInstance(String projectPath) {
         AIChatFragment fragment = new AIChatFragment();
         Bundle args = new Bundle();
-        args.putString("projectPath", projectPath);
+        args.putString(fragment.getString(R.string.project_path), projectPath);
         fragment.setArguments(args);
         return fragment;
     }
@@ -121,11 +121,11 @@ public class AIChatFragment extends Fragment implements
         super.onCreate(savedInstanceState);
         // Retrieve projectPath from arguments
         if (getArguments() != null) {
-            projectPath = getArguments().getString("projectPath");
+            projectPath = getArguments().getString(getString(R.string.project_path));
         } else {
             Log.e(TAG, "projectPath not provided to AIChatFragment!");
             // Fallback for safety, though this should ideally not happen
-            projectPath = "default_project";
+            projectPath = getString(R.string.default_project);
         }
 
         chatHistory = new ArrayList<>();
@@ -185,33 +185,33 @@ public class AIChatFragment extends Fragment implements
 
             // Verify critical components exist
             if (recyclerViewChatHistory == null) {
-                throw new RuntimeException("RecyclerView not found in layout");
+                throw new RuntimeException(getString(R.string.recyclerview_not_found));
             }
             if (editTextAiPrompt == null) {
-                throw new RuntimeException("EditText not found in layout");
+                throw new RuntimeException(getString(R.string.edittext_not_found));
             }
             if (buttonAiSend == null) {
-                throw new RuntimeException("Send button not found in layout");
+                throw new RuntimeException(getString(R.string.send_button_not_found));
             }
             if (layoutEmptyState == null) {
-                throw new RuntimeException("Empty state layout not found");
+                throw new RuntimeException(getString(R.string.empty_state_layout_not_found));
             }
             if (textGreeting == null) {
-                throw new RuntimeException("Greeting text not found");
+                throw new RuntimeException(getString(R.string.greeting_text_not_found));
             }
             if (layoutInputSection == null) {
-                throw new RuntimeException("Input section layout not found");
+                throw new RuntimeException(getString(R.string.input_section_layout_not_found));
             }
             if (layoutModelSelectorCustom == null) {
-                throw new RuntimeException("Model selector layout not found");
+                throw new RuntimeException(getString(R.string.model_selector_layout_not_found));
             }
             if (linearPromptInput == null) {
-                throw new RuntimeException("Prompt input layout not found");
+                throw new RuntimeException(getString(R.string.prompt_input_layout_not_found));
             }
         } catch (Exception e) {
             Log.e(TAG, "Error initializing UI components: " + e.getMessage(), e);
             // Show error in the fragment instead of returning a different view
-            showChatLoadError("Failed to initialize chat interface: " + e.getMessage());
+            showChatLoadError(getString(R.string.failed_to_initialize_chat_interface, e.getMessage()));
             return view; // Return the original view but show error state
         }
 
@@ -223,7 +223,7 @@ public class AIChatFragment extends Fragment implements
             recyclerViewChatHistory.setAdapter(chatMessageAdapter);
         } catch (Exception e) {
             Log.e(TAG, "Error setting up RecyclerView", e);
-            showChatLoadError("Failed to initialize chat history: " + e.getMessage());
+            showChatLoadError(getString(R.string.failed_to_initialize_chat_history, e.getMessage()));
             return view;
         }
 
@@ -238,17 +238,17 @@ public class AIChatFragment extends Fragment implements
                     }
                 } else {
                     Log.e(TAG, "AIAssistant is null from listener!");
-                    showChatLoadError("AI Assistant not available. Please check your settings.");
+                    showChatLoadError(getString(R.string.ai_assistant_not_available));
                     return view;
                 }
             } catch (Exception e) {
                 Log.e(TAG, "Error getting AI Assistant from listener", e);
-                showChatLoadError("Failed to initialize AI Assistant: " + e.getMessage());
+                showChatLoadError(getString(R.string.failed_to_initialize_ai_assistant, e.getMessage()));
                 return view;
             }
         } else {
             Log.e(TAG, "Listener is null in onCreateView!");
-            showChatLoadError("Chat interface not properly connected to editor.");
+            showChatLoadError(getString(R.string.chat_interface_not_properly_connected));
             return view;
         }
 
@@ -320,7 +320,7 @@ public class AIChatFragment extends Fragment implements
      */
     private void showModelSelectorDialog() {
         if (aiAssistant == null) {
-            Toast.makeText(requireContext(), "AI Assistant not initialized.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(requireContext(), getString(R.string.ai_assistant_not_initialized), Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -338,13 +338,13 @@ public class AIChatFragment extends Fragment implements
         }
 
         new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
-                .setTitle("Select AI Model")
+                .setTitle(getString(R.string.select_ai_model))
                 .setSingleChoiceItems(modelNames, selectedIndex, (dialog, which) -> {
                     String selectedModelName = modelNames[which];
                     onModelSelected(selectedModelName);
                     dialog.dismiss();
                 })
-                .setNegativeButton("Cancel", null)
+                .setNegativeButton(getString(R.string.cancel), null)
                 .show();
     }
 
@@ -354,7 +354,7 @@ public class AIChatFragment extends Fragment implements
             if (selectedModel != null) {
                 aiAssistant.setCurrentModel(selectedModel);
                 textSelectedModel.setText(selectedModel.getDisplayName()); // Update the displayed model name
-                Toast.makeText(requireContext(), "AI Model set to: " + selectedModel.getDisplayName(), Toast.LENGTH_SHORT).show();
+                Toast.makeText(requireContext(), getString(R.string.ai_model_set_to, selectedModel.getDisplayName()), Toast.LENGTH_SHORT).show();
             }
         }
     }
@@ -365,7 +365,7 @@ public class AIChatFragment extends Fragment implements
     private void sendPrompt() {
         String prompt = editTextAiPrompt.getText().toString().trim();
         if (prompt.isEmpty()) {
-            Toast.makeText(requireContext(), "Please enter a message.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(requireContext(), getString(R.string.please_enter_a_message), Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -400,7 +400,7 @@ public class AIChatFragment extends Fragment implements
         }
 
         if (message.getSender() == ChatMessage.SENDER_AI) {
-            if (message.getContent().equals("AI is thinking...")) {
+            if (message.getContent().equals(getString(R.string.ai_is_thinking))) {
                 // Handle "AI is thinking..." message
                 if (!isAiProcessing) {
                     chatHistory.add(message);
@@ -485,7 +485,7 @@ public class AIChatFragment extends Fragment implements
             }
             // For the first message, the prompt hint is different
             if (editTextAiPrompt != null) {
-                editTextAiPrompt.setHint("How can CodeX help you today?");
+                editTextAiPrompt.setHint(getString(R.string.how_can_codex_help_you_today));
             }
         } else {
             if (layoutEmptyState != null) {
@@ -496,7 +496,7 @@ public class AIChatFragment extends Fragment implements
             }
             // After the first message, the prompt hint is different
             if (editTextAiPrompt != null) {
-                editTextAiPrompt.setHint("Reply to CodeX");
+                editTextAiPrompt.setHint(getString(R.string.reply_to_codex));
             }
         }
 
@@ -804,7 +804,7 @@ public class AIChatFragment extends Fragment implements
     public void showChatLoadError(String error) {
         if (layoutEmptyState != null && textGreeting != null) {
             layoutEmptyState.setVisibility(View.VISIBLE);
-            textGreeting.setText(error != null ? error : "Error loading chat interface");
+            textGreeting.setText(error != null ? error : getString(R.string.error_loading_chat_interface));
         }
         if (recyclerViewChatHistory != null) {
             recyclerViewChatHistory.setVisibility(View.GONE);

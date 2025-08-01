@@ -103,7 +103,7 @@ public class MainActivity extends AppCompatActivity {
 
         setSupportActionBar(toolbar);
         if (getSupportActionBar() != null) {
-            getSupportActionBar().setTitle("CodeX"); // Set title as per screenshot
+            getSupportActionBar().setTitle(getString(R.string.app_name)); // Set title as per screenshot
         }
 
         migrateOldProjects();
@@ -138,7 +138,7 @@ public class MainActivity extends AppCompatActivity {
             if (projectPath != null && projectName != null) {
                 openProject(projectPath, projectName);
             } else {
-                Toast.makeText(this, "Error: Invalid project data.", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, getString(R.string.error_invalid_project_data), Toast.LENGTH_SHORT).show();
             }
         });
 
@@ -191,21 +191,21 @@ public class MainActivity extends AppCompatActivity {
 
     private void showManageStoragePermissionDialog() {
         new MaterialAlertDialogBuilder(this, R.style.AlertDialogCustom)
-                .setTitle("Permission Required")
-                .setMessage("CodeX needs 'All Files Access' permission to manage your project files. Please grant this permission in settings.")
-                .setPositiveButton("Grant", (dialog, which) -> {
+                .setTitle(getString(R.string.permission_required))
+                .setMessage(getString(R.string.permission_required_message))
+                .setPositiveButton(getString(R.string.grant), (dialog, which) -> {
                     try {
                         Intent intent = new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
                         Uri uri = Uri.fromParts("package", getPackageName(), null);
                         intent.setData(uri);
                         startActivityForResult(intent, REQUEST_CODE_MANAGE_EXTERNAL_STORAGE);
                     } catch (Exception e) {
-                        Toast.makeText(this, "Could not open settings. Please go to App Info > Permissions and enable 'All Files Access'.", Toast.LENGTH_LONG).show();
+                        Toast.makeText(this, getString(R.string.could_not_open_settings), Toast.LENGTH_LONG).show();
                         Log.e(TAG, "Failed to open manage storage settings", e);
                     }
                 })
-                .setNegativeButton("Cancel", (dialog, which) -> {
-                    Toast.makeText(this, "Permission denied. Cannot manage projects.", Toast.LENGTH_LONG).show();
+                .setNegativeButton(getString(R.string.cancel), (dialog, which) -> {
+                    Toast.makeText(this, getString(R.string.permission_denied), Toast.LENGTH_LONG).show();
                     updateEmptyStateVisibility();
                 })
                 .setCancelable(false)
@@ -217,10 +217,10 @@ public class MainActivity extends AppCompatActivity {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == REQUEST_CODE_STORAGE_PERMISSION) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                Toast.makeText(this, "Storage permission granted.", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, getString(R.string.storage_permission_granted), Toast.LENGTH_SHORT).show();
                 loadProjectsList();
             } else {
-                Toast.makeText(this, "Storage permission denied. Cannot manage projects.", Toast.LENGTH_LONG).show();
+                Toast.makeText(this, getString(R.string.storage_permission_denied), Toast.LENGTH_LONG).show();
             }
             updateEmptyStateVisibility();
         }
@@ -232,10 +232,10 @@ public class MainActivity extends AppCompatActivity {
         if (requestCode == REQUEST_CODE_MANAGE_EXTERNAL_STORAGE) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                 if (Environment.isExternalStorageManager()) {
-                    Toast.makeText(this, "All Files Access granted.", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, getString(R.string.all_files_access_granted), Toast.LENGTH_SHORT).show();
                     loadProjectsList();
                 } else {
-                    Toast.makeText(this, "All Files Access denied. Cannot manage projects.", Toast.LENGTH_LONG).show();
+                    Toast.makeText(this, getString(R.string.all_files_access_denied), Toast.LENGTH_LONG).show();
                 }
                 updateEmptyStateVisibility();
             }
@@ -244,7 +244,7 @@ public class MainActivity extends AppCompatActivity {
             if (uri != null) {
                 handleImportZipFile(uri);
             } else {
-                Toast.makeText(this, "Failed to get file URI for import.", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, getString(R.string.failed_to_get_file_uri), Toast.LENGTH_SHORT).show();
             }
         }
     }
@@ -329,7 +329,7 @@ public class MainActivity extends AppCompatActivity {
         } else if (!hasStoragePermission()) {
             listViewProjects.setVisibility(View.GONE);
             layoutEmptyState.setVisibility(View.VISIBLE);
-            textEmptyProjects.setText("Storage permission required to view projects.");
+            textEmptyProjects.setText(getString(R.string.storage_permission_required));
         }
         else {
             listViewProjects.setVisibility(View.VISIBLE);
@@ -348,7 +348,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void showNewProjectDialog() {
         if (!hasStoragePermission()) {
-            Toast.makeText(this, "Please grant storage permission first.", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, getString(R.string.please_grant_storage_permission), Toast.LENGTH_LONG).show();
             checkAndRequestPermissions();
             return;
         }
@@ -360,10 +360,10 @@ public class MainActivity extends AppCompatActivity {
 
 
         AlertDialog dialog = new MaterialAlertDialogBuilder(this, R.style.AlertDialogCustom)
-                .setTitle("Create New Project")
+                .setTitle(getString(R.string.create_new_project))
                 .setView(dialogView)
-                .setPositiveButton("Create", null)
-                .setNegativeButton("Cancel", null)
+                .setPositiveButton(getString(R.string.create), null)
+                .setNegativeButton(getString(R.string.cancel), null)
                 .create();
 
         dialog.setOnShowListener(dialogInterface -> {
@@ -372,14 +372,14 @@ public class MainActivity extends AppCompatActivity {
                 String projectName = editTextProjectName.getText().toString().trim();
 
                 if (projectName.isEmpty()) {
-                    editTextProjectName.setError("Project name cannot be empty");
+                    editTextProjectName.setError(getString(R.string.project_name_cannot_be_empty));
                     return;
                 }
 
                 if (projectName.contains("/") || projectName.contains("\\") || projectName.contains(":") ||
                         projectName.contains("*") || projectName.contains("?") || projectName.contains("\"") ||
                         projectName.contains("<") || projectName.contains(">") || projectName.contains("|")) {
-                    editTextProjectName.setError("Project name contains invalid characters");
+                    editTextProjectName.setError(getString(R.string.project_name_contains_invalid_characters));
                     return;
                 }
 
@@ -390,13 +390,13 @@ public class MainActivity extends AppCompatActivity {
 
                 File newProjectDir = new File(projectsDir, projectName);
                 if (newProjectDir.exists()) {
-                    editTextProjectName.setError("A project with this name already exists");
+                    editTextProjectName.setError(getString(R.string.project_with_this_name_already_exists));
                     return;
                 }
 
                 try {
                     if (!newProjectDir.mkdirs()) {
-                        throw new IOException("Failed to create project directory.");
+                        throw new IOException(getString(R.string.failed_to_create_project_directory));
                     }
 
                     createTemplateFiles(newProjectDir, projectName, selectedTemplate[0]);
@@ -413,12 +413,12 @@ public class MainActivity extends AppCompatActivity {
 
                     projectsList.add(0, newProject);
                     saveProjectsList();
-                    Toast.makeText(MainActivity.this, "Project '" + projectName + "' created.", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(MainActivity.this, getString(R.string.project_created, projectName), Toast.LENGTH_SHORT).show();
                     dialog.dismiss();
                     openProject(newProjectDir.getAbsolutePath(), projectName);
                 } catch (IOException e) {
                     Log.e(TAG, "Error creating new project", e);
-                    Toast.makeText(MainActivity.this, "Error creating project: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                    Toast.makeText(MainActivity.this, getString(R.string.error_creating_project, e.getMessage()), Toast.LENGTH_LONG).show();
                     if (newProjectDir.exists()) {
                         deleteRecursive(newProjectDir);
                     }
@@ -452,7 +452,7 @@ public class MainActivity extends AppCompatActivity {
 
     public void openProject(String projectPath, String projectName) {
         if (!hasStoragePermission()) {
-            Toast.makeText(this, "Storage permission is required to open projects.", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, getString(R.string.storage_permission_required_to_open_projects), Toast.LENGTH_LONG).show();
             checkAndRequestPermissions();
             return;
         }
@@ -462,18 +462,26 @@ public class MainActivity extends AppCompatActivity {
         startActivity(intent);
     }
 
-    public boolean deleteProjectDirectory(File projectDir) {
-        if (!hasStoragePermission()) {
-            Toast.makeText(this, "Storage permission is required to delete projects.", Toast.LENGTH_LONG).show();
-            checkAndRequestPermissions();
-            return false;
-        }
-        boolean deleted = deleteRecursive(projectDir);
-        if (deleted) {
-            projectsList.removeIf(project -> projectDir.getAbsolutePath().equals(project.get("path")));
-            saveProjectsList();
-        }
-        return deleted;
+    public void deleteProjectDirectory(File projectDir) {
+        new Thread(() -> {
+            if (!hasStoragePermission()) {
+                runOnUiThread(() -> {
+                    Toast.makeText(this, getString(R.string.storage_permission_required_to_delete_projects), Toast.LENGTH_LONG).show();
+                    checkAndRequestPermissions();
+                });
+                return;
+            }
+            boolean deleted = deleteRecursive(projectDir);
+            runOnUiThread(() -> {
+                if (deleted) {
+                    projectsList.removeIf(project -> projectDir.getAbsolutePath().equals(project.get("path")));
+                    saveProjectsList();
+                    Toast.makeText(this, getString(R.string.project_deleted), Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(this, getString(R.string.failed_to_delete_project), Toast.LENGTH_SHORT).show();
+                }
+            });
+        }).start();
     }
 
     /**
@@ -482,38 +490,46 @@ public class MainActivity extends AppCompatActivity {
      * @param newFile The new file or directory.
      * @throws IOException If the rename operation fails.
      */
-    public void renameFileOrDir(File oldFile, File newFile) throws IOException {
-        if (!hasStoragePermission()) {
-            throw new IOException("Storage permission not granted. Cannot rename.");
-        }
-        if (!oldFile.exists()) {
-            throw new IOException("Original file/directory does not exist: " + oldFile.getAbsolutePath());
-        }
-        if (newFile.exists()) {
-            throw new IOException("A file/directory with the new name already exists: " + newFile.getAbsolutePath());
-        }
-
-        if (oldFile.renameTo(newFile)) {
-            Log.d(TAG, "Renamed " + oldFile.getAbsolutePath() + " to " + newFile.getAbsolutePath());
-            // Update the projectsList entry with the new path and name
-            for (HashMap<String, Object> project : projectsList) {
-                if (oldFile.getAbsolutePath().equals(project.get("path"))) {
-                    project.put("name", newFile.getName());
-                    project.put("path", newFile.getAbsolutePath());
-                    project.put("lastModified", new SimpleDateFormat("MMM dd,yyyy HH:mm", Locale.getDefault()).format(new Date()));
-                    project.put("lastModifiedTimestamp", System.currentTimeMillis());
-                    break;
+    public void renameFileOrDir(File oldFile, File newFile) {
+        new Thread(() -> {
+            try {
+                if (!hasStoragePermission()) {
+                    throw new IOException(getString(R.string.storage_permission_not_granted_cannot_rename));
                 }
+                if (!oldFile.exists()) {
+                    throw new IOException(getString(R.string.original_file_directory_does_not_exist, oldFile.getAbsolutePath()));
+                }
+                if (newFile.exists()) {
+                    throw new IOException(getString(R.string.file_directory_with_new_name_already_exists, newFile.getAbsolutePath()));
+                }
+
+                if (oldFile.renameTo(newFile)) {
+                    Log.d(TAG, "Renamed " + oldFile.getAbsolutePath() + " to " + newFile.getAbsolutePath());
+                    // Update the projectsList entry with the new path and name
+                    for (HashMap<String, Object> project : projectsList) {
+                        if (oldFile.getAbsolutePath().equals(project.get("path"))) {
+                            project.put("name", newFile.getName());
+                            project.put("path", newFile.getAbsolutePath());
+                            project.put("lastModified", new SimpleDateFormat("MMM dd,yyyy HH:mm", Locale.getDefault()).format(new Date()));
+                            project.put("lastModifiedTimestamp", System.currentTimeMillis());
+                            break;
+                        }
+                    }
+                    runOnUiThread(() -> {
+                        saveProjectsList(); // Save the updated project list
+                        // Also update chat history key if the project was renamed
+                        // This is a bit more complex as AIChatFragment manages its own SharedPreferences key.
+                        // A simpler approach for now is to rely on the projectPath being updated in the project list
+                        // and the AIChatFragment's loadChatHistoryFromPrefs logic to handle migration if needed.
+                        // For a robust solution, you might need a dedicated method in AIChatFragment to update its key.
+                    });
+                } else {
+                    throw new IOException(getString(R.string.failed_to_rename, oldFile.getAbsolutePath(), newFile.getAbsolutePath()));
+                }
+            } catch (IOException e) {
+                runOnUiThread(() -> Toast.makeText(MainActivity.this, getString(R.string.failed_to_rename, oldFile.getName(), newFile.getName()), Toast.LENGTH_LONG).show());
             }
-            saveProjectsList(); // Save the updated project list
-            // Also update chat history key if the project was renamed
-            // This is a bit more complex as AIChatFragment manages its own SharedPreferences key.
-            // A simpler approach for now is to rely on the projectPath being updated in the project list
-            // and the AIChatFragment's loadChatHistoryFromPrefs logic to handle migration if needed.
-            // For a robust solution, you might need a dedicated method in AIChatFragment to update its key.
-        } else {
-            throw new IOException("Failed to rename " + oldFile.getAbsolutePath() + " to " + newFile.getAbsolutePath());
-        }
+        }).start();
     }
 
 
@@ -536,61 +552,69 @@ public class MainActivity extends AppCompatActivity {
      * @param projectName The name of the project.
      */
     public void exportProject(File projectDir, String projectName) {
-        if (!hasStoragePermission()) {
-            Toast.makeText(this, "Storage permission is required to export projects.", Toast.LENGTH_LONG).show();
-            checkAndRequestPermissions();
-            return;
-        }
-
-        File exportDir = new File(Environment.getExternalStorageDirectory(), "CodeX/Exports");
-        if (!exportDir.exists()) {
-            exportDir.mkdirs();
-            Log.d(TAG, "Created export directory: " + exportDir.getAbsolutePath());
-        }
-
-        File zipFile = new File(exportDir, projectName + ".codex"); // Use .codex extension
-        File chatHistoryFile = new File(projectDir, CHAT_HISTORY_FILE_NAME); // Temporary file for chat history
-        boolean chatExportedSuccessfully = false;
-
-        Log.d(TAG, "Starting export for project: " + projectName);
-        Log.d(TAG, "Project directory: " + projectDir.getAbsolutePath());
-        Log.d(TAG, "Target zip file: " + zipFile.getAbsolutePath());
-
-        try {
-            // 1. Export chat history to a temporary file within the project directory
-            chatExportedSuccessfully = AIChatFragment.exportChatHistoryToJson(this, projectDir.getAbsolutePath(), chatHistoryFile);
-            if (chatExportedSuccessfully) {
-                Log.d(TAG, "Chat history exported temporarily to: " + chatHistoryFile.getAbsolutePath());
-            } else {
-                Log.d(TAG, "No chat history to export or failed to export chat history.");
+        new Thread(() -> {
+            if (!hasStoragePermission()) {
+                runOnUiThread(() -> {
+                    Toast.makeText(this, getString(R.string.storage_permission_required_to_export_projects), Toast.LENGTH_LONG).show();
+                    checkAndRequestPermissions();
+                });
+                return;
             }
 
-            // 2. Zip the project directory including the chat history file
-            Log.d(TAG, "Calling zipDirectory for " + projectDir.getAbsolutePath());
-            zipDirectory(projectDir, zipFile);
-            Log.d(TAG, "zipDirectory completed for " + zipFile.getAbsolutePath());
-
-            // Verify zip file creation
-            if (zipFile.exists() && zipFile.length() > 0) {
-                Toast.makeText(this, "Project '" + projectName + "' exported to: " + zipFile.getAbsolutePath(), Toast.LENGTH_LONG).show();
-                Log.d(TAG, "Zip file created successfully. Size: " + zipFile.length() + " bytes.");
-                // 3. Share the zipped file
-                shareFile(zipFile);
-            } else {
-                Toast.makeText(this, "Failed to create exported project file.", Toast.LENGTH_LONG).show();
-                Log.e(TAG, "Zip file was not created or is empty.");
+            File exportDir = new File(Environment.getExternalStorageDirectory(), "CodeX/Exports");
+            if (!exportDir.exists()) {
+                exportDir.mkdirs();
+                Log.d(TAG, "Created export directory: " + exportDir.getAbsolutePath());
             }
 
-        } catch (IOException e) {
-            Log.e(TAG, "Error exporting project: " + projectName, e);
-            Toast.makeText(this, "Failed to export project: " + e.getMessage(), Toast.LENGTH_LONG).show();
-        } finally {
-            // 4. Clean up the temporary chat history file
-            if (chatHistoryFile.exists() && chatExportedSuccessfully) {
-                boolean deleted = chatHistoryFile.delete();
-                Log.d(TAG, "Temporary chat history file deleted: " + deleted);
+            File zipFile = new File(exportDir, projectName + ".codex"); // Use .codex extension
+            File chatHistoryFile = new File(projectDir, CHAT_HISTORY_FILE_NAME); // Temporary file for chat history
+            boolean chatExportedSuccessfully = false;
+
+            Log.d(TAG, "Starting export for project: " + projectName);
+            Log.d(TAG, "Project directory: " + projectDir.getAbsolutePath());
+            Log.d(TAG, "Target zip file: " + zipFile.getAbsolutePath());
+
+            try {
+                // 1. Export chat history to a temporary file within the project directory
+                chatExportedSuccessfully = AIChatFragment.exportChatHistoryToJson(this, projectDir.getAbsolutePath(), chatHistoryFile);
+                if (chatExportedSuccessfully) {
+                    Log.d(TAG, "Chat history exported temporarily to: " + chatHistoryFile.getAbsolutePath());
+                } else {
+                    Log.d(TAG, "No chat history to export or failed to export chat history.");
+                }
+
+                // 2. Zip the project directory including the chat history file
+                Log.d(TAG, "Calling zipDirectory for " + projectDir.getAbsolutePath());
+                zipDirectory(projectDir, zipFile);
+                Log.d(TAG, "zipDirectory completed for " + zipFile.getAbsolutePath());
+
+                // Verify zip file creation
+                if (zipFile.exists() && zipFile.length() > 0) {
+                    runOnUiThread(() -> {
+                        Toast.makeText(this, getString(R.string.project_exported_to, projectName, zipFile.getAbsolutePath()), Toast.LENGTH_LONG).show();
+                        Log.d(TAG, "Zip file created successfully. Size: " + zipFile.length() + " bytes.");
+                        // 3. Share the zipped file
+                        shareFile(zipFile);
+                    });
+                } else {
+                    runOnUiThread(() -> {
+                        Toast.makeText(this, getString(R.string.failed_to_create_exported_project_file), Toast.LENGTH_LONG).show();
+                        Log.e(TAG, "Zip file was not created or is empty.");
+                    });
+                }
+
+            } catch (IOException e) {
+                Log.e(TAG, "Error exporting project: " + projectName, e);
+                runOnUiThread(() -> Toast.makeText(this, getString(R.string.failed_to_export_project, e.getMessage()), Toast.LENGTH_LONG).show());
+            } finally {
+                // 4. Clean up the temporary chat history file
+                if (chatHistoryFile.exists() && chatExportedSuccessfully) {
+                    boolean deleted = chatHistoryFile.delete();
+                    Log.d(TAG, "Temporary chat history file deleted: " + deleted);
+                }
             }
-        }
+        }).start();
     }
 
     /**
@@ -665,7 +689,7 @@ public class MainActivity extends AppCompatActivity {
      */
     private void importProject() {
         if (!hasStoragePermission()) {
-            Toast.makeText(this, "Storage permission is required to import projects.", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, getString(R.string.storage_permission_required_to_import_projects), Toast.LENGTH_LONG).show();
             checkAndRequestPermissions();
             return;
         }
@@ -674,9 +698,9 @@ public class MainActivity extends AppCompatActivity {
         intent.setType("application/zip"); // Filter for zip files
         intent.addCategory(Intent.CATEGORY_OPENABLE);
         try {
-            startActivityForResult(Intent.createChooser(intent, "Select Project to Import"), REQUEST_CODE_PICK_ZIP_FILE);
+            startActivityForResult(Intent.createChooser(intent, getString(R.string.select_project_to_import)), REQUEST_CODE_PICK_ZIP_FILE);
         } catch (android.content.ActivityNotFoundException ex) {
-            Toast.makeText(this, "Please install a File Manager.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, getString(R.string.please_install_a_file_manager), Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -685,54 +709,59 @@ public class MainActivity extends AppCompatActivity {
      * @param uri The URI of the selected zip file.
      */
     private void handleImportZipFile(Uri uri) {
-        try {
-            File projectsDir = new File(Environment.getExternalStorageDirectory(), "CodeX/Projects");
-            if (!projectsDir.exists()) {
-                projectsDir.mkdirs();
+        new Thread(() -> {
+            try {
+                File projectsDir = new File(Environment.getExternalStorageDirectory(), "CodeX/Projects");
+                if (!projectsDir.exists()) {
+                    projectsDir.mkdirs();
+                }
+
+                // Get the display name of the file to use as project name
+                String fileName = getFileNameFromUri(uri);
+                String projectName = fileName.endsWith(".codex") ? fileName.substring(0, fileName.length() - ".codex".length()) :
+                        fileName.endsWith(".zip") ? fileName.substring(0, fileName.length() - ".zip".length()) :
+                                fileName;
+                projectName = projectName.replaceAll("[^a-zA-Z0-9_.-]", "_"); // Sanitize project name
+
+                File newProjectDir = new File(projectsDir, projectName);
+                if (newProjectDir.exists()) {
+                    runOnUiThread(() -> Toast.makeText(this, getString(R.string.project_with_name_already_exists, projectName), Toast.LENGTH_LONG).show());
+                    return;
+                }
+
+                // Unzip the file
+                unzipFile(uri, newProjectDir);
+
+                // After unzipping, check for chat history file and import it
+                File importedChatHistoryFile = new File(newProjectDir, CHAT_HISTORY_FILE_NAME);
+                if (importedChatHistoryFile.exists()) {
+                    AIChatFragment.importChatHistoryFromJson(this, newProjectDir.getAbsolutePath(), importedChatHistoryFile);
+                    importedChatHistoryFile.delete(); // Delete the temporary chat history file
+                }
+
+                long creationTime = System.currentTimeMillis();
+                SimpleDateFormat sdf = new SimpleDateFormat("MMM dd,yyyy HH:mm", Locale.getDefault());
+                String lastModifiedStr = sdf.format(new Date(creationTime));
+
+                HashMap<String, Object> newProject = new HashMap<>();
+                newProject.put("name", projectName);
+                newProject.put("path", newProjectDir.getAbsolutePath());
+                newProject.put("lastModified", lastModifiedStr);
+                newProject.put("lastModifiedTimestamp", creationTime);
+
+                String finalProjectName = projectName;
+                runOnUiThread(() -> {
+                    projectsList.add(0, newProject);
+                    saveProjectsList();
+                    Toast.makeText(this, getString(R.string.project_imported_successfully, finalProjectName), Toast.LENGTH_SHORT).show();
+                    openProject(newProjectDir.getAbsolutePath(), finalProjectName);
+                });
+
+            } catch (IOException e) {
+                Log.e(TAG, "Error importing project", e);
+                runOnUiThread(() -> Toast.makeText(this, getString(R.string.failed_to_import_project, e.getMessage()), Toast.LENGTH_LONG).show());
             }
-
-            // Get the display name of the file to use as project name
-            String fileName = getFileNameFromUri(uri);
-            String projectName = fileName.endsWith(".codex") ? fileName.substring(0, fileName.length() - ".codex".length()) :
-                               fileName.endsWith(".zip") ? fileName.substring(0, fileName.length() - ".zip".length()) :
-                               fileName;
-            projectName = projectName.replaceAll("[^a-zA-Z0-9_.-]", "_"); // Sanitize project name
-
-            File newProjectDir = new File(projectsDir, projectName);
-            if (newProjectDir.exists()) {
-                Toast.makeText(this, "Project with name '" + projectName + "' already exists. Please rename the zip file or delete existing project.", Toast.LENGTH_LONG).show();
-                return;
-            }
-
-            // Unzip the file
-            unzipFile(uri, newProjectDir);
-
-            // After unzipping, check for chat history file and import it
-            File importedChatHistoryFile = new File(newProjectDir, CHAT_HISTORY_FILE_NAME);
-            if (importedChatHistoryFile.exists()) {
-                AIChatFragment.importChatHistoryFromJson(this, newProjectDir.getAbsolutePath(), importedChatHistoryFile);
-                importedChatHistoryFile.delete(); // Delete the temporary chat history file
-            }
-
-            long creationTime = System.currentTimeMillis();
-            SimpleDateFormat sdf = new SimpleDateFormat("MMM dd,yyyy HH:mm", Locale.getDefault());
-            String lastModifiedStr = sdf.format(new Date(creationTime));
-
-            HashMap<String, Object> newProject = new HashMap<>();
-            newProject.put("name", projectName);
-            newProject.put("path", newProjectDir.getAbsolutePath());
-            newProject.put("lastModified", lastModifiedStr);
-            newProject.put("lastModifiedTimestamp", creationTime);
-
-            projectsList.add(0, newProject);
-            saveProjectsList();
-            Toast.makeText(this, "Project '" + projectName + "' imported successfully.", Toast.LENGTH_SHORT).show();
-            openProject(newProjectDir.getAbsolutePath(), projectName);
-
-        } catch (IOException e) {
-            Log.e(TAG, "Error importing project", e);
-            Toast.makeText(this, "Failed to import project: " + e.getMessage(), Toast.LENGTH_LONG).show();
-        }
+        }).start();
     }
 
     /**
@@ -754,7 +783,7 @@ public class MainActivity extends AppCompatActivity {
                 String canonicalPath = file.getCanonicalPath();
                 String canonicalTargetDirPath = targetDirectory.getCanonicalPath();
                 if (!canonicalPath.startsWith(canonicalTargetDirPath)) {
-                    throw new IOException("ZipEntry points outside the target directory: " + ze.getName());
+                    throw new IOException(getString(R.string.zip_entry_points_outside_target_directory, ze.getName()));
                 }
 
                 if (ze.isDirectory()) {
@@ -810,7 +839,7 @@ public class MainActivity extends AppCompatActivity {
     private void refreshProjectsList() {
         loadProjectsList();
         updateEmptyStateVisibility();
-        Toast.makeText(this, "Projects refreshed", Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, getString(R.string.projects_refreshed), Toast.LENGTH_SHORT).show();
     }
     
     /**

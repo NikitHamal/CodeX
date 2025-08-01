@@ -145,13 +145,13 @@ public class FileTreeAdapter extends RecyclerView.Adapter<FileTreeAdapter.ViewHo
         editTextNewName.requestFocus();
 
         new MaterialAlertDialogBuilder(context)
-        .setTitle("Rename " + (item.isDirectory() ? "Folder" : "File"))
+        .setTitle(item.isDirectory() ? context.getString(R.string.rename_folder) : context.getString(R.string.rename_file))
         .setView(dialogView)
-        .setPositiveButton("Rename", (dialog, which) -> {
+        .setPositiveButton(context.getString(R.string.rename), (dialog, which) -> {
             String newName = editTextNewName.getText().toString().trim();
             if (newName.isEmpty() || newName.equals(item.getName())) return;
             if (autoInvalidFileNameChars.matcher(newName).find()) {
-                Toast.makeText(context, "Invalid characters in name.", Toast.LENGTH_SHORT).show();
+                Toast.makeText(context, context.getString(R.string.invalid_characters_in_name), Toast.LENGTH_SHORT).show();
                 return;
             }
 
@@ -159,7 +159,7 @@ public class FileTreeAdapter extends RecyclerView.Adapter<FileTreeAdapter.ViewHo
             File newFile = new File(oldFile.getParentFile(), newName);
 
             if (newFile.exists()) {
-                Toast.makeText(context, "Name already exists.", Toast.LENGTH_SHORT).show();
+                Toast.makeText(context, context.getString(R.string.name_already_exists), Toast.LENGTH_SHORT).show();
                 return;
             }
             try {
@@ -172,18 +172,18 @@ public class FileTreeAdapter extends RecyclerView.Adapter<FileTreeAdapter.ViewHo
 
             } catch (IOException e) {
                 Log.e(TAG, "Error renaming from adapter", e);
-                Toast.makeText(context, "Rename failed: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                Toast.makeText(context, context.getString(R.string.rename_failed, e.getMessage()), Toast.LENGTH_LONG).show();
             }
         })
-        .setNegativeButton("Cancel", null)
+        .setNegativeButton(context.getString(R.string.cancel), null)
         .show();
     }
 
     private void showDeleteDialog(final FileItem item) {
         new MaterialAlertDialogBuilder(context)
-        .setTitle("Delete " + (item.isDirectory() ? "Folder" : "File"))
-        .setMessage("Are you sure you want to delete '" + item.getName() + "'? This cannot be undone.")
-        .setPositiveButton("Delete", (dialog, which) -> {
+        .setTitle(item.isDirectory() ? context.getString(R.string.delete_folder) : context.getString(R.string.delete_file))
+        .setMessage(context.getString(R.string.are_you_sure_you_want_to_delete, item.getName()))
+        .setPositiveButton(context.getString(R.string.delete), (dialog, which) -> {
             try {
                 editorActivity.deleteFileByPath(item.getFile()); // Call through EditorActivity
 
@@ -194,10 +194,10 @@ public class FileTreeAdapter extends RecyclerView.Adapter<FileTreeAdapter.ViewHo
 
             } catch (IOException e) {
                 Log.e(TAG, "Error deleting from adapter", e);
-                Toast.makeText(context, "Delete failed: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                Toast.makeText(context, context.getString(R.string.delete_failed, e.getMessage()), Toast.LENGTH_LONG).show();
             }
         })
-        .setNegativeButton("Cancel", null)
+        .setNegativeButton(context.getString(R.string.cancel), null)
         .show();
     }
 

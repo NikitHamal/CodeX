@@ -88,7 +88,7 @@ public class ProjectsAdapter extends BaseAdapter {
                 if (projectPath != null && projectName != null) {
                     mainActivity.exportProject(new File(projectPath), projectName);
                 } else {
-                    Toast.makeText(context, "Error: Invalid project data for export.", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(context, context.getString(R.string.error_invalid_project_data_for_export), Toast.LENGTH_SHORT).show();
                 }
                 return true;
             }
@@ -103,7 +103,7 @@ public class ProjectsAdapter extends BaseAdapter {
         String oldPath = (String) project.get("path");
 
         if (oldName == null || oldPath == null) {
-            Toast.makeText(context, "Error: Project data is invalid.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(context, context.getString(R.string.error_project_data_is_invalid), Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -113,10 +113,10 @@ public class ProjectsAdapter extends BaseAdapter {
         editTextNewName.setSelection(oldName.length()); // Place cursor at end
 
         AlertDialog dialog = new MaterialAlertDialogBuilder(context, R.style.AlertDialogCustom)
-                .setTitle("Rename Project")
+                .setTitle(context.getString(R.string.rename_project))
                 .setView(dialogView)
-                .setPositiveButton("Rename", null) // Set to null initially to control dismissal
-                .setNegativeButton("Cancel", null)
+                .setPositiveButton(context.getString(R.string.rename), null) // Set to null initially to control dismissal
+                .setNegativeButton(context.getString(R.string.cancel), null)
                 .create();
 
         dialog.setOnShowListener(dialogInterface -> {
@@ -125,12 +125,12 @@ public class ProjectsAdapter extends BaseAdapter {
                 String newName = editTextNewName.getText().toString().trim();
 
                 if (newName.isEmpty()) {
-                    editTextNewName.setError("New name cannot be empty");
+                    editTextNewName.setError(context.getString(R.string.new_name_cannot_be_empty));
                     return;
                 }
 
                 if (newName.equals(oldName)) {
-                    Toast.makeText(context, "New name is the same as the old name.", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(context, context.getString(R.string.new_name_is_the_same_as_the_old_name), Toast.LENGTH_SHORT).show();
                     dialog.dismiss();
                     return;
                 }
@@ -138,13 +138,13 @@ public class ProjectsAdapter extends BaseAdapter {
                 File oldDir = new File(oldPath);
                 File parentDir = oldDir.getParentFile();
                 if (parentDir == null) {
-                    Toast.makeText(context, "Error: Could not determine parent directory.", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(context, context.getString(R.string.error_could_not_determine_parent_directory), Toast.LENGTH_SHORT).show();
                     return;
                 }
                 File newDir = new File(parentDir, newName);
 
                 if (newDir.exists()) {
-                    editTextNewName.setError("A project with this name already exists");
+                    editTextNewName.setError(context.getString(R.string.project_with_this_name_already_exists));
                     return;
                 }
 
@@ -152,9 +152,9 @@ public class ProjectsAdapter extends BaseAdapter {
                     mainActivity.renameFileOrDir(oldDir, newDir); // Delegate to MainActivity
                     // MainActivity will update its list and trigger loadProjectsList on resume
                     dialog.dismiss();
-                    Toast.makeText(context, "Project renamed to '" + newName + "'", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(context, context.getString(R.string.project_renamed_to, newName), Toast.LENGTH_SHORT).show();
                 } catch (IOException e) { // This is the line where the error was
-                    Toast.makeText(context, "Failed to rename project: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                    Toast.makeText(context, context.getString(R.string.failed_to_rename_project, e.getMessage()), Toast.LENGTH_LONG).show();
                 }
             });
         });
@@ -167,24 +167,18 @@ public class ProjectsAdapter extends BaseAdapter {
         String projectPath = (String) project.get("path");
 
         if (projectName == null || projectPath == null) {
-            Toast.makeText(context, "Error: Project data is invalid.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(context, context.getString(R.string.error_project_data_is_invalid), Toast.LENGTH_SHORT).show();
             return;
         }
 
         new MaterialAlertDialogBuilder(context, R.style.AlertDialogCustom) // Use custom dialog style
-                .setTitle("Delete Project")
-                .setMessage("Are you sure you want to delete '" + projectName + "'? This cannot be undone.")
-                .setPositiveButton("Delete", (dialog, which) -> {
+                .setTitle(context.getString(R.string.delete_project))
+                .setMessage(context.getString(R.string.are_you_sure_you_want_to_delete_project, projectName))
+                .setPositiveButton(context.getString(R.string.delete), (dialog, which) -> {
                     File projectDir = new File(projectPath);
-                    if (mainActivity.deleteProjectDirectory(projectDir)) {
-                        // DO NOT modify projectsList or call notifyDataSetChanged here.
-                        // MainActivity's onResume will reload the list and update the adapter.
-                        Toast.makeText(context, "Project deleted", Toast.LENGTH_SHORT).show();
-                    } else {
-                        Toast.makeText(context, "Failed to delete project", Toast.LENGTH_SHORT).show();
-                    }
+                    mainActivity.deleteProjectDirectory(projectDir);
                 })
-                .setNegativeButton("Cancel", null)
+                .setNegativeButton(context.getString(R.string.cancel), null)
                 .show();
     }
 }

@@ -124,13 +124,21 @@ public class FileTreeManager {
      * @param newFile The new file or directory.
      * @throws IOException If the rename operation fails.
      */
-    public void renameFileOrDir(File oldFile, File newFile) throws IOException {
-        if (fileManager == null) {
-            throw new IOException("FileManager not initialized. Cannot rename.");
-        }
-        fileManager.renameFileOrDir(oldFile, newFile);
-        loadFileTree();
-        refreshOpenTabsAfterFileOperation(oldFile, newFile);
+    public void renameFileOrDir(File oldFile, File newFile) {
+        activity.getExecutorService().execute(() -> {
+            try {
+                if (fileManager == null) {
+                    throw new IOException("FileManager not initialized. Cannot rename.");
+                }
+                fileManager.renameFileOrDir(oldFile, newFile);
+                activity.runOnUiThread(() -> {
+                    loadFileTree();
+                    refreshOpenTabsAfterFileOperation(oldFile, newFile);
+                });
+            } catch (IOException e) {
+                activity.runOnUiThread(() -> activity.showToast("Rename failed: " + e.getMessage()));
+            }
+        });
     }
 
     /**
@@ -138,13 +146,21 @@ public class FileTreeManager {
      * @param fileOrDirectory The file or directory to delete.
      * @throws IOException If the delete operation fails.
      */
-    public void deleteFileByPath(File fileOrDirectory) throws IOException {
-        if (fileManager == null) {
-            throw new IOException("FileManager not initialized. Cannot delete.");
-        }
-        fileManager.deleteFileOrDirectory(fileOrDirectory);
-        loadFileTree();
-        refreshOpenTabsAfterFileOperation(fileOrDirectory, null);
+    public void deleteFileByPath(File fileOrDirectory) {
+        activity.getExecutorService().execute(() -> {
+            try {
+                if (fileManager == null) {
+                    throw new IOException("FileManager not initialized. Cannot delete.");
+                }
+                fileManager.deleteFileOrDirectory(fileOrDirectory);
+                activity.runOnUiThread(() -> {
+                    loadFileTree();
+                    refreshOpenTabsAfterFileOperation(fileOrDirectory, null);
+                });
+            } catch (IOException e) {
+                activity.runOnUiThread(() -> activity.showToast("Delete failed: " + e.getMessage()));
+            }
+        });
     }
 
     /**

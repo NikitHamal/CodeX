@@ -1013,40 +1013,57 @@ public class AIAssistant {
 										QwenResponseParser.ParsedResponse parsedResponse = QwenResponseParser.parseResponse(jsonResponse);
 										
 										if (parsedResponse != null && parsedResponse.isValid) {
-											if ("file_operation".equals(parsedResponse.action)) {
-												// Process file operations using the parser
-												processFileOperationsFromParsedResponse(parsedResponse);
-											} else {
-												// Regular JSON response - extract explanation and suggestions
-												String explanation = parsedResponse.explanation;
-												List<String> suggestions = parsedResponse.suggestions;
-												
-												// Create a user-friendly message from the JSON
-												StringBuilder userMessage = new StringBuilder();
-												if (explanation != null && !explanation.isEmpty()) {
-													userMessage.append(explanation);
-												}
-												
-												if (!suggestions.isEmpty()) {
-													if (userMessage.length() > 0) {
-														userMessage.append("\n\nSuggestions:\n");
-													} else {
-														userMessage.append("Suggestions:\n");
+											if (QwenResponseParser.looksLikeJson(jsonResponse)) {
+												// If it's a file action (multi or single), process it
+												if (parsedResponse.action != null && (
+														"file_operation".equals(parsedResponse.action) ||
+														"createFile".equals(parsedResponse.action) ||
+														"updateFile".equals(parsedResponse.action) ||
+														"deleteFile".equals(parsedResponse.action) ||
+														"renameFile".equals(parsedResponse.action) ||
+														"readFile".equals(parsedResponse.action) ||
+														"listFiles".equals(parsedResponse.action))) {
+													processFileOperationsFromParsedResponse(parsedResponse);
+												} else {
+													// Regular JSON response - extract explanation and suggestions
+													String explanation = parsedResponse.explanation;
+													List<String> suggestions = parsedResponse.suggestions;
+													
+													// Create a user-friendly message from the JSON
+													StringBuilder userMessage = new StringBuilder();
+													if (explanation != null && !explanation.isEmpty()) {
+														userMessage.append(explanation);
 													}
-													for (int i = 0; i < suggestions.size(); i++) {
-														userMessage.append("• ").append(suggestions.get(i));
-														if (i < suggestions.size() - 1) {
-															userMessage.append("\n");
+													
+													if (!suggestions.isEmpty()) {
+														if (userMessage.length() > 0) {
+															userMessage.append("\n\nSuggestions:\n");
+														} else {
+															userMessage.append("Suggestions:\n");
+														}
+														for (int i = 0; i < suggestions.size(); i++) {
+															userMessage.append("• ").append(suggestions.get(i));
+															if (i < suggestions.size() - 1) {
+																userMessage.append("\n");
+															}
 														}
 													}
+													
+													if (userMessage.length() == 0) {
+														userMessage.append("Response processed successfully.");
+													}
+													
+													if (responseListener != null) {
+														responseListener.onResponse(userMessage.toString(), 
+															thinkingContent.length() > 0, 
+															webSources.size() > 0, 
+															webSources);
+													}
 												}
-												
-												if (userMessage.length() == 0) {
-													userMessage.append("Response processed successfully.");
-												}
-												
+											} else {
+												// Invalid JSON, treat as regular text
 												if (responseListener != null) {
-													responseListener.onResponse(userMessage.toString(), 
+													responseListener.onResponse(jsonResponse, 
 														thinkingContent.length() > 0, 
 														webSources.size() > 0, 
 														webSources);
@@ -1097,8 +1114,8 @@ public class AIAssistant {
     private void processFileOperationsFromParsedResponse(QwenResponseParser.ParsedResponse parsedResponse) {
         try {
             List<ChatMessage.FileActionDetail> fileActions = QwenResponseParser.toFileActionDetails(parsedResponse);
-            
-            // Execute each operation
+
+            // Execute each operation (single or multi)
             for (ChatMessage.FileActionDetail actionDetail : fileActions) {
                 try {
                     executeFileOperation(actionDetail);
@@ -1106,20 +1123,22 @@ public class AIAssistant {
                     Log.e("AIAssistant", "Failed to execute file operation: " + actionDetail.type, e);
                 }
             }
-            
-            // Notify listeners about the processed actions
+
+            // Always notify listeners with explanation/suggestions, even for single-op
             if (actionListener != null) {
                 actionListener.onAiActionsProcessed(
-                    "JSON Response", // We don't have the original JSON here
-                    parsedResponse.explanation,
-                    parsedResponse.suggestions,
-                    fileActions,
-                    currentModel.getDisplayName()
+                        null,
+                        parsedResponse.explanation,
+                        parsedResponse.suggestions,
+                        fileActions,
+                        currentModel != null ? currentModel.getDisplayName() : "AI"
                 );
             }
-            
         } catch (Exception e) {
-            Log.e("AIAssistant", "Failed to process file operations from parsed response", e);
+            Log.e("AIAssistant", "Error processing file operations", e);
+            if (actionListener != null) {
+                actionListener.onAiError("Error processing file operations: " + e.getMessage());
+            }
         }
     }
 

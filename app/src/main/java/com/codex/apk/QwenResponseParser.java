@@ -60,15 +60,34 @@ public class QwenResponseParser {
     public static ParsedResponse parseResponse(String responseText) {
         try {
             JsonObject jsonObj = JsonParser.parseString(responseText).getAsJsonObject();
-            
-            // Check if this is a file operation response
+
+            // Multi-operation: { action: "file_operation", operations: [...] }
             if (jsonObj.has("action") && "file_operation".equals(jsonObj.get("action").getAsString())) {
                 return parseFileOperationResponse(jsonObj);
             }
-            
-            // Check if this is a regular JSON response
+
+            // Single-operation: { action: "createFile", ... } or updateFile/deleteFile/etc
+            if (jsonObj.has("action") && isSingleFileAction(jsonObj.get("action").getAsString())) {
+                List<FileOperation> operations = new ArrayList<>();
+                String type = jsonObj.get("action").getAsString();
+                String path = jsonObj.has("path") ? jsonObj.get("path").getAsString() : "";
+                String content = jsonObj.has("content") ? jsonObj.get("content").getAsString() : "";
+                String oldPath = jsonObj.has("oldPath") ? jsonObj.get("oldPath").getAsString() : "";
+                String newPath = jsonObj.has("newPath") ? jsonObj.get("newPath").getAsString() : "";
+                operations.add(new FileOperation(type, path, content, oldPath, newPath));
+                String explanation = jsonObj.has("explanation") ? jsonObj.get("explanation").getAsString() : "";
+                List<String> suggestions = new ArrayList<>();
+                if (jsonObj.has("suggestions")) {
+                    JsonArray suggestionsArray = jsonObj.getAsJsonArray("suggestions");
+                    for (int i = 0; i < suggestionsArray.size(); i++) {
+                        suggestions.add(suggestionsArray.get(i).getAsString());
+                    }
+                }
+                return new ParsedResponse(type, operations, explanation, suggestions, true);
+            }
+
+            // Fallback: regular JSON
             return parseRegularJsonResponse(jsonObj);
-            
         } catch (JsonParseException e) {
             Log.w(TAG, "Failed to parse JSON response: " + responseText);
             return null;
@@ -119,6 +138,11 @@ public class QwenResponseParser {
         // For regular JSON responses, we don't have specific operations
         return new ParsedResponse("json_response", new ArrayList<>(), 
                                 jsonObj.toString(), new ArrayList<>(), true);
+    }
+
+    private static boolean isSingleFileAction(String action) {
+        return "createFile".equals(action) || "updateFile".equals(action) || "deleteFile".equals(action)
+                || "renameFile".equals(action) || "readFile".equals(action) || "listFiles".equals(action);
     }
 
     /**

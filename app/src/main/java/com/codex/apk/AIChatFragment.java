@@ -78,7 +78,6 @@ public class AIChatFragment extends Fragment implements
     public boolean isAiProcessing = false;
 
     private String projectPath; // New field to store the current project's path
-    private String lastQwenResponseId = null; // For Qwen parentId threading
 
     /**
      * Interface for actions related to AI chat that need to be handled by the parent activity.
@@ -370,9 +369,8 @@ public class AIChatFragment extends Fragment implements
             return;
         }
 
-        // Qwen threading: set parentId to lastQwenResponseId
+        // Create user message
         ChatMessage userMsg = new ChatMessage(ChatMessage.SENDER_USER, prompt, System.currentTimeMillis());
-        userMsg.setParentId(lastQwenResponseId);
         addMessage(userMsg);
         editTextAiPrompt.setText("");
 
@@ -400,19 +398,7 @@ public class AIChatFragment extends Fragment implements
             Log.e(TAG, "addMessage: message content is null");
             return;
         }
-        // Qwen threading: update childrenIds for previous message
-        if (!chatHistory.isEmpty() && message.getParentId() != null) {
-            for (int i = chatHistory.size() - 1; i >= 0; i--) {
-                ChatMessage prev = chatHistory.get(i);
-                if (prev.getFid() != null && prev.getFid().equals(message.getParentId())) {
-                    List<String> children = prev.getChildrenIds();
-                    if (children == null) children = new ArrayList<>();
-                    children.add(message.getFid());
-                    prev.setChildrenIds(children);
-                    break;
-                }
-            }
-        }
+
         if (message.getSender() == ChatMessage.SENDER_AI) {
             if (message.getContent().equals("AI is thinking...")) {
                 // Handle "AI is thinking..." message

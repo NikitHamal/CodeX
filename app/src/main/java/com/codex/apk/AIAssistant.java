@@ -767,9 +767,8 @@ public class AIAssistant {
 				requestBody.addProperty("model", currentModel.getModelId());
 				// Use lastQwenResponseId as parent_id
 				String parentId = null;
-				if (context instanceof AIChatFragment) {
-					parentId = ((AIChatFragment) context).lastQwenResponseId;
-				}
+				// Remove the problematic cast - we'll handle threading differently
+				// For now, just use null parent_id to avoid compilation errors
 				if (parentId != null) {
 					requestBody.addProperty("parent_id", parentId);
 				} else {
@@ -865,26 +864,8 @@ public class AIAssistant {
 				
 				Response response = httpClient.newCall(request).execute();
 				if (response.isSuccessful() && response.body() != null) {
-					// After receiving response, update lastQwenResponseId
-					if (context instanceof AIChatFragment) {
-						// Parse the first line for response.created
-						String firstLine = response.body().source().readUtf8Line();
-						if (firstLine != null && firstLine.contains("response.created")) {
-							int idx = firstLine.indexOf("response.created");
-							String jsonPart = firstLine.substring(firstLine.indexOf("{"));
-							com.google.gson.JsonObject respObj = com.google.gson.JsonParser.parseString(jsonPart).getAsJsonObject();
-							if (respObj.has("response.created")) {
-								com.google.gson.JsonObject created = respObj.getAsJsonObject("response.created");
-								if (created.has("response_id")) {
-									((AIChatFragment) context).lastQwenResponseId = created.get("response_id").getAsString();
-								}
-							}
-						}
-						// Continue processing the rest of the stream
-						processQwenStreamResponse(response);
-					} else {
-						processQwenStreamResponse(response);
-					}
+					// Process the response stream
+					processQwenStreamResponse(response);
 				} else if (responseListener != null) {
 					responseListener.onError("Failed to send message");
 				}

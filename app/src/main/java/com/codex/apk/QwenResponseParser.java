@@ -59,15 +59,18 @@ public class QwenResponseParser {
      */
     public static ParsedResponse parseResponse(String responseText) {
         try {
+            Log.d(TAG, "Parsing response: " + responseText.substring(0, Math.min(200, responseText.length())) + "...");
             JsonObject jsonObj = JsonParser.parseString(responseText).getAsJsonObject();
 
             // Multi-operation: { action: "file_operation", operations: [...] }
             if (jsonObj.has("action") && "file_operation".equals(jsonObj.get("action").getAsString())) {
+                Log.d(TAG, "Detected multi-operation file_operation response");
                 return parseFileOperationResponse(jsonObj);
             }
 
             // Single-operation: { action: "createFile", ... } or updateFile/deleteFile/etc
             if (jsonObj.has("action") && isSingleFileAction(jsonObj.get("action").getAsString())) {
+                Log.d(TAG, "Detected single-operation response with action: " + jsonObj.get("action").getAsString());
                 List<FileOperation> operations = new ArrayList<>();
                 String type = jsonObj.get("action").getAsString();
                 String path = jsonObj.has("path") ? jsonObj.get("path").getAsString() : "";
@@ -86,6 +89,7 @@ public class QwenResponseParser {
                 return new ParsedResponse(type, operations, explanation, suggestions, true);
             }
 
+            Log.d(TAG, "Not a file operation response, treating as regular JSON");
             // Fallback: regular JSON
             return parseRegularJsonResponse(jsonObj);
         } catch (JsonParseException e) {

@@ -280,6 +280,12 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
     public void onAiActionsProcessed(String rawAiResponseJson, String explanation, List<String> suggestions, 
                                    List<ChatMessage.FileActionDetail> proposedFileChanges, String aiModelDisplayName,
                                    String thinkingContent, List<ChatMessage.WebSource> webSources) {
+        Log.d(TAG, "onAiActionsProcessed called with:");
+        Log.d(TAG, "  - Explanation: " + explanation);
+        Log.d(TAG, "  - Suggestions count: " + (suggestions != null ? suggestions.size() : 0));
+        Log.d(TAG, "  - File changes count: " + (proposedFileChanges != null ? proposedFileChanges.size() : 0));
+        Log.d(TAG, "  - Model: " + aiModelDisplayName);
+        
         activity.runOnUiThread(() -> {
             if (activity.getAiChatFragment() != null) {
                 ChatMessage aiMessage = new ChatMessage(
@@ -302,8 +308,11 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                     aiMessage.setWebSources(webSources);
                 }
                 
+                Log.d(TAG, "Adding AI message to chat fragment with status: " + aiMessage.getStatus());
                 activity.getAiChatFragment().addMessage(aiMessage); // Add to local list and UI
                 activity.getAiChatFragment().saveChatHistoryToPrefs(); // Save to SharedPreferences
+            } else {
+                Log.w(TAG, "AiChatFragment is null! Cannot add message to UI.");
             }
         });
     }

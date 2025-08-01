@@ -994,63 +994,57 @@ public class AIAssistant {
 										QwenResponseParser.ParsedResponse parsedResponse = QwenResponseParser.parseResponse(jsonResponse);
 										
 										if (parsedResponse != null && parsedResponse.isValid) {
-											if (QwenResponseParser.looksLikeJson(jsonResponse)) {
-												// If it's a file action (multi or single), process it
-												if (parsedResponse.action != null && (
-														"file_operation".equals(parsedResponse.action) ||
-														"createFile".equals(parsedResponse.action) ||
-														"updateFile".equals(parsedResponse.action) ||
-														"deleteFile".equals(parsedResponse.action) ||
-														"renameFile".equals(parsedResponse.action) ||
-														"readFile".equals(parsedResponse.action) ||
-														"listFiles".equals(parsedResponse.action))) {
-													processFileOperationsFromParsedResponse(parsedResponse);
-												} else {
-													// Regular JSON response - extract explanation and suggestions
-													String explanation = parsedResponse.explanation;
-													List<String> suggestions = parsedResponse.suggestions;
-													
-													// Create a user-friendly message from the JSON
-													StringBuilder userMessage = new StringBuilder();
-													if (explanation != null && !explanation.isEmpty()) {
-														userMessage.append(explanation);
+											Log.d("AIAssistant", "Parsed response is valid. Action: " + parsedResponse.action);
+											// If it's a file action (multi or single), process it
+											if (parsedResponse.action != null && (
+													"file_operation".equals(parsedResponse.action) ||
+													"createFile".equals(parsedResponse.action) ||
+													"updateFile".equals(parsedResponse.action) ||
+													"deleteFile".equals(parsedResponse.action) ||
+													"renameFile".equals(parsedResponse.action) ||
+													"readFile".equals(parsedResponse.action) ||
+													"listFiles".equals(parsedResponse.action))) {
+												Log.d("AIAssistant", "Detected file operation action: " + parsedResponse.action);
+												processFileOperationsFromParsedResponse(parsedResponse);
+											} else {
+												Log.d("AIAssistant", "Not a file operation action: " + parsedResponse.action);
+												// Regular JSON response - extract explanation and suggestions
+												String explanation = parsedResponse.explanation;
+												List<String> suggestions = parsedResponse.suggestions;
+												
+												// Create a user-friendly message from the JSON
+												StringBuilder userMessage = new StringBuilder();
+												if (explanation != null && !explanation.isEmpty()) {
+													userMessage.append(explanation);
+												}
+												
+												if (!suggestions.isEmpty()) {
+													if (userMessage.length() > 0) {
+														userMessage.append("\n\nSuggestions:\n");
+													} else {
+														userMessage.append("Suggestions:\n");
 													}
-													
-													if (!suggestions.isEmpty()) {
-														if (userMessage.length() > 0) {
-															userMessage.append("\n\nSuggestions:\n");
-														} else {
-															userMessage.append("Suggestions:\n");
+													for (int i = 0; i < suggestions.size(); i++) {
+														userMessage.append("• ").append(suggestions.get(i));
+														if (i < suggestions.size() - 1) {
+															userMessage.append("\n");
 														}
-														for (int i = 0; i < suggestions.size(); i++) {
-															userMessage.append("• ").append(suggestions.get(i));
-															if (i < suggestions.size() - 1) {
-																userMessage.append("\n");
-															}
-														}
-													}
-													
-													if (userMessage.length() == 0) {
-														userMessage.append("Response processed successfully.");
-													}
-													
-													if (responseListener != null) {
-														responseListener.onResponse(userMessage.toString(), 
-															thinkingContent.length() > 0, 
-															webSources.size() > 0, 
-															webSources);
 													}
 												}
-											} else {
-												// Invalid JSON, treat as regular text
+												
+												if (userMessage.length() == 0) {
+													userMessage.append("Response processed successfully.");
+												}
+												
 												if (responseListener != null) {
-													responseListener.onResponse(jsonResponse, 
+													responseListener.onResponse(userMessage.toString(), 
 														thinkingContent.length() > 0, 
 														webSources.size() > 0, 
 														webSources);
 												}
 											}
 										} else {
+											Log.w("AIAssistant", "Parsed response is null or invalid");
 											// Invalid JSON, treat as regular text
 											if (responseListener != null) {
 												responseListener.onResponse(jsonResponse, 
@@ -1094,11 +1088,18 @@ public class AIAssistant {
      */
     private void processFileOperationsFromParsedResponse(QwenResponseParser.ParsedResponse parsedResponse) {
         try {
+            Log.d("AIAssistant", "Processing file operations from parsed response. Action: " + parsedResponse.action);
+            Log.d("AIAssistant", "Operations count: " + parsedResponse.operations.size());
+            Log.d("AIAssistant", "Explanation: " + parsedResponse.explanation);
+            Log.d("AIAssistant", "Suggestions count: " + parsedResponse.suggestions.size());
+            
             List<ChatMessage.FileActionDetail> fileActions = QwenResponseParser.toFileActionDetails(parsedResponse);
+            Log.d("AIAssistant", "Converted to " + fileActions.size() + " file action details");
 
             // Execute each operation (single or multi)
             for (ChatMessage.FileActionDetail actionDetail : fileActions) {
                 try {
+                    Log.d("AIAssistant", "Executing file operation: " + actionDetail.type + " -> " + actionDetail.path);
                     executeFileOperation(actionDetail);
                 } catch (Exception e) {
                     Log.e("AIAssistant", "Failed to execute file operation: " + actionDetail.type, e);
@@ -1107,6 +1108,7 @@ public class AIAssistant {
 
             // Always notify listeners with explanation/suggestions, even for single-op
             if (actionListener != null) {
+                Log.d("AIAssistant", "Notifying actionListener with " + fileActions.size() + " file actions");
                 actionListener.onAiActionsProcessed(
                         null,
                         parsedResponse.explanation,
@@ -1114,6 +1116,8 @@ public class AIAssistant {
                         fileActions,
                         currentModel != null ? currentModel.getDisplayName() : "AI"
                 );
+            } else {
+                Log.w("AIAssistant", "actionListener is null! Cannot notify UI of file operations.");
             }
         } catch (Exception e) {
             Log.e("AIAssistant", "Error processing file operations", e);

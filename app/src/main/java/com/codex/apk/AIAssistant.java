@@ -765,65 +765,41 @@ public class AIAssistant {
 				requestBody.addProperty("chat_id", conversationId);
 				requestBody.addProperty("chat_mode", "normal");
 				requestBody.addProperty("model", currentModel.getModelId());
-				requestBody.addProperty("parent_id", (String) null);
+				// Use lastQwenResponseId as parent_id
+				String parentId = null;
+				if (context instanceof AIChatFragment) {
+					parentId = ((AIChatFragment) context).lastQwenResponseId;
+				}
+				if (parentId != null) {
+					requestBody.addProperty("parent_id", parentId);
+				} else {
+					requestBody.add("parent_id", null);
+				}
 				requestBody.addProperty("timestamp", System.currentTimeMillis());
-				
-				// Build message array
-				JsonArray messages = new JsonArray();
 
-				// Enhanced system instruction for function calling
+				// Build message array (only current message)
+				JsonArray messages = new JsonArray();
+				// System message as before
 				JsonObject systemMsg = new JsonObject();
 				systemMsg.addProperty("role", "system");
-				
-				// Check if function calling is enabled
 				if (currentModel.supportsFunctionCalling() && enabledTools != null && !enabledTools.isEmpty()) {
-					// Enhanced system prompt for function calling
-					systemMsg.addProperty("content", 
-						"You are CodexAgent, an AI assistant inside a code editor.\n\n" +
-						"IMPORTANT: When the user requests file operations (create, update, delete, rename files/folders), " +
-						"you MUST respond with a JSON object containing the action details.\n\n" +
-						"JSON Response Format:\n" +
-						"{\n" +
-						"  \"action\": \"file_operation\",\n" +
-						"  \"operations\": [\n" +
-						"    {\n" +
-						"      \"type\": \"createFile|updateFile|deleteFile|renameFile\",\n" +
-						"      \"path\": \"file/path.txt\",\n" +
-						"      \"content\": \"file content\",\n" +
-						"      \"oldPath\": \"old/path.txt\",\n" +
-						"      \"newPath\": \"new/path.txt\"\n" +
-						"    }\n" +
-						"  ],\n" +
-						"  \"explanation\": \"Brief explanation of what was done\",\n" +
-						"  \"suggestions\": [\"suggestion1\", \"suggestion2\"]\n" +
-						"}\n\n" +
-						"For non-file operations, respond normally in plain text.\n" +
-						"Always think step by step but output only the final JSON or text response.");
+					systemMsg.addProperty("content", "You are CodexAgent, an AI assistant inside a code editor.\n\nIMPORTANT: When the user requests file operations (create, update, delete, rename files/folders), you MUST respond with a JSON object containing the action details.\n\nJSON Response Format:\n{\n  \"action\": \"file_operation\",\n  \"operations\": [\n    {\n      \"type\": \"createFile|updateFile|deleteFile|renameFile\",\n      \"path\": \"file/path.txt\",\n      \"content\": \"file content\",\n      \"oldPath\": \"old/path.txt\",\n      \"newPath\": \"new/path.txt\"\n    }\n  ],\n  \"explanation\": \"Brief explanation of what was done\",\n  \"suggestions\": [\"suggestion1\", \"suggestion2\"]\n}\n\nFor non-file operations, respond normally in plain text.\nAlways think step by step but output only the final JSON or text response.");
 				} else {
-					// Standard system prompt for non-function calling
-					systemMsg.addProperty("content", 
-						"You are CodexAgent, an AI assistant inside a code editor.\n\n" +
-						"- If the user's request requires changing the workspace (create, update, delete, rename files/folders) " +
-						"respond with detailed instructions on what files to create or modify.\n" +
-						"- Provide clear explanations and suggestions for improvements.\n" +
-						"- Think step by step internally, but output only the final answer.");
+					systemMsg.addProperty("content", "You are CodexAgent, an AI assistant inside a code editor.\n\n- If the user's request requires changing the workspace (create, update, delete, rename files/folders) respond with detailed instructions on what files to create or modify.\n- Provide clear explanations and suggestions for improvements.\n- Think step by step internally, but output only the final answer.");
 				}
-				
 				messages.add(systemMsg);
 
+				// User message with fid/parentId
 				JsonObject messageObj = new JsonObject();
 				messageObj.addProperty("role", "user");
 				messageObj.addProperty("content", message);
 				messageObj.addProperty("user_action", "chat");
-				messageObj.add("files", new JsonArray()); // TODO: Handle file attachments
+				messageObj.add("files", new JsonArray());
 				messageObj.addProperty("timestamp", System.currentTimeMillis());
-				
 				JsonArray modelsArray = new JsonArray();
 				modelsArray.add(currentModel.getModelId());
 				messageObj.add("models", modelsArray);
-				
 				messageObj.addProperty("chat_type", webSearchEnabled ? "search" : "t2t");
-				
 				// Feature config
 				JsonObject featureConfig = new JsonObject();
 				featureConfig.addProperty("thinking_enabled", thinkingModeEnabled);
@@ -835,7 +811,15 @@ public class AIAssistant {
 					featureConfig.addProperty("thinking_budget", 38912);
 				}
 				messageObj.add("feature_config", featureConfig);
-				
+				// Qwen threading: fid/parentId
+				String userFid = java.util.UUID.randomUUID().toString();
+				messageObj.addProperty("fid", userFid);
+				if (parentId != null) {
+					messageObj.addProperty("parentId", parentId);
+				} else {
+					messageObj.add("parentId", null);
+				}
+				messageObj.add("childrenIds", new JsonArray());
 				messages.add(messageObj);
 				requestBody.add("messages", messages);
 
@@ -881,7 +865,26 @@ public class AIAssistant {
 				
 				Response response = httpClient.newCall(request).execute();
 				if (response.isSuccessful() && response.body() != null) {
-					processQwenStreamResponse(response);
+					// After receiving response, update lastQwenResponseId
+					if (context instanceof AIChatFragment) {
+						// Parse the first line for response.created
+						String firstLine = response.body().source().readUtf8Line();
+						if (firstLine != null && firstLine.contains("response.created")) {
+							int idx = firstLine.indexOf("response.created");
+							String jsonPart = firstLine.substring(firstLine.indexOf("{"));
+							com.google.gson.JsonObject respObj = com.google.gson.JsonParser.parseString(jsonPart).getAsJsonObject();
+							if (respObj.has("response.created")) {
+								com.google.gson.JsonObject created = respObj.getAsJsonObject("response.created");
+								if (created.has("response_id")) {
+									((AIChatFragment) context).lastQwenResponseId = created.get("response_id").getAsString();
+								}
+							}
+						}
+						// Continue processing the rest of the stream
+						processQwenStreamResponse(response);
+					} else {
+						processQwenStreamResponse(response);
+					}
 				} else if (responseListener != null) {
 					responseListener.onError("Failed to send message");
 				}

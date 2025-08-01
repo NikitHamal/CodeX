@@ -38,6 +38,11 @@ public class ChatMessage {
     private String thinkingContent; // The thinking/reasoning content from AI
     private List<WebSource> webSources; // Web sources used in the response
     
+    // Qwen threading fields
+    private String fid; // Unique message id
+    private String parentId; // Parent message id
+    private List<String> childrenIds; // Children message ids
+    
     /**
      * Web source data class
      */
@@ -80,6 +85,9 @@ public class ChatMessage {
         this.suggestions = new ArrayList<>();
         this.proposedFileChanges = new ArrayList<>();
         this.webSources = new ArrayList<>();
+        this.fid = java.util.UUID.randomUUID().toString();
+        this.parentId = null;
+        this.childrenIds = new ArrayList<>();
     }
 
     /**
@@ -98,6 +106,9 @@ public class ChatMessage {
         this.proposedFileChanges = proposedFileChanges != null ? new ArrayList<>(proposedFileChanges) : new ArrayList<>();
         this.status = status;
         this.webSources = new ArrayList<>();
+        this.fid = java.util.UUID.randomUUID().toString();
+        this.parentId = null;
+        this.childrenIds = new ArrayList<>();
     }
 
     // Getters
@@ -112,6 +123,14 @@ public class ChatMessage {
     public int getStatus() { return status; }
     public String getThinkingContent() { return thinkingContent; }
     public List<WebSource> getWebSources() { return webSources; }
+
+    // Getters and setters for Qwen threading fields
+    public String getFid() { return fid; }
+    public void setFid(String fid) { this.fid = fid; }
+    public String getParentId() { return parentId; }
+    public void setParentId(String parentId) { this.parentId = parentId; }
+    public List<String> getChildrenIds() { return childrenIds; }
+    public void setChildrenIds(List<String> childrenIds) { this.childrenIds = childrenIds; }
 
 
     // Setters (for updating message properties after creation, e.g., status)

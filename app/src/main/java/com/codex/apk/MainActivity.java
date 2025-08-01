@@ -17,7 +17,8 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.LinearLayout;
-import android.widget.ListView;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.Button;
@@ -70,7 +71,7 @@ public class MainActivity extends AppCompatActivity {
     private static final String PROJECTS_LIST_KEY = "projects_list";
     private static final String CHAT_HISTORY_FILE_NAME = "chat_history.json";
 
-    private ListView listViewProjects;
+    private RecyclerView listViewProjects;
     private TextView textEmptyProjects;
     private LinearLayout layoutEmptyState;
     private MaterialToolbar toolbar;
@@ -110,7 +111,9 @@ public class MainActivity extends AppCompatActivity {
 
         projectsList = new ArrayList<>();
         projectsAdapter = new ProjectsAdapter(this, projectsList, this);
+        listViewProjects.setLayoutManager(new LinearLayoutManager(this));
         listViewProjects.setAdapter(projectsAdapter);
+        listViewProjects.setNestedScrollingEnabled(false); // Important for smooth scrolling in NestedScrollView
 
         templateManager = new TemplateManager();
 
@@ -130,17 +133,6 @@ public class MainActivity extends AppCompatActivity {
         if (fabQuickActions != null) {
             fabQuickActions.setOnClickListener(v -> showQuickActionsMenu());
         }
-
-        listViewProjects.setOnItemClickListener((parent, view, position, id) -> {
-            HashMap<String, Object> project = projectsList.get(position);
-            String projectPath = (String) project.get("path");
-            String projectName = (String) project.get("name");
-            if (projectPath != null && projectName != null) {
-                openProject(projectPath, projectName);
-            } else {
-                Toast.makeText(this, getString(R.string.error_invalid_project_data), Toast.LENGTH_SHORT).show();
-            }
-        });
 
         checkAndRequestPermissions();
     }

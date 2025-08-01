@@ -113,14 +113,12 @@
                 </LinearLayout>
 
                 <!-- Projects List -->
-                <ListView
+                <androidx.recyclerview.widget.RecyclerView
                     android:id="@+id/listview_projects"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:divider="@null"
-                    android:dividerHeight="8dp"
                     android:clipToPadding="false"
-                    android:scrollbars="none" />
+                    android:scrollbars="vertical" />
 
                 <!-- Empty State -->
                 <LinearLayout

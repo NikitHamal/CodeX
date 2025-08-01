@@ -253,51 +253,16 @@ public class MainActivity extends AppCompatActivity {
         if (!hasStoragePermission()) {
             Log.w(TAG, "Cannot load projects: Storage permission not granted.");
             projectsList.clear();
-            projectsAdapter.notifyDataSetChanged();
+            if (projectsAdapter != null) {
+                projectsAdapter.notifyDataSetChanged();
+            }
             updateEmptyStateVisibility();
             return;
         }
 
-        // First sync from filesystem to get all current projects
+        // Sync from filesystem to get the single source of truth.
         syncProjectsFromFilesystem();
 
-        // Then load from SharedPreferences to merge with any additional metadata
-        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-        String json = prefs.getString(PROJECTS_LIST_KEY, null);
-        Gson gson = new Gson();
-        Type type = new TypeToken<ArrayList<HashMap<String, Object>>>() {}.getType();
-        ArrayList<HashMap<String, Object>> loadedList = gson.fromJson(json, type);
-
-        if (loadedList != null) {
-            // Create a map of existing projects by path for quick lookup
-            Map<String, HashMap<String, Object>> existingProjectsMap = new HashMap<>();
-            for (HashMap<String, Object> project : projectsList) {
-                String path = (String) project.get("path");
-                if (path != null) {
-                    existingProjectsMap.put(path, project);
-                }
-            }
-            
-            // Merge loaded projects with existing ones, keeping the most recent data
-            for (HashMap<String, Object> loadedProject : loadedList) {
-                String path = (String) loadedProject.get("path");
-                if (path != null && new File(path).exists()) {
-                    HashMap<String, Object> existingProject = existingProjectsMap.get(path);
-                    if (existingProject != null) {
-                        // Update existing project with any additional metadata from SharedPreferences
-                        for (Map.Entry<String, Object> entry : loadedProject.entrySet()) {
-                            if (!entry.getKey().equals("path") && !entry.getKey().equals("name")) {
-                                existingProject.put(entry.getKey(), entry.getValue());
-                            }
-                        }
-                    } else {
-                        // Add new project that exists on filesystem but wasn't in our list
-                        projectsList.add(loadedProject);
-                    }
-                }
-            }
-        }
-        
         // Sort by last modified timestamp (most recent first)
         Collections.sort(projectsList, (p1, p2) -> {
             Number timestamp1 = (Number) p1.getOrDefault("lastModifiedTimestamp", 0L);
@@ -307,7 +272,9 @@ public class MainActivity extends AppCompatActivity {
             return Long.compare(date2, date1);
         });
         
-        projectsAdapter.notifyDataSetChanged();
+        if (projectsAdapter != null) {
+            projectsAdapter.notifyDataSetChanged();
+        }
         updateEmptyStateVisibility();
     }
 

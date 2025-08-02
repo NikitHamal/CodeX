@@ -229,9 +229,9 @@ public class ModelSelectorBottomSheet extends BottomSheetDialogFragment {
                     }
                     
                     // Latest model indicator
-                    if (aiModel == AIModel.GEMINI_2_5_FLASH ||
-                        aiModel == AIModel.GEMINI_2_5_PRO ||
-                        aiModel == AIModel.GEMINI_2_0_FLASH_EXP) {
+                    if ("gemini-2.5-flash".equals(aiModel.getModelId()) ||
+                        "gemini-2.5-pro".equals(aiModel.getModelId()) ||
+                        "gemini-2.0-flash-exp".equals(aiModel.getModelId())) {
                         latestChip.setVisibility(View.VISIBLE);
                         hasFeatures = true;
                     } else {

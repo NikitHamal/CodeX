@@ -222,4 +222,9 @@ public class AIChatUIManager {
     public String getText() {
         return editTextAiPrompt.getText().toString();
     }
+
+    public void setSendButtonEnabled(boolean isEnabled) {
+        buttonAiSend.setEnabled(isEnabled);
+        buttonAiSend.setAlpha(isEnabled ? 1.0f : 0.5f);
+    }
 }

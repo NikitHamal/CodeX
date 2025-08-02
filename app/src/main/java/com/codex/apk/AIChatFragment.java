@@ -96,12 +96,21 @@ public class AIChatFragment extends Fragment implements ChatMessageAdapter.OnAiA
 
     public void sendPrompt() {
         String prompt = uiManager.getText().trim();
-        if (prompt.isEmpty()) {
-            Toast.makeText(requireContext(), getString(R.string.please_enter_a_message), Toast.LENGTH_SHORT).show();
+        if (prompt.isEmpty() || isAiProcessing) {
+            if(isAiProcessing) Toast.makeText(requireContext(), "AI is processing...", Toast.LENGTH_SHORT).show();
+            else Toast.makeText(requireContext(), getString(R.string.please_enter_a_message), Toast.LENGTH_SHORT).show();
             return;
         }
+
+        uiManager.setSendButtonEnabled(false);
+
         ChatMessage userMsg = new ChatMessage(ChatMessage.SENDER_USER, prompt, System.currentTimeMillis());
         addMessage(userMsg);
+
+        // Show "AI is thinking..." message
+        ChatMessage thinkingMessage = new ChatMessage(ChatMessage.SENDER_AI, getString(R.string.ai_is_thinking), System.currentTimeMillis());
+        addMessage(thinkingMessage);
+
         uiManager.setText("");
         if (listener != null) {
             listener.sendAiPrompt(prompt, new ArrayList<>(chatHistory), qwenConversationState);
@@ -136,6 +145,7 @@ public class AIChatFragment extends Fragment implements ChatMessageAdapter.OnAiA
                 }
                 isAiProcessing = false;
                 currentAiStatusMessage = null;
+                uiManager.setSendButtonEnabled(true);
                 uiManager.scrollToBottom();
             }
         } else {
@@ -164,6 +174,7 @@ public class AIChatFragment extends Fragment implements ChatMessageAdapter.OnAiA
         }
         isAiProcessing = false;
         currentAiStatusMessage = null;
+        uiManager.setSendButtonEnabled(true);
     }
 
     public void updateMessage(int position, ChatMessage updatedMessage) {

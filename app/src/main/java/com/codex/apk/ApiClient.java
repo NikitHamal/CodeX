@@ -16,4 +16,5 @@ public interface ApiClient {
         List<ToolSpec> enabledTools,
         List<File> attachments
     );
+    List<AIModel> fetchModels();
 }

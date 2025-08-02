@@ -21,7 +21,7 @@ public class AIAssistant {
 
     public AIAssistant(Context context, ExecutorService executorService, AIActionListener actionListener) {
         this.actionListener = actionListener;
-        this.currentModel = AIModel.GEMINI_2_5_FLASH; // Default model
+        this.currentModel = AIModel.fromModelId("gemini-2.5-flash"); // Default model
 
         // Initialize API clients for each provider
         apiClients.put(AIProvider.ALIBABA, new QwenApiClient(context, actionListener, null)); // projectDir can be set later
@@ -53,7 +53,20 @@ public class AIAssistant {
     }
 
     public void refreshModelsForProvider(AIProvider provider, RefreshCallback callback) {
-        callback.onRefreshComplete(false, "Provider does not support refresh");
+        ApiClient client = apiClients.get(provider);
+        if (client != null) {
+            new Thread(() -> {
+                List<AIModel> models = client.fetchModels();
+                if (models != null && !models.isEmpty()) {
+                    AIModel.updateModelsForProvider(provider, models);
+                    callback.onRefreshComplete(true, "Models refreshed successfully for " + provider.name());
+                } else {
+                    callback.onRefreshComplete(false, "Failed to refresh models for " + provider.name());
+                }
+            }).start();
+        } else {
+            callback.onRefreshComplete(false, "API client for provider " + provider.name() + " not found.");
+        }
     }
 
     public interface RefreshCallback {

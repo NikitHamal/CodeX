@@ -161,4 +161,10 @@ public class GLMApiClient implements ApiClient {
         
         return sources;
     }
+
+    @Override
+    public List<AIModel> fetchModels() {
+        // Not implemented for GLM
+        return new ArrayList<>();
+    }
 }

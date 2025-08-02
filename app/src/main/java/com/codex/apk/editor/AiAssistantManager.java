@@ -58,7 +58,7 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
 
         // Load default model from settings and apply it
         SharedPreferences settingsPrefs = activity.getSharedPreferences("settings", Context.MODE_PRIVATE);
-        String defaultModelName = settingsPrefs.getString("selected_model", AIModel.GEMINI_2_5_FLASH.getDisplayName());
+        String defaultModelName = settingsPrefs.getString("selected_model", AIModel.fromModelId("gemini-2.5-flash").getDisplayName());
         AIModel defaultModel = AIModel.fromDisplayName(defaultModelName);
         if (defaultModel != null) {
             this.aiAssistant.setCurrentModel(defaultModel);

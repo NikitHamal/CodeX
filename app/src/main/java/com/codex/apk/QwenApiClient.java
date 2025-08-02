@@ -23,7 +23,11 @@ import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 import com.codex.apk.ai.AIModel;
+import com.codex.apk.ai.ModelCapabilities;
+import com.codex.apk.ai.AIProvider;
 import com.codex.apk.ai.WebSource;
+import java.util.Collections;
+
 
 public class QwenApiClient implements ApiClient {
     private static final String TAG = "QwenApiClient";
@@ -497,5 +501,46 @@ public class QwenApiClient implements ApiClient {
 
         AiProcessor processor = new AiProcessor(projectDir, context);
         processor.applyFileAction(actionDetail);
+    }
+
+    public List<AIModel> fetchModels() {
+        Request request = new Request.Builder()
+                .url(QWEN_BASE_URL + "/models")
+                .headers(buildQwenHeaders(getQwenToken(), null))
+                .build();
+
+        try (Response response = httpClient.newCall(request).execute()) {
+            if (response.isSuccessful() && response.body() != null) {
+                String responseBody = response.body().string();
+                JsonObject responseJson = JsonParser.parseString(responseBody).getAsJsonObject();
+                JsonArray data = responseJson.getAsJsonArray("data");
+                List<AIModel> models = new ArrayList<>();
+                for (int i = 0; i < data.size(); i++) {
+                    JsonObject modelData = data.get(i).getAsJsonObject();
+                    String modelId = modelData.get("id").getAsString();
+                    String displayName = modelData.get("name").getAsString();
+                    JsonObject info = modelData.getAsJsonObject("info");
+                    JsonObject meta = info.getAsJsonObject("meta");
+                    JsonObject capabilitiesJson = meta.getAsJsonObject("capabilities");
+
+                    boolean supportsThinking = capabilitiesJson.has("thinking") && capabilitiesJson.get("thinking").getAsBoolean();
+                    boolean supportsWebSearch = meta.get("chat_type").getAsString().contains("search");
+                    boolean supportsVision = capabilitiesJson.has("vision") && capabilitiesJson.get("vision").getAsBoolean();
+                    boolean supportsDocument = capabilitiesJson.has("document") && capabilitiesJson.get("document").getAsBoolean();
+                    boolean supportsVideo = capabilitiesJson.has("video") && capabilitiesJson.get("video").getAsBoolean();
+                    boolean supportsAudio = capabilitiesJson.has("audio") && capabilitiesJson.get("audio").getAsBoolean();
+                    boolean supportsCitations = capabilitiesJson.has("citations") && capabilitiesJson.get("citations").getAsBoolean();
+                    int maxContextLength = meta.has("max_context_length") ? meta.get("max_context_length").getAsInt() : 0;
+                    int maxGenerationLength = meta.has("max_generation_length") ? meta.get("max_generation_length").getAsInt() : 0;
+
+                    ModelCapabilities capabilities = new ModelCapabilities(supportsThinking, supportsWebSearch, supportsVision, supportsDocument, supportsVideo, supportsAudio, supportsCitations, maxContextLength, maxGenerationLength);
+                    models.add(new AIModel(modelId, displayName, AIProvider.ALIBABA, capabilities));
+                }
+                return models;
+            }
+        } catch (IOException e) {
+            Log.e(TAG, "Error fetching Qwen models", e);
+        }
+        return Collections.emptyList();
     }
 }

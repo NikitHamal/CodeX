@@ -20,6 +20,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import android.content.Context;
 import android.util.AttributeSet;
 import java.util.List;
+import com.codex.apk.ai.AIModel;
 
 import com.google.android.material.appbar.MaterialToolbar;
 

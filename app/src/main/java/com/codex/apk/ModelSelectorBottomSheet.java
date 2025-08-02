@@ -20,6 +20,9 @@ import com.google.android.material.button.MaterialButton;
 // import com.google.android.material.chip.Chip; // Removed for Sketchware Pro compatibility
 import com.google.android.material.textfield.TextInputEditText;
 
+import com.codex.apk.ai.AIModel;
+import com.codex.apk.ai.ModelCapabilities;
+
 import java.util.ArrayList;
 import java.util.List;
 

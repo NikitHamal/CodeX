@@ -6,6 +6,8 @@ import android.widget.Toast;
 
 import com.codex.apk.AIChatFragment;
 import com.codex.apk.AIAssistant;
+import com.codex.apk.AIModel;
+import com.codex.apk.WebSource;
 import com.codex.apk.AiProcessor; // Import AiProcessor
 import com.codex.apk.ChatMessage;
 import com.codex.apk.CodeEditorFragment;
@@ -248,7 +250,7 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
     }
     
     // Enhanced version with thinking content and web sources
-    public void onAiActionsProcessed(String rawAiResponseJson, String explanation, List<String> suggestions, 
+    public void onAiActionsProcessed(String rawAiResponseJson, String explanation, List<String> suggestions,
                                    List<ChatMessage.FileActionDetail> proposedFileChanges, String aiModelDisplayName,
                                    String thinkingContent, List<WebSource> webSources) {
         Log.d(TAG, "onAiActionsProcessed called with:");
@@ -281,7 +283,7 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                 
                 Log.d(TAG, "Adding AI message to chat fragment with status: " + aiMessage.getStatus());
                 activity.getAiChatFragment().addMessage(aiMessage); // Add to local list and UI
-                activity.getAiChatFragment().saveChatState(); // Save to SharedPreferences
+                // The save state is called when the message is updated
             } else {
                 Log.w(TAG, "AiChatFragment is null! Cannot add message to UI.");
             }
@@ -304,7 +306,7 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                         ChatMessage.STATUS_NONE
                 );
                 aiChatFragment.addMessage(aiErrorMessage);
-                aiChatFragment.saveChatState();
+                // The save state is called when the message is updated
             }
         });
     }

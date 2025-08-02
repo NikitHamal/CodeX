@@ -5,6 +5,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.ImageView;
+import com.google.android.material.button.MaterialButton;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -26,7 +27,7 @@ public class AIChatUIManager {
 
     public RecyclerView recyclerViewChatHistory;
     public EditText editTextAiPrompt;
-    public ImageView buttonAiSend;
+    public MaterialButton buttonAiSend;
     public LinearLayout layoutEmptyState;
     public TextView textGreeting;
     public LinearLayout layoutInputSection;

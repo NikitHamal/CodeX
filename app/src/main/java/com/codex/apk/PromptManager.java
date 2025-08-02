@@ -34,14 +34,21 @@ public class PromptManager {
                "      \"type\": \"updateFile\",\\n" +
                "      \"path\": \"path/to/existing_file.js\",\\n" +
                "      \"content\": \"// new javascript content\"\\n" +
+               "    },\\n" +
+               "    {\\n" +
+               "      \"type\": \"searchAndReplace\",\\n" +
+               "      \"path\": \"path/to/file.html\",\\n" +
+               "      \"search\": \"old text\",\\n" +
+               "      \"replace\": \"new text\"\\n" +
                "    }\\n" +
                "  ],\\n" +
                "  \"explanation\": \"A brief summary of the changes you made.\",\\n" +
                "  \"suggestions\": [\"Add a CSS file for styling.\", \"Implement a dark mode toggle.\"]\\n" +
                "}\\n\\n" +
-               "- The `operations` array can contain multiple operations of different types (`createFile`, `updateFile`, `deleteFile`, `renameFile`).\\n" +
+               "- The `operations` array can contain multiple operations of different types (`createFile`, `updateFile`, `deleteFile`, `renameFile`, `searchAndReplace`).\\n" +
                "- For `renameFile`, include `oldPath` and `newPath`.\\n" +
                "- For `deleteFile`, only `path` is required.\\n" +
+               "- For `searchAndReplace`, include `path`, `search`, and `replace`.\\n" +
                "- Do not include any other text or formatting outside of the JSON object. Your entire response must be the JSON object itself.";
     }
 

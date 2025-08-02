@@ -53,11 +53,28 @@ public class AiProcessor {
             case "renameFile":
                 summary = handleRenameFile(detail);
                 break;
+            case "searchAndReplace":
+                summary = handleSearchAndReplace(detail);
+                break;
             // Removed 'modifyLines' action
             default:
                 throw new IllegalArgumentException("Unknown action type: " + actionType);
         }
         return summary;
+    }
+
+    private String handleSearchAndReplace(ChatMessage.FileActionDetail detail) throws IOException {
+        String path = detail.path;
+        String search = detail.search;
+        String replace = detail.replace;
+        File fileToUpdate = new File(projectDir, path);
+        if (!fileToUpdate.exists()) {
+            throw new IOException("File not found for search and replace: " + path);
+        }
+        String content = fileManager.readFileContent(fileToUpdate);
+        String newContent = content.replace(search, replace);
+        fileManager.writeFileContent(fileToUpdate, newContent);
+        return "Performed search and replace on file: " + path;
     }
 
     private String handleCreateFile(ChatMessage.FileActionDetail detail) throws IOException {

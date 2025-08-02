@@ -23,13 +23,17 @@ public class QwenResponseParser {
         public final String content;
         public final String oldPath;
         public final String newPath;
+        public final String search;
+        public final String replace;
 
-        public FileOperation(String type, String path, String content, String oldPath, String newPath) {
+        public FileOperation(String type, String path, String content, String oldPath, String newPath, String search, String replace) {
             this.type = type;
             this.path = path;
             this.content = content;
             this.oldPath = oldPath;
             this.newPath = newPath;
+            this.search = search;
+            this.replace = replace;
         }
     }
 
@@ -77,7 +81,9 @@ public class QwenResponseParser {
                 String content = jsonObj.has("content") ? jsonObj.get("content").getAsString() : "";
                 String oldPath = jsonObj.has("oldPath") ? jsonObj.get("oldPath").getAsString() : "";
                 String newPath = jsonObj.has("newPath") ? jsonObj.get("newPath").getAsString() : "";
-                operations.add(new FileOperation(type, path, content, oldPath, newPath));
+                String search = jsonObj.has("search") ? jsonObj.get("search").getAsString() : "";
+                String replace = jsonObj.has("replace") ? jsonObj.get("replace").getAsString() : "";
+                operations.add(new FileOperation(type, path, content, oldPath, newPath, search, replace));
                 String explanation = jsonObj.has("explanation") ? jsonObj.get("explanation").getAsString() : "";
                 List<String> suggestions = new ArrayList<>();
                 if (jsonObj.has("suggestions")) {
@@ -117,8 +123,10 @@ public class QwenResponseParser {
                 String content = operation.has("content") ? operation.get("content").getAsString() : "";
                 String oldPath = operation.has("oldPath") ? operation.get("oldPath").getAsString() : "";
                 String newPath = operation.has("newPath") ? operation.get("newPath").getAsString() : "";
+                String search = operation.has("search") ? operation.get("search").getAsString() : "";
+                String replace = operation.has("replace") ? operation.get("replace").getAsString() : "";
                 
-                operations.add(new FileOperation(type, path, content, oldPath, newPath));
+                operations.add(new FileOperation(type, path, content, oldPath, newPath, search, replace));
             }
         }
         
@@ -146,7 +154,8 @@ public class QwenResponseParser {
 
     private static boolean isSingleFileAction(String action) {
         return "createFile".equals(action) || "updateFile".equals(action) || "deleteFile".equals(action)
-                || "renameFile".equals(action) || "readFile".equals(action) || "listFiles".equals(action);
+                || "renameFile".equals(action) || "readFile".equals(action) || "listFiles".equals(action)
+                || "searchAndReplace".equals(action);
     }
 
     /**
@@ -174,7 +183,7 @@ public class QwenResponseParser {
         
         for (FileOperation op : response.operations) {
             ChatMessage.FileActionDetail detail = new ChatMessage.FileActionDetail(
-                op.type, op.path, op.oldPath, op.newPath, "", op.content, 0, 0, null
+                op.type, op.path, op.oldPath, op.newPath, "", op.content, 0, 0, null, op.search, op.replace
             );
             details.add(detail);
         }

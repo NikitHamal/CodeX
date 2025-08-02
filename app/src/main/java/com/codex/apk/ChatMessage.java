@@ -127,11 +127,13 @@ public class ChatMessage {
         public int startLine; // For modifyLines (1-indexed)
         public int deleteCount; // For modifyLines
         public List<String> insertLines; // For modifyLines
+        public String search; // For searchAndReplace
+        public String replace; // For searchAndReplace
 
         // Comprehensive constructor
         public FileActionDetail(String type, String path, String oldPath, String newPath,
                                 String oldContent, String newContent, int startLine,
-                                int deleteCount, List<String> insertLines) {
+                                int deleteCount, List<String> insertLines, String search, String replace) {
             this.type = type;
             this.path = path;
             this.oldPath = oldPath;
@@ -141,6 +143,8 @@ public class ChatMessage {
             this.startLine = startLine;
             this.deleteCount = deleteCount;
             this.insertLines = insertLines != null ? new ArrayList<>(insertLines) : null;
+            this.search = search;
+            this.replace = replace;
         }
 
         // Method to get a displayable summary of the action
@@ -154,6 +158,8 @@ public class ChatMessage {
                     return "Delete file: " + path;
                 case "renameFile":
                     return "Rename file: " + oldPath + " to " + newPath;
+                case "searchAndReplace":
+                    return "Search and replace in file: " + path;
                 case "modifyLines":
                     String linesModified = "";
                     if (deleteCount > 0 && (insertLines == null || insertLines.isEmpty())) {

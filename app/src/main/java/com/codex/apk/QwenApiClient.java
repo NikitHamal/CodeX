@@ -520,7 +520,7 @@ public class QwenApiClient implements ApiClient {
                         for (int i = 0; i < data.size(); i++) {
                             JsonObject modelData = data.get(i).getAsJsonObject();
                             String modelId = modelData.get("id").getAsString();
-                            String displayName = modelData.get("name").getAsString();
+                            String displayName = modelData.has("name") ? modelData.get("name").getAsString() : modelId;
                             JsonObject info = modelData.getAsJsonObject("info");
                             JsonObject meta = info.getAsJsonObject("meta");
                             JsonObject capabilitiesJson = meta.getAsJsonObject("capabilities");
@@ -549,7 +549,7 @@ public class QwenApiClient implements ApiClient {
                         // Handle the case where 'data' is a single object
                         JsonObject modelData = responseJson.getAsJsonObject("data");
                         String modelId = modelData.get("id").getAsString();
-                        String displayName = modelData.get("name").getAsString();
+                        String displayName = modelData.has("name") ? modelData.get("name").getAsString() : modelId;
                         JsonObject info = modelData.getAsJsonObject("info");
                         JsonObject meta = info.getAsJsonObject("meta");
                         JsonObject capabilitiesJson = meta.getAsJsonObject("capabilities");

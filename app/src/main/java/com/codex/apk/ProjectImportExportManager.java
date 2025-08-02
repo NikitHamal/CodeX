@@ -15,10 +15,13 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.zip.ZipEntry;
+import com.google.gson.Gson;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
 
@@ -50,7 +53,23 @@ public class ProjectImportExportManager {
 
             File zipFile = new File(exportDir, projectName + ".codex");
             File chatHistoryFile = new File(projectDir, CHAT_HISTORY_FILE_NAME);
-            boolean chatExported = AIChatHistoryManager.exportChatHistoryToJson(context, projectDir.getAbsolutePath(), chatHistoryFile);
+
+            AIChatHistoryManager chatHistoryManager = new AIChatHistoryManager(context, projectDir.getAbsolutePath());
+            List<ChatMessage> chatHistory = new ArrayList<>();
+            QwenConversationState qwenState = new QwenConversationState();
+            chatHistoryManager.loadChatState(chatHistory, qwenState);
+
+            boolean chatExported = false;
+            if (!chatHistory.isEmpty()) {
+                try (FileOutputStream fos = new FileOutputStream(chatHistoryFile);
+                     java.io.OutputStreamWriter osw = new java.io.OutputStreamWriter(fos, "UTF-8")) {
+                    Gson gson = new Gson();
+                    gson.toJson(chatHistory, osw);
+                    chatExported = true;
+                } catch (IOException e) {
+                    Log.e(TAG, "Error exporting chat history", e);
+                }
+            }
 
             try {
                 zipDirectory(projectDir, zipFile);
@@ -104,8 +123,22 @@ public class ProjectImportExportManager {
 
                 File importedChatHistoryFile = new File(newProjectDir, CHAT_HISTORY_FILE_NAME);
                 if (importedChatHistoryFile.exists()) {
-                    AIChatHistoryManager.importChatHistoryFromJson(context, newProjectDir.getAbsolutePath(), importedChatHistoryFile);
-                    importedChatHistoryFile.delete();
+                    try (FileInputStream fis = new FileInputStream(importedChatHistoryFile);
+                         java.io.InputStreamReader isr = new java.io.InputStreamReader(fis, "UTF-8")) {
+                        Gson gson = new Gson();
+                        java.lang.reflect.Type listType = new com.google.gson.reflect.TypeToken<ArrayList<ChatMessage>>() {}.getType();
+                        List<ChatMessage> chatHistory = gson.fromJson(isr, listType);
+
+                        if (chatHistory != null && !chatHistory.isEmpty()) {
+                            AIChatHistoryManager chatHistoryManager = new AIChatHistoryManager(context, newProjectDir.getAbsolutePath());
+                            QwenConversationState qwenState = new QwenConversationState(); // Create a new state for the imported project
+                            chatHistoryManager.saveChatState(chatHistory, qwenState);
+                        }
+                    } catch (IOException e) {
+                        Log.e(TAG, "Error importing chat history", e);
+                    } finally {
+                        importedChatHistoryFile.delete();
+                    }
                 }
 
                 mainActivity.runOnUiThread(() -> {

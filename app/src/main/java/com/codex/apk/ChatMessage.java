@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import com.google.gson.Gson; // Import Gson
 import com.google.gson.reflect.TypeToken; // Import TypeToken
 import java.lang.reflect.Type; // Import Type
+import com.codex.apk.ai.WebSource;
 
 /**
  * Data class representing a single chat message.
@@ -43,36 +44,6 @@ public class ChatMessage {
     private String parentId; // Parent message id
     private List<String> childrenIds; // Children message ids
     
-    /**
-     * Web source data class
-     */
-    public static class WebSource {
-        private String url;
-        private String title;
-        private String snippet;
-        private String favicon;
-        
-        public WebSource(String url, String title, String snippet, String favicon) {
-            this.url = url;
-            this.title = title;
-            this.snippet = snippet;
-            this.favicon = favicon;
-        }
-        
-        // Getters
-        public String getUrl() { return url; }
-        public String getTitle() { return title; }
-        public String getSnippet() { return snippet; }
-        public String getFavicon() { return favicon; }
-        
-        // Setters
-        public void setUrl(String url) { this.url = url; }
-        public void setTitle(String title) { this.title = title; }
-        public void setSnippet(String snippet) { this.snippet = snippet; }
-        public void setFavicon(String favicon) { this.favicon = favicon; }
-    }
-
-
     /**
      * Constructor for user messages.
      */

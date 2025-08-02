@@ -1,4 +1,4 @@
-package com.codex.apk;
+package com.codex.apk.ai;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -148,45 +148,5 @@ public enum AIModel {
             }
         }
         return null;
-    }
-}
-
-enum AIProvider {
-    GOOGLE("Google"),
-    HUGGINGFACE("Huggingface"),
-    ALIBABA("Alibaba"),
-    Z("Z");
-
-    private final String displayName;
-
-    AIProvider(String displayName) { this.displayName = displayName; }
-    public String getDisplayName() { return displayName; }
-}
-
-class ModelCapabilities {
-    public final boolean supportsThinking;
-    public final boolean supportsWebSearch;
-    public final boolean supportsVision;
-    public final boolean supportsDocument;
-    public final boolean supportsVideo;
-    public final boolean supportsAudio;
-    public final boolean supportsCitations;
-    public final int maxContextLength;
-    public final int maxGenerationLength;
-
-    public ModelCapabilities(boolean supportsThinking, boolean supportsWebSearch,
-                            boolean supportsVision, boolean supportsDocument,
-                            boolean supportsVideo, boolean supportsAudio,
-                            boolean supportsCitations, int maxContextLength,
-                            int maxGenerationLength) {
-        this.supportsThinking = supportsThinking;
-        this.supportsWebSearch = supportsWebSearch;
-        this.supportsVision = supportsVision;
-        this.supportsDocument = supportsDocument;
-        this.supportsVideo = supportsVideo;
-        this.supportsAudio = supportsAudio;
-        this.supportsCitations = supportsCitations;
-        this.maxContextLength = maxContextLength;
-        this.maxGenerationLength = maxGenerationLength;
     }
 }

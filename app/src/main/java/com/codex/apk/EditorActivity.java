@@ -257,8 +257,8 @@ public class EditorActivity extends AppCompatActivity implements
     }
 
     @Override
-    public void closeAllTabs(boolean confirmIfModified) {
-        tabManager.closeAllTabs(confirmIfModified); // Delegate to TabManager
+    public void closeAllTabs() {
+        tabManager.closeAllTabs(true); // Delegate to TabManager, always confirm
     }
 
     @Override

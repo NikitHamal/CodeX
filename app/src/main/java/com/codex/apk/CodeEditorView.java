@@ -62,7 +62,6 @@ public class CodeEditorView extends FrameLayout {
 	private boolean isDarkTheme = false;
 	private ScaleGestureDetector scaleGestureDetector;
 	private GestureDetector gestureDetector;
-	private boolean isZooming = false;
     private boolean isDiffView = false; // Flag to indicate if it's displaying a diff
 
 	// Listeners
@@ -136,10 +135,6 @@ public class CodeEditorView extends FrameLayout {
                 }
 				if (scaleGestureDetector != null) {
 					boolean handledByScale = scaleGestureDetector.onTouchEvent(event);
-					if (isZooming) {
-						getParent().requestDisallowInterceptTouchEvent(true);
-						return true;
-					}
 					if (handledByScale && scaleGestureDetector.isInProgress()) {
 						getParent().requestDisallowInterceptTouchEvent(true);
 						return true;
@@ -218,12 +213,6 @@ public class CodeEditorView extends FrameLayout {
 	private void setupGestureDetectors() {
 		scaleGestureDetector = new ScaleGestureDetector(getContext(), new ScaleGestureDetector.SimpleOnScaleGestureListener() {
 			@Override
-			public boolean onScaleBegin(ScaleGestureDetector detector) {
-				isZooming = true;
-				return true;
-			}
-
-			@Override
 			public boolean onScale(ScaleGestureDetector detector) {
 				float scaleFactor = detector.getScaleFactor();
 				float newTextSize = textSize * scaleFactor;
@@ -242,10 +231,6 @@ public class CodeEditorView extends FrameLayout {
 				return true;
 			}
 
-			@Override
-			public void onScaleEnd(ScaleGestureDetector detector) {
-				isZooming = false;
-			}
 		});
 
 		gestureDetector = new GestureDetector(getContext(), new GestureDetector.SimpleOnGestureListener() {
@@ -288,71 +273,40 @@ public class CodeEditorView extends FrameLayout {
      * @param text The code content to display.
      * @param fileName The name of the file, used to detect syntax type.
      */
-	public void setText(String text, String fileName) {
-        // Save current selection before setting text
+    private void setContent(String content, boolean isDiff) {
         int selectionStart = codeEditor.getSelectionStart();
         int selectionEnd = codeEditor.getSelectionEnd();
 
-        isDiffView = false; // Not a diff view
-        codeEditor.setFocusableInTouchMode(true); // Make editable
-        codeEditor.setCursorVisible(true);
-        codeEditor.setText(text); // Set text
+        this.isDiffView = isDiff;
+        codeEditor.setFocusableInTouchMode(!isDiff);
+        codeEditor.setCursorVisible(!isDiff);
+        codeEditor.setText(content);
 
-        // Restore selection after setting text
-        // Ensure selection is within bounds of the new text length
         codeEditor.setSelection(
                 Math.min(selectionStart, codeEditor.length()),
                 Math.min(selectionEnd, codeEditor.length()));
 
-
-		// Ensure scroll position is reset for new text if necessary
-        verticalScrollView.scrollTo(0, 0);
-        horizontalScrollView.scrollTo(0, 0);
-        lineNumbersView.setEditorScrollY(0); // Reset scroll for line numbers too
-		updateHandler.removeCallbacks(updateRunnable);
-		updateHandler.post(updateRunnable);
-
-        // Trigger full highlight after text is set and layout is stable
-        if (attachedHighlighter != null) {
-            // Detect syntax type based on the provided fileName
-            attachedHighlighter.setSyntaxType(SyntaxHighlightingUtils.detectSyntaxType(fileName));
-            attachedHighlighter.highlightSyntax(true); // Force immediate highlight
-        }
-	}
-
-    /**
-     * Sets the text content for a diff view and makes the editor read-only.
-     * Applies diff highlighting.
-     * @param diffContent The diff content to display.
-     */
-    public void setDiffContent(String diffContent) {
-        // Save current selection before setting text
-        int selectionStart = codeEditor.getSelectionStart();
-        int selectionEnd = codeEditor.getSelectionEnd();
-
-        isDiffView = true; // This is a diff view
-        codeEditor.setFocusable(false); // Make read-only
-        codeEditor.setCursorVisible(false);
-        codeEditor.setText(diffContent); // Set text
-
-        // Restore selection after setting text
-        codeEditor.setSelection(
-                Math.min(selectionStart, codeEditor.length()),
-                Math.min(selectionEnd, codeEditor.length()));
-
-
-        // Apply diff highlighting directly
-        if (attachedHighlighter != null) {
-            attachedHighlighter.setSyntaxType(OptimizedSyntaxHighlighter.SyntaxType.DIFF);
-            attachedHighlighter.highlightDiff(codeEditor.getEditableText());
-        }
-
-        // Ensure scroll position is reset
         verticalScrollView.scrollTo(0, 0);
         horizontalScrollView.scrollTo(0, 0);
         lineNumbersView.setEditorScrollY(0);
         updateHandler.removeCallbacks(updateRunnable);
         updateHandler.post(updateRunnable);
+    }
+
+	public void setText(String text, String fileName) {
+        setContent(text, false);
+        if (attachedHighlighter != null) {
+            attachedHighlighter.setSyntaxType(SyntaxHighlightingUtils.detectSyntaxType(fileName));
+            attachedHighlighter.highlightSyntax(true);
+        }
+	}
+
+    public void setDiffContent(String diffContent) {
+        setContent(diffContent, true);
+        if (attachedHighlighter != null) {
+            attachedHighlighter.setSyntaxType(OptimizedSyntaxHighlighter.SyntaxType.DIFF);
+            attachedHighlighter.highlightDiff(codeEditor.getEditableText());
+        }
     }
 
     /**
@@ -364,7 +318,9 @@ public class CodeEditorView extends FrameLayout {
         this.attachedHighlighter = highlighter;
         // The highlighter will attach its own TextWatcher to codeEditor
         // and handle initial highlighting.
-        attachedHighlighter.attachToEditor(codeEditor);
+        if (highlighter != null) {
+            highlighter.attachToEditor(codeEditor);
+        }
     }
 
 	public String getText() {

@@ -513,28 +513,67 @@ public class QwenApiClient implements ApiClient {
             if (response.isSuccessful() && response.body() != null) {
                 String responseBody = response.body().string();
                 JsonObject responseJson = JsonParser.parseString(responseBody).getAsJsonObject();
-                JsonArray data = responseJson.getAsJsonArray("data");
                 List<AIModel> models = new ArrayList<>();
-                for (int i = 0; i < data.size(); i++) {
-                    JsonObject modelData = data.get(i).getAsJsonObject();
-                    String modelId = modelData.get("id").getAsString();
-                    String displayName = modelData.get("name").getAsString();
-                    JsonObject info = modelData.getAsJsonObject("info");
-                    JsonObject meta = info.getAsJsonObject("meta");
-                    JsonObject capabilitiesJson = meta.getAsJsonObject("capabilities");
+                if (responseJson.has("data")) {
+                    if (responseJson.get("data").isJsonArray()) {
+                        JsonArray data = responseJson.getAsJsonArray("data");
+                        for (int i = 0; i < data.size(); i++) {
+                            JsonObject modelData = data.get(i).getAsJsonObject();
+                            String modelId = modelData.get("id").getAsString();
+                            String displayName = modelData.get("name").getAsString();
+                            JsonObject info = modelData.getAsJsonObject("info");
+                            JsonObject meta = info.getAsJsonObject("meta");
+                            JsonObject capabilitiesJson = meta.getAsJsonObject("capabilities");
 
-                    boolean supportsThinking = capabilitiesJson.has("thinking") && capabilitiesJson.get("thinking").getAsBoolean();
-                    boolean supportsWebSearch = meta.get("chat_type").getAsString().contains("search");
-                    boolean supportsVision = capabilitiesJson.has("vision") && capabilitiesJson.get("vision").getAsBoolean();
-                    boolean supportsDocument = capabilitiesJson.has("document") && capabilitiesJson.get("document").getAsBoolean();
-                    boolean supportsVideo = capabilitiesJson.has("video") && capabilitiesJson.get("video").getAsBoolean();
-                    boolean supportsAudio = capabilitiesJson.has("audio") && capabilitiesJson.get("audio").getAsBoolean();
-                    boolean supportsCitations = capabilitiesJson.has("citations") && capabilitiesJson.get("citations").getAsBoolean();
-                    int maxContextLength = meta.has("max_context_length") ? meta.get("max_context_length").getAsInt() : 0;
-                    int maxGenerationLength = meta.has("max_generation_length") ? meta.get("max_generation_length").getAsInt() : 0;
+                            boolean supportsThinking = capabilitiesJson.has("thinking") && capabilitiesJson.get("thinking").getAsBoolean();
+                            JsonArray chatTypes = meta.has("chat_type") ? meta.get("chat_type").getAsJsonArray() : new JsonArray();
+                            boolean supportsWebSearch = false;
+                            for (int j = 0; j < chatTypes.size(); j++) {
+                                if ("search".equals(chatTypes.get(j).getAsString())) {
+                                    supportsWebSearch = true;
+                                    break;
+                                }
+                            }
+                            boolean supportsVision = capabilitiesJson.has("vision") && capabilitiesJson.get("vision").getAsBoolean();
+                            boolean supportsDocument = capabilitiesJson.has("document") && capabilitiesJson.get("document").getAsBoolean();
+                            boolean supportsVideo = capabilitiesJson.has("video") && capabilitiesJson.get("video").getAsBoolean();
+                            boolean supportsAudio = capabilitiesJson.has("audio") && capabilitiesJson.get("audio").getAsBoolean();
+                            boolean supportsCitations = capabilitiesJson.has("citations") && capabilitiesJson.get("citations").getAsBoolean();
+                            int maxContextLength = meta.has("max_context_length") ? meta.get("max_context_length").getAsInt() : 0;
+                            int maxGenerationLength = meta.has("max_generation_length") ? meta.get("max_generation_length").getAsInt() : 0;
 
-                    ModelCapabilities capabilities = new ModelCapabilities(supportsThinking, supportsWebSearch, supportsVision, supportsDocument, supportsVideo, supportsAudio, supportsCitations, maxContextLength, maxGenerationLength);
-                    models.add(new AIModel(modelId, displayName, AIProvider.ALIBABA, capabilities));
+                            ModelCapabilities capabilities = new ModelCapabilities(supportsThinking, supportsWebSearch, supportsVision, supportsDocument, supportsVideo, supportsAudio, supportsCitations, maxContextLength, maxGenerationLength);
+                            models.add(new AIModel(modelId, displayName, AIProvider.ALIBABA, capabilities));
+                        }
+                    } else if (responseJson.get("data").isJsonObject()) {
+                        // Handle the case where 'data' is a single object
+                        JsonObject modelData = responseJson.getAsJsonObject("data");
+                        String modelId = modelData.get("id").getAsString();
+                        String displayName = modelData.get("name").getAsString();
+                        JsonObject info = modelData.getAsJsonObject("info");
+                        JsonObject meta = info.getAsJsonObject("meta");
+                        JsonObject capabilitiesJson = meta.getAsJsonObject("capabilities");
+
+                        boolean supportsThinking = capabilitiesJson.has("thinking") && capabilitiesJson.get("thinking").getAsBoolean();
+                        JsonArray chatTypes = meta.has("chat_type") ? meta.get("chat_type").getAsJsonArray() : new JsonArray();
+                        boolean supportsWebSearch = false;
+                        for (int j = 0; j < chatTypes.size(); j++) {
+                            if ("search".equals(chatTypes.get(j).getAsString())) {
+                                supportsWebSearch = true;
+                                break;
+                            }
+                        }
+                        boolean supportsVision = capabilitiesJson.has("vision") && capabilitiesJson.get("vision").getAsBoolean();
+                        boolean supportsDocument = capabilitiesJson.has("document") && capabilitiesJson.get("document").getAsBoolean();
+                        boolean supportsVideo = capabilitiesJson.has("video") && capabilitiesJson.get("video").getAsBoolean();
+                        boolean supportsAudio = capabilitiesJson.has("audio") && capabilitiesJson.get("audio").getAsBoolean();
+                        boolean supportsCitations = capabilitiesJson.has("citations") && capabilitiesJson.get("citations").getAsBoolean();
+                        int maxContextLength = meta.has("max_context_length") ? meta.get("max_context_length").getAsInt() : 0;
+                        int maxGenerationLength = meta.has("max_generation_length") ? meta.get("max_generation_length").getAsInt() : 0;
+
+                        ModelCapabilities capabilities = new ModelCapabilities(supportsThinking, supportsWebSearch, supportsVision, supportsDocument, supportsVideo, supportsAudio, supportsCitations, maxContextLength, maxGenerationLength);
+                        models.add(new AIModel(modelId, displayName, AIProvider.ALIBABA, capabilities));
+                    }
                 }
                 return models;
             }

@@ -46,7 +46,7 @@ public class CodeEditorFragment extends Fragment implements SimpleSoraTabAdapter
         void openFile(File file);
         void closeTab(int position, boolean confirmIfModified);
         void closeOtherTabs(int keepPosition);
-        void closeAllTabs(boolean confirmIfModified);
+        void closeAllTabs();
         void saveFile(TabItem tabItem);
         void showTabOptionsMenu(View anchorView, int position);
         void onActiveTabChanged(File newFile);

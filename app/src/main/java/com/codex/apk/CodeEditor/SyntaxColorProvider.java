@@ -33,83 +33,38 @@ public class SyntaxColorProvider {
      */
     public void initializeSyntaxColors(OptimizedSyntaxHighlighter.SyntaxType syntaxType) {
         syntaxColors = new int[15]; // Max number of colors needed for any syntax type
+        int[] lightColors;
+        int[] darkColors;
 
-        if (syntaxType == OptimizedSyntaxHighlighter.SyntaxType.HTML) {
-            if (isDarkTheme) {
-                syntaxColors[0] = ContextCompat.getColor(context, R.color.primary_light);       // Tags
-                syntaxColors[1] = ContextCompat.getColor(context, R.color.tertiary_container);  // Attributes
-                syntaxColors[2] = ContextCompat.getColor(context, R.color.secondary_container); // Values
-                syntaxColors[3] = ContextCompat.getColor(context, R.color.outline);             // Comments
-                syntaxColors[4] = ContextCompat.getColor(context, R.color.warning_container);   // Doctype
-                syntaxColors[5] = ContextCompat.getColor(context, R.color.success_container);   // Entities
-            } else {
-                syntaxColors[0] = ContextCompat.getColor(context, R.color.primary);             // Tags
-                syntaxColors[1] = ContextCompat.getColor(context, R.color.tertiary);            // Attributes
-                syntaxColors[2] = ContextCompat.getColor(context, R.color.secondary);           // Values
-                syntaxColors[3] = ContextCompat.getColor(context, R.color.outline_variant);     // Comments
-                syntaxColors[4] = ContextCompat.getColor(context, R.color.warning);             // Doctype
-                syntaxColors[5] = ContextCompat.getColor(context, R.color.success);             // Entities
-            }
-        } else if (syntaxType == OptimizedSyntaxHighlighter.SyntaxType.CSS) {
-            if (isDarkTheme) {
-                syntaxColors[0] = ContextCompat.getColor(context, R.color.primary_light);       // Selectors
-                syntaxColors[1] = ContextCompat.getColor(context, R.color.tertiary_container);  // Properties
-                syntaxColors[2] = ContextCompat.getColor(context, R.color.secondary_container); // Values
-                syntaxColors[3] = ContextCompat.getColor(context, R.color.outline);             // Comments
-                syntaxColors[4] = ContextCompat.getColor(context, R.color.error_container);     // Important
-                syntaxColors[5] = ContextCompat.getColor(context, R.color.success_container);   // Color values
-                syntaxColors[6] = ContextCompat.getColor(context, R.color.warning_container);   // Units
-                syntaxColors[7] = ContextCompat.getColor(context, R.color.primary_container);   // Media queries / At-rules
-                syntaxColors[8] = ContextCompat.getColor(context, R.color.secondary_container); // Pseudo-classes/elements
-                syntaxColors[9] = ContextCompat.getColor(context, R.color.info_container);      // Functions (e.g., url(), calc())
-            } else {
-                syntaxColors[0] = ContextCompat.getColor(context, R.color.primary);             // Selectors
-                syntaxColors[1] = ContextCompat.getColor(context, R.color.tertiary);            // Properties
-                syntaxColors[2] = ContextCompat.getColor(context, R.color.secondary);           // Values
-                syntaxColors[3] = ContextCompat.getColor(context, R.color.outline_variant);     // Comments
-                syntaxColors[4] = ContextCompat.getColor(context, R.color.error);               // Important
-                syntaxColors[5] = ContextCompat.getColor(context, R.color.success);             // Color values
-                syntaxColors[6] = ContextCompat.getColor(context, R.color.warning);             // Units
-                syntaxColors[7] = ContextCompat.getColor(context, R.color.primary);             // Media queries / At-rules
-                syntaxColors[8] = ContextCompat.getColor(context, R.color.secondary);           // Pseudo-classes/elements
-                syntaxColors[9] = ContextCompat.getColor(context, R.color.info);                // Functions
-            }
-        } else if (syntaxType == OptimizedSyntaxHighlighter.SyntaxType.JAVASCRIPT) {
-            if (isDarkTheme) {
-                syntaxColors[0] = ContextCompat.getColor(context, R.color.primary_light);       // Keywords
-                syntaxColors[1] = ContextCompat.getColor(context, R.color.secondary_container); // Built-ins
-                syntaxColors[2] = ContextCompat.getColor(context, R.color.tertiary_container);  // Strings
-                syntaxColors[3] = ContextCompat.getColor(context, R.color.success_container);   // Numbers
-                syntaxColors[4] = ContextCompat.getColor(context, R.color.warning_container);   // Functions
-                syntaxColors[5] = ContextCompat.getColor(context, R.color.outline);             // Comments
-                syntaxColors[6] = ContextCompat.getColor(context, R.color.tertiary_container);  // Template strings
-                syntaxColors[7] = ContextCompat.getColor(context, R.color.error_container);     // Regex
-            } else {
-                syntaxColors[0] = ContextCompat.getColor(context, R.color.primary);             // Keywords
-                syntaxColors[1] = ContextCompat.getColor(context, R.color.secondary);           // Built-ins
-                syntaxColors[2] = ContextCompat.getColor(context, R.color.tertiary);            // Strings
-                syntaxColors[3] = ContextCompat.getColor(context, R.color.success);             // Numbers
-                syntaxColors[4] = ContextCompat.getColor(context, R.color.warning);             // Functions
-                syntaxColors[5] = ContextCompat.getColor(context, R.color.outline_variant);     // Comments
-                syntaxColors[6] = ContextCompat.getColor(context, R.color.tertiary);            // Template strings
-                syntaxColors[7] = ContextCompat.getColor(context, R.color.error);               // Regex
-            }
-        } else if (syntaxType == OptimizedSyntaxHighlighter.SyntaxType.JSON) {
-            if (isDarkTheme) {
-                syntaxColors[0] = ContextCompat.getColor(context, R.color.primary_light);       // Keys
-                syntaxColors[1] = ContextCompat.getColor(context, R.color.tertiary_container);  // Strings
-                syntaxColors[2] = ContextCompat.getColor(context, R.color.success_container);   // Numbers
-                syntaxColors[3] = ContextCompat.getColor(context, R.color.warning_container);   // Booleans
-                syntaxColors[4] = ContextCompat.getColor(context, R.color.outline);             // Null
-            } else {
-                syntaxColors[0] = ContextCompat.getColor(context, R.color.primary);             // Keys
-                syntaxColors[1] = ContextCompat.getColor(context, R.color.tertiary);            // Strings
-                syntaxColors[2] = ContextCompat.getColor(context, R.color.success);             // Numbers
-                syntaxColors[3] = ContextCompat.getColor(context, R.color.warning);             // Booleans
-                syntaxColors[4] = ContextCompat.getColor(context, R.color.outline_variant);     // Null
-            }
+        switch (syntaxType) {
+            case HTML:
+                lightColors = new int[]{R.color.primary, R.color.tertiary, R.color.secondary, R.color.outline_variant, R.color.warning, R.color.success};
+                darkColors = new int[]{R.color.primary_light, R.color.tertiary_container, R.color.secondary_container, R.color.outline, R.color.warning_container, R.color.success_container};
+                loadColors(lightColors, darkColors);
+                break;
+            case CSS:
+                lightColors = new int[]{R.color.primary, R.color.tertiary, R.color.secondary, R.color.outline_variant, R.color.error, R.color.success, R.color.warning, R.color.primary, R.color.secondary, R.color.info};
+                darkColors = new int[]{R.color.primary_light, R.color.tertiary_container, R.color.secondary_container, R.color.outline, R.color.error_container, R.color.success_container, R.color.warning_container, R.color.primary_container, R.color.secondary_container, R.color.info_container};
+                loadColors(lightColors, darkColors);
+                break;
+            case JAVASCRIPT:
+                lightColors = new int[]{R.color.primary, R.color.secondary, R.color.tertiary, R.color.success, R.color.warning, R.color.outline_variant, R.color.tertiary, R.color.error};
+                darkColors = new int[]{R.color.primary_light, R.color.secondary_container, R.color.tertiary_container, R.color.success_container, R.color.warning_container, R.color.outline, R.color.tertiary_container, R.color.error_container};
+                loadColors(lightColors, darkColors);
+                break;
+            case JSON:
+                lightColors = new int[]{R.color.primary, R.color.tertiary, R.color.success, R.color.warning, R.color.outline_variant};
+                darkColors = new int[]{R.color.primary_light, R.color.tertiary_container, R.color.success_container, R.color.warning_container, R.color.outline};
+                loadColors(lightColors, darkColors);
+                break;
         }
-        // Removed color initialization for JAVA, PYTHON, XML, MARKDOWN, PLAIN
+    }
+
+    private void loadColors(int[] lightColors, int[] darkColors) {
+        int[] colorsToLoad = isDarkTheme ? darkColors : lightColors;
+        for (int i = 0; i < colorsToLoad.length; i++) {
+            syntaxColors[i] = ContextCompat.getColor(context, colorsToLoad[i]);
+        }
     }
 
     /**

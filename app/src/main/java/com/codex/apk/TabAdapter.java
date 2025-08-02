@@ -120,7 +120,7 @@ public class TabAdapter extends RecyclerView.Adapter<TabAdapter.ViewHolder> {
 				// Corrected: Use SyntaxHighlightingUtils directly to detect syntax type
 				syntaxType = SyntaxHighlightingUtils.detectSyntaxType(tabItem.getFileName());
 			}
-			highlighter = new OptimizedSyntaxHighlighter(context, syntaxType, codeEditorView);
+			highlighter = new OptimizedSyntaxHighlighter(context, syntaxType, isDiffTab);
 			highlighterCache.put(tabId, highlighter);
 		}
 

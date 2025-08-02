@@ -45,14 +45,13 @@ public class OptimizedSyntaxHighlighter {
 
     // UI Components
     private CodeEditorView.CodeEditText codeEditor;
-    private CodeEditorView parentCodeEditorView; // Reference to the parent CodeEditorView
+    private boolean isDiffView;
 
     // Threading
     private final ExecutorService executorService;
     private final Handler mainHandler;
     private final Runnable updateRunnable;
     private boolean isHighlighting = false;
-    private boolean isPriorityHighlighting = false;
 
     // State
     private int lastProcessedHash = 0;
@@ -79,10 +78,10 @@ public class OptimizedSyntaxHighlighter {
      * Constructor
      * @param context The application context.
      * @param syntaxType The initial syntax type to highlight.
-     * @param parentCodeEditorView A reference to the parent CodeEditorView.
+     * @param isDiffView A boolean to indicate if the highlighter is for a diff view.
      */
-    public OptimizedSyntaxHighlighter(@NonNull Context context, SyntaxType syntaxType, @NonNull CodeEditorView parentCodeEditorView) {
-        this.parentCodeEditorView = parentCodeEditorView;
+    public OptimizedSyntaxHighlighter(@NonNull Context context, SyntaxType syntaxType, boolean isDiffView) {
+        this.isDiffView = isDiffView;
         this.executorService = Executors.newSingleThreadExecutor();
         this.mainHandler = new Handler(Looper.getMainLooper());
         this.updateRunnable = this::highlightSyntax;
@@ -187,6 +186,40 @@ public class OptimizedSyntaxHighlighter {
     /**
      * Highlight only the visible text for immediate feedback.
      */
+    private void highlightInternal(final String text, final int start, final int end, final String cacheKey, final boolean isVisible) {
+        if (codeEditor == null || isHighlighting || currentSyntaxType == SyntaxType.DIFF) return;
+
+        SpannableStringBuilder cachedSpannable = highlightCache.get(cacheKey);
+        if (cachedSpannable != null) {
+            applySpansToEditable(codeEditor.getEditableText(), cachedSpannable, start, end);
+            return;
+        }
+
+        isHighlighting = true;
+
+        executorService.execute(() -> {
+            try {
+                final String subText = text.substring(start, end);
+                SpannableStringBuilder spannable = new SpannableStringBuilder(subText);
+                applySyntaxHighlightingInternal(spannable, currentSyntaxType);
+
+                highlightCache.put(cacheKey, spannable);
+
+                mainHandler.post(() -> {
+                    if (codeEditor != null) {
+                        applySpansToEditable(codeEditor.getEditableText(), spannable, start, end);
+                    }
+                    isHighlighting = false;
+                });
+            } catch (Exception e) {
+                Log.e(TAG, "Error highlighting text: " + e.getMessage(), e);
+                mainHandler.post(() -> {
+                    isHighlighting = false;
+                });
+            }
+        });
+    }
+
     private void highlightVisibleText() {
         if (codeEditor == null || isHighlighting || currentSyntaxType == SyntaxType.DIFF) return;
 
@@ -206,41 +239,9 @@ public class OptimizedSyntaxHighlighter {
 
         final String visibleText = text.substring(actualExpandedStart, actualExpandedEnd);
         final int visibleTextHash = visibleText.hashCode();
-
         final String cacheKey = currentSyntaxType.name() + "_visible_" + visibleTextHash;
-        SpannableStringBuilder cachedSpannable = highlightCache.get(cacheKey);
 
-        if (cachedSpannable != null) {
-            applySpansToEditable(codeEditor.getEditableText(), cachedSpannable, actualExpandedStart, actualExpandedEnd);
-            return;
-        }
-
-        isPriorityHighlighting = true;
-        isHighlighting = true;
-
-        executorService.execute(() -> {
-            try {
-                SpannableStringBuilder visibleSpannable = new SpannableStringBuilder(visibleText);
-                applySyntaxHighlightingInternal(visibleSpannable, currentSyntaxType);
-
-                highlightCache.put(cacheKey, visibleSpannable);
-
-                final SpannableStringBuilder finalVisibleSpannable = visibleSpannable;
-                mainHandler.post(() -> {
-                    if (codeEditor != null) {
-                        applySpansToEditable(codeEditor.getEditableText(), finalVisibleSpannable, actualExpandedStart, actualExpandedEnd);
-                    }
-                    isPriorityHighlighting = false;
-                    isHighlighting = false;
-                });
-            } catch (Exception e) {
-                Log.e(TAG, "Error highlighting visible text: " + e.getMessage(), e);
-                mainHandler.post(() -> {
-                    isPriorityHighlighting = false;
-                    isHighlighting = false;
-                });
-            }
-        });
+        highlightInternal(text, actualExpandedStart, actualExpandedEnd, cacheKey, true);
     }
 
     /**
@@ -300,38 +301,15 @@ public class OptimizedSyntaxHighlighter {
     public void highlightSyntax(boolean forceHighlight) {
         if (codeEditor == null || isHighlighting || currentSyntaxType == SyntaxType.DIFF) return;
 
-        if (isPriorityHighlighting) {
-            // If visible text highlighting is in progress, delay full highlighting
-            mainHandler.postDelayed(() -> highlightSyntax(forceHighlight), DEBOUNCE_DELAY_MS);
-            return;
-        }
-
         final String text = codeEditor.getText().toString();
         final int textHash = text.hashCode();
 
         // If not forced and content hasn't changed, no need to re-highlight
         if (!forceHighlight && textHash == lastProcessedHash) return;
 
-        isHighlighting = true;
-
-        executorService.execute(() -> {
-            try {
-                SpannableStringBuilder spannableBuilder = new SpannableStringBuilder(text);
-                applySyntaxHighlightingInternal(spannableBuilder, currentSyntaxType);
-
-                final SpannableStringBuilder finalSpannable = spannableBuilder;
-                mainHandler.post(() -> {
-                    if (codeEditor != null) {
-                        applySpansToEditable(codeEditor.getEditableText(), finalSpannable, 0, codeEditor.length());
-                        lastProcessedHash = textHash; // Update last processed hash only on successful application
-                    }
-                    isHighlighting = false;
-                });
-            } catch (Exception e) {
-                Log.e(TAG, "Error highlighting full syntax: " + e.getMessage(), e);
-                mainHandler.post(() -> isHighlighting = false);
-            }
-        });
+        lastProcessedHash = textHash;
+        final String cacheKey = currentSyntaxType.name() + "_full_" + textHash;
+        highlightInternal(text, 0, text.length(), cacheKey, false);
     }
 
     /**
@@ -396,7 +374,7 @@ public class OptimizedSyntaxHighlighter {
         colorProvider.initializeSyntaxColors(currentSyntaxType);
 
         // Re-highlight based on current syntax type (syntax or diff)
-        if (parentCodeEditorView != null && parentCodeEditorView.isDiffView()) {
+        if (isDiffView) {
             highlightDiff(codeEditor.getEditableText());
         } else if (codeEditor != null) {
             highlightSyntax(true); // Force re-highlight
@@ -414,7 +392,7 @@ public class OptimizedSyntaxHighlighter {
             colorProvider.initializeSyntaxColors(currentSyntaxType);
 
             // Re-highlight based on new syntax type
-            if (parentCodeEditorView != null && syntaxType == SyntaxType.DIFF) {
+            if (isDiffView && syntaxType == SyntaxType.DIFF) {
                 highlightDiff(codeEditor.getEditableText());
             } else if (codeEditor != null) {
                 highlightSyntax(true); // Force re-highlight

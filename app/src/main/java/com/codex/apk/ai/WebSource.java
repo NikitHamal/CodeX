@@ -1,4 +1,4 @@
-package com.codex.apk;
+package com.codex.apk.ai;
 
 public class WebSource {
     public final String url;

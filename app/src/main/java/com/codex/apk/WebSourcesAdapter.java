@@ -11,6 +11,7 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.codex.apk.ai.WebSource;
 import java.util.List;
 
 public class WebSourcesAdapter extends RecyclerView.Adapter<WebSourcesAdapter.WebSourceViewHolder> {

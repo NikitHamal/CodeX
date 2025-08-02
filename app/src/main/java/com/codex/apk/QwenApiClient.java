@@ -23,6 +23,7 @@ import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 import com.codex.apk.ai.AIModel;
+import com.codex.apk.ai.WebSource;
 
 public class QwenApiClient implements ApiClient {
     private static final String TAG = "QwenApiClient";

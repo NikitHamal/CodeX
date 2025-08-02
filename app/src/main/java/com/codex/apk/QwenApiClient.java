@@ -474,7 +474,7 @@ public class QwenApiClient implements ApiClient {
                     String oldPath = operation.has("oldPath") ? operation.get("oldPath").getAsString() : "";
                     String newPath = operation.has("newPath") ? operation.get("newPath").getAsString() : "";
                     ChatMessage.FileActionDetail actionDetail = new ChatMessage.FileActionDetail(
-                            type, path, oldPath, newPath, "", content, 0, 0, null
+                            type, path, oldPath, newPath, "", content, 0, 0, null, null, null
                     );
                     fileActions.add(actionDetail);
                 }

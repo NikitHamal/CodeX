@@ -11,6 +11,7 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import java.util.List;
+import com.codex.apk.ai.AIModel;
 
 public class ModelPickerAdapter extends RecyclerView.Adapter<ModelPickerAdapter.ModelViewHolder> {
     

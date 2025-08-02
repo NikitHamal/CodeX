@@ -18,6 +18,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
+import com.codex.apk.ai.WebSource;
 
 import java.util.List;
 
@@ -171,19 +172,12 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
             markdownFormatter = MarkdownFormatter.getInstance(context);
         }
         
-        private void showWebSourcesDialog(List<ChatMessage.WebSource> webSources) {
+        private void showWebSourcesDialog(List<WebSource> webSources) {
             // Create and show web sources dialog
             View dialogView = LayoutInflater.from(context).inflate(R.layout.bottom_sheet_web_sources, null);
             RecyclerView recyclerView = dialogView.findViewById(R.id.recycler_web_sources);
             
-            // Convert ChatMessage.WebSource to WebSource for adapter compatibility
-            java.util.List<WebSource> aiWebSources = new java.util.ArrayList<>();
-            for (ChatMessage.WebSource source : webSources) {
-                aiWebSources.add(new WebSource(
-                    source.getUrl(), source.getTitle(), source.getSnippet(), source.getFavicon()));
-            }
-            
-            WebSourcesAdapter adapter = new WebSourcesAdapter(aiWebSources);
+            WebSourcesAdapter adapter = new WebSourcesAdapter(webSources);
             recyclerView.setAdapter(adapter);
             
             BottomSheetDialog dialog = new BottomSheetDialog(context);

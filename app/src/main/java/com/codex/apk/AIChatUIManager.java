@@ -14,6 +14,9 @@ import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.materialswitch.MaterialSwitch;
 import java.util.List;
 import java.util.Map;
+import com.codex.apk.ai.AIModel;
+import com.codex.apk.ai.AIProvider;
+import com.codex.apk.ai.ModelCapabilities;
 
 public class AIChatUIManager {
 

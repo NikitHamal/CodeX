@@ -6,8 +6,8 @@ import android.widget.Toast;
 
 import com.codex.apk.AIChatFragment;
 import com.codex.apk.AIAssistant;
-import com.codex.apk.AIModel;
-import com.codex.apk.WebSource;
+import com.codex.apk.ai.AIModel;
+import com.codex.apk.ai.WebSource;
 import com.codex.apk.AiProcessor; // Import AiProcessor
 import com.codex.apk.ChatMessage;
 import com.codex.apk.CodeEditorFragment;

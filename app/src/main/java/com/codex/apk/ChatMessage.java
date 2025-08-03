@@ -119,7 +119,7 @@ public class ChatMessage {
      * This is used to pass detailed action information from AI to UI/Processor.
      */
     public static class FileActionDetail {
-        public String type; // e.g., "createFile", "modifyLines", "deleteFile"
+        public String type; // e.g., "createFile", "updateFile", "deleteFile", "smartUpdate"
         public String path; // Relative path for create, update, modify, delete
         public String oldPath; // For renameFile
         public String newPath; // For renameFile
@@ -130,6 +130,22 @@ public class ChatMessage {
         public List<String> insertLines; // For modifyLines
         public String search; // For searchAndReplace
         public String replace; // For searchAndReplace
+        
+        // NEW: Advanced operation fields
+        public String updateType; // "full", "append", "prepend", "replace", "patch", "smart"
+        public String searchPattern; // Regex pattern for smart replacements
+        public String replaceWith; // Replacement content for smart updates
+        public String diffPatch; // Unified diff patch content
+        public String versionId; // Version identifier for tracking
+        public String backupPath; // Path to backup file
+        public boolean createBackup; // Whether to create backup
+        public boolean validateContent; // Whether to validate content
+        public String contentType; // File type for validation
+        public Map<String, Object> metadata; // Additional metadata
+        public List<String> validationRules; // Content validation rules
+        public String errorHandling; // "strict", "lenient", "auto-revert"
+        public boolean generateDiff; // Whether to generate diff
+        public String diffFormat; // "unified", "context", "side-by-side"
 
         // Comprehensive constructor
         public FileActionDetail(String type, String path, String oldPath, String newPath,
@@ -146,6 +162,42 @@ public class ChatMessage {
             this.insertLines = insertLines != null ? new ArrayList<>(insertLines) : null;
             this.search = search;
             this.replace = replace;
+            
+            // Initialize advanced fields
+            this.updateType = "full";
+            this.createBackup = true;
+            this.validateContent = true;
+            this.generateDiff = true;
+            this.diffFormat = "unified";
+            this.errorHandling = "strict";
+            this.metadata = new HashMap<>();
+            this.validationRules = new ArrayList<>();
+        }
+
+        // Enhanced constructor with advanced options
+        public FileActionDetail(String type, String path, String oldPath, String newPath,
+                                String oldContent, String newContent, int startLine,
+                                int deleteCount, List<String> insertLines, String search, String replace,
+                                String updateType, String searchPattern, String replaceWith,
+                                String diffPatch, String versionId, boolean createBackup,
+                                boolean validateContent, String contentType, String errorHandling,
+                                boolean generateDiff, String diffFormat) {
+            this(type, path, oldPath, newPath, oldContent, newContent, startLine,
+                 deleteCount, insertLines, search, replace);
+            
+            this.updateType = updateType != null ? updateType : "full";
+            this.searchPattern = searchPattern;
+            this.replaceWith = replaceWith;
+            this.diffPatch = diffPatch;
+            this.versionId = versionId;
+            this.createBackup = createBackup;
+            this.validateContent = validateContent;
+            this.contentType = contentType;
+            this.errorHandling = errorHandling != null ? errorHandling : "strict";
+            this.generateDiff = generateDiff;
+            this.diffFormat = diffFormat != null ? diffFormat : "unified";
+            this.metadata = new HashMap<>();
+            this.validationRules = new ArrayList<>();
         }
 
         // Method to get a displayable summary of the action
@@ -154,13 +206,17 @@ public class ChatMessage {
                 case "createFile":
                     return "Create file: " + path;
                 case "updateFile":
-                    return "Update file: " + path;
+                    return "Update file: " + path + " (" + updateType + ")";
+                case "smartUpdate":
+                    return "Smart update file: " + path + " (" + updateType + ")";
                 case "deleteFile":
                     return "Delete file: " + path;
                 case "renameFile":
                     return "Rename file: " + oldPath + " to " + newPath;
                 case "searchAndReplace":
                     return "Search and replace in file: " + path;
+                case "patchFile":
+                    return "Apply patch to file: " + path;
                 case "modifyLines":
                     String linesModified = "";
                     if (deleteCount > 0 && (insertLines == null || insertLines.isEmpty())) {

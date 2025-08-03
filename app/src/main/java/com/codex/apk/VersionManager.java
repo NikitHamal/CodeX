@@ -105,7 +105,7 @@ public class VersionManager {
             // Create backup of current state
             String currentContent = readFileContent(file);
             VersionInfo currentVersion = createVersion(file, currentContent, targetVersion.newContent, 
-                DiffGenerator.generateDiff(currentContent, targetVersion.newContent), "rollback");
+                DiffGenerator.generateDiff(currentContent, targetVersion.newContent, "unified", "current", targetVersion.versionId), "rollback");
             
             // Restore the target version
             writeFileContent(file, targetVersion.newContent);

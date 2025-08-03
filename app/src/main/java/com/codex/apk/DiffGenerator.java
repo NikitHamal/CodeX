@@ -5,11 +5,6 @@ import java.util.List;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.io.IOException;
-import name.fraser.neil.plaintext.diff_match_patch;
-import name.fraser.neil.plaintext.diff_match_patch.Diff;
-import org.apache.commons.text.diff.CommandVisitor;
-import org.apache.commons.text.diff.EditScript;
-import org.apache.commons.text.diff.StringsComparator;
 
 /**
  * Advanced Diff Generator using multiple algorithms for optimal diff generation.
@@ -30,28 +25,21 @@ public class DiffGenerator {
             diff.append("--- ").append(oldFile).append("\n");
             diff.append("+++ ").append(newFile).append("\n");
             
-            // Use Google's diff_match_patch for better diff generation
-            diff_match_patch dmp = new diff_match_patch();
-            List<Diff> diffs = dmp.diff_main(oldContent, newContent);
-            dmp.diff_cleanupSemantic(diffs);
+            // Simple but effective diff algorithm
+            int maxLength = Math.max(oldLines.length, newLines.length);
             
-            int lineNumber = 1;
-            for (Diff diff_item : diffs) {
-                switch (diff_item.operation) {
-                    case EQUAL:
-                        // Count lines in unchanged content
-                        String[] lines = diff_item.text.split("\n");
-                        lineNumber += lines.length - 1;
-                        break;
-                    case DELETE:
-                        diff.append("@@ Line ").append(lineNumber).append(" @@\n");
-                        diff.append("-").append(diff_item.text).append("\n");
-                        break;
-                    case INSERT:
-                        diff.append("@@ Line ").append(lineNumber).append(" @@\n");
-                        diff.append("+").append(diff_item.text).append("\n");
-                        lineNumber += diff_item.text.split("\n").length;
-                        break;
+            for (int i = 0; i < maxLength; i++) {
+                String oldLine = i < oldLines.length ? oldLines[i] : "";
+                String newLine = i < newLines.length ? newLines[i] : "";
+                
+                if (!oldLine.equals(newLine)) {
+                    diff.append("@@ Line ").append(i + 1).append(" @@\n");
+                    if (!oldLine.isEmpty()) {
+                        diff.append("-").append(oldLine).append("\n");
+                    }
+                    if (!newLine.isEmpty()) {
+                        diff.append("+").append(newLine).append("\n");
+                    }
                 }
             }
             
@@ -74,29 +62,26 @@ public class DiffGenerator {
             diff.append("*** ").append(oldFile).append("\n");
             diff.append("--- ").append(newFile).append("\n");
             
-            // Use Apache Commons Text for context diff
-            StringsComparator comparator = new StringsComparator(oldContent, newContent);
-            EditScript<Character> script = comparator.getScript();
+            // Simple context diff implementation
+            int maxLength = Math.max(oldLines.length, newLines.length);
             
-            final StringBuilder contextDiff = new StringBuilder();
-            script.visit(new CommandVisitor<Character>() {
-                @Override
-                public void visitKeepCommand(Character c) {
-                    contextDiff.append(" ").append(c);
-                }
+            for (int i = 0; i < maxLength; i++) {
+                String oldLine = i < oldLines.length ? oldLines[i] : "";
+                String newLine = i < newLines.length ? newLines[i] : "";
                 
-                @Override
-                public void visitInsertCommand(Character c) {
-                    contextDiff.append("+").append(c);
+                if (!oldLine.equals(newLine)) {
+                    diff.append("! Line ").append(i + 1).append(":\n");
+                    if (!oldLine.isEmpty()) {
+                        diff.append("- ").append(oldLine).append("\n");
+                    }
+                    if (!newLine.isEmpty()) {
+                        diff.append("+ ").append(newLine).append("\n");
+                    }
+                } else {
+                    diff.append("  ").append(oldLine).append("\n");
                 }
-                
-                @Override
-                public void visitDeleteCommand(Character c) {
-                    contextDiff.append("-").append(c);
-                }
-            });
+            }
             
-            diff.append(contextDiff.toString());
             return diff.toString();
         } catch (Exception e) {
             Log.e(TAG, "Context diff generation failed", e);
@@ -284,5 +269,12 @@ public class DiffGenerator {
             default:
                 return generateUnifiedDiff(oldContent, newContent, oldFile, newFile);
         }
+    }
+
+    /**
+     * Simple diff generation for backward compatibility
+     */
+    public static String generateDiff(String oldContent, String newContent) {
+        return generateUnifiedDiff(oldContent, newContent, "original", "modified");
     }
 }

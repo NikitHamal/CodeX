@@ -238,7 +238,7 @@ public class AdvancedFileManager {
     /**
      * Create version with metadata
      */
-    private String createVersion(File file, String oldContent, String newContent, String diff) throws IOException {
+    public String createVersion(File file, String oldContent, String newContent, String diff) throws IOException {
         String versionId = generateVersionId();
         String timestamp = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss").format(new Date());
         
@@ -273,7 +273,7 @@ public class AdvancedFileManager {
     /**
      * Create backup file
      */
-    private File createBackup(File originalFile) throws IOException {
+    public File createBackup(File originalFile) throws IOException {
         String timestamp = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss").format(new Date());
         String backupName = originalFile.getName() + ".backup." + timestamp;
         File backupFile = new File(backupsDir, backupName);

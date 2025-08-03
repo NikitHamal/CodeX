@@ -69,7 +69,7 @@ public class QwenApiClient implements ApiClient {
                     return;
                 }
                 state.setConversationId(conversationId);
-                performCompletion(state, history, model, thinkingModeEnabled, webSearchEnabled, enabledTools);
+                performCompletion(state, history, model, thinkingModeEnabled, webSearchEnabled, enabledTools, message);
             } catch (IOException e) {
                 Log.e(TAG, "Error sending Qwen message", e);
                 if (actionListener != null) actionListener.onAiError("Error: " + e.getMessage());
@@ -113,7 +113,7 @@ public class QwenApiClient implements ApiClient {
         return null;
     }
 
-    private void performCompletion(QwenConversationState state, List<ChatMessage> history, AIModel model, boolean thinkingModeEnabled, boolean webSearchEnabled, List<ToolSpec> enabledTools) throws IOException {
+    private void performCompletion(QwenConversationState state, List<ChatMessage> history, AIModel model, boolean thinkingModeEnabled, boolean webSearchEnabled, List<ToolSpec> enabledTools, String userMessage) throws IOException {
         JsonObject requestBody = new JsonObject();
         requestBody.addProperty("stream", true);
         requestBody.addProperty("incremental_output", true);
@@ -129,11 +129,8 @@ public class QwenApiClient implements ApiClient {
             messages.add(createSystemMessage(enabledTools));
         }
 
-        // Add the latest user message
-        if (!history.isEmpty()) {
-            ChatMessage lastMessage = history.get(history.size() - 1);
-            messages.add(createUserMessage(lastMessage.getContent(), model, thinkingModeEnabled, webSearchEnabled));
-        }
+        // Add the current user message
+        messages.add(createUserMessage(userMessage, model, thinkingModeEnabled, webSearchEnabled));
 
         requestBody.add("messages", messages);
 

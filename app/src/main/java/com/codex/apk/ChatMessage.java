@@ -88,6 +88,7 @@ public class ChatMessage {
     public List<String> getActionSummaries() { return actionSummaries; }
     public List<String> getSuggestions() { return suggestions; }
     public String getAiModelName() { return aiModelName; }
+    public void setAiModelName(String aiModelName) { this.aiModelName = aiModelName; }
     public long getTimestamp() { return timestamp; }
     public String getRawAiResponseJson() { return rawAiResponseJson; }
     public List<FileActionDetail> getProposedFileChanges() { return proposedFileChanges; }

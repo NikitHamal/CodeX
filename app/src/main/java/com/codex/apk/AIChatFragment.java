@@ -109,6 +109,10 @@ public class AIChatFragment extends Fragment implements ChatMessageAdapter.OnAiA
 
         // Show "AI is thinking..." message
         ChatMessage thinkingMessage = new ChatMessage(ChatMessage.SENDER_AI, getString(R.string.ai_is_thinking), System.currentTimeMillis());
+        // Set the model name for the thinking message
+        if (aiAssistant != null && aiAssistant.getCurrentModel() != null) {
+            thinkingMessage.setAiModelName(aiAssistant.getCurrentModel().getDisplayName());
+        }
         addMessage(thinkingMessage);
 
         uiManager.setText("");

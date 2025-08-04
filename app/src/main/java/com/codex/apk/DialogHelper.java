@@ -35,7 +35,7 @@ public class DialogHelper {
 
 	public void showNewFileDialog(File parentDirectory) {
 		View dialogView = LayoutInflater.from(context).inflate(R.layout.dialog_new_file, null);
-		TextInputEditText editTextFileName = dialogView.findViewById(R.id.edittext_file_name);
+		TextInputEditText editTextFileName = dialogView.findViewById(R.id.edit_text_file_name);
 
 		AlertDialog dialog = new MaterialAlertDialogBuilder(context)
 		.setTitle("Create New File in " + parentDirectory.getName())
@@ -92,7 +92,7 @@ public class DialogHelper {
 
 	public void showNewFolderDialog(File parentDirectory) {
 		View dialogView = LayoutInflater.from(context).inflate(R.layout.dialog_new_folder, null);
-		EditText editTextFolderName = dialogView.findViewById(R.id.edittext_folder_name);
+		EditText editTextFolderName = dialogView.findViewById(R.id.edit_text_folder_name);
 
 		AlertDialog dialog = new MaterialAlertDialogBuilder(context)
 		.setTitle("Create New Folder in " + parentDirectory.getName())

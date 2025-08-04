@@ -431,7 +431,6 @@ public class FileTreeManager {
                 if (newFileOrDir != null) {
                     // File was renamed
                     tab.setFile(newFileOrDir);
-                    tab.setTitle(newFileOrDir.getName());
                 } else {
                     // File was deleted
                     activity.closeTab(i, false);

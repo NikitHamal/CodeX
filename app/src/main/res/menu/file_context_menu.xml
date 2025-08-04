@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <item
+        android:id="@+id/action_rename"
+        android:title="Rename"
+        android:icon="@drawable/icon_edit_round"
+        app:showAsAction="never" />
+
+    <item
+        android:id="@+id/action_delete"
+        android:title="Delete"
+        android:icon="@drawable/icon_delete_round"
+        app:showAsAction="never" />
+
+    <group android:id="@+id/group_directory_actions">
+        <item
+            android:id="@+id/action_new_file"
+            android:title="New File"
+            android:icon="@drawable/icon_add_round"
+            app:showAsAction="never" />
+
+        <item
+            android:id="@+id/action_new_folder"
+            android:title="New Folder"
+            android:icon="@drawable/icon_folder_open_round"
+            app:showAsAction="never" />
+    </group>
+
+</menu>

@@ -1,7 +1,10 @@
 package com.codex.apk.editor;
 
+import android.animation.LayoutTransition;
+import android.content.Context;
 import android.util.Log;
 import android.view.MenuItem;
+import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -14,67 +17,185 @@ import com.codex.apk.FileManager;
 import com.codex.apk.FileTreeAdapter;
 import com.codex.apk.R;
 import com.codex.apk.TabItem;
-import com.codex.apk.DialogHelper; // Added import for DialogHelper
+import com.codex.apk.DialogHelper;
 import com.google.android.material.appbar.MaterialToolbar;
+import com.google.android.material.chip.Chip;
+import com.google.android.material.chip.ChipGroup;
+import com.google.android.material.textfield.TextInputEditText;
+import com.google.android.material.textfield.TextInputLayout;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import android.view.View; // Added import for View
+import java.util.stream.Collectors;
 
 public class FileTreeManager {
     private static final String TAG = "FileTreeManager";
     private final EditorActivity activity;
     private final FileManager fileManager;
     private final DialogHelper dialogHelper;
-    private final List<FileItem> fileItems; // The list of file tree items
-    private final List<TabItem> openTabs; // Need access to openTabs for refresh logic
+    private final List<FileItem> fileItems;
+    private final List<FileItem> filteredFileItems;
+    private final List<TabItem> openTabs;
 
     private RecyclerView recyclerViewFileTree;
     private FileTreeAdapter fileTreeAdapter;
+    private TextInputLayout searchInputLayout;
+    private TextInputEditText searchEditText;
+    private ChipGroup filterChipGroup;
+    private View searchContainer;
+    private String currentSearchQuery = "";
+    private String currentFilter = "all";
 
     public FileTreeManager(EditorActivity activity, FileManager fileManager, DialogHelper dialogHelper, List<FileItem> fileItems, List<TabItem> openTabs) {
         this.activity = activity;
         this.fileManager = fileManager;
         this.dialogHelper = dialogHelper;
         this.fileItems = fileItems;
+        this.filteredFileItems = new ArrayList<>();
         this.openTabs = openTabs;
     }
 
     /**
-     * Sets up the file tree RecyclerView in the navigation drawer.
+     * Sets up the file tree RecyclerView in the navigation drawer with enhanced features.
      */
     public void setupFileTree() {
         recyclerViewFileTree = activity.findViewById(R.id.recycler_view_file_tree);
-        fileTreeAdapter = new FileTreeAdapter(activity, fileItems, null, activity); // No drawer layout in new design
+        searchContainer = activity.findViewById(R.id.search_container);
+        searchInputLayout = activity.findViewById(R.id.search_input_layout);
+        searchEditText = activity.findViewById(R.id.search_edit_text);
+        filterChipGroup = activity.findViewById(R.id.filter_chip_group);
+
+        // Setup search functionality
+        setupSearch();
+        
+        // Setup filter chips
+        setupFilterChips();
+
+        fileTreeAdapter = new FileTreeAdapter(activity, filteredFileItems, null, activity);
         recyclerViewFileTree.setAdapter(fileTreeAdapter);
-        recyclerViewFileTree.setLayoutManager(new LinearLayoutManager(activity));
+        
+        // Enhanced layout manager with smooth scrolling
+        LinearLayoutManager layoutManager = new LinearLayoutManager(activity);
+        layoutManager.setSmoothScrollbarEnabled(true);
+        recyclerViewFileTree.setLayoutManager(layoutManager);
+        
+        // Enable item animations
+        recyclerViewFileTree.setItemAnimator(null); // Disable default animations for better performance
 
         TextView projectNameText = activity.findViewById(R.id.text_project_name);
         if (projectNameText != null) {
             projectNameText.setText("Project Files");
         }
 
-        // Handle new file, new folder, and open from device buttons
+        // Enhanced button setup with better visual feedback
+        setupActionButtons();
+
+        loadFileTree(); // Initial load
+    }
+
+    private void setupSearch() {
+        if (searchEditText != null) {
+            searchEditText.addTextChangedListener(new android.text.TextWatcher() {
+                @Override
+                public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+                @Override
+                public void onTextChanged(CharSequence s, int start, int before, int count) {
+                    currentSearchQuery = s.toString().toLowerCase();
+                    filterAndDisplayFiles();
+                }
+
+                @Override
+                public void afterTextChanged(android.text.Editable s) {}
+            });
+        }
+    }
+
+    private void setupFilterChips() {
+        if (filterChipGroup != null) {
+            // Clear existing chips
+            filterChipGroup.removeAllViews();
+            
+            // Add filter chips
+            addFilterChip("All", "all", true);
+            addFilterChip("Files", "files", false);
+            addFilterChip("Folders", "folders", false);
+            addFilterChip("Code", "code", false);
+            addFilterChip("Media", "media", false);
+        }
+    }
+
+    private void addFilterChip(String text, String tag, boolean selected) {
+        Chip chip = new Chip(activity);
+        chip.setText(text);
+        chip.setCheckable(true);
+        chip.setChecked(selected);
+        chip.setChipBackgroundColorResource(R.color.chip_background_color);
+        chip.setTextColor(activity.getResources().getColorStateList(R.color.chip_text_color, null));
+        
+        chip.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            if (isChecked) {
+                currentFilter = tag;
+                filterAndDisplayFiles();
+            }
+        });
+        
+        filterChipGroup.addView(chip);
+    }
+
+    private void setupActionButtons() {
+        // New File Button
         View btnNewFile = activity.findViewById(R.id.btn_new_file);
         if (btnNewFile != null) {
-            btnNewFile.setOnClickListener(v -> showNewFileDialog(activity.getProjectDirectory()));
+            btnNewFile.setOnClickListener(v -> {
+                animateButtonClick(btnNewFile);
+                showNewFileDialog(activity.getProjectDirectory());
+            });
         }
+        
+        // New Folder Button
         View btnNewFolder = activity.findViewById(R.id.btn_new_folder);
         if (btnNewFolder != null) {
-            btnNewFolder.setOnClickListener(v -> showNewFolderDialog(activity.getProjectDirectory()));
+            btnNewFolder.setOnClickListener(v -> {
+                animateButtonClick(btnNewFolder);
+                showNewFolderDialog(activity.getProjectDirectory());
+            });
         }
+        
+        // Open from Device Button
         View btnOpenFromDevice = activity.findViewById(R.id.btn_open_from_device);
         if (btnOpenFromDevice != null) {
             btnOpenFromDevice.setOnClickListener(v -> {
-                // Show a file picker dialog (simple intent)
+                animateButtonClick(btnOpenFromDevice);
                 activity.showToast("Open from device: Not yet implemented");
-                // TODO: Implement file picker and import logic
             });
         }
+        
+        // Refresh Button
+        View btnRefresh = activity.findViewById(R.id.btn_refresh_file_tree);
+        if (btnRefresh != null) {
+            btnRefresh.setOnClickListener(v -> {
+                animateButtonClick(btnRefresh);
+                loadFileTree();
+            });
+        }
+    }
 
-        loadFileTree(); // Initial load
+    private void animateButtonClick(View view) {
+        view.animate()
+                .scaleX(0.9f)
+                .scaleY(0.9f)
+                .setDuration(100)
+                .withEndAction(() -> {
+                    view.animate()
+                            .scaleX(1f)
+                            .scaleY(1f)
+                            .setDuration(100)
+                            .start();
+                })
+                .start();
     }
 
     /**
@@ -89,8 +210,84 @@ public class FileTreeManager {
             activity.showToast("Error: Could not load file tree.");
         }
 
+        filterAndDisplayFiles();
+    }
+
+    private void filterAndDisplayFiles() {
+        filteredFileItems.clear();
+        
+        for (FileItem item : fileItems) {
+            if (matchesSearch(item) && matchesFilter(item)) {
+                filteredFileItems.add(item);
+            }
+        }
+        
         if (fileTreeAdapter != null) {
             fileTreeAdapter.notifyDataSetChanged();
+        }
+        
+        updateEmptyState();
+    }
+
+    private boolean matchesSearch(FileItem item) {
+        if (currentSearchQuery.isEmpty()) {
+            return true;
+        }
+        return item.getName().toLowerCase().contains(currentSearchQuery);
+    }
+
+    private boolean matchesFilter(FileItem item) {
+        switch (currentFilter) {
+            case "files":
+                return !item.isDirectory();
+            case "folders":
+                return item.isDirectory();
+            case "code":
+                return isCodeFile(item.getName());
+            case "media":
+                return isMediaFile(item.getName());
+            default:
+                return true;
+        }
+    }
+
+    private boolean isCodeFile(String fileName) {
+        String lowerName = fileName.toLowerCase();
+        return lowerName.endsWith(".html") || lowerName.endsWith(".htm") ||
+               lowerName.endsWith(".css") || lowerName.endsWith(".js") ||
+               lowerName.endsWith(".json") || lowerName.endsWith(".xml") ||
+               lowerName.endsWith(".md") || lowerName.endsWith(".txt");
+    }
+
+    private boolean isMediaFile(String fileName) {
+        String lowerName = fileName.toLowerCase();
+        return lowerName.endsWith(".png") || lowerName.endsWith(".jpg") ||
+               lowerName.endsWith(".jpeg") || lowerName.endsWith(".gif") ||
+               lowerName.endsWith(".svg") || lowerName.endsWith(".webp") ||
+               lowerName.endsWith(".mp4") || lowerName.endsWith(".avi") ||
+               lowerName.endsWith(".mov") || lowerName.endsWith(".mkv") ||
+               lowerName.endsWith(".mp3") || lowerName.endsWith(".wav") ||
+               lowerName.endsWith(".ogg") || lowerName.endsWith(".flac");
+    }
+
+    private void updateEmptyState() {
+        View emptyStateView = activity.findViewById(R.id.empty_state_view);
+        if (emptyStateView != null) {
+            if (filteredFileItems.isEmpty()) {
+                emptyStateView.setVisibility(View.VISIBLE);
+                TextView emptyStateText = activity.findViewById(R.id.empty_state_text);
+                if (emptyStateText != null) {
+                    if (!currentSearchQuery.isEmpty()) {
+                        emptyStateText.setText("No files match your search");
+                    } else if (!currentFilter.equals("all")) {
+                        emptyStateText.setText("No files match the selected filter");
+                    } else {
+                        emptyStateText.setText("No files in this directory");
+                    }
+                }
+            } else {
+                emptyStateView.setVisibility(View.GONE);
+            }
         }
     }
 
@@ -99,11 +296,45 @@ public class FileTreeManager {
      * @param parentDirectory The directory where the new file will be created.
      */
     public void showNewFileDialog(File parentDirectory) {
-        if (dialogHelper == null) {
-            activity.showToast("Dialog helper not initialized.");
-            return;
-        }
-        dialogHelper.showNewFileDialog(parentDirectory);
+        View dialogView = activity.getLayoutInflater().inflate(R.layout.dialog_new_file, null);
+        TextInputEditText fileNameEditText = dialogView.findViewById(R.id.edit_text_file_name);
+        TextInputEditText fileExtensionEditText = dialogView.findViewById(R.id.edit_text_file_extension);
+
+        new com.google.android.material.dialog.MaterialAlertDialogBuilder(activity)
+                .setTitle("Create New File")
+                .setView(dialogView)
+                .setPositiveButton("Create", (dialog, which) -> {
+                    String fileName = fileNameEditText.getText().toString().trim();
+                    String extension = fileExtensionEditText.getText().toString().trim();
+                    
+                    if (fileName.isEmpty()) {
+                        Toast.makeText(activity, "File name cannot be empty", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    
+                    String fullFileName = extension.isEmpty() ? fileName : fileName + "." + extension;
+                    File newFile = new File(parentDirectory, fullFileName);
+                    
+                    if (newFile.exists()) {
+                        Toast.makeText(activity, "File already exists", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    
+                    try {
+                        if (newFile.createNewFile()) {
+                            activity.showToast("File created: " + fullFileName);
+                            loadFileTree();
+                            activity.openFile(newFile);
+                        } else {
+                            Toast.makeText(activity, "Failed to create file", Toast.LENGTH_SHORT).show();
+                        }
+                    } catch (IOException e) {
+                        Log.e(TAG, "Error creating file", e);
+                        Toast.makeText(activity, "Error creating file: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                    }
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
     }
 
     /**
@@ -111,118 +342,108 @@ public class FileTreeManager {
      * @param parentDirectory The directory where the new folder will be created.
      */
     public void showNewFolderDialog(File parentDirectory) {
-        if (dialogHelper == null) {
-            activity.showToast("Dialog helper not initialized.");
-            return;
-        }
-        dialogHelper.showNewFolderDialog(parentDirectory);
+        View dialogView = activity.getLayoutInflater().inflate(R.layout.dialog_new_folder, null);
+        TextInputEditText folderNameEditText = dialogView.findViewById(R.id.edit_text_folder_name);
+
+        new com.google.android.material.dialog.MaterialAlertDialogBuilder(activity)
+                .setTitle("Create New Folder")
+                .setView(dialogView)
+                .setPositiveButton("Create", (dialog, which) -> {
+                    String folderName = folderNameEditText.getText().toString().trim();
+                    
+                    if (folderName.isEmpty()) {
+                        Toast.makeText(activity, "Folder name cannot be empty", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    
+                    File newFolder = new File(parentDirectory, folderName);
+                    
+                    if (newFolder.exists()) {
+                        Toast.makeText(activity, "Folder already exists", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    
+                    if (newFolder.mkdir()) {
+                        activity.showToast("Folder created: " + folderName);
+                        loadFileTree();
+                    } else {
+                        Toast.makeText(activity, "Failed to create folder", Toast.LENGTH_SHORT).show();
+                    }
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
     }
 
     /**
-     * Renames a file or directory and updates the file tree and open tabs.
-     * @param oldFile The old file or directory.
-     * @param newFile The new file or directory.
-     * @throws IOException If the rename operation fails.
+     * Renames a file or directory.
+     * @param oldFile The file to rename.
+     * @param newFile The new file name.
      */
     public void renameFileOrDir(File oldFile, File newFile) {
-        activity.getExecutorService().execute(() -> {
-            try {
-                if (fileManager == null) {
-                    throw new IOException("FileManager not initialized. Cannot rename.");
-                }
-                fileManager.renameFileOrDir(oldFile, newFile);
-                activity.runOnUiThread(() -> {
-                    loadFileTree();
-                    refreshOpenTabsAfterFileOperation(oldFile, newFile);
-                });
-            } catch (IOException e) {
-                activity.runOnUiThread(() -> activity.showToast("Rename failed: " + e.getMessage()));
-            }
-        });
+        if (oldFile.renameTo(newFile)) {
+            activity.showToast("Renamed successfully");
+            refreshOpenTabsAfterFileOperation(oldFile, newFile);
+            loadFileTree();
+        } else {
+            Toast.makeText(activity, "Failed to rename file", Toast.LENGTH_SHORT).show();
+        }
     }
 
     /**
-     * Deletes a file or directory and updates the file tree and open tabs.
+     * Deletes a file or directory.
      * @param fileOrDirectory The file or directory to delete.
-     * @throws IOException If the delete operation fails.
      */
     public void deleteFileByPath(File fileOrDirectory) {
-        activity.getExecutorService().execute(() -> {
-            try {
-                if (fileManager == null) {
-                    throw new IOException("FileManager not initialized. Cannot delete.");
+        if (deleteRecursively(fileOrDirectory)) {
+            activity.showToast("Deleted successfully");
+            refreshOpenTabsAfterFileOperation(fileOrDirectory, null);
+            loadFileTree();
+        } else {
+            Toast.makeText(activity, "Failed to delete file", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private boolean deleteRecursively(File file) {
+        if (file.isDirectory()) {
+            File[] children = file.listFiles();
+            if (children != null) {
+                for (File child : children) {
+                    if (!deleteRecursively(child)) {
+                        return false;
+                    }
                 }
-                fileManager.deleteFileOrDirectory(fileOrDirectory);
-                activity.runOnUiThread(() -> {
-                    loadFileTree();
-                    refreshOpenTabsAfterFileOperation(fileOrDirectory, null);
-                });
-            } catch (IOException e) {
-                activity.runOnUiThread(() -> activity.showToast("Delete failed: " + e.getMessage()));
             }
-        });
+        }
+        return file.delete();
     }
 
     /**
-     * Refreshes open tabs after a file operation (rename or delete).
-     * @param oldFileOrDir The old file or directory involved in the operation.
-     * @param newFileOrDir The new file or directory (null if deleted).
+     * Refreshes open tabs after file operations.
+     * @param oldFileOrDir The old file or directory.
+     * @param newFileOrDir The new file or directory.
      */
     public void refreshOpenTabsAfterFileOperation(File oldFileOrDir, File newFileOrDir) {
-        List<TabItem> toRemove = new ArrayList<>();
-        List<TabItem> toUpdate = new ArrayList<>();
-
-        for (TabItem tab : openTabs) {
-            // Skip diff tabs
-            if (tab.getFile().getName().startsWith("DIFF_")) {
-                continue;
-            }
-
-            String tabFilePath = tab.getFile().getAbsolutePath();
-            String oldPath = oldFileOrDir.getAbsolutePath();
-
-            if (oldFileOrDir.isDirectory()) {
-                if (tabFilePath.startsWith(oldPath + File.separator) || tabFilePath.equals(oldPath)) {
-                    if (newFileOrDir == null) { // Directory deleted
-                        toRemove.add(tab);
-                    } else { // Directory renamed
-                        String relativePathUnderOldDir = tabFilePath.substring(oldPath.length());
-                        File updatedFile = new File(newFileOrDir, relativePathUnderOldDir);
-                        tab.setFile(updatedFile);
-                        toUpdate.add(tab);
-                    }
-                }
-            } else {
-                if (tabFilePath.equals(oldPath)) {
-                    if (newFileOrDir == null) { // File deleted
-                        toRemove.add(tab);
-                    } else { // File renamed
-                        tab.setFile(newFileOrDir);
-                        toUpdate.add(tab);
-                    }
+        if (oldFileOrDir == null) return;
+        
+        for (int i = openTabs.size() - 1; i >= 0; i--) {
+            TabItem tab = openTabs.get(i);
+            if (tab.getFile().equals(oldFileOrDir)) {
+                if (newFileOrDir != null) {
+                    // File was renamed
+                    tab.setFile(newFileOrDir);
+                    tab.setTitle(newFileOrDir.getName());
+                } else {
+                    // File was deleted
+                    activity.closeTab(i, false);
                 }
             }
-        }
-
-        openTabs.removeAll(toRemove);
-
-        // Close removed tabs in fragment
-        for (TabItem removedTab : toRemove) {
-            int index = activity.getOpenTabsList().indexOf(removedTab); // Get current index in activity's list
-            if (index != -1) {
-                activity.getCodeEditorFragment().removeFileTab(index);
-            }
-        }
-
-        if (!toRemove.isEmpty() || !toUpdate.isEmpty()) {
-            activity.getCodeEditorFragment().refreshAllFileTabs(); // Refresh all tabs in fragment
-            activity.getCodeEditorFragment().refreshFileTabLayout();
         }
     }
 
-	public void rebuildFileTree() {
-		if (fileTreeAdapter != null) {
-			loadFileTree();
-		}
-	}
+    /**
+     * Rebuilds the file tree with current filters and search.
+     */
+    public void rebuildFileTree() {
+        loadFileTree();
+    }
 }

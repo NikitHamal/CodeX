@@ -62,6 +62,7 @@ public class EditorActivity extends AppCompatActivity implements
     private ExecutorService executorService; // ExecutorService is a core utility, might stay here or be managed by a dedicated utility manager
 
     private EditorViewModel viewModel;
+    private List<File> pendingFilesToOpen = new ArrayList<>();
 
     // In onCreate or fragment setup logic, ensure chat fragment is attached and visible
     // Remove ensureChatFragment and its call in onCreate, as there is no fragment_container_chat in the layout.
@@ -140,6 +141,16 @@ public class EditorActivity extends AppCompatActivity implements
                 tabManager.openFile(indexHtml); // Use tabManager to open file
             }
         }
+
+        // Process any pending files
+        for (File file : pendingFilesToOpen) {
+            tabManager.openFile(file);
+        }
+        pendingFilesToOpen.clear();
+    }
+
+    public void addPendingFileToOpen(File file) {
+        pendingFilesToOpen.add(file);
     }
 
     @Override

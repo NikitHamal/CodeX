@@ -54,6 +54,12 @@ public class TabManager {
             return;
         }
 
+        if (activity.getCodeEditorFragment() == null) {
+            activity.addPendingFileToOpen(file);
+            activity.getMainViewPager().setCurrentItem(1, true); // Switch to editor view
+            return;
+        }
+
         for (int i = 0; i < openTabs.size(); i++) {
             if (openTabs.get(i).getFile().equals(file)) {
                 // If file is already open, switch to it

@@ -39,11 +39,11 @@ public class AIModel {
             // Huggingface Models
             new AIModel("deepseek-ai/DeepSeek-R1-Distill-Qwen-32B", "Deepseek R1", AIProvider.HUGGINGFACE, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)),
 
-            // Alibaba/Qwen Models
+            // Updated Alibaba/Qwen Models (from the new JSON data)
+            new AIModel("qwen3-235b-a22b", "Qwen3-235B-A22B-2507", AIProvider.ALIBABA, new ModelCapabilities(true, true, true, true, true, true, true, 131072, 81920)),
             new AIModel("qwen3-coder-plus", "Qwen3-Coder", AIProvider.ALIBABA, new ModelCapabilities(false, false, true, true, true, true, true, 1048576, 65536)),
-            new AIModel("qwen3-235b-a22b", "Qwen3-235B-A22B-2507", AIProvider.ALIBABA, new ModelCapabilities(true, true, true, true, true, true, true, 131072, 38912)),
-            new AIModel("qwen3-30b-a3b", "Qwen3-30B-A3B", AIProvider.ALIBABA, new ModelCapabilities(true, true, true, true, true, true, true, 131072, 38912)),
-            new AIModel("qwen3-32b", "Qwen3-32B", AIProvider.ALIBABA, new ModelCapabilities(true, true, true, true, true, true, true, 131072, 38912)),
+            new AIModel("qwen3-30b-a3b", "Qwen3-30B-A3B-2507", AIProvider.ALIBABA, new ModelCapabilities(true, true, true, true, true, true, true, 131072, 32768)),
+            new AIModel("qwen3-coder-30b-a3b-instruct", "Qwen3-Coder-Flash", AIProvider.ALIBABA, new ModelCapabilities(false, false, true, true, true, true, true, 262144, 65536)),
             new AIModel("qwen-max-latest", "Qwen2.5-Max", AIProvider.ALIBABA, new ModelCapabilities(true, true, true, true, true, true, true, 131072, 8192)),
             new AIModel("qwen-plus-2025-01-25", "Qwen2.5-Plus", AIProvider.ALIBABA, new ModelCapabilities(true, true, true, true, true, true, true, 131072, 8192)),
             new AIModel("qwq-32b", "QwQ-32B", AIProvider.ALIBABA, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)),

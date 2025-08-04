@@ -195,12 +195,14 @@ public class ModelSelectorBottomSheet extends BottomSheetDialogFragment {
                     StringBuilder capabilitiesText = new StringBuilder();
                     
                     if (capabilities.supportsThinking) capabilitiesText.append("Thinking, ");
+                    if (capabilities.supportsThinkingBudget) capabilitiesText.append("Thinking Budget, ");
                     if (capabilities.supportsWebSearch) capabilitiesText.append("Web Search, ");
                     if (capabilities.supportsVision) capabilitiesText.append("Vision, ");
                     if (capabilities.supportsDocument) capabilitiesText.append("Documents, ");
                     if (capabilities.supportsVideo) capabilitiesText.append("Video, ");
                     if (capabilities.supportsAudio) capabilitiesText.append("Audio, ");
                     if (capabilities.supportsCitations) capabilitiesText.append("Citations, ");
+                    if (capabilities.supportsMCP) capabilitiesText.append("MCP, ");
                     
                     // Remove trailing comma and space
                     if (capabilitiesText.length() > 0) {
@@ -228,10 +230,14 @@ public class ModelSelectorBottomSheet extends BottomSheetDialogFragment {
                         functionCallingChip.setVisibility(View.GONE);
                     }
                     
-                    // Latest model indicator
+                    // Latest model indicator - updated to include new Alibaba models
                     if ("gemini-2.5-flash".equals(aiModel.getModelId()) ||
                         "gemini-2.5-pro".equals(aiModel.getModelId()) ||
-                        "gemini-2.0-flash-exp".equals(aiModel.getModelId())) {
+                        "gemini-2.0-flash-exp".equals(aiModel.getModelId()) ||
+                        "qwen3-235b-a22b".equals(aiModel.getModelId()) ||
+                        "qwen3-coder-plus".equals(aiModel.getModelId()) ||
+                        "qwen3-30b-a3b".equals(aiModel.getModelId()) ||
+                        "qwen3-coder-30b-a3b-instruct".equals(aiModel.getModelId())) {
                         latestChip.setVisibility(View.VISIBLE);
                         hasFeatures = true;
                     } else {

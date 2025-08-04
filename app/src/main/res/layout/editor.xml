@@ -168,34 +168,21 @@
             android:padding="16dp"
             android:background="@color/surface">
 
-            <com.google.android.material.textfield.TextInputLayout
-                android:id="@+id/search_input_layout"
+            <EditText
+                android:id="@+id/search_edit_text"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:background="@drawable/search_edittext_background"
                 android:hint="Search files..."
-                app:startIconDrawable="@drawable/icon_search_round"
-                app:startIconTint="@color/primary"
-                style="@style/Widget.Material3.TextInputLayout.OutlinedBox">
-
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/search_edit_text"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:inputType="text"
-                    android:maxLines="1"
-                    android:singleLine="true"
-                    android:textAppearance="@style/TextAppearance.Material3.BodyMedium" />
-
-            </com.google.android.material.textfield.TextInputLayout>
-
-            <!-- Filter Chips -->
-            <com.google.android.material.chip.ChipGroup
-                android:id="@+id/filter_chip_group"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                app:singleSelection="true"
-                app:selectionRequired="true" />
+                android:inputType="text"
+                android:maxLines="1"
+                android:singleLine="true"
+                android:textSize="14sp"
+                android:padding="12dp"
+                android:drawableStart="@drawable/icon_search_round"
+                android:drawablePadding="8dp"
+                android:textColor="@color/on_surface"
+                android:textColorHint="@color/on_surface_variant"/>
 
         </LinearLayout>
 

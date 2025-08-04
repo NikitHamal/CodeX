@@ -91,6 +91,7 @@ public class ChatMessage {
     public void setAiModelName(String aiModelName) { this.aiModelName = aiModelName; }
     public long getTimestamp() { return timestamp; }
     public String getRawAiResponseJson() { return rawAiResponseJson; }
+    public String getRawApiResponse() { return rawAiResponseJson; }
     public List<FileActionDetail> getProposedFileChanges() { return proposedFileChanges; }
     public int getStatus() { return status; }
     public String getThinkingContent() { return thinkingContent; }

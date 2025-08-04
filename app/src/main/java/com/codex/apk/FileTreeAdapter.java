@@ -74,12 +74,18 @@ public class FileTreeAdapter extends RecyclerView.Adapter<FileTreeAdapter.ViewHo
         // Enhanced icon handling
         if (item.isDirectory()) {
             holder.imageFileIcon.setImageResource(item.isExpanded() ? R.drawable.ic_folder_open : R.drawable.icon_folder_round);
-            holder.imageExpandIcon.setVisibility(View.VISIBLE);
-            holder.imageExpandIcon.setImageResource(item.isExpanded() ? R.drawable.ic_expand_less : R.drawable.ic_expand_more);
             
-            // Animate expand icon rotation
-            float rotation = item.isExpanded() ? 180f : 0f;
-            holder.imageExpandIcon.setRotation(rotation);
+            // Check if directory is empty and hide arrow if it is
+            boolean isEmpty = isDirectoryEmpty(item.getFile());
+            holder.imageExpandIcon.setVisibility(isEmpty ? View.GONE : View.VISIBLE);
+            
+            if (!isEmpty) {
+                holder.imageExpandIcon.setImageResource(item.isExpanded() ? R.drawable.ic_expand_less : R.drawable.ic_expand_more);
+                
+                // Animate expand icon rotation
+                float rotation = item.isExpanded() ? 180f : 0f;
+                holder.imageExpandIcon.setRotation(rotation);
+            }
             
             // Enhanced directory styling
             holder.cardContainer.setStrokeColor(ContextCompat.getColor(context, R.color.primary));
@@ -305,5 +311,11 @@ public class FileTreeAdapter extends RecyclerView.Adapter<FileTreeAdapter.ViewHo
             imageMoreVert = itemView.findViewById(R.id.image_more_vert);
             textFileName = itemView.findViewById(R.id.text_file_name);
         }
+    }
+    
+    private boolean isDirectoryEmpty(File directory) {
+        if (!directory.isDirectory()) return true;
+        File[] files = directory.listFiles();
+        return files == null || files.length == 0;
     }
 }

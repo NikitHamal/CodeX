@@ -7,7 +7,7 @@
     android:layout_height="wrap_content"
     android:layout_marginHorizontal="8dp"
     android:layout_marginVertical="2dp"
-    app:cardCornerRadius="8dp"
+    app:cardCornerRadius="30dp"
     app:cardElevation="1dp"
     app:strokeWidth="0dp"
     app:cardBackgroundColor="@color/surface"
@@ -19,9 +19,9 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:padding="12dp"
+        android:padding="8dp"
         android:gravity="center_vertical"
-        android:minHeight="48dp">
+        android:minHeight="40dp">
 
         <LinearLayout
             android:id="@+id/icon_container"
@@ -32,16 +32,16 @@
 
             <ImageView
                 android:id="@+id/image_file_icon"
-                android:layout_width="24dp"
-                android:layout_height="24dp"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
                 android:src="@drawable/ic_file"
                 android:contentDescription="File icon"
                 app:tint="@color/on_surface_variant" />
 
             <ImageView
                 android:id="@+id/image_expand_icon"
-                android:layout_width="20dp"
-                android:layout_height="20dp"
+                android:layout_width="16dp"
+                android:layout_height="16dp"
                 android:src="@drawable/ic_expand_more"
                 android:contentDescription="Expand icon"
                 android:layout_marginStart="4dp"
@@ -56,17 +56,18 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:text="File name"
-            android:textSize="14sp"
+            android:textSize="12sp"
             android:textColor="@color/on_surface"
             android:layout_marginStart="12dp"
             android:maxLines="1"
             android:ellipsize="end"
-            android:textAppearance="@style/TextAppearance.Material3.BodyMedium" />
+            android:fontFamily="@font/poppins_med"
+            android:textAppearance="@style/TextAppearance.Material3.BodySmall" />
 
         <ImageView
             android:id="@+id/image_more_vert"
-            android:layout_width="24dp"
-            android:layout_height="24dp"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
             android:src="@drawable/icon_more_vert_round"
             android:contentDescription="More options"
             android:layout_marginStart="8dp"

@@ -170,6 +170,12 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
             
             // Initialize markdown formatter
             markdownFormatter = MarkdownFormatter.getInstance(context);
+            
+            // Add long click listener for raw API response
+            itemView.setOnLongClickListener(v -> {
+                // We'll set this up in the bind method
+                return true;
+            });
         }
         
         private void showWebSourcesDialog(List<WebSource> webSources) {
@@ -184,10 +190,49 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
             dialog.setContentView(dialogView);
             dialog.show();
         }
+        
+        private void showRawApiResponseDialog(ChatMessage message) {
+            // Create dialog view
+            View dialogView = LayoutInflater.from(context).inflate(R.layout.dialog_raw_api_response, null);
+            TextView textRawResponse = dialogView.findViewById(R.id.text_raw_response);
+            MaterialButton buttonCopy = dialogView.findViewById(R.id.button_copy);
+            MaterialButton buttonClose = dialogView.findViewById(R.id.button_close);
+            
+            // Set the raw response text
+            String rawResponse = message.getRawApiResponse();
+            if (rawResponse != null && !rawResponse.isEmpty()) {
+                textRawResponse.setText(rawResponse);
+            } else {
+                textRawResponse.setText("No raw API response available");
+            }
+            
+            // Create dialog
+            BottomSheetDialog dialog = new BottomSheetDialog(context);
+            dialog.setContentView(dialogView);
+            
+            // Set up copy button
+            buttonCopy.setOnClickListener(v -> {
+                android.content.ClipboardManager clipboard = (android.content.ClipboardManager) context.getSystemService(Context.CLIPBOARD_SERVICE);
+                android.content.ClipData clip = android.content.ClipData.newPlainText("Raw API Response", rawResponse != null ? rawResponse : "");
+                clipboard.setPrimaryClip(clip);
+                android.widget.Toast.makeText(context, "Raw response copied to clipboard", android.widget.Toast.LENGTH_SHORT).show();
+            });
+            
+            // Set up close button
+            buttonClose.setOnClickListener(v -> dialog.dismiss());
+            
+            dialog.show();
+        }
 
         void bind(ChatMessage message, int messagePosition) {
             String aiThinkingString = context.getString(R.string.ai_is_thinking);
             boolean isTyping = message.getContent() != null && message.getContent().equals(aiThinkingString);
+            
+            // Set up long click listener for raw API response
+            itemView.setOnLongClickListener(v -> {
+                showRawApiResponseDialog(message);
+                return true;
+            });
 
             // Toggle visibility based on whether the AI is typing
             layoutTypingIndicator.setVisibility(isTyping ? View.VISIBLE : View.GONE);

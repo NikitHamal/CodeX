@@ -13,7 +13,6 @@ import com.codex.apk.R;
 import com.codex.apk.SimpleSoraTabAdapter;
 import com.codex.apk.TabItem;
 import com.codex.apk.DialogHelper; // Added import for DialogHelper
-import com.codex.apk.DiffUtils; // Assuming DiffUtils is a utility class
 
 import java.io.File;
 import java.io.IOException;

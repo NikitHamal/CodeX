@@ -16,7 +16,7 @@ import com.codex.apk.FileManager;
 import com.codex.apk.ToolSpec;
 import com.codex.apk.SettingsActivity;
 import com.codex.apk.TabItem;
-import com.codex.apk.DiffUtils; // Assuming DiffUtils is available
+import com.codex.apk.DiffGenerator;
 import android.content.SharedPreferences;
 
 
@@ -215,18 +215,14 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
         String newFileContent = fileActionDetail.newContent != null ? fileActionDetail.newContent : "";
 
         if (fileActionDetail.type.equals("createFile")) {
-            diffContent = "--- /dev/null\n+++ b/" + fileNameToOpen + "\n" +
-                    DiffUtils.generateUnifiedDiff("", newFileContent);
+            diffContent = DiffGenerator.generateDiff("", newFileContent, "unified", "/dev/null", "b/" + fileNameToOpen);
         } else if (fileActionDetail.type.equals("deleteFile")) {
-            diffContent = "--- a/" + fileNameToOpen + "\n+++ /dev/null\n" +
-                    DiffUtils.generateUnifiedDiff(oldFileContent, "");
+            diffContent = DiffGenerator.generateDiff(oldFileContent, "", "unified", "a/" + fileNameToOpen, "/dev/null");
         } else if (fileActionDetail.type.equals("renameFile")) {
-            diffContent = "--- a/" + fileActionDetail.oldPath + "\n+++ b/" + fileActionDetail.newPath + "\n" +
-                    DiffUtils.generateUnifiedDiff(oldFileContent, newFileContent);
+            diffContent = DiffGenerator.generateDiff(oldFileContent, newFileContent, "unified", "a/" + fileActionDetail.oldPath, "b/" + fileActionDetail.newPath);
         }
         else { // updateFile or modifyLines
-            diffContent = "--- a/" + fileNameToOpen + "\n+++ b/" + fileNameToOpen + "\n" +
-                    DiffUtils.generateUnifiedDiff(oldFileContent, newFileContent);
+            diffContent = DiffGenerator.generateDiff(oldFileContent, newFileContent, "unified", "a/" + fileNameToOpen, "b/" + fileNameToOpen);
         }
 
         // Open a new tab to display the diff

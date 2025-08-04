@@ -82,8 +82,6 @@
     <color name="info">#00008B</color>
     
     <!-- Chip colors for file tree filters -->
-    <color name="chip_background_color">#E8F0FE</color>
     <color name="chip_background_selected">#007FAC</color>
-    <color name="chip_text_color">#43474E</color>
     <color name="chip_text_selected">#FFFFFF</color>
 </resources>

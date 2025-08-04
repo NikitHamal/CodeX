@@ -41,19 +41,19 @@ public class AIModel {
 
             // Updated Alibaba/Qwen Models (from the new JSON data)
             new AIModel("qwen3-235b-a22b", "Qwen3-235B-A22B-2507", AIProvider.ALIBABA, new ModelCapabilities(true, true, true, true, true, true, true, 131072, 81920)),
-            new AIModel("qwen3-coder-plus", "Qwen3-Coder", AIProvider.ALIBABA, new ModelCapabilities(false, false, true, true, true, true, true, 1048576, 65536)),
+            new AIModel("qwen3-coder-plus", "Qwen3-Coder", AIProvider.ALIBABA, new ModelCapabilities(false, true, true, true, true, true, true, 1048576, 65536)),
             new AIModel("qwen3-30b-a3b", "Qwen3-30B-A3B-2507", AIProvider.ALIBABA, new ModelCapabilities(true, true, true, true, true, true, true, 131072, 32768)),
-            new AIModel("qwen3-coder-30b-a3b-instruct", "Qwen3-Coder-Flash", AIProvider.ALIBABA, new ModelCapabilities(false, false, true, true, true, true, true, 262144, 65536)),
+            new AIModel("qwen3-coder-30b-a3b-instruct", "Qwen3-Coder-Flash", AIProvider.ALIBABA, new ModelCapabilities(false, true, true, true, true, true, true, 262144, 65536)),
             new AIModel("qwen-max-latest", "Qwen2.5-Max", AIProvider.ALIBABA, new ModelCapabilities(true, true, true, true, true, true, true, 131072, 8192)),
             new AIModel("qwen-plus-2025-01-25", "Qwen2.5-Plus", AIProvider.ALIBABA, new ModelCapabilities(true, true, true, true, true, true, true, 131072, 8192)),
-            new AIModel("qwq-32b", "QwQ-32B", AIProvider.ALIBABA, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)),
+            new AIModel("qwq-32b", "QwQ-32B", AIProvider.ALIBABA, new ModelCapabilities(true, true, false, true, false, false, false, 131072, 8192)),
             new AIModel("qwen-turbo-2025-02-11", "Qwen2.5-Turbo", AIProvider.ALIBABA, new ModelCapabilities(true, true, true, true, true, true, true, 1000000, 8192)),
             new AIModel("qwen2.5-omni-7b", "Qwen2.5-Omni-7B", AIProvider.ALIBABA, new ModelCapabilities(false, false, true, true, true, true, true, 30720, 2048)),
-            new AIModel("qvq-72b-preview-0310", "QVQ-Max", AIProvider.ALIBABA, new ModelCapabilities(true, false, true, true, true, false, true, 131072, 8192)),
-            new AIModel("qwen2.5-vl-32b-instruct", "Qwen2.5-VL-32B-Instruct", AIProvider.ALIBABA, new ModelCapabilities(true, false, true, true, true, false, true, 131072, 8192)),
-            new AIModel("qwen2.5-14b-instruct-1m", "Qwen2.5-14B-Instruct-1M", AIProvider.ALIBABA, new ModelCapabilities(true, false, true, true, true, false, true, 1000000, 8192)),
-            new AIModel("qwen2.5-coder-32b-instruct", "Qwen2.5-Coder-32B-Instruct", AIProvider.ALIBABA, new ModelCapabilities(true, false, true, true, true, false, true, 131072, 8192)),
-            new AIModel("qwen2.5-72b-instruct", "Qwen2.5-72B-Instruct", AIProvider.ALIBABA, new ModelCapabilities(true, false, true, true, true, false, true, 131072, 8192)),
+            new AIModel("qvq-72b-preview-0310", "QVQ-Max", AIProvider.ALIBABA, new ModelCapabilities(true, true, true, true, true, false, true, 131072, 8192)),
+            new AIModel("qwen2.5-vl-32b-instruct", "Qwen2.5-VL-32B-Instruct", AIProvider.ALIBABA, new ModelCapabilities(true, true, true, true, true, false, true, 131072, 8192)),
+            new AIModel("qwen2.5-14b-instruct-1m", "Qwen2.5-14B-Instruct-1M", AIProvider.ALIBABA, new ModelCapabilities(true, true, true, true, true, false, true, 1000000, 8192)),
+            new AIModel("qwen2.5-coder-32b-instruct", "Qwen2.5-Coder-32B-Instruct", AIProvider.ALIBABA, new ModelCapabilities(true, true, true, true, true, false, true, 131072, 8192)),
+            new AIModel("qwen2.5-72b-instruct", "Qwen2.5-72B-Instruct", AIProvider.ALIBABA, new ModelCapabilities(true, true, true, true, true, false, true, 131072, 8192)),
 
             // Z/GLM Models
             new AIModel("glm-4-plus", "GLM-4-Plus", AIProvider.Z, new ModelCapabilities(true, false, true, true, false, false, true, 128000, 4096)),

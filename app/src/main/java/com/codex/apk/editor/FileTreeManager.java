@@ -19,10 +19,7 @@ import com.codex.apk.R;
 import com.codex.apk.TabItem;
 import com.codex.apk.DialogHelper;
 import com.google.android.material.appbar.MaterialToolbar;
-import com.google.android.material.chip.Chip;
-import com.google.android.material.chip.ChipGroup;
-import com.google.android.material.textfield.TextInputEditText;
-import com.google.android.material.textfield.TextInputLayout;
+import android.widget.EditText;
 
 import java.io.File;
 import java.io.IOException;
@@ -41,9 +38,7 @@ public class FileTreeManager {
 
     private RecyclerView recyclerViewFileTree;
     private FileTreeAdapter fileTreeAdapter;
-    private TextInputLayout searchInputLayout;
-    private TextInputEditText searchEditText;
-    private ChipGroup filterChipGroup;
+    private EditText searchEditText;
     private View searchContainer;
     private String currentSearchQuery = "";
     private String currentFilter = "all";
@@ -63,16 +58,11 @@ public class FileTreeManager {
     public void setupFileTree() {
         recyclerViewFileTree = activity.findViewById(R.id.recycler_view_file_tree);
         searchContainer = activity.findViewById(R.id.search_container);
-        searchInputLayout = activity.findViewById(R.id.search_input_layout);
         searchEditText = activity.findViewById(R.id.search_edit_text);
-        filterChipGroup = activity.findViewById(R.id.filter_chip_group);
 
         // Setup search functionality
         setupSearch();
         
-        // Setup filter chips
-        setupFilterChips();
-
         fileTreeAdapter = new FileTreeAdapter(activity, filteredFileItems, null, activity);
         recyclerViewFileTree.setAdapter(fileTreeAdapter);
         
@@ -113,37 +103,6 @@ public class FileTreeManager {
         }
     }
 
-    private void setupFilterChips() {
-        if (filterChipGroup != null) {
-            // Clear existing chips
-            filterChipGroup.removeAllViews();
-            
-            // Add filter chips
-            addFilterChip("All", "all", true);
-            addFilterChip("Files", "files", false);
-            addFilterChip("Folders", "folders", false);
-            addFilterChip("Code", "code", false);
-            addFilterChip("Media", "media", false);
-        }
-    }
-
-    private void addFilterChip(String text, String tag, boolean selected) {
-        Chip chip = new Chip(activity);
-        chip.setText(text);
-        chip.setCheckable(true);
-        chip.setChecked(selected);
-        chip.setChipBackgroundColorResource(R.color.chip_background_color);
-        chip.setTextColor(activity.getResources().getColorStateList(R.color.chip_text_color, null));
-        
-        chip.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            if (isChecked) {
-                currentFilter = tag;
-                filterAndDisplayFiles();
-            }
-        });
-        
-        filterChipGroup.addView(chip);
-    }
 
     private void setupActionButtons() {
         // New File Button

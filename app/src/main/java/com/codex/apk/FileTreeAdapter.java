@@ -28,6 +28,7 @@ import com.google.android.material.textview.MaterialTextView;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
 
@@ -317,7 +318,7 @@ public class FileTreeAdapter extends RecyclerView.Adapter<FileTreeAdapter.ViewHo
         if (files != null) {
             List<FileItem> children = new ArrayList<>();
             for (File file : files) {
-                children.add(new FileItem(file, item.getLevel() + 1));
+                children.add(new FileItem(file, item.getLevel() + 1, item));
             }
             items.addAll(position + 1, children);
             notifyItemRangeInserted(position + 1, children.size());

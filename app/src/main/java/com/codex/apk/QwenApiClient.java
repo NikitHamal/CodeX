@@ -16,6 +16,8 @@ import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.Map;
+import java.util.HashMap;
 
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
@@ -516,60 +518,18 @@ public class QwenApiClient implements ApiClient {
                         JsonArray data = responseJson.getAsJsonArray("data");
                         for (int i = 0; i < data.size(); i++) {
                             JsonObject modelData = data.get(i).getAsJsonObject();
-                            String modelId = modelData.get("id").getAsString();
-                            String displayName = modelData.has("name") ? modelData.get("name").getAsString() : modelId;
-                            JsonObject info = modelData.getAsJsonObject("info");
-                            JsonObject meta = info.getAsJsonObject("meta");
-                            JsonObject capabilitiesJson = meta.getAsJsonObject("capabilities");
-
-                            boolean supportsThinking = capabilitiesJson.has("thinking") && capabilitiesJson.get("thinking").getAsBoolean();
-                            JsonArray chatTypes = meta.has("chat_type") ? meta.get("chat_type").getAsJsonArray() : new JsonArray();
-                            boolean supportsWebSearch = false;
-                            for (int j = 0; j < chatTypes.size(); j++) {
-                                if ("search".equals(chatTypes.get(j).getAsString())) {
-                                    supportsWebSearch = true;
-                                    break;
-                                }
+                            AIModel model = parseModelData(modelData);
+                            if (model != null) {
+                                models.add(model);
                             }
-                            boolean supportsVision = capabilitiesJson.has("vision") && capabilitiesJson.get("vision").getAsBoolean();
-                            boolean supportsDocument = capabilitiesJson.has("document") && capabilitiesJson.get("document").getAsBoolean();
-                            boolean supportsVideo = capabilitiesJson.has("video") && capabilitiesJson.get("video").getAsBoolean();
-                            boolean supportsAudio = capabilitiesJson.has("audio") && capabilitiesJson.get("audio").getAsBoolean();
-                            boolean supportsCitations = capabilitiesJson.has("citations") && capabilitiesJson.get("citations").getAsBoolean();
-                            int maxContextLength = meta.has("max_context_length") ? meta.get("max_context_length").getAsInt() : 0;
-                            int maxGenerationLength = meta.has("max_generation_length") ? meta.get("max_generation_length").getAsInt() : 0;
-
-                            ModelCapabilities capabilities = new ModelCapabilities(supportsThinking, supportsWebSearch, supportsVision, supportsDocument, supportsVideo, supportsAudio, supportsCitations, maxContextLength, maxGenerationLength);
-                            models.add(new AIModel(modelId, displayName, AIProvider.ALIBABA, capabilities));
                         }
                     } else if (responseJson.get("data").isJsonObject()) {
                         // Handle the case where 'data' is a single object
                         JsonObject modelData = responseJson.getAsJsonObject("data");
-                        String modelId = modelData.get("id").getAsString();
-                        String displayName = modelData.has("name") ? modelData.get("name").getAsString() : modelId;
-                        JsonObject info = modelData.getAsJsonObject("info");
-                        JsonObject meta = info.getAsJsonObject("meta");
-                        JsonObject capabilitiesJson = meta.getAsJsonObject("capabilities");
-
-                        boolean supportsThinking = capabilitiesJson.has("thinking") && capabilitiesJson.get("thinking").getAsBoolean();
-                        JsonArray chatTypes = meta.has("chat_type") ? meta.get("chat_type").getAsJsonArray() : new JsonArray();
-                        boolean supportsWebSearch = false;
-                        for (int j = 0; j < chatTypes.size(); j++) {
-                            if ("search".equals(chatTypes.get(j).getAsString())) {
-                                supportsWebSearch = true;
-                                break;
-                            }
+                        AIModel model = parseModelData(modelData);
+                        if (model != null) {
+                            models.add(model);
                         }
-                        boolean supportsVision = capabilitiesJson.has("vision") && capabilitiesJson.get("vision").getAsBoolean();
-                        boolean supportsDocument = capabilitiesJson.has("document") && capabilitiesJson.get("document").getAsBoolean();
-                        boolean supportsVideo = capabilitiesJson.has("video") && capabilitiesJson.get("video").getAsBoolean();
-                        boolean supportsAudio = capabilitiesJson.has("audio") && capabilitiesJson.get("audio").getAsBoolean();
-                        boolean supportsCitations = capabilitiesJson.has("citations") && capabilitiesJson.get("citations").getAsBoolean();
-                        int maxContextLength = meta.has("max_context_length") ? meta.get("max_context_length").getAsInt() : 0;
-                        int maxGenerationLength = meta.has("max_generation_length") ? meta.get("max_generation_length").getAsInt() : 0;
-
-                        ModelCapabilities capabilities = new ModelCapabilities(supportsThinking, supportsWebSearch, supportsVision, supportsDocument, supportsVideo, supportsAudio, supportsCitations, maxContextLength, maxGenerationLength);
-                        models.add(new AIModel(modelId, displayName, AIProvider.ALIBABA, capabilities));
                     }
                 }
                 return models;
@@ -578,5 +538,98 @@ public class QwenApiClient implements ApiClient {
             Log.e(TAG, "Error fetching Qwen models", e);
         }
         return Collections.emptyList();
+    }
+
+    private AIModel parseModelData(JsonObject modelData) {
+        try {
+            String modelId = modelData.get("id").getAsString();
+            String displayName = modelData.has("name") ? modelData.get("name").getAsString() : modelId;
+            
+            JsonObject info = modelData.getAsJsonObject("info");
+            JsonObject meta = info.getAsJsonObject("meta");
+            JsonObject capabilitiesJson = meta.getAsJsonObject("capabilities");
+
+            // Parse basic capabilities
+            boolean supportsThinking = capabilitiesJson.has("thinking") && capabilitiesJson.get("thinking").getAsBoolean();
+            boolean supportsThinkingBudget = capabilitiesJson.has("thinking_budget") && capabilitiesJson.get("thinking_budget").getAsBoolean();
+            boolean supportsVision = capabilitiesJson.has("vision") && capabilitiesJson.get("vision").getAsBoolean();
+            boolean supportsDocument = capabilitiesJson.has("document") && capabilitiesJson.get("document").getAsBoolean();
+            boolean supportsVideo = capabilitiesJson.has("video") && capabilitiesJson.get("video").getAsBoolean();
+            boolean supportsAudio = capabilitiesJson.has("audio") && capabilitiesJson.get("audio").getAsBoolean();
+            boolean supportsCitations = capabilitiesJson.has("citations") && capabilitiesJson.get("citations").getAsBoolean();
+
+            // Parse chat types and check for web search
+            JsonArray chatTypes = meta.has("chat_type") ? meta.get("chat_type").getAsJsonArray() : new JsonArray();
+            boolean supportsWebSearch = false;
+            List<String> supportedChatTypes = new ArrayList<>();
+            for (int j = 0; j < chatTypes.size(); j++) {
+                String chatType = chatTypes.get(j).getAsString();
+                supportedChatTypes.add(chatType);
+                if ("search".equals(chatType)) {
+                    supportsWebSearch = true;
+                }
+            }
+
+            // Parse MCP tools
+            List<String> mcpTools = new ArrayList<>();
+            if (meta.has("mcp")) {
+                JsonArray mcpArray = meta.get("mcp").getAsJsonArray();
+                for (int j = 0; j < mcpArray.size(); j++) {
+                    mcpTools.add(mcpArray.get(j).getAsString());
+                }
+            }
+            boolean supportsMCP = !mcpTools.isEmpty();
+
+            // Parse modalities
+            List<String> supportedModalities = new ArrayList<>();
+            if (meta.has("modality")) {
+                JsonArray modalityArray = meta.get("modality").getAsJsonArray();
+                for (int j = 0; j < modalityArray.size(); j++) {
+                    supportedModalities.add(modalityArray.get(j).getAsString());
+                }
+            }
+
+            // Parse context and generation limits
+            int maxContextLength = meta.has("max_context_length") ? meta.get("max_context_length").getAsInt() : 0;
+            int maxGenerationLength = meta.has("max_generation_length") ? meta.get("max_generation_length").getAsInt() : 0;
+            int maxThinkingGenerationLength = meta.has("max_thinking_generation_length") ? meta.get("max_thinking_generation_length").getAsInt() : 0;
+            int maxSummaryGenerationLength = meta.has("max_summary_generation_length") ? meta.get("max_summary_generation_length").getAsInt() : 0;
+
+            // Parse file limits
+            Map<String, Integer> fileLimits = new HashMap<>();
+            if (meta.has("file_limits")) {
+                JsonObject fileLimitsJson = meta.getAsJsonObject("file_limits");
+                for (String key : fileLimitsJson.keySet()) {
+                    fileLimits.put(key, fileLimitsJson.get(key).getAsInt());
+                }
+            }
+
+            // Parse abilities (numeric levels)
+            Map<String, Integer> abilities = new HashMap<>();
+            if (meta.has("abilities")) {
+                JsonObject abilitiesJson = meta.getAsJsonObject("abilities");
+                for (String key : abilitiesJson.keySet()) {
+                    abilities.put(key, abilitiesJson.get(key).getAsInt());
+                }
+            }
+
+            // Parse single round flag
+            boolean isSingleRound = meta.has("is_single_round") ? meta.get("is_single_round").getAsInt() == 1 : false;
+
+            // Create enhanced capabilities
+            ModelCapabilities capabilities = new ModelCapabilities(
+                supportsThinking, supportsWebSearch, supportsVision, supportsDocument,
+                supportsVideo, supportsAudio, supportsCitations, supportsThinkingBudget,
+                supportsMCP, isSingleRound, maxContextLength, maxGenerationLength,
+                maxThinkingGenerationLength, maxSummaryGenerationLength, fileLimits,
+                supportedModalities, supportedChatTypes, mcpTools, abilities
+            );
+
+            return new AIModel(modelId, displayName, AIProvider.ALIBABA, capabilities);
+
+        } catch (Exception e) {
+            Log.e(TAG, "Error parsing model data", e);
+            return null;
+        }
     }
 }

@@ -74,18 +74,12 @@ public class FileTreeAdapter extends RecyclerView.Adapter<FileTreeAdapter.ViewHo
         // Enhanced icon handling
         if (item.isDirectory()) {
             holder.imageFileIcon.setImageResource(item.isExpanded() ? R.drawable.ic_folder_open : R.drawable.icon_folder_round);
+            holder.imageExpandIcon.setVisibility(View.VISIBLE);
+            holder.imageExpandIcon.setImageResource(item.isExpanded() ? R.drawable.ic_expand_less : R.drawable.ic_expand_more);
             
-            // Check if directory is empty and hide arrow if it is
-            boolean isEmpty = isDirectoryEmpty(item.getFile());
-            holder.imageExpandIcon.setVisibility(isEmpty ? View.GONE : View.VISIBLE);
-            
-            if (!isEmpty) {
-                holder.imageExpandIcon.setImageResource(item.isExpanded() ? R.drawable.ic_expand_less : R.drawable.ic_expand_more);
-                
-                // Animate expand icon rotation
-                float rotation = item.isExpanded() ? 180f : 0f;
-                holder.imageExpandIcon.setRotation(rotation);
-            }
+            // Animate expand icon rotation
+            float rotation = item.isExpanded() ? 180f : 0f;
+            holder.imageExpandIcon.setRotation(rotation);
             
             // Enhanced directory styling
             holder.cardContainer.setStrokeColor(ContextCompat.getColor(context, R.color.primary));
@@ -102,9 +96,7 @@ public class FileTreeAdapter extends RecyclerView.Adapter<FileTreeAdapter.ViewHo
         holder.itemView.setOnClickListener(v -> {
             animateClick(holder.itemView);
             if (item.isDirectory()) {
-                animateExpandCollapse(holder.imageExpandIcon, item.isExpanded());
-                item.toggleExpanded();
-                editorActivity.loadFileTree();
+                toggleFolder(item, position);
             } else {
                 setSelectedPosition(position);
                 editorActivity.openFile(item.getFile());
@@ -114,9 +106,7 @@ public class FileTreeAdapter extends RecyclerView.Adapter<FileTreeAdapter.ViewHo
         // Enhanced expand icon click
         holder.imageExpandIcon.setOnClickListener(v -> {
             if (item.isDirectory()) {
-                animateExpandCollapse(holder.imageExpandIcon, item.isExpanded());
-                item.toggleExpanded();
-                editorActivity.loadFileTree();
+                toggleFolder(item, position);
             }
         });
 
@@ -313,9 +303,40 @@ public class FileTreeAdapter extends RecyclerView.Adapter<FileTreeAdapter.ViewHo
         }
     }
     
-    private boolean isDirectoryEmpty(File directory) {
-        if (!directory.isDirectory()) return true;
-        File[] files = directory.listFiles();
-        return files == null || files.length == 0;
+    private void toggleFolder(FileItem item, int position) {
+        if (item.isExpanded()) {
+            collapseFolder(item, position);
+        } else {
+            expandFolder(item, position);
+        }
+    }
+
+    private void expandFolder(FileItem item, int position) {
+        item.setExpanded(true);
+        File[] files = item.getFile().listFiles();
+        if (files != null) {
+            List<FileItem> children = new ArrayList<>();
+            for (File file : files) {
+                children.add(new FileItem(file, item.getLevel() + 1));
+            }
+            items.addAll(position + 1, children);
+            notifyItemRangeInserted(position + 1, children.size());
+        }
+        notifyItemChanged(position);
+    }
+
+    private void collapseFolder(FileItem item, int position) {
+        item.setExpanded(false);
+        List<FileItem> childrenToRemove = new ArrayList<>();
+        for (int i = position + 1; i < items.size(); i++) {
+            if (items.get(i).getLevel() > item.getLevel()) {
+                childrenToRemove.add(items.get(i));
+            } else {
+                break;
+            }
+        }
+        items.removeAll(childrenToRemove);
+        notifyItemRangeRemoved(position + 1, childrenToRemove.size());
+        notifyItemChanged(position);
     }
 }

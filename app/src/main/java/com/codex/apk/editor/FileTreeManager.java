@@ -256,8 +256,8 @@ public class FileTreeManager {
      */
     public void showNewFileDialog(File parentDirectory) {
         View dialogView = activity.getLayoutInflater().inflate(R.layout.dialog_new_file, null);
-        TextInputEditText fileNameEditText = dialogView.findViewById(R.id.edit_text_file_name);
-        TextInputEditText fileExtensionEditText = dialogView.findViewById(R.id.edit_text_file_extension);
+        EditText fileNameEditText = dialogView.findViewById(R.id.edit_text_file_name);
+        EditText fileExtensionEditText = dialogView.findViewById(R.id.edit_text_file_extension);
 
         new com.google.android.material.dialog.MaterialAlertDialogBuilder(activity)
                 .setTitle("Create New File")
@@ -302,7 +302,7 @@ public class FileTreeManager {
      */
     public void showNewFolderDialog(File parentDirectory) {
         View dialogView = activity.getLayoutInflater().inflate(R.layout.dialog_new_folder, null);
-        TextInputEditText folderNameEditText = dialogView.findViewById(R.id.edit_text_folder_name);
+        EditText folderNameEditText = dialogView.findViewById(R.id.edit_text_folder_name);
 
         new com.google.android.material.dialog.MaterialAlertDialogBuilder(activity)
                 .setTitle("Create New Folder")

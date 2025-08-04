@@ -17,7 +17,7 @@ import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.RecyclerView;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.card.MaterialCardView;
-import com.google.android.material.bottomsheet.BottomSheetDialog;
+import androidx.appcompat.app.AlertDialog;
 import com.codex.apk.ai.WebSource;
 
 import java.util.List;
@@ -192,35 +192,41 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
         }
         
         private void showRawApiResponseDialog(ChatMessage message) {
-            // Create dialog view
+            // Inflate the custom layout
             View dialogView = LayoutInflater.from(context).inflate(R.layout.dialog_raw_api_response, null);
+
+            // Find views in the custom layout
             TextView textRawResponse = dialogView.findViewById(R.id.text_raw_response);
             MaterialButton buttonCopy = dialogView.findViewById(R.id.button_copy);
             MaterialButton buttonClose = dialogView.findViewById(R.id.button_close);
-            
+
             // Set the raw response text
             String rawResponse = message.getRawApiResponse();
             if (rawResponse != null && !rawResponse.isEmpty()) {
                 textRawResponse.setText(rawResponse);
             } else {
-                textRawResponse.setText("No raw API response available");
+                textRawResponse.setText("No raw API response available.");
             }
-            
-            // Create dialog
-            BottomSheetDialog dialog = new BottomSheetDialog(context);
-            dialog.setContentView(dialogView);
-            
+
+            // Create the dialog
+            AlertDialog.Builder builder = new AlertDialog.Builder(context);
+            builder.setView(dialogView);
+            final AlertDialog dialog = builder.create();
+
             // Set up copy button
             buttonCopy.setOnClickListener(v -> {
                 android.content.ClipboardManager clipboard = (android.content.ClipboardManager) context.getSystemService(Context.CLIPBOARD_SERVICE);
-                android.content.ClipData clip = android.content.ClipData.newPlainText("Raw API Response", rawResponse != null ? rawResponse : "");
-                clipboard.setPrimaryClip(clip);
-                android.widget.Toast.makeText(context, "Raw response copied to clipboard", android.widget.Toast.LENGTH_SHORT).show();
+                if (clipboard != null) {
+                    android.content.ClipData clip = android.content.ClipData.newPlainText("Raw API Response", rawResponse != null ? rawResponse : "");
+                    clipboard.setPrimaryClip(clip);
+                    android.widget.Toast.makeText(context, "Raw response copied", android.widget.Toast.LENGTH_SHORT).show();
+                }
             });
-            
+
             // Set up close button
             buttonClose.setOnClickListener(v -> dialog.dismiss());
             
+            // Show the dialog
             dialog.show();
         }
 

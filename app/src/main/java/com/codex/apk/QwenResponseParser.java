@@ -66,13 +66,13 @@ public class QwenResponseParser {
             Log.d(TAG, "Parsing response: " + responseText.substring(0, Math.min(200, responseText.length())) + "...");
             JsonObject jsonObj = JsonParser.parseString(responseText).getAsJsonObject();
 
-            // Multi-operation: { action: "file_operation", operations: [...] }
-            if (jsonObj.has("action") && "file_operation".equals(jsonObj.get("action").getAsString())) {
-                Log.d(TAG, "Detected multi-operation file_operation response");
+            // Check for multi-operation format first, regardless of action type
+            if (jsonObj.has("operations") && jsonObj.get("operations").isJsonArray()) {
+                Log.d(TAG, "Detected 'operations' array, parsing as multi-operation response");
                 return parseFileOperationResponse(jsonObj);
             }
 
-            // Single-operation: { action: "createFile", ... } or updateFile/deleteFile/etc
+            // Fallback to single-operation if 'operations' is not present
             if (jsonObj.has("action") && isSingleFileAction(jsonObj.get("action").getAsString())) {
                 Log.d(TAG, "Detected single-operation response with action: " + jsonObj.get("action").getAsString());
                 List<FileOperation> operations = new ArrayList<>();
@@ -84,6 +84,7 @@ public class QwenResponseParser {
                 String search = jsonObj.has("search") ? jsonObj.get("search").getAsString() : "";
                 String replace = jsonObj.has("replace") ? jsonObj.get("replace").getAsString() : "";
                 operations.add(new FileOperation(type, path, content, oldPath, newPath, search, replace));
+
                 String explanation = jsonObj.has("explanation") ? jsonObj.get("explanation").getAsString() : "";
                 List<String> suggestions = new ArrayList<>();
                 if (jsonObj.has("suggestions")) {
@@ -95,11 +96,11 @@ public class QwenResponseParser {
                 return new ParsedResponse(type, operations, explanation, suggestions, true);
             }
 
-            Log.d(TAG, "Not a file operation response, treating as regular JSON");
-            // Fallback: regular JSON
+            Log.d(TAG, "Not a recognized file operation response, treating as regular JSON");
+            // Fallback for non-file operation JSON
             return parseRegularJsonResponse(jsonObj);
         } catch (JsonParseException e) {
-            Log.w(TAG, "Failed to parse JSON response: " + responseText);
+            Log.w(TAG, "Failed to parse JSON response: " + responseText, e);
             return null;
         } catch (Exception e) {
             Log.e(TAG, "Error parsing response", e);

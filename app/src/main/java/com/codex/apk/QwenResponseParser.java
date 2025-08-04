@@ -120,7 +120,8 @@ public class QwenResponseParser {
                 
                 String type = operation.get("type").getAsString();
                 String path = operation.has("path") ? operation.get("path").getAsString() : "";
-                String content = operation.has("content") ? operation.get("content").getAsString() : "";
+                String content = operation.has("content") ? operation.get("content").getAsString() : 
+                               (operation.has("newContent") ? operation.get("newContent").getAsString() : "");
                 String oldPath = operation.has("oldPath") ? operation.get("oldPath").getAsString() : "";
                 String newPath = operation.has("newPath") ? operation.get("newPath").getAsString() : "";
                 String search = operation.has("search") ? operation.get("search").getAsString() : "";

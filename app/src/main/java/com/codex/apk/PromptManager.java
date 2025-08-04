@@ -49,7 +49,7 @@ public class PromptManager {
                "    {\n" +
                "      \"type\": \"updateFile|smartUpdate|searchAndReplace|patchFile|createFile|deleteFile|renameFile\",\n" +
                "      \"path\": \"file_path.html\",\n" +
-               "      \"newContent\": \"file content\",\n" +
+               "      \"content\": \"file content\",\n" +
                "      \"updateType\": \"full|append|prepend|replace|patch|smart\",\n" +
                "      \"searchPattern\": \"regex_pattern\",\n" +
                "      \"replaceWith\": \"replacement_text\",\n" +

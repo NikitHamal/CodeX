@@ -297,9 +297,9 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
         if (active != null) {
             prompt.append("- Active file: ").append(active.getFileName()).append("\n");
             prompt.append("- Active file content (truncated):\n");
-            prompt.append("""").append("\n");
+            prompt.append("---\n");
             prompt.append(safeTruncate(active.getContent(), 2000)).append("\n");
-            prompt.append("""").append("\n");
+            prompt.append("---\n");
         }
         prompt.append("Proceed now with step ").append(steps.get(idx).id).append(".");
 

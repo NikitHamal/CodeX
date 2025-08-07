@@ -11,6 +11,6 @@
     <style name="ShapeAppearance.ChatBubble.User" parent="@style/ShapeAppearance.Material3.MediumComponent">
         <item name="cornerFamily">rounded</item>
         <item name="cornerSize">20dp</item>
-        <item name="cornerSizeBottomLeft">4dp</item>
+        <item name="cornerSizeTopRight">4dp</item>
     </style>
 </resources>

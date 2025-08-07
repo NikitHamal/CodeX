@@ -18,7 +18,7 @@
             android:id="@+id/text_ai_model_name"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Gemini 2.0 Flash"
+            android:text="Model"
             android:textColor="@color/on_primary_container"
             android:textSize="12sp"
             android:background="@drawable/rounded_model_name_background"
@@ -26,7 +26,7 @@
             android:paddingVertical="6dp"
             android:layout_marginBottom="8dp" />
 
-        <!-- AI Typing Indicator -->
+        <!-- AI Typing Indicator (legacy) -->
         <LinearLayout
             android:id="@+id/layout_typing_indicator"
             android:layout_width="wrap_content"
@@ -64,7 +64,6 @@
             android:layout_marginBottom="8dp"
             android:visibility="gone">
 
-            <!-- Thinking Header -->
             <LinearLayout
                 android:id="@+id/layout_thinking_header"
                 android:layout_width="match_parent"
@@ -94,7 +93,6 @@
 
             </LinearLayout>
 
-            <!-- Thinking Content -->
             <TextView
                 android:id="@+id/text_thinking_content"
                 android:layout_width="match_parent"
@@ -109,14 +107,12 @@
         </LinearLayout>
 
         <!-- Main AI Message Content -->
-
         <TextView
             android:id="@+id/text_message"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:textColor="@color/on_surface"
             android:textSize="14sp"
-            android:textStyle="normal"
             android:layout_marginBottom="8dp"
             android:text="AI Explanation will go here."
             android:textIsSelectable="true" />
@@ -145,6 +141,22 @@
                 app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
         </LinearLayout>
 
+        <!-- Proposed file changes list (no header) -->
+        <LinearLayout
+            android:id="@+id/layout_proposed_file_changes"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginTop="16dp"
+            android:visibility="gone">
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/file_changes_container"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
+        </LinearLayout>
+
         <!-- Web Sources Section -->
         <LinearLayout
             android:id="@+id/layout_web_sources"
@@ -152,7 +164,7 @@
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:gravity="center_vertical"
-            android:layout_marginBottom="8dp"
+            android:layout_marginTop="8dp"
             android:visibility="gone">
 
             <TextView
@@ -168,96 +180,20 @@
                 android:clickable="true"
                 android:focusable="true"
                 android:foreground="?attr/selectableItemBackground" />
-
         </LinearLayout>
 
-            <LinearLayout
-                android:id="@+id/layout_proposed_file_changes"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:layout_marginTop="16dp"
-                android:visibility="gone">
+        <!-- Thinking indicator at bottom for running steps -->
+        <TextView
+            android:id="@+id/text_agent_thinking"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="AI is thinking..."
+            android:textColor="@color/on_surface_variant"
+            android:textSize="12sp"
+            android:paddingTop="8dp"
+            android:visibility="gone" />
 
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Proposed File Changes:"
-                    android:textColor="?attr/colorOnSurfaceVariant"
-                    android:textSize="12sp"
-                    android:textStyle="normal"
-                    android:layout_marginBottom="4dp"/>
-
-                <androidx.recyclerview.widget.RecyclerView
-                    android:id="@+id/file_changes_container"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
-
-            </LinearLayout>
-
-            <LinearLayout
-                android:id="@+id/layout_action_summaries"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:layout_marginTop="16dp"
-                android:visibility="gone">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Actions Performed:"
-                    android:textColor="?attr/colorOnSurfaceVariant"
-                    android:textSize="12sp"
-                    android:textStyle="normal"
-                    android:layout_marginBottom="4dp"/>
-
-                </LinearLayout>
-
-            <LinearLayout
-                android:id="@+id/layout_action_buttons"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:layout_marginTop="16dp"
-                android:gravity="end"
-                android:visibility="gone">
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/button_discard"
-                    style="@style/Widget.Material3.Button.TextButton"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Discard"
-                    android:textColor="@color/error"
-                    app:strokeColor="@color/error"
-                    app:strokeWidth="1dp"
-                    app:cornerRadius="20dp"
-                    android:layout_marginEnd="8dp" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/button_accept"
-                    style="@style/Widget.Material3.Button.UnelevatedButton"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Accept"
-                    android:textColor="@color/on_primary"
-                    android:backgroundTint="@color/primary"
-                    app:cornerRadius="20dp" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/button_reapply"
-                    style="@style/Widget.Material3.Button.UnelevatedButton"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Reapply"
-                    android:textColor="@color/on_primary"
-                    android:backgroundTint="@color/primary"
-                    app:cornerRadius="20dp"
-                    android:visibility="gone" />
-
-            </LinearLayout>
+        <!-- Action buttons removed for agent auto-apply -->
 
     </LinearLayout>
 </LinearLayout>

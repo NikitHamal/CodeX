@@ -419,6 +419,27 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                     Log.w(TAG, "Plan parse failed", e);
                 }
 
+                // If this is a file_operation response during an executing plan, update the existing plan message
+                if (!isPlan && aiAssistant != null && aiAssistant.isAgentModeEnabled() && lastPlanMessagePosition != null && proposedFileChanges != null && !proposedFileChanges.isEmpty()) {
+                    AIChatFragment frag = activity.getAiChatFragment();
+                    ChatMessage planMsg = frag.getMessageAt(lastPlanMessagePosition);
+                    if (planMsg != null) {
+                        // Append short explanation under the plan
+                        String existing = planMsg.getContent() != null ? planMsg.getContent() : "";
+                        String sep = existing.endsWith("\n") ? "" : "\n\n";
+                        String toAppend = (explanation != null && !explanation.trim().isEmpty()) ? (sep + explanation.trim()) : "";
+                        planMsg.setContent(existing + toAppend);
+                        // Merge proposed file changes for this step
+                        List<ChatMessage.FileActionDetail> merged = planMsg.getProposedFileChanges() != null ? planMsg.getProposedFileChanges() : new ArrayList<>();
+                        merged.addAll(proposedFileChanges);
+                        planMsg.setProposedFileChanges(merged);
+                        // Update the single message and auto-apply
+                        frag.updateMessage(lastPlanMessagePosition, planMsg);
+                        onAiAcceptActions(lastPlanMessagePosition, planMsg);
+                        return;
+                    }
+                }
+
                 ChatMessage aiMessage = new ChatMessage(
                         ChatMessage.SENDER_AI,
                         explanation,

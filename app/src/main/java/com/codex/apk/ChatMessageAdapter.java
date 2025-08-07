@@ -120,13 +120,25 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
     }
 
     static class AiMessageViewHolder extends RecyclerView.ViewHolder {
-        TextView textMessage; TextView textAiModelName; LinearLayout layoutActionButtons; MaterialButton buttonAccept; MaterialButton buttonDiscard; MaterialButton buttonReapply; LinearLayout layoutActionSummaries; RecyclerView fileChangesContainer; LinearLayout layoutThinkingSection; TextView textThinkingContent; ImageView iconThinkingExpand; LinearLayout layoutWebSources; TextView buttonWebSources; LinearLayout layoutTypingIndicator; TextView textTypingIndicator; LinearLayout layoutPlanSteps; RecyclerView recyclerPlanSteps; TextView textAgentThinking;
+        TextView textMessage; TextView textAiModelName; RecyclerView fileChangesContainer; LinearLayout layoutThinkingSection; TextView textThinkingContent; ImageView iconThinkingExpand; LinearLayout layoutWebSources; TextView buttonWebSources; LinearLayout layoutTypingIndicator; TextView textTypingIndicator; LinearLayout layoutPlanSteps; RecyclerView recyclerPlanSteps; TextView textAgentThinking;
         private final OnAiActionInteractionListener listener; private final Context context; private MarkdownFormatter markdownFormatter;
         AiMessageViewHolder(View itemView, OnAiActionInteractionListener listener) {
             super(itemView); this.listener = listener; this.context = itemView.getContext();
-            textMessage = itemView.findViewById(R.id.text_message); textAiModelName = itemView.findViewById(R.id.text_ai_model_name); layoutActionButtons = itemView.findViewById(R.id.layout_action_buttons); buttonAccept = itemView.findViewById(R.id.button_accept); buttonDiscard = itemView.findViewById(R.id.button_discard); buttonReapply = itemView.findViewById(R.id.button_reapply); layoutActionSummaries = itemView.findViewById(R.id.layout_action_summaries); fileChangesContainer = itemView.findViewById(R.id.file_changes_container); layoutThinkingSection = itemView.findViewById(R.id.layout_thinking_section); textThinkingContent = itemView.findViewById(R.id.text_thinking_content); iconThinkingExpand = itemView.findViewById(R.id.icon_thinking_expand); layoutWebSources = itemView.findViewById(R.id.layout_web_sources); buttonWebSources = itemView.findViewById(R.id.button_web_sources); layoutTypingIndicator = itemView.findViewById(R.id.layout_typing_indicator); textTypingIndicator = itemView.findViewById(R.id.text_typing_indicator); layoutPlanSteps = itemView.findViewById(R.id.layout_plan_steps); recyclerPlanSteps = itemView.findViewById(R.id.recycler_plan_steps); textAgentThinking = itemView.findViewById(R.id.text_agent_thinking);
+            textMessage = itemView.findViewById(R.id.text_message);
+            textAiModelName = itemView.findViewById(R.id.text_ai_model_name);
+            fileChangesContainer = itemView.findViewById(R.id.file_changes_container);
+            layoutThinkingSection = itemView.findViewById(R.id.layout_thinking_section);
+            textThinkingContent = itemView.findViewById(R.id.text_thinking_content);
+            iconThinkingExpand = itemView.findViewById(R.id.icon_thinking_expand);
+            layoutWebSources = itemView.findViewById(R.id.layout_web_sources);
+            buttonWebSources = itemView.findViewById(R.id.button_web_sources);
+            layoutTypingIndicator = itemView.findViewById(R.id.layout_typing_indicator);
+            textTypingIndicator = itemView.findViewById(R.id.text_typing_indicator);
+            layoutPlanSteps = itemView.findViewById(R.id.layout_plan_steps);
+            recyclerPlanSteps = itemView.findViewById(R.id.recycler_plan_steps);
+            textAgentThinking = itemView.findViewById(R.id.text_agent_thinking);
             markdownFormatter = MarkdownFormatter.getInstance(context);
-            itemView.setOnLongClickListener(v -> { showRawApiResponseDialog(messages.get(getBindingAdapterPosition())); return true; });
+            // Long click is set in bind with the bound message to avoid outer messages reference
         }
         
         private void showWebSourcesDialog(List<WebSource> webSources) {
@@ -156,14 +168,11 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
             layoutWebSources.setVisibility(isTyping ? View.GONE : (message.getWebSources() != null && !message.getWebSources().isEmpty() ? View.VISIBLE : View.GONE));
             layoutPlanSteps.setVisibility(isTyping ? View.GONE : (message.getPlanSteps() != null && !message.getPlanSteps().isEmpty() ? View.VISIBLE : View.GONE));
             itemView.findViewById(R.id.layout_proposed_file_changes).setVisibility(isTyping ? View.GONE : (message.getProposedFileChanges() != null && !message.getProposedFileChanges().isEmpty() ? View.VISIBLE : View.GONE));
-            layoutActionSummaries.setVisibility(View.GONE);
-            layoutActionButtons.setVisibility(View.GONE);
 
             textAiModelName.setText(message.getAiModelName());
 
             String content = message.getContent();
             if (content != null && !content.isEmpty()) {
-                // Short explanations for agent mode is handled in upstream prompts; keep rendering concise
                 String processedContent = markdownFormatter.preprocessMarkdown(content);
                 markdownFormatter.setMarkdown(textMessage, processedContent);
             } else {
@@ -199,7 +208,6 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
                 fileChangesContainer.setAdapter(fileActionAdapter);
             }
 
-            // Bottom "AI is thinking..." shimmer when steps are running
             boolean anyRunning = false;
             if (message.getPlanSteps() != null) {
                 for (ChatMessage.PlanStep ps : message.getPlanSteps()) { if ("running".equals(ps.status)) { anyRunning = true; break; } }

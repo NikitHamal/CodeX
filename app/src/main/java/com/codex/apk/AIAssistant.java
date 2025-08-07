@@ -17,7 +17,8 @@ public class AIAssistant {
     private boolean thinkingModeEnabled = false;
     private boolean webSearchEnabled = false;
     private List<ToolSpec> enabledTools = new ArrayList<>();
-    private AIActionListener actionListener;
+    private AIAssistant.AIActionListener actionListener;
+    private File projectDir; // Track project directory for tool operations
 
     public AIAssistant(Context context, ExecutorService executorService, AIActionListener actionListener) {
         this.actionListener = actionListener;
@@ -25,14 +26,18 @@ public class AIAssistant {
 
         // Initialize API clients for each provider
         apiClients.put(AIProvider.ALIBABA, new QwenApiClient(context, actionListener, null)); // projectDir can be set later
-        // apiClients.put(AIProvider.Z, new GLMApiClient(actionListener));
-        // GLMApiClient needs to be updated to implement ApiClient
+        // Register GLM client for Z provider
+        apiClients.put(AIProvider.Z, new GLMApiClient(actionListener));
     }
 
     // Legacy constructor for compatibility
     public AIAssistant(Context context, String apiKey, File projectDir, String projectName,
         ExecutorService executorService, AIActionListener actionListener) {
         this(context, executorService, actionListener);
+        // Wire the provided projectDir into Qwen client so file tools work
+        this.projectDir = projectDir;
+        ApiClient qwen = new QwenApiClient(context, this.actionListener, projectDir);
+        apiClients.put(AIProvider.ALIBABA, qwen);
     }
 
     public void sendPrompt(String userPrompt, List<ChatMessage> chatHistory, QwenConversationState qwenState, String fileName, String fileContent) {

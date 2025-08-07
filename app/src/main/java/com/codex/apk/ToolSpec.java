@@ -117,6 +117,26 @@ public class ToolSpec {
                         new String[]{"Relative path to the directory to list (use '.' for root)"}
                 )));
 
+        // searchAndReplace
+        tools.add(new ToolSpec(
+                "searchAndReplace",
+                "Search a file by pattern and replace occurrences. Supports simple regex.",
+                buildSchema(
+                        new String[]{"path", "searchPattern", "replaceWith"},
+                        new String[]{"string", "string", "string"},
+                        new String[]{"Relative path to the file", "Regex or plain text to search", "Replacement text"}
+                )));
+
+        // patchFile
+        tools.add(new ToolSpec(
+                "patchFile",
+                "Apply a unified diff patch to a file in the project workspace.",
+                buildSchema(
+                        new String[]{"path", "diffPatch"},
+                        new String[]{"string", "string"},
+                        new String[]{"Relative path to the file", "Unified diff patch content"}
+                )));
+
         return tools;
     }
 

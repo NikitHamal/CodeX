@@ -29,6 +29,8 @@ import com.codex.apk.ai.ModelCapabilities;
 import com.codex.apk.ai.AIProvider;
 import com.codex.apk.ai.WebSource;
 import java.util.Collections;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 
 
 public class QwenApiClient implements ApiClient {
@@ -208,18 +210,25 @@ public class QwenApiClient implements ApiClient {
                                     try {
                                         QwenResponseParser.ParsedResponse parsed = QwenResponseParser.parseResponse(jsonToParse);
                                         if (parsed != null && parsed.isValid && parsed.action != null && parsed.action.contains("file")) {
-                                            processFileOperationsFromParsedResponse(parsed, model.getDisplayName());
+                                            // Convert to details, enrich previews, and include thinking text in explanation
+                                            List<ChatMessage.FileActionDetail> details = QwenResponseParser.toFileActionDetails(parsed);
+                                            enrichFileActionDetails(details);
+                                            String explanation = buildExplanationWithThinking(parsed.explanation, thinkingContent.toString());
+                                            if (actionListener != null) actionListener.onAiActionsProcessed(jsonToParse, explanation, parsed.suggestions, details, model.getDisplayName());
                                         } else {
                                             String explanation = parsed != null ? parsed.explanation : "Could not fully parse response.";
+                                            explanation = buildExplanationWithThinking(explanation, thinkingContent.toString());
                                             List<String> suggestions = parsed != null ? parsed.suggestions : new ArrayList<>();
                                             if (actionListener != null) actionListener.onAiActionsProcessed(jsonToParse, explanation, suggestions, new ArrayList<>(), model.getDisplayName());
                                         }
                                     } catch (Exception e) {
                                         Log.e(TAG, "Failed to parse extracted JSON, treating as text.", e);
-                                        if (actionListener != null) actionListener.onAiActionsProcessed(null, finalContent, new ArrayList<>(), new ArrayList<>(), model.getDisplayName());
+                                        String explanation = buildExplanationWithThinking(finalContent, thinkingContent.toString());
+                                        if (actionListener != null) actionListener.onAiActionsProcessed(null, explanation, new ArrayList<>(), new ArrayList<>(), model.getDisplayName());
                                     }
                                 } else {
-                                    if (actionListener != null) actionListener.onAiActionsProcessed(null, finalContent, new ArrayList<>(), new ArrayList<>(), model.getDisplayName());
+                                    String explanation = buildExplanationWithThinking(finalContent, thinkingContent.toString());
+                                    if (actionListener != null) actionListener.onAiActionsProcessed(null, explanation, new ArrayList<>(), new ArrayList<>(), model.getDisplayName());
                                 }
 
                                 // Notify listener to save the updated state
@@ -435,6 +444,7 @@ public class QwenApiClient implements ApiClient {
     private void processFileOperationsFromParsedResponse(QwenResponseParser.ParsedResponse parsedResponse, String modelDisplayName) {
         try {
             List<ChatMessage.FileActionDetail> fileActions = QwenResponseParser.toFileActionDetails(parsedResponse);
+            enrichFileActionDetails(fileActions);
             if (actionListener != null) {
                 actionListener.onAiActionsProcessed(
                         null,
@@ -478,6 +488,8 @@ public class QwenApiClient implements ApiClient {
                     fileActions.add(actionDetail);
                 }
             }
+            // Enrich with previews
+            enrichFileActionDetails(fileActions);
             // If there are no operations but the JSON is valid, still notify the UI with explanation/suggestions
             if (actionListener != null) {
                 actionListener.onAiActionsProcessed(
@@ -631,5 +643,133 @@ public class QwenApiClient implements ApiClient {
             Log.e(TAG, "Error parsing model data", e);
             return null;
         }
+    }
+
+    // Build final explanation including thinking content if available
+    private String buildExplanationWithThinking(String baseExplanation, String thinking) {
+        if (thinking == null || thinking.trim().isEmpty()) return baseExplanation != null ? baseExplanation : "";
+        StringBuilder sb = new StringBuilder();
+        if (baseExplanation != null && !baseExplanation.trim().isEmpty()) {
+            sb.append(baseExplanation.trim()).append("\n\n");
+        }
+        sb.append("[Thinking]\n").append(thinking.trim());
+        return sb.toString();
+    }
+
+    // Enrich proposed file actions with old/new content to enable accurate diff previews
+    private void enrichFileActionDetails(List<ChatMessage.FileActionDetail> details) {
+        if (details == null || projectDir == null) return;
+        for (ChatMessage.FileActionDetail d : details) {
+            try {
+                switch (d.type) {
+                    case "createFile": {
+                        d.oldContent = "";
+                        if (d.newContent == null || d.newContent.isEmpty()) d.newContent = d.newContent != null ? d.newContent : "";
+                        if (d.newContent.isEmpty() && d.replaceWith != null) d.newContent = d.replaceWith; // fallback
+                        break;
+                    }
+                    case "updateFile": {
+                        String old = readFileSafe(new File(projectDir, d.path));
+                        d.oldContent = old;
+                        if (d.newContent == null || d.newContent.isEmpty()) d.newContent = d.newContent != null ? d.newContent : d.replaceWith != null ? d.replaceWith : d.newContent;
+                        if (d.newContent == null) d.newContent = d.oldContent; // no change fallback
+                        break;
+                    }
+                    case "searchAndReplace": {
+                        String old = readFileSafe(new File(projectDir, d.path));
+                        d.oldContent = old;
+                        String pattern = d.searchPattern != null ? d.searchPattern : d.search;
+                        String repl = d.replaceWith != null ? d.replaceWith : d.replace;
+                        d.newContent = applySearchReplace(old, pattern, repl);
+                        break;
+                    }
+                    case "smartUpdate": {
+                        String old = readFileSafe(new File(projectDir, d.path));
+                        d.oldContent = old;
+                        String mode = d.updateType != null ? d.updateType : "full";
+                        if ("append".equals(mode)) {
+                            d.newContent = (old != null ? old : "") + (d.newContent != null ? d.newContent : d.contentType != null ? d.contentType : "");
+                        } else if ("prepend".equals(mode)) {
+                            d.newContent = (d.newContent != null ? d.newContent : "") + (old != null ? old : "");
+                        } else if ("replace".equals(mode)) {
+                            String pattern = d.searchPattern != null ? d.searchPattern : d.search;
+                            String repl = d.replaceWith != null ? d.replaceWith : d.replace;
+                            d.newContent = applySearchReplace(old, pattern, repl);
+                        } else {
+                            // full or unknown
+                            if (d.newContent == null || d.newContent.isEmpty()) d.newContent = d.replaceWith != null ? d.replaceWith : "";
+                        }
+                        break;
+                    }
+                    case "deleteFile": {
+                        String old = readFileSafe(new File(projectDir, d.path));
+                        d.oldContent = old;
+                        d.newContent = "";
+                        break;
+                    }
+                    case "renameFile": {
+                        String old = readFileSafe(new File(projectDir, d.oldPath));
+                        d.oldContent = old;
+                        d.newContent = readFileSafe(new File(projectDir, d.newPath));
+                        break;
+                    }
+                    case "modifyLines": {
+                        String old = readFileSafe(new File(projectDir, d.path));
+                        d.oldContent = old;
+                        d.newContent = applyModifyLines(old, d.startLine, d.deleteCount, d.insertLines);
+                        break;
+                    }
+                    case "patchFile": {
+                        String old = readFileSafe(new File(projectDir, d.path));
+                        d.oldContent = old;
+                        // Applying a unified diff is non-trivial; leave newContent empty to rely on diffPatch
+                        break;
+                    }
+                    default: {
+                        // No-op
+                        break;
+                    }
+                }
+            } catch (Exception e) {
+                Log.w(TAG, "Failed to enrich action detail for path " + d.path + ": " + e.getMessage());
+            }
+        }
+    }
+
+    private String readFileSafe(File f) {
+        try {
+            if (f != null && f.exists()) {
+                return new String(Files.readAllBytes(f.toPath()), StandardCharsets.UTF_8);
+            }
+        } catch (Exception ignored) {}
+        return "";
+    }
+
+    private String applySearchReplace(String input, String pattern, String replacement) {
+        if (input == null) return "";
+        if (pattern == null || pattern.isEmpty()) return input;
+        String repl = replacement != null ? replacement : "";
+        try {
+            return input.replaceAll(pattern, repl);
+        } catch (Exception e) {
+            // Fallback to plain replace if regex fails
+            return input.replace(pattern, repl);
+        }
+    }
+
+    private String applyModifyLines(String content, int startLine, int deleteCount, List<String> insertLines) {
+        if (content == null) return "";
+        String[] lines = content.split("\n", -1);
+        List<String> out = new ArrayList<>();
+        for (String l : lines) out.add(l);
+        int idx = Math.max(0, Math.min(out.size(), startLine > 0 ? startLine - 1 : 0));
+        int toDelete = Math.max(0, Math.min(deleteCount, out.size() - idx));
+        for (int i = 0; i < toDelete; i++) {
+            out.remove(idx);
+        }
+        if (insertLines != null && !insertLines.isEmpty()) {
+            out.addAll(idx, insertLines);
+        }
+        return String.join("\n", out);
     }
 }

@@ -25,8 +25,22 @@ public class QwenResponseParser {
         public final String newPath;
         public final String search;
         public final String replace;
+        // Advanced fields
+        public final String updateType;
+        public final String searchPattern;
+        public final String replaceWith;
+        public final String diffPatch;
+        public final Boolean createBackup;
+        public final Boolean validateContent;
+        public final String contentType;
+        public final String errorHandling;
+        public final Boolean generateDiff;
+        public final String diffFormat;
 
-        public FileOperation(String type, String path, String content, String oldPath, String newPath, String search, String replace) {
+        public FileOperation(String type, String path, String content, String oldPath, String newPath, String search, String replace,
+                             String updateType, String searchPattern, String replaceWith, String diffPatch,
+                             Boolean createBackup, Boolean validateContent, String contentType,
+                             String errorHandling, Boolean generateDiff, String diffFormat) {
             this.type = type;
             this.path = path;
             this.content = content;
@@ -34,6 +48,16 @@ public class QwenResponseParser {
             this.newPath = newPath;
             this.search = search;
             this.replace = replace;
+            this.updateType = updateType;
+            this.searchPattern = searchPattern;
+            this.replaceWith = replaceWith;
+            this.diffPatch = diffPatch;
+            this.createBackup = createBackup;
+            this.validateContent = validateContent;
+            this.contentType = contentType;
+            this.errorHandling = errorHandling;
+            this.generateDiff = generateDiff;
+            this.diffFormat = diffFormat;
         }
     }
 
@@ -83,7 +107,22 @@ public class QwenResponseParser {
                 String newPath = jsonObj.has("newPath") ? jsonObj.get("newPath").getAsString() : "";
                 String search = jsonObj.has("search") ? jsonObj.get("search").getAsString() : "";
                 String replace = jsonObj.has("replace") ? jsonObj.get("replace").getAsString() : "";
-                operations.add(new FileOperation(type, path, content, oldPath, newPath, search, replace));
+
+                // Advanced fields
+                String updateType = jsonObj.has("updateType") ? jsonObj.get("updateType").getAsString() : null;
+                String searchPattern = jsonObj.has("searchPattern") ? jsonObj.get("searchPattern").getAsString() : null;
+                String replaceWith = jsonObj.has("replaceWith") ? jsonObj.get("replaceWith").getAsString() : null;
+                String diffPatch = jsonObj.has("diffPatch") ? jsonObj.get("diffPatch").getAsString() : null;
+                Boolean createBackup = jsonObj.has("createBackup") ? jsonObj.get("createBackup").getAsBoolean() : null;
+                Boolean validateContent = jsonObj.has("validateContent") ? jsonObj.get("validateContent").getAsBoolean() : null;
+                String contentType = jsonObj.has("contentType") ? jsonObj.get("contentType").getAsString() : null;
+                String errorHandling = jsonObj.has("errorHandling") ? jsonObj.get("errorHandling").getAsString() : null;
+                Boolean generateDiff = jsonObj.has("generateDiff") ? jsonObj.get("generateDiff").getAsBoolean() : null;
+                String diffFormat = jsonObj.has("diffFormat") ? jsonObj.get("diffFormat").getAsString() : null;
+
+                operations.add(new FileOperation(type, path, content, oldPath, newPath, search, replace,
+                        updateType, searchPattern, replaceWith, diffPatch, createBackup, validateContent, contentType,
+                        errorHandling, generateDiff, diffFormat));
 
                 String explanation = jsonObj.has("explanation") ? jsonObj.get("explanation").getAsString() : "";
                 List<String> suggestions = new ArrayList<>();
@@ -127,8 +166,22 @@ public class QwenResponseParser {
                 String newPath = operation.has("newPath") ? operation.get("newPath").getAsString() : "";
                 String search = operation.has("search") ? operation.get("search").getAsString() : "";
                 String replace = operation.has("replace") ? operation.get("replace").getAsString() : "";
+
+                // Advanced fields
+                String updateType = operation.has("updateType") ? operation.get("updateType").getAsString() : null;
+                String searchPattern = operation.has("searchPattern") ? operation.get("searchPattern").getAsString() : null;
+                String replaceWith = operation.has("replaceWith") ? operation.get("replaceWith").getAsString() : null;
+                String diffPatch = operation.has("diffPatch") ? operation.get("diffPatch").getAsString() : null;
+                Boolean createBackup = operation.has("createBackup") ? operation.get("createBackup").getAsBoolean() : null;
+                Boolean validateContent = operation.has("validateContent") ? operation.get("validateContent").getAsBoolean() : null;
+                String contentType = operation.has("contentType") ? operation.get("contentType").getAsString() : null;
+                String errorHandling = operation.has("errorHandling") ? operation.get("errorHandling").getAsString() : null;
+                Boolean generateDiff = operation.has("generateDiff") ? operation.get("generateDiff").getAsBoolean() : null;
+                String diffFormat = operation.has("diffFormat") ? operation.get("diffFormat").getAsString() : null;
                 
-                operations.add(new FileOperation(type, path, content, oldPath, newPath, search, replace));
+                operations.add(new FileOperation(type, path, content, oldPath, newPath, search, replace,
+                        updateType, searchPattern, replaceWith, diffPatch, createBackup, validateContent, contentType,
+                        errorHandling, generateDiff, diffFormat));
             }
         }
         
@@ -157,7 +210,7 @@ public class QwenResponseParser {
     private static boolean isSingleFileAction(String action) {
         return "createFile".equals(action) || "updateFile".equals(action) || "deleteFile".equals(action)
                 || "renameFile".equals(action) || "readFile".equals(action) || "listFiles".equals(action)
-                || "searchAndReplace".equals(action);
+                || "searchAndReplace".equals(action) || "patchFile".equals(action) || "smartUpdate".equals(action);
     }
 
     /**
@@ -173,7 +226,7 @@ public class QwenResponseParser {
         boolean isJson = (trimmed.startsWith("{") && trimmed.endsWith("}")) ||
                         (trimmed.startsWith("[") && trimmed.endsWith("]"));
         
-        Log.d(TAG, "looksLikeJson: checking '" + trimmed.substring(0, Math.min(50, trimmed.length())) + "...' -> " + isJson);
+        Log.d(TAG, "looksLikeJson: checking '" + trimmed.substring(0, Math.min(50, trimmed.length())) + "...'") ;
         return isJson;
     }
 
@@ -187,6 +240,17 @@ public class QwenResponseParser {
             ChatMessage.FileActionDetail detail = new ChatMessage.FileActionDetail(
                 op.type, op.path, op.oldPath, op.newPath, "", op.content, 0, 0, null, op.search, op.replace
             );
+            // Map advanced fields
+            if (op.updateType != null) detail.updateType = op.updateType;
+            if (op.searchPattern != null) detail.searchPattern = op.searchPattern;
+            if (op.replaceWith != null) detail.replaceWith = op.replaceWith;
+            if (op.diffPatch != null) detail.diffPatch = op.diffPatch;
+            if (op.createBackup != null) detail.createBackup = op.createBackup;
+            if (op.validateContent != null) detail.validateContent = op.validateContent;
+            if (op.contentType != null) detail.contentType = op.contentType;
+            if (op.errorHandling != null) detail.errorHandling = op.errorHandling;
+            if (op.generateDiff != null) detail.generateDiff = op.generateDiff;
+            if (op.diffFormat != null) detail.diffFormat = op.diffFormat;
             details.add(detail);
         }
         

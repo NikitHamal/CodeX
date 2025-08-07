@@ -21,6 +21,7 @@ import androidx.appcompat.app.AlertDialog;
 import com.codex.apk.ai.WebSource;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
@@ -101,6 +102,56 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
     }
 
     /**
+     * Simple adapter to render plan steps.
+     */
+    static class PlanStepsAdapter extends RecyclerView.Adapter<PlanStepsAdapter.StepViewHolder> {
+        private final List<ChatMessage.PlanStep> steps;
+        PlanStepsAdapter(List<ChatMessage.PlanStep> steps) {
+            this.steps = steps != null ? steps : new ArrayList<>();
+        }
+        @NonNull
+        @Override
+        public StepViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+            View v = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_plan_step, parent, false);
+            return new StepViewHolder(v);
+        }
+        @Override
+        public void onBindViewHolder(@NonNull StepViewHolder holder, int position) {
+            holder.bind(steps.get(position));
+        }
+        @Override
+        public int getItemCount() { return steps.size(); }
+        static class StepViewHolder extends RecyclerView.ViewHolder {
+            TextView title;
+            TextView status;
+            StepViewHolder(View itemView) {
+                super(itemView);
+                title = itemView.findViewById(R.id.text_step_title);
+                status = itemView.findViewById(R.id.text_step_status);
+            }
+            void bind(ChatMessage.PlanStep step) {
+                title.setText(step.title);
+                String s = step.status != null ? step.status : "pending";
+                status.setText(capitalize(s));
+                int colorId;
+                switch (s) {
+                    case "running": colorId = R.color.warning_container; break;
+                    case "completed": colorId = R.color.success_container; break;
+                    case "failed": colorId = R.color.error_container; break;
+                    default: colorId = R.color.surface_container; break;
+                }
+                if (status.getBackground() instanceof GradientDrawable) {
+                    GradientDrawable bg = (GradientDrawable) status.getBackground().mutate();
+                    bg.setColor(itemView.getResources().getColor(colorId));
+                }
+            }
+            private String capitalize(String x) {
+                return x.length() > 0 ? Character.toUpperCase(x.charAt(0)) + x.substring(1) : x;
+            }
+        }
+    }
+
+    /**
      * ViewHolder for user messages.
      */
     static class UserMessageViewHolder extends RecyclerView.ViewHolder {
@@ -141,6 +192,9 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
         TextView buttonWebSources;
         LinearLayout layoutTypingIndicator;
         TextView textTypingIndicator;
+        // Plan
+        LinearLayout layoutPlanSteps;
+        RecyclerView recyclerPlanSteps;
         
         private final OnAiActionInteractionListener listener;
         private final Context context;
@@ -168,6 +222,9 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
             buttonWebSources = itemView.findViewById(R.id.button_web_sources);
             layoutTypingIndicator = itemView.findViewById(R.id.layout_typing_indicator);
             textTypingIndicator = itemView.findViewById(R.id.text_typing_indicator);
+            // Plan
+            layoutPlanSteps = itemView.findViewById(R.id.layout_plan_steps);
+            recyclerPlanSteps = itemView.findViewById(R.id.recycler_plan_steps);
             
             // Initialize markdown formatter
             markdownFormatter = MarkdownFormatter.getInstance(context);
@@ -218,7 +275,7 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
             buttonCopy.setOnClickListener(v -> {
                 android.content.ClipboardManager clipboard = (android.content.ClipboardManager) context.getSystemService(Context.CLIPBOARD_SERVICE);
                 if (clipboard != null) {
-                    android.content.ClipData clip = android.content.ClipData.newPlainText("Raw API Response", rawResponse != null ? rawResponse : "");
+                    android.content.ClipData clip = new android.content.ClipData.newPlainText("Raw API Response", rawResponse != null ? rawResponse : "");
                     clipboard.setPrimaryClip(clip);
                     android.widget.Toast.makeText(context, "Raw response copied", android.widget.Toast.LENGTH_SHORT).show();
                 }
@@ -246,19 +303,18 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
             textMessage.setVisibility(isTyping ? View.GONE : View.VISIBLE);
             layoutThinkingSection.setVisibility(isTyping ? View.GONE : (message.getThinkingContent() != null && !message.getThinkingContent().trim().isEmpty() ? View.VISIBLE : View.GONE));
             layoutWebSources.setVisibility(isTyping ? View.GONE : (message.getWebSources() != null && !message.getWebSources().isEmpty() ? View.VISIBLE : View.GONE));
+            layoutPlanSteps.setVisibility(isTyping ? View.GONE : (message.getPlanSteps() != null && !message.getPlanSteps().isEmpty() ? View.VISIBLE : View.GONE));
             itemView.findViewById(R.id.layout_proposed_file_changes).setVisibility(isTyping ? View.GONE : (message.getProposedFileChanges() != null && !message.getProposedFileChanges().isEmpty() ? View.VISIBLE : View.GONE));
             layoutActionSummaries.setVisibility(isTyping ? View.GONE : (message.getActionSummaries() != null && !message.getActionSummaries().isEmpty() ? View.VISIBLE : View.GONE));
             layoutActionButtons.setVisibility(isTyping ? View.GONE : (message.getProposedFileChanges() != null && !message.getProposedFileChanges().isEmpty() ? View.VISIBLE : View.GONE));
 
             if (isTyping) {
-                // If AI is typing, we just show the indicator and the model name.
                 textAiModelName.setText(message.getAiModelName());
-                textTypingIndicator.setText(message.getContent()); // You can update this text dynamically if needed
+                textTypingIndicator.setText(message.getContent());
             } else {
-                // If it's a regular message, bind all data as before.
                 textAiModelName.setText(message.getAiModelName());
 
-                // Handle main content
+                // Main content
                 String content = message.getContent();
                 if (content != null && !content.isEmpty()) {
                     String processedContent = markdownFormatter.preprocessMarkdown(content);
@@ -267,7 +323,7 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
                     textMessage.setText("");
                 }
 
-                // Handle thinking content
+                // Thinking
                 if (layoutThinkingSection.getVisibility() == View.VISIBLE) {
                     String processedThinking = markdownFormatter.preprocessMarkdown(message.getThinkingContent());
                     markdownFormatter.setThinkingMarkdown(textThinkingContent, processedThinking);
@@ -283,13 +339,18 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
                     }
                 }
 
-                // Handle web sources
+                // Plan steps
+                if (layoutPlanSteps.getVisibility() == View.VISIBLE) {
+                    recyclerPlanSteps.setAdapter(new PlanStepsAdapter(message.getPlanSteps()));
+                }
+
+                // Web sources
                 if (layoutWebSources.getVisibility() == View.VISIBLE) {
                     buttonWebSources.setText("Web sources (" + message.getWebSources().size() + ")");
                     buttonWebSources.setOnClickListener(v -> showWebSourcesDialog(message.getWebSources()));
                 }
 
-                // Handle proposed file changes
+                // Proposed file changes
                 if (itemView.findViewById(R.id.layout_proposed_file_changes).getVisibility() == View.VISIBLE) {
                     FileActionAdapter fileActionAdapter = new FileActionAdapter(message.getProposedFileChanges(), fileActionDetail -> {
                         if (listener != null) listener.onFileChangeClicked(fileActionDetail);
@@ -297,7 +358,7 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
                     fileChangesContainer.setAdapter(fileActionAdapter);
                 }
 
-                // Handle action summaries
+                // Action summaries
                 if (layoutActionSummaries.getVisibility() == View.VISIBLE) {
                     layoutActionSummaries.removeAllViews();
                     TextView header = new TextView(context);
@@ -314,7 +375,7 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
                     }
                 }
 
-                // Handle action buttons
+                // Action buttons
                 if (layoutActionButtons.getVisibility() == View.VISIBLE) {
                     buttonAccept.setVisibility(message.getStatus() == ChatMessage.STATUS_PENDING_APPROVAL ? View.VISIBLE : View.GONE);
                     buttonDiscard.setVisibility(message.getStatus() == ChatMessage.STATUS_PENDING_APPROVAL ? View.VISIBLE : View.GONE);

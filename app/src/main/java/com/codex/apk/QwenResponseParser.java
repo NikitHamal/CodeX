@@ -15,6 +15,21 @@ public class QwenResponseParser {
     private static final String TAG = "QwenResponseParser";
 
     /**
+     * Represents a parsed plan step
+     */
+    public static class PlanStep {
+        public final String id;
+        public final String title;
+        public final String kind; // file | search | analysis | preview | validate | other
+
+        public PlanStep(String id, String title, String kind) {
+            this.id = id;
+            this.title = title;
+            this.kind = kind;
+        }
+    }
+
+    /**
      * Represents a parsed file operation from JSON response
      */
     public static class FileOperation {
@@ -65,16 +80,18 @@ public class QwenResponseParser {
      * Represents a complete parsed JSON response
      */
     public static class ParsedResponse {
-        public final String action;
+        public final String action; // plan | file_operation | json_response | single file op
         public final List<FileOperation> operations;
+        public final List<PlanStep> planSteps;
         public final String explanation;
         public final List<String> suggestions;
         public final boolean isValid;
 
-        public ParsedResponse(String action, List<FileOperation> operations, 
-                            String explanation, List<String> suggestions, boolean isValid) {
+        public ParsedResponse(String action, List<FileOperation> operations, List<PlanStep> planSteps,
+                              String explanation, List<String> suggestions, boolean isValid) {
             this.action = action;
             this.operations = operations;
+            this.planSteps = planSteps;
             this.explanation = explanation;
             this.suggestions = suggestions;
             this.isValid = isValid;
@@ -90,7 +107,22 @@ public class QwenResponseParser {
             Log.d(TAG, "Parsing response: " + responseText.substring(0, Math.min(200, responseText.length())) + "...");
             JsonObject jsonObj = JsonParser.parseString(responseText).getAsJsonObject();
 
-            // Check for multi-operation format first, regardless of action type
+            // Plan response
+            if (jsonObj.has("action") && "plan".equalsIgnoreCase(jsonObj.get("action").getAsString()) && jsonObj.has("steps")) {
+                List<PlanStep> steps = new ArrayList<>();
+                JsonArray arr = jsonObj.getAsJsonArray("steps");
+                for (int i = 0; i < arr.size(); i++) {
+                    JsonObject s = arr.get(i).getAsJsonObject();
+                    String id = s.has("id") ? s.get("id").getAsString() : ("s" + (i + 1));
+                    String title = s.has("title") ? s.get("title").getAsString() : ("Step " + (i + 1));
+                    String kind = s.has("kind") ? s.get("kind").getAsString() : "file";
+                    steps.add(new PlanStep(id, title, kind));
+                }
+                String explanation = jsonObj.has("goal") ? ("Plan for: " + jsonObj.get("goal").getAsString()) : "Plan";
+                return new ParsedResponse("plan", new ArrayList<>(), steps, explanation, new ArrayList<>(), true);
+            }
+
+            // Check for multi-operation format first
             if (jsonObj.has("operations") && jsonObj.get("operations").isJsonArray()) {
                 Log.d(TAG, "Detected 'operations' array, parsing as multi-operation response");
                 return parseFileOperationResponse(jsonObj);
@@ -132,7 +164,7 @@ public class QwenResponseParser {
                         suggestions.add(suggestionsArray.get(i).getAsString());
                     }
                 }
-                return new ParsedResponse(type, operations, explanation, suggestions, true);
+                return new ParsedResponse(type, operations, new ArrayList<>(), explanation, suggestions, true);
             }
 
             Log.d(TAG, "Not a recognized file operation response, treating as regular JSON");
@@ -195,7 +227,7 @@ public class QwenResponseParser {
             }
         }
         
-        return new ParsedResponse("file_operation", operations, explanation, suggestions, true);
+        return new ParsedResponse("file_operation", operations, new ArrayList<>(), explanation, suggestions, true);
     }
 
     /**
@@ -203,7 +235,7 @@ public class QwenResponseParser {
      */
     private static ParsedResponse parseRegularJsonResponse(JsonObject jsonObj) {
         // For regular JSON responses, we don't have specific operations
-        return new ParsedResponse("json_response", new ArrayList<>(), 
+        return new ParsedResponse("json_response", new ArrayList<>(), new ArrayList<>(), 
                                 jsonObj.toString(), new ArrayList<>(), true);
     }
 
@@ -226,7 +258,7 @@ public class QwenResponseParser {
         boolean isJson = (trimmed.startsWith("{") && trimmed.endsWith("}")) ||
                         (trimmed.startsWith("[") && trimmed.endsWith("]"));
         
-        Log.d(TAG, "looksLikeJson: checking '" + trimmed.substring(0, Math.min(50, trimmed.length())) + "...'") ;
+        Log.d(TAG, "looksLikeJson: checking '" + trimmed.substring(0, Math.min(50, trimmed.length())) + "...'");
         return isJson;
     }
 
@@ -255,5 +287,15 @@ public class QwenResponseParser {
         }
         
         return details;
+    }
+
+    /** Convert ParsedResponse plan steps to ChatMessage.PlanStep list */
+    public static List<ChatMessage.PlanStep> toPlanSteps(ParsedResponse response) {
+        List<ChatMessage.PlanStep> out = new ArrayList<>();
+        if (response.planSteps == null) return out;
+        for (PlanStep s : response.planSteps) {
+            out.add(new ChatMessage.PlanStep(s.id, s.title, s.kind));
+        }
+        return out;
     }
 }

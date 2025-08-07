@@ -38,6 +38,9 @@ public class ChatMessage {
     // New fields for thinking mode and web search
     private String thinkingContent; // The thinking/reasoning content from AI
     private List<WebSource> webSources; // Web sources used in the response
+
+    // Plan steps (for agent plan rendering)
+    private List<PlanStep> planSteps;
     
     // Qwen threading fields
     private String fid; // Unique message id
@@ -56,6 +59,7 @@ public class ChatMessage {
         this.suggestions = new ArrayList<>();
         this.proposedFileChanges = new ArrayList<>();
         this.webSources = new ArrayList<>();
+        this.planSteps = new ArrayList<>();
         this.fid = java.util.UUID.randomUUID().toString();
         this.parentId = null;
         this.childrenIds = new ArrayList<>();
@@ -77,6 +81,7 @@ public class ChatMessage {
         this.proposedFileChanges = proposedFileChanges != null ? new ArrayList<>(proposedFileChanges) : new ArrayList<>();
         this.status = status;
         this.webSources = new ArrayList<>();
+        this.planSteps = new ArrayList<>();
         this.fid = java.util.UUID.randomUUID().toString();
         this.parentId = null;
         this.childrenIds = new ArrayList<>();
@@ -93,6 +98,7 @@ public class ChatMessage {
     public String getRawAiResponseJson() { return rawAiResponseJson; }
     public String getRawApiResponse() { return rawAiResponseJson; }
     public List<FileActionDetail> getProposedFileChanges() { return proposedFileChanges; }
+    public List<PlanStep> getPlanSteps() { return planSteps; }
     public int getStatus() { return status; }
     public String getThinkingContent() { return thinkingContent; }
     public List<WebSource> getWebSources() { return webSources; }
@@ -113,7 +119,21 @@ public class ChatMessage {
     public void setProposedFileChanges(List<FileActionDetail> proposedFileChanges) { this.proposedFileChanges = proposedFileChanges; }
     public void setThinkingContent(String thinkingContent) { this.thinkingContent = thinkingContent; }
     public void setWebSources(List<WebSource> webSources) { this.webSources = webSources; }
+    public void setPlanSteps(List<PlanStep> planSteps) { this.planSteps = planSteps; }
 
+    /** Plan step model for UI */
+    public static class PlanStep {
+        public final String id;
+        public final String title;
+        public final String kind;
+        public String status; // pending | running | completed | failed
+        public PlanStep(String id, String title, String kind) {
+            this.id = id;
+            this.title = title;
+            this.kind = kind;
+            this.status = "pending";
+        }
+    }
 
     /**
      * Data class to represent a single file action detail.

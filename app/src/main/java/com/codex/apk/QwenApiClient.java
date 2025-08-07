@@ -147,10 +147,10 @@ public class QwenApiClient implements ApiClient {
 
         String qwenToken = getQwenToken();
         Request request = new Request.Builder()
-                .url(QWEN_BASE_URL + "/chat/completions?chat_id=" + state.getConversationId())
-                .post(RequestBody.create(requestBody.toString(), MediaType.parse("application/json")))
-                .headers(buildQwenHeaders(qwenToken, state.getConversationId()))
-                .build();
+            .url(QWEN_BASE_URL + "/chat/completions?chat_id=" + state.getConversationId())
+            .post(RequestBody.create(requestBody.toString(), MediaType.parse("application/json")))
+            .headers(buildQwenHeaders(qwenToken, state.getConversationId()))
+            .build();
 
         try (Response response = httpClient.newCall(request).execute()) {
             if (response.isSuccessful() && response.body() != null) {
@@ -209,17 +209,37 @@ public class QwenApiClient implements ApiClient {
                                 if (jsonToParse != null) {
                                     try {
                                         QwenResponseParser.ParsedResponse parsed = QwenResponseParser.parseResponse(jsonToParse);
-                                        if (parsed != null && parsed.isValid && parsed.action != null && parsed.action.contains("file")) {
-                                            // Convert to details, enrich previews, and include thinking text in explanation
-                                            List<ChatMessage.FileActionDetail> details = QwenResponseParser.toFileActionDetails(parsed);
-                                            enrichFileActionDetails(details);
-                                            String explanation = buildExplanationWithThinking(parsed.explanation, thinkingContent.toString());
-                                            if (actionListener != null) actionListener.onAiActionsProcessed(jsonToParse, explanation, parsed.suggestions, details, model.getDisplayName());
+                                        if (parsed != null && parsed.isValid) {
+                                            if ("plan".equals(parsed.action)) {
+                                                // Create a message with plan steps (no file changes yet)
+                                                ChatMessage aiMessage = new ChatMessage(
+                                                    ChatMessage.SENDER_AI,
+                                                    parsed.explanation,
+                                                    null,
+                                                    parsed.suggestions,
+                                                    model.getDisplayName(),
+                                                    System.currentTimeMillis(),
+                                                    jsonToParse,
+                                                    new ArrayList<>(),
+                                                    ChatMessage.STATUS_PENDING_APPROVAL
+                                                );
+                                                aiMessage.setPlanSteps(QwenResponseParser.toPlanSteps(parsed));
+                                                // Show the plan now
+                                                if (actionListener != null) {
+                                                    actionListener.onAiActionsProcessed(jsonToParse, parsed.explanation, parsed.suggestions, new ArrayList<>(), model.getDisplayName());
+                                                }
+                                            } else if (parsed.action != null && parsed.action.contains("file")) {
+                                                List<ChatMessage.FileActionDetail> details = QwenResponseParser.toFileActionDetails(parsed);
+                                                enrichFileActionDetails(details);
+                                                String explanation = buildExplanationWithThinking(parsed.explanation, thinkingContent.toString());
+                                                if (actionListener != null) actionListener.onAiActionsProcessed(jsonToParse, explanation, parsed.suggestions, details, model.getDisplayName());
+                                            } else {
+                                                String explanation = buildExplanationWithThinking(parsed.explanation, thinkingContent.toString());
+                                                if (actionListener != null) actionListener.onAiActionsProcessed(jsonToParse, explanation, parsed.suggestions, new ArrayList<>(), model.getDisplayName());
+                                            }
                                         } else {
-                                            String explanation = parsed != null ? parsed.explanation : "Could not fully parse response.";
-                                            explanation = buildExplanationWithThinking(explanation, thinkingContent.toString());
-                                            List<String> suggestions = parsed != null ? parsed.suggestions : new ArrayList<>();
-                                            if (actionListener != null) actionListener.onAiActionsProcessed(jsonToParse, explanation, suggestions, new ArrayList<>(), model.getDisplayName());
+                                            String explanation = buildExplanationWithThinking(finalContent, thinkingContent.toString());
+                                            if (actionListener != null) actionListener.onAiActionsProcessed(null, explanation, new ArrayList<>(), new ArrayList<>(), model.getDisplayName());
                                         }
                                     } catch (Exception e) {
                                         Log.e(TAG, "Failed to parse extracted JSON, treating as text.", e);

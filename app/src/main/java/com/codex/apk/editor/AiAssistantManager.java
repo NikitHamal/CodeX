@@ -166,11 +166,18 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
             for (int i = 0; i < steps.size(); i++) {
                 ChatMessage.FileActionDetail step = steps.get(i);
 
-                // Mark corresponding plan step running
-                updateNextPlanStepStatus("running");
+                // Mark next plan step running (file-kind)
+                setNextPlanStepStatus("running");
                 activity.runOnUiThread(() -> {
                     AIChatFragment frag = activity.getAiChatFragment();
-                    if (frag != null) frag.updateMessage(messagePosition, message);
+                    if (frag != null) {
+                        frag.updateMessage(messagePosition, message);
+                        // Also refresh plan message if available
+                        if (lastPlanMessagePosition != null) {
+                            ChatMessage planMsg = frag.getMessageAt(lastPlanMessagePosition);
+                            if (planMsg != null) frag.updateMessage(lastPlanMessagePosition, planMsg);
+                        }
+                    }
                 });
 
                 try {
@@ -178,20 +185,24 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                     appliedSummaries.add(summary);
                     step.stepStatus = "completed";
                     step.stepMessage = "Completed";
-                    // Mark plan step completed
-                    updateCurrentRunningPlanStepStatus("completed");
+                    setCurrentRunningPlanStepStatus("completed");
                 } catch (Exception ex) {
                     Log.e(TAG, "Agent step failed: " + step.getSummary(), ex);
                     step.stepStatus = "failed";
                     step.stepMessage = ex.getMessage();
-                    // Mark plan step failed
-                    updateCurrentRunningPlanStepStatus("failed");
+                    setCurrentRunningPlanStepStatus("failed");
                 }
 
                 // Update UI after each step
                 activity.runOnUiThread(() -> {
                     AIChatFragment frag = activity.getAiChatFragment();
-                    if (frag != null) frag.updateMessage(messagePosition, message);
+                    if (frag != null) {
+                        frag.updateMessage(messagePosition, message);
+                        if (lastPlanMessagePosition != null) {
+                            ChatMessage planMsg = frag.getMessageAt(lastPlanMessagePosition);
+                            if (planMsg != null) frag.updateMessage(lastPlanMessagePosition, planMsg);
+                        }
+                    }
                 });
             }
 
@@ -208,29 +219,90 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
         });
     }
 
-    private void updateNextPlanStepStatus(String status) {
+    // Plan step status helpers
+    private void setNextPlanStepStatus(String status) {
         if (lastPlanMessagePosition == null) return;
         AIChatFragment frag = activity.getAiChatFragment();
         if (frag == null) return;
-        // Fetch current message
-        // We cannot access chat list directly; rely on activity to keep the same object reference used earlier.
-        // Here, we optimistically update plan step status on the last plan message via adapter references.
-        // Safer: have EditorActivity expose a getter to retrieve message by position (not available now).
-        // As a pragmatic approach, we keep only an index cursor and trust UI rebind uses updated ChatMessage references.
-        try {
-            // Access plan message stored previously
-            // The message object was created and added by onAiActionsProcessed below.
-            // planProgressIndex points to next file-kind plan step
-            // No-op if no steps
-        } catch (Exception ignored) {}
+        ChatMessage planMsg = frag.getMessageAt(lastPlanMessagePosition);
+        if (planMsg == null || planMsg.getPlanSteps() == null || planMsg.getPlanSteps().isEmpty()) return;
+
+        // advance to the next file-kind step
+        List<ChatMessage.PlanStep> steps = planMsg.getPlanSteps();
+        while (planProgressIndex < steps.size()) {
+            ChatMessage.PlanStep ps = steps.get(planProgressIndex);
+            if (ps != null && (ps.kind == null || ps.kind.equalsIgnoreCase("file")) &&
+                    !("completed".equals(ps.status) || "failed".equals(ps.status))) {
+                ps.status = status;
+                break;
+            }
+            planProgressIndex++;
+        }
     }
 
-    private void updateCurrentRunningPlanStepStatus(String status) {
+    private void setCurrentRunningPlanStepStatus(String status) {
         if (lastPlanMessagePosition == null) return;
-        try {
-            // The actual plan step status update logic is applied when constructing plan message below
-            // and when we manage references. This is a placeholder to keep indexes in sync.
-        } catch (Exception ignored) {}
+        AIChatFragment frag = activity.getAiChatFragment();
+        if (frag == null) return;
+        ChatMessage planMsg = frag.getMessageAt(lastPlanMessagePosition);
+        if (planMsg == null || planMsg.getPlanSteps() == null || planMsg.getPlanSteps().isEmpty()) return;
+        List<ChatMessage.PlanStep> steps = planMsg.getPlanSteps();
+        if (planProgressIndex < steps.size()) {
+            ChatMessage.PlanStep ps = steps.get(planProgressIndex);
+            if (ps != null) {
+                ps.status = status;
+                planProgressIndex++; // move to next for future calls
+            }
+        }
+    }
+
+    // Public API required by EditorActivity and UI
+    public void onAiDiscardActions(int messagePosition, ChatMessage message) {
+        Log.d(TAG, "User discarded AI actions for message at position: " + messagePosition);
+        message.setStatus(ChatMessage.STATUS_DISCARDED);
+        AIChatFragment aiChatFragment = activity.getAiChatFragment();
+        if (aiChatFragment != null) {
+            aiChatFragment.updateMessage(messagePosition, message);
+        }
+        activity.showToast("AI actions discarded.");
+    }
+
+    public void onReapplyActions(int messagePosition, ChatMessage message) {
+        Log.d(TAG, "User requested to reapply AI actions for message at position: " + messagePosition);
+        onAiAcceptActions(messagePosition, message);
+    }
+
+    public void onAiFileChangeClicked(ChatMessage.FileActionDetail fileActionDetail) {
+        Log.d(TAG, "User clicked on file change: " + fileActionDetail.path + " (" + fileActionDetail.type + ")");
+
+        String fileNameToOpen = fileActionDetail.path; // Default to path
+        if (fileActionDetail.type != null && fileActionDetail.type.equals("renameFile")) {
+            fileNameToOpen = fileActionDetail.newPath; // Use newPath for renamed files
+        }
+
+        // Generate diff content
+        String diffContent = "";
+        String oldFileContent = fileActionDetail.oldContent != null ? fileActionDetail.oldContent : "";
+        String newFileContent = fileActionDetail.newContent != null ? fileActionDetail.newContent : "";
+
+        if (fileActionDetail.type.equals("createFile")) {
+            diffContent = DiffGenerator.generateDiff("", newFileContent, "unified", "/dev/null", "b/" + fileNameToOpen);
+        } else if (fileActionDetail.type.equals("deleteFile")) {
+            diffContent = DiffGenerator.generateDiff(oldFileContent, "", "unified", "a/" + fileNameToOpen, "/dev/null");
+        } else if (fileActionDetail.type.equals("renameFile")) {
+            diffContent = DiffGenerator.generateDiff(oldFileContent, newFileContent, "unified", "a/" + fileActionDetail.oldPath, "b/" + fileActionDetail.newPath);
+        }
+        else { // updateFile or modifyLines
+            diffContent = DiffGenerator.generateDiff(oldFileContent, newFileContent, "unified", "a/" + fileNameToOpen, "b/" + fileNameToOpen);
+        }
+
+        activity.tabManager.openDiffTab(fileNameToOpen, diffContent);
+    }
+
+    public void shutdown() {
+        if (aiAssistant != null) {
+            aiAssistant.shutdown();
+        }
     }
 
     // --- Implement AIAssistant.AIActionListener methods ---
@@ -272,12 +344,10 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                         ChatMessage.STATUS_PENDING_APPROVAL
                 );
 
-                // Attach plan steps if present
                 if (isPlan && planSteps != null && !planSteps.isEmpty()) {
                     aiMessage.setPlanSteps(planSteps);
                 }
 
-                // Thinking/web sources
                 if (thinkingContent != null && !thinkingContent.trim().isEmpty()) {
                     aiMessage.setThinkingContent(thinkingContent);
                 }
@@ -290,7 +360,6 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                 if (isPlan) {
                     lastPlanMessagePosition = insertedPos;
                     planProgressIndex = 0;
-                    // If agent mode, immediately request file operations for the plan autonomously
                     if (aiAssistant != null && aiAssistant.isAgentModeEnabled()) {
                         StringBuilder followUp = new StringBuilder();
                         followUp.append("Proceed to generate a single \"file_operation\" JSON covering the next concrete steps of the plan. ");
@@ -298,7 +367,6 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                         sendAiPrompt(followUp.toString(), new ArrayList<>(), activity.getQwenState(), activity.getActiveTab());
                     }
                 } else {
-                    // If not a plan and agent mode is on with file ops, auto-apply
                     if (aiAssistant != null && aiAssistant.isAgentModeEnabled() && proposedFileChanges != null && !proposedFileChanges.isEmpty()) {
                         onAiAcceptActions(insertedPos, aiMessage);
                     }

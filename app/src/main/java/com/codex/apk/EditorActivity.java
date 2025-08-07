@@ -380,6 +380,14 @@ public class EditorActivity extends AppCompatActivity implements
         return projectDir;
     }
 
+    public TabItem getActiveTab() {
+        return tabManager != null ? tabManager.getActiveTabItem() : null;
+    }
+
+    public QwenConversationState getQwenState() {
+        return aiChatFragment != null ? aiChatFragment.getQwenState() : new QwenConversationState();
+    }
+
     // Public methods for DialogHelper/FileTreeAdapter to call back to EditorActivity for manager actions
     public void showNewFileDialog(File parentDirectory) {
         fileTreeManager.showNewFileDialog(parentDirectory);

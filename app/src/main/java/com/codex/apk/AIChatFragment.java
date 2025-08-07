@@ -94,6 +94,13 @@ public class AIChatFragment extends Fragment implements ChatMessageAdapter.OnAiA
         return this.aiAssistant;
     }
 
+    public QwenConversationState getQwenState() { return this.qwenConversationState; }
+
+    public ChatMessage getMessageAt(int position) {
+        if (position >= 0 && position < chatHistory.size()) return chatHistory.get(position);
+        return null;
+    }
+
     public void sendPrompt() {
         String prompt = uiManager.getText().trim();
         if (prompt.isEmpty() || isAiProcessing) {
@@ -107,9 +114,7 @@ public class AIChatFragment extends Fragment implements ChatMessageAdapter.OnAiA
         ChatMessage userMsg = new ChatMessage(ChatMessage.SENDER_USER, prompt, System.currentTimeMillis());
         addMessage(userMsg);
 
-        // Show "AI is thinking..." message
         ChatMessage thinkingMessage = new ChatMessage(ChatMessage.SENDER_AI, getString(R.string.ai_is_thinking), System.currentTimeMillis());
-        // Set the model name for the thinking message
         if (aiAssistant != null && aiAssistant.getCurrentModel() != null) {
             thinkingMessage.setAiModelName(aiAssistant.getCurrentModel().getDisplayName());
         }

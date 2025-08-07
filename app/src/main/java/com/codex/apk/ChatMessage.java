@@ -148,6 +148,10 @@ public class ChatMessage {
         public boolean generateDiff; // Whether to generate diff
         public String diffFormat; // "unified", "context", "side-by-side"
 
+        // Agent execution status fields
+        public String stepStatus; // pending | running | completed | failed
+        public String stepMessage; // latest progress/error message
+
         // Comprehensive constructor
         public FileActionDetail(String type, String path, String oldPath, String newPath,
                                 String oldContent, String newContent, int startLine,
@@ -173,6 +177,10 @@ public class ChatMessage {
             this.errorHandling = "strict";
             this.metadata = new HashMap<>();
             this.validationRules = new ArrayList<>();
+
+            // Initialize agent status
+            this.stepStatus = "pending";
+            this.stepMessage = "";
         }
 
         // Enhanced constructor with advanced options

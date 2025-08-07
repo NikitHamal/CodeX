@@ -172,6 +172,7 @@ public class AIChatUIManager {
 
         MaterialSwitch switchThinking = dialogView.findViewById(R.id.switch_thinking_mode);
         MaterialSwitch switchWebSearch = dialogView.findViewById(R.id.switch_web_search);
+        MaterialSwitch switchAgent = dialogView.findViewById(R.id.switch_agent_mode);
 
         ModelCapabilities capabilities = aiAssistant.getCurrentModel().getCapabilities();
 
@@ -182,6 +183,10 @@ public class AIChatUIManager {
         switchWebSearch.setChecked(aiAssistant.isWebSearchEnabled());
         switchWebSearch.setEnabled(capabilities.supportsWebSearch);
         switchWebSearch.setOnCheckedChangeListener((buttonView, isChecked) -> aiAssistant.setWebSearchEnabled(isChecked));
+
+        // Agent mode has no provider capability constraint
+        switchAgent.setChecked(aiAssistant.isAgentModeEnabled());
+        switchAgent.setOnCheckedChangeListener((buttonView, isChecked) -> aiAssistant.setAgentModeEnabled(isChecked));
 
         aiSettingsDialog.show();
     }

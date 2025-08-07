@@ -16,6 +16,7 @@ public class AIAssistant {
     private AIModel currentModel;
     private boolean thinkingModeEnabled = false;
     private boolean webSearchEnabled = false;
+    private boolean agentModeEnabled = false; // New agent mode flag
     private List<ToolSpec> enabledTools = new ArrayList<>();
     private AIAssistant.AIActionListener actionListener;
     private File projectDir; // Track project directory for tool operations
@@ -95,6 +96,8 @@ public class AIAssistant {
     public void setThinkingModeEnabled(boolean enabled) { this.thinkingModeEnabled = enabled; }
     public boolean isWebSearchEnabled() { return webSearchEnabled; }
     public void setWebSearchEnabled(boolean enabled) { this.webSearchEnabled = enabled; }
+    public boolean isAgentModeEnabled() { return agentModeEnabled; }
+    public void setAgentModeEnabled(boolean enabled) { this.agentModeEnabled = enabled; }
     public void setEnabledTools(List<ToolSpec> tools) { this.enabledTools = tools; }
     public void setActionListener(AIActionListener listener) { this.actionListener = listener; }
     public String getApiKey() { return ""; }

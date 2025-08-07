@@ -47,5 +47,20 @@
             android:textSize="10sp"
             android:textStyle="bold" />
 
+        <TextView
+            android:id="@+id/text_status_label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
+            android:paddingTop="4dp"
+            android:paddingBottom="4dp"
+            android:background="@drawable/rounded_label_background"
+            android:text="Pending"
+            android:textColor="@color/on_secondary_container"
+            android:textSize="10sp"
+            android:textStyle="bold" />
+
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>

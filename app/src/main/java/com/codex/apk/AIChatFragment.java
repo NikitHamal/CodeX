@@ -121,8 +121,10 @@ public class AIChatFragment extends Fragment implements ChatMessageAdapter.OnAiA
         }
     }
 
-    public void addMessage(ChatMessage message) {
-        if (message == null || message.getContent() == null) return;
+    public int addMessage(ChatMessage message) {
+        if (message == null || message.getContent() == null) return -1;
+
+        int indexChangedOrAdded = -1;
 
         if (message.getSender() == ChatMessage.SENDER_AI) {
             if (message.getContent().equals(getString(R.string.ai_is_thinking))) {
@@ -130,7 +132,8 @@ public class AIChatFragment extends Fragment implements ChatMessageAdapter.OnAiA
                     chatHistory.add(message);
                     currentAiStatusMessage = message;
                     isAiProcessing = true;
-                    chatMessageAdapter.notifyItemInserted(chatHistory.size() - 1);
+                    indexChangedOrAdded = chatHistory.size() - 1;
+                    chatMessageAdapter.notifyItemInserted(indexChangedOrAdded);
                     uiManager.scrollToBottom();
                 }
             } else {
@@ -139,13 +142,16 @@ public class AIChatFragment extends Fragment implements ChatMessageAdapter.OnAiA
                     if (index != -1) {
                         chatHistory.set(index, message);
                         chatMessageAdapter.notifyItemChanged(index);
+                        indexChangedOrAdded = index;
                     } else {
                         chatHistory.add(message);
-                        chatMessageAdapter.notifyItemInserted(chatHistory.size() - 1);
+                        indexChangedOrAdded = chatHistory.size() - 1;
+                        chatMessageAdapter.notifyItemInserted(indexChangedOrAdded);
                     }
                 } else {
                     chatHistory.add(message);
-                    chatMessageAdapter.notifyItemInserted(chatHistory.size() - 1);
+                    indexChangedOrAdded = chatHistory.size() - 1;
+                    chatMessageAdapter.notifyItemInserted(indexChangedOrAdded);
                 }
                 isAiProcessing = false;
                 currentAiStatusMessage = null;
@@ -154,10 +160,12 @@ public class AIChatFragment extends Fragment implements ChatMessageAdapter.OnAiA
             }
         } else {
             chatHistory.add(message);
-            chatMessageAdapter.notifyItemInserted(chatHistory.size() - 1);
+            indexChangedOrAdded = chatHistory.size() - 1;
+            chatMessageAdapter.notifyItemInserted(indexChangedOrAdded);
             uiManager.scrollToBottom();
         }
         uiManager.updateUiVisibility(chatHistory.isEmpty());
+        return indexChangedOrAdded;
     }
 
     public void updateThinkingMessage(String newContent) {

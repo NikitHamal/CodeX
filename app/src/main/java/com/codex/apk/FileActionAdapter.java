@@ -1,7 +1,7 @@
 package com.codex.apk;
 
 import android.content.Context;
-import android.graphics.Color;
+import android.graphics.Paint;
 import android.graphics.drawable.GradientDrawable;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -49,12 +49,14 @@ public class FileActionAdapter extends RecyclerView.Adapter<FileActionAdapter.Vi
         private final MaterialCardView cardView;
         private final TextView textFileName;
         private final TextView textChangeLabel;
+        private final TextView textStatusLabel;
 
         ViewHolder(View itemView) {
             super(itemView);
             cardView = (MaterialCardView) itemView;
             textFileName = itemView.findViewById(R.id.text_file_name);
             textChangeLabel = itemView.findViewById(R.id.text_change_label);
+            textStatusLabel = itemView.findViewById(R.id.text_status_label);
         }
 
         void bind(final ChatMessage.FileActionDetail action, final OnFileActionClickListener listener) {
@@ -62,41 +64,73 @@ public class FileActionAdapter extends RecyclerView.Adapter<FileActionAdapter.Vi
             textFileName.setText(path);
 
             Context context = itemView.getContext();
-            int color;
-            String label;
+            int changeColor;
+            String changeLabel;
 
             switch (action.type) {
                 case "createFile":
-                    label = "New";
-                    color = ContextCompat.getColor(context, R.color.success_container);
+                    changeLabel = "New";
+                    changeColor = ContextCompat.getColor(context, R.color.success_container);
                     break;
                 case "updateFile":
                 case "modifyLines":
-                    label = "Updated";
-                    color = ContextCompat.getColor(context, R.color.primary_container);
+                    changeLabel = "Updated";
+                    changeColor = ContextCompat.getColor(context, R.color.primary_container);
                     break;
                 case "deleteFile":
-                    label = "Deleted";
-                    color = ContextCompat.getColor(context, R.color.error_container);
+                    changeLabel = "Deleted";
+                    changeColor = ContextCompat.getColor(context, R.color.error_container);
                     break;
                 case "renameFile":
-                    label = "Renamed";
-                    color = ContextCompat.getColor(context, R.color.warning_container);
+                    changeLabel = "Renamed";
+                    changeColor = ContextCompat.getColor(context, R.color.warning_container);
                     break;
                 default:
-                    label = "Modified";
-                    color = ContextCompat.getColor(context, R.color.surface_container);
+                    changeLabel = "Modified";
+                    changeColor = ContextCompat.getColor(context, R.color.surface_container);
                     break;
             }
 
-            textChangeLabel.setText(label);
-
-            // Set background color with rounded corners
+            textChangeLabel.setText(changeLabel);
             if (textChangeLabel.getBackground() instanceof GradientDrawable) {
                 GradientDrawable background = (GradientDrawable) textChangeLabel.getBackground().mutate();
-                background.setColor(color);
+                background.setColor(changeColor);
             }
 
+            // Status
+            String status = action.stepStatus != null ? action.stepStatus : "pending";
+            int statusColor;
+            String statusText;
+            switch (status) {
+                case "running":
+                    statusText = "Running";
+                    statusColor = ContextCompat.getColor(context, R.color.warning_container);
+                    break;
+                case "completed":
+                    statusText = "Completed";
+                    statusColor = ContextCompat.getColor(context, R.color.success_container);
+                    break;
+                case "failed":
+                    statusText = "Failed";
+                    statusColor = ContextCompat.getColor(context, R.color.error_container);
+                    break;
+                default:
+                    statusText = "Pending";
+                    statusColor = ContextCompat.getColor(context, R.color.surface_container);
+                    break;
+            }
+            textStatusLabel.setText(statusText);
+            if (textStatusLabel.getBackground() instanceof GradientDrawable) {
+                GradientDrawable bg = (GradientDrawable) textStatusLabel.getBackground().mutate();
+                bg.setColor(statusColor);
+            }
+
+            // Strike-through when completed
+            if ("completed".equals(status)) {
+                textFileName.setPaintFlags(textFileName.getPaintFlags() | Paint.STRIKE_THRU_TEXT_FLAG);
+            } else {
+                textFileName.setPaintFlags(textFileName.getPaintFlags() & (~Paint.STRIKE_THRU_TEXT_FLAG));
+            }
 
             itemView.setOnClickListener(v -> listener.onFileActionClicked(action));
         }

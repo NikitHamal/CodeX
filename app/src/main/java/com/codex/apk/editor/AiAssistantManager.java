@@ -112,9 +112,6 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
             return;
         }
 
-        // API Key handling logic can remain the same or be adapted if needed
-        // For now, let's assume it's handled correctly within AIAssistant or QwenApiClient
-
         try {
             // The new sendPrompt method will need to handle history and state
             aiAssistant.sendPrompt(userPrompt, chatHistory, qwenState, currentFileName, currentFileContent);
@@ -126,8 +123,7 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
 
     /**
      * Handles the acceptance of AI proposed actions.
-     * @param messagePosition The position of the chat message.
-     * @param message The chat message containing proposed changes.
+     * In agent mode, executes steps sequentially without additional approvals, updating status in real-time.
      */
     public void onAiAcceptActions(int messagePosition, ChatMessage message) {
         Log.d(TAG, "User accepted AI actions for message at position: " + messagePosition);
@@ -136,36 +132,88 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
             return;
         }
 
-        executorService.execute(() -> {
-            try {
-                // Apply each proposed change
-                List<String> appliedSummaries = new ArrayList<>();
-                for (ChatMessage.FileActionDetail detail : message.getProposedFileChanges()) {
-                    String summary = aiProcessor.applyFileAction(detail); // Use the aiProcessor instance
-                    appliedSummaries.add(summary);
-                }
+        boolean isAgent = aiAssistant != null && aiAssistant.isAgentModeEnabled();
 
-                activity.runOnUiThread(() -> {
-                    activity.showToast("AI actions applied successfully!");
-                    // Update the message status to ACCEPTED
-                    message.setStatus(ChatMessage.STATUS_ACCEPTED);
-                    // Update the action summaries to reflect what was actually applied
-                    message.setActionSummaries(appliedSummaries); // Use setter
-                    AIChatFragment aiChatFragment = activity.getAiChatFragment();
-                    if (aiChatFragment != null) {
-                        aiChatFragment.updateMessage(messagePosition, message);
+        if (!isAgent) {
+            // Original behavior: apply all at once
+            executorService.execute(() -> {
+                try {
+                    // Apply each proposed change
+                    List<String> appliedSummaries = new ArrayList<>();
+                    for (ChatMessage.FileActionDetail detail : message.getProposedFileChanges()) {
+                        String summary = aiProcessor.applyFileAction(detail); // Use the aiProcessor instance
+                        appliedSummaries.add(summary);
                     }
 
-                    // Refresh open tabs and file tree after changes are applied
-                    activity.tabManager.refreshOpenTabsAfterAi(); // Call via activity's TabManager
-                    activity.loadFileTree(); // Call via activity's FileTreeManager
-                });
-            } catch (Exception e) {
-                Log.e(TAG, "Error applying AI actions: " + e.getMessage(), e);
+                    activity.runOnUiThread(() -> {
+                        activity.showToast("AI actions applied successfully!");
+                        // Update the message status to ACCEPTED
+                        message.setStatus(ChatMessage.STATUS_ACCEPTED);
+                        // Update the action summaries to reflect what was actually applied
+                        message.setActionSummaries(appliedSummaries); // Use setter
+                        AIChatFragment aiChatFragment = activity.getAiChatFragment();
+                        if (aiChatFragment != null) {
+                            aiChatFragment.updateMessage(messagePosition, message);
+                        }
+
+                        // Refresh open tabs and file tree after changes are applied
+                        activity.tabManager.refreshOpenTabsAfterAi(); // Call via activity's TabManager
+                        activity.loadFileTree(); // Call via activity's FileTreeManager
+                    });
+                } catch (Exception e) {
+                    Log.e(TAG, "Error applying AI actions: " + e.getMessage(), e);
+                    activity.runOnUiThread(() -> {
+                        activity.showToast("Failed to apply AI actions: " + e.getMessage());
+                    });
+                }
+            });
+            return;
+        }
+
+        // Agent mode: sequential execution with progress
+        executorService.execute(() -> {
+            List<String> appliedSummaries = new ArrayList<>();
+            List<ChatMessage.FileActionDetail> steps = message.getProposedFileChanges();
+
+            for (int i = 0; i < steps.size(); i++) {
+                ChatMessage.FileActionDetail step = steps.get(i);
+                // Mark running
+                step.stepStatus = "running";
+                int stepIndex = i;
                 activity.runOnUiThread(() -> {
-                    activity.showToast("Failed to apply AI actions: " + e.getMessage());
+                    AIChatFragment frag = activity.getAiChatFragment();
+                    if (frag != null) frag.updateMessage(messagePosition, message);
+                });
+
+                try {
+                    String summary = aiProcessor.applyFileAction(step);
+                    appliedSummaries.add(summary);
+                    step.stepStatus = "completed";
+                    step.stepMessage = "Completed";
+                } catch (Exception ex) {
+                    Log.e(TAG, "Agent step failed: " + step.getSummary(), ex);
+                    step.stepStatus = "failed";
+                    step.stepMessage = ex.getMessage();
+                    // Continue to next step
+                }
+
+                // Update UI after each step
+                activity.runOnUiThread(() -> {
+                    AIChatFragment frag = activity.getAiChatFragment();
+                    if (frag != null) frag.updateMessage(messagePosition, message);
                 });
             }
+
+            // Finalize
+            activity.runOnUiThread(() -> {
+                message.setStatus(ChatMessage.STATUS_ACCEPTED);
+                message.setActionSummaries(appliedSummaries);
+                AIChatFragment frag = activity.getAiChatFragment();
+                if (frag != null) frag.updateMessage(messagePosition, message);
+                activity.tabManager.refreshOpenTabsAfterAi();
+                activity.loadFileTree();
+                activity.showToast("Agent run completed");
+            });
         });
     }
 
@@ -269,6 +317,14 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                         ChatMessage.STATUS_PENDING_APPROVAL
                 );
                 
+                // Initialize all steps to pending
+                if (proposedFileChanges != null) {
+                    for (ChatMessage.FileActionDetail d : proposedFileChanges) {
+                        d.stepStatus = "pending";
+                        d.stepMessage = "";
+                    }
+                }
+                
                 // Set thinking content and web sources
                 if (thinkingContent != null && !thinkingContent.trim().isEmpty()) {
                     aiMessage.setThinkingContent(thinkingContent);
@@ -278,7 +334,11 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                 }
                 
                 Log.d(TAG, "Adding AI message to chat fragment with status: " + aiMessage.getStatus());
-                activity.getAiChatFragment().addMessage(aiMessage); // Add to local list and UI
+                int insertedPos = activity.getAiChatFragment().addMessage(aiMessage); // Add to local list and UI
+                // Auto-run in agent mode without approval
+                if (aiAssistant != null && aiAssistant.isAgentModeEnabled() && insertedPos >= 0) {
+                    onAiAcceptActions(insertedPos, aiMessage);
+                }
                 // The save state is called when the message is updated
             } else {
                 Log.w(TAG, "AiChatFragment is null! Cannot add message to UI.");

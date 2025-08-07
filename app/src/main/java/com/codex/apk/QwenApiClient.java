@@ -211,31 +211,18 @@ public class QwenApiClient implements ApiClient {
                                         QwenResponseParser.ParsedResponse parsed = QwenResponseParser.parseResponse(jsonToParse);
                                         if (parsed != null && parsed.isValid) {
                                             if ("plan".equals(parsed.action)) {
-                                                // Create a message with plan steps (no file changes yet)
-                                                ChatMessage aiMessage = new ChatMessage(
-                                                    ChatMessage.SENDER_AI,
-                                                    parsed.explanation,
-                                                    null,
-                                                    parsed.suggestions,
-                                                    model.getDisplayName(),
-                                                    System.currentTimeMillis(),
-                                                    jsonToParse,
-                                                    new ArrayList<>(),
-                                                    ChatMessage.STATUS_PENDING_APPROVAL
-                                                );
-                                                aiMessage.setPlanSteps(QwenResponseParser.toPlanSteps(parsed));
-                                                // Show the plan now
+                                                // Show the plan now (explanation only; UI can render plan from raw JSON if needed)
                                                 if (actionListener != null) {
-                                                    actionListener.onAiActionsProcessed(jsonToParse, parsed.explanation, parsed.suggestions, new ArrayList<>(), model.getDisplayName());
+                                                    actionListener.onAiActionsProcessed(jsonToParse, parsed.explanation, new ArrayList<>(), new ArrayList<>(), model.getDisplayName());
                                                 }
                                             } else if (parsed.action != null && parsed.action.contains("file")) {
                                                 List<ChatMessage.FileActionDetail> details = QwenResponseParser.toFileActionDetails(parsed);
                                                 enrichFileActionDetails(details);
                                                 String explanation = buildExplanationWithThinking(parsed.explanation, thinkingContent.toString());
-                                                if (actionListener != null) actionListener.onAiActionsProcessed(jsonToParse, explanation, parsed.suggestions, details, model.getDisplayName());
+                                                if (actionListener != null) actionListener.onAiActionsProcessed(jsonToParse, explanation, new ArrayList<>(), details, model.getDisplayName());
                                             } else {
                                                 String explanation = buildExplanationWithThinking(parsed.explanation, thinkingContent.toString());
-                                                if (actionListener != null) actionListener.onAiActionsProcessed(jsonToParse, explanation, parsed.suggestions, new ArrayList<>(), model.getDisplayName());
+                                                if (actionListener != null) actionListener.onAiActionsProcessed(jsonToParse, explanation, new ArrayList<>(), new ArrayList<>(), model.getDisplayName());
                                             }
                                         } else {
                                             String explanation = buildExplanationWithThinking(finalContent, thinkingContent.toString());
@@ -469,7 +456,7 @@ public class QwenApiClient implements ApiClient {
                 actionListener.onAiActionsProcessed(
                         null,
                         parsedResponse.explanation,
-                        parsedResponse.suggestions,
+                        new ArrayList<>(),
                         fileActions,
                         modelDisplayName
                 );

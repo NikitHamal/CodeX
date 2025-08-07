@@ -45,13 +45,11 @@ public class PromptManager {
                "    { \"type\": \"createFile\", \"path\": \"styles.css\", \"content\": \"...\" },\n" +
                "    { \"type\": \"createFile\", \"path\": \"app.js\", \"content\": \"...\" }\n" +
                "  ],\n" +
-               "  \"explanation\": \"What and why\",\n" +
-               "  \"suggestions\": [\"Next improvements\"]\n" +
+               "  \"explanation\": \"What and why\"\n" +
                "}\n\n" +
                "GUIDELINES:\n" +
                "- Break tasks into medium steps; each file creation/update is a separate operation.\n" +
                "- Validate HTML/CSS/JS; keep diffs minimal and readable.\n" +
-               "- Provide clear explanations and suggestions.\n" +
                "- Prefer semantic HTML, accessible ARIA, responsive layout.\n" +
                "- Always return valid JSON in a fenced code block.\n";
     }

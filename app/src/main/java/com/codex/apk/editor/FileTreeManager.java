@@ -33,6 +33,7 @@ public class FileTreeManager {
     private final List<TabItem> openTabs;
 
     private AndroidTreeView androidTreeView;
+    private TreeNode rootNode;
     private View treeContainer;
     private EditText searchEditText;
     private View searchContainer;
@@ -84,36 +85,36 @@ public class FileTreeManager {
     public void loadFileTree() {
         if (treeContainer == null) return;
 
-        TreeNode root = TreeNode.root();
+        // Initialize tree once
+        if (androidTreeView == null) {
+            rootNode = TreeNode.root();
+            androidTreeView = new AndroidTreeView(activity, rootNode);
+            androidTreeView.setDefaultContainerStyle(R.style.TreeNodeStyle);
+            androidTreeView.setDefaultAnimation(true);
+            androidTreeView.setDefaultViewHolder(FileNodeViewHolder.class);
+            androidTreeView.setUseAutoToggle(true);
+            ViewGroup container = (ViewGroup) treeContainer;
+            container.removeAllViews();
+            container.addView(androidTreeView.getView());
+        }
+
+        // Remove all existing children safely
+        List<TreeNode> childrenCopy = new java.util.ArrayList<>(rootNode.getChildren());
+        for (TreeNode child : childrenCopy) {
+            androidTreeView.removeNode(child);
+        }
+
         File projectDir = activity.getProjectDirectory();
         TreeNode projectNode = null;
         if (projectDir != null && projectDir.exists()) {
             projectNode = createNodeForFile(projectDir);
-            root.addChild(projectNode);
+            rootNode.addChild(projectNode);
             if (currentSearchQuery.isEmpty()) {
                 buildTree(projectNode, projectDir);
             } else {
                 buildFilteredTree(projectNode, projectDir, currentSearchQuery);
             }
         }
-
-        if (androidTreeView != null && androidTreeView.getView() != null) {
-            View view = androidTreeView.getView();
-            ViewGroup parent = (ViewGroup) view.getParent();
-            if (parent != null) {
-                parent.removeView(view);
-            }
-        }
-
-        androidTreeView = new AndroidTreeView(activity, root);
-        androidTreeView.setDefaultContainerStyle(R.style.TreeNodeStyle);
-        androidTreeView.setDefaultAnimation(true);
-        androidTreeView.setDefaultViewHolder(FileNodeViewHolder.class);
-        androidTreeView.setUseAutoToggle(true);
-
-        ViewGroup container = (ViewGroup) treeContainer;
-        container.removeAllViews();
-        container.addView(androidTreeView.getView());
 
         // Empty state visibility
         View emptyStateView = activity.findViewById(R.id.empty_state_view);

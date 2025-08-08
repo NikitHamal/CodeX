@@ -1,0 +1,83 @@
+# CodeX – Practical, Next‑Level, Lightweight Enhancement Ideas (Free)
+
+- **Command Palette (Quick Actions)**: Add a searchable command palette (open file, toggle console, rename, preview, AI prompts) triggered by a toolbar icon or long‑press.
+- **Quick Open by Name (Fuzzy Finder)**: Filter and open files via a single dialog; incremental search over filenames only (no extra deps).
+- **Project‑wide Text Search**: Simple threaded scan with filename filters and result list; jump to occurrences, open in new tab.
+- **Breadcrumbs in Editor Toolbar**: Show `project/dir/file` path; each segment clickable to navigate/open in tree.
+- **Reveal in Tree**: Button on the editor tab header to focus the current file in the drawer tree.
+- **Pin/Favorite Files**: Keep pinned files at the top of the tree and in a small “Favorites” list near the top of the drawer.
+- **Recent Files Section**: Track and display last 5–10 opened files for faster switching.
+- **Per‑File Cursor/Scroll Restore**: Save/restore cursor and scroll positions when switching tabs or reopening the project.
+- **Multi‑Cursor Essentials**: Long‑press adds cursors on matching selections; duplicate line; add cursors above/below.
+- **Line Operations**: Move line up/down, copy/duplicate line, delete line; add shortcuts in an accessory toolbar.
+- **Wrap Toggle**: Quick toggle for soft wrap per file with persisted preference per extension.
+- **Whitespace Tools**: Toggle “trim trailing whitespace” and “ensure final newline” on save.
+- **Code Folding Controls**: Add fold/unfold all for HTML tags and JS/CSS blocks; small gutter icons for folding.
+- **Tab Reordering**: Drag tabs to reorder; long‑press to expose “Close others/Close to right/Pin”.
+- **Tab Peek on Hold**: Long‑press a file in tree to preview in a temporary tab; tap elsewhere to dismiss.
+- **Split View (Chat + Code)**: Optional vertical split to keep AI chat visible alongside code, with adjustable ratio.
+- **Template Snippets**: Provide minimal built‑in HTML/CSS/JS snippets (e.g., Tailwind hero, nav, footer). Expand via simple trigger (e.g., `/hero`).
+- **Basic Emmet‑Lite**: Support a few common HTML abbreviations (e.g., `ul>li*3`) with a local parser (no heavy deps).
+- **Inline Color Preview**: Show small color chips for CSS colors; tap to open a native color picker dialog to update the value.
+- **Quick Insert “Asset Icons”**: Insert common Material Icons via span templates; small searchable dialog.
+- **JSON/YAML/HTML Pretty Print**: Lightweight, built‑in formatter for these types (no network); runs on demand.
+- **Auto‑Save Interval**: Optional 10/30/60s background save with subtle “Saved” toast suppressed by default.
+- **Keyboard Accessory Bar**: Provide quick keys for `< > { } [ ] ( ) ; : " '` and tabs when editing.
+- **Status Bar Indicators**: Show file size, line/col, and modified status in a compact bottom bar.
+- **File Type Badges**: Tiny badges on tabs (HTML/CSS/JS) for quick recognition.
+- **Open With…**: Share the current file or preview link to external apps for quick checks.
+- **One‑Tap Preview Refresh**: Keep a dedicated refresh icon near the preview title; also auto‑refresh on save when toggled.
+- **Device Profiles in Preview**: Add prebuilt viewports (iPhone/Pixel/iPad) with widths and DPR; persist last selection.
+- **Live Reload Lite**: Inject a tiny JS snippet that listens to a local flag file timestamp; when content changes, reload the WebView (no server).
+- **Preview Scroll Sync Anchors**: When clicking an element with `id`, highlight matching section in code by searching the id string.
+- **Preview CSS Debug Overlay**: Toggle outlines for all elements via a simple injected CSS (border:1px dashed).
+- **Preview Theme Flip**: Inject CSS variable overrides to flip to light/dark quickly to check contrast.
+- **Desktop UA + Zoom**: Persist Desktop mode and zoom level; add +/- buttons in preview overflow to adjust zoom.
+- **Console Filters**: Simple filter chips (All/Log/Warn/Error) on the console header.
+- **Console Copy/Export**: Copy all console text and export it to a `.log` file in the project.
+- **Tree “Expand/Collapse All”**: Buttons in tree header for quick expand/collapse; remember last state per folder.
+- **Inline Rename in Tree**: Tap/hide keyboard to commit; escape (back) to cancel; validate duplicates before rename.
+- **Move File (Dialog)**: “Move to…” picker to relocate files within project; updates tabs if open.
+- **Type Filters in Tree**: Chips for Code/Media/Docs/All that toggle quickly without heavy queries.
+- **Ignore Patterns**: Simple preferences for hidden folders (e.g., `dist`, `build`, `node_modules`) toggle on/off.
+- **New from Template**: New file dialog offers “from snippet” options (basic HTML/CSS/JS scaffolds) besides empty file.
+- **Project Notes**: Lightweight `PROJECT_NOTES.md` editor shortcut pinned to top of tree.
+- **Quick Diff of Unsaved**: Before saving, show inline diff against disk for current file (simple two‑pane compare).
+- **Scratchpad Tab**: A temp tab not saved to disk for quick testing/snippets; cleared on demand.
+- **Clipboard History (5 items)**: Local ring buffer to paste recent items; no network, just session memory.
+- **AI Prompt Presets**: Curated one‑tap prompts (Rename brand across project, Convert to Tailwind, Extract palette).
+- **AI “Small Diffs” Toggle**: A UI toggle that sets a prompt hint to prefer `modifyLines`/search‑replace over full content.
+- **AI Dry Run Mode**: Present diffs only without applying; user can accept per file or as a batch.
+- **AI Plan Step Granularity**: Option to request finer or coarser steps via a small control before sending.
+- **AI Inline Apply**: In diff view, per‑hunk apply buttons (accept one hunk) to keep changes minimal.
+- **AI Context Pickers**: Quickly attach current file or selection as context without sending entire file.
+- **AI Model Reminders**: Show a small hint “Agent mode on/off” in chat header; tap to toggle.
+- **AI Web Sources Viewer**: Already present; add “Open source in preview” to test iframes quickly (when CSP allows).
+- **Plan Step Retry**: Add “Retry this step” action next to a failed step; resends a focused prompt.
+- **Plan Export**: Export current plan steps as a Markdown checklist to the project root.
+- **Code Actions Menu**: Contextual quick fixes (wrap selection in div, extract CSS to class) powered by local transforms.
+- **Quick Image Placeholders**: Insert base64 SVG placeholders for hero/thumbs (no network).
+- **HTML Anchors List**: Generate a sidebar list of `<section id>` anchors; tap to jump in preview and editor.
+- **Open Containing Folder**: Button to open file’s directory in the tree and auto‑scroll to it.
+- **File Icons Consistency**: Use consistent Material icons for all types; ensure dark theme tints look clean.
+- **Lightweight Onboarding**: First‑run card showing 6–8 key tips with tappable actions; dismissible and stored in prefs.
+- **Quick Keys Cheat‑Sheet**: A minimal overlay listing gesture shortcuts and long‑press actions.
+- **Keep Alive Session**: Persist chat state and tabs; restore everything where you left off on next launch.
+- **Fast Zip Export**: Keep existing export; add “Share last build” that bundles only HTML/CSS/JS assets.
+- **Workspace Metrics (Local)**: Show counts (files, lines) in a small project info card—no analytics, no network.
+- **Light Perf Tweaks**: Debounce UI updates on AI stream and search; recycle adapters; reuse WebView where possible.
+- **Minimal Theming Options**: A few accent presets (amber/teal/indigo) toggled inside Settings without theming libs.
+- **Contextual Empty States**: Tailor empty tree/preview/chat messages with “Try this” actions (create file, send prompt).
+- **One‑Tap Tailwind CDN Toggle**: If not present, offer to inject `<script src>` in head automatically.
+- **CSS Variable Palette**: When editing CSS, detect and list `:root` variables for quick reuse/insert.
+- **Lightweight File Watch**: Poll (low frequency) to detect external file changes and prompt to reload tabs.
+- **Tab Color Accents**: Subtle tab underline color by file type (HTML amber, CSS blue, JS yellow).
+- **Focus Mode**: Toggle to hide tabs/toolbars for distraction‑free editing; a back swipe brings UI back.
+- **One‑Tap “Format Document”**: A simple format command that runs built‑in pretty‑print for the current type.
+- **Copy Link to Section**: In preview, long‑press element to copy `#id` anchor and auto‑select code when returning.
+- **Inline TODOs Panel (Local)**: Parse `// TODO:` and `<!-- TODO: -->` in open files; list them without storage.
+- **Basic Lint Hints (Optional)**: Offline regex hints (unclosed tags, duplicate ids) as passive warnings—no heavy libs.
+- **Export Settings/Prompts**: Export/import app settings and custom AI prompt presets as JSON to the project.
+- **Simple Macro Recorder**: Record 3–4 quick editor commands (duplicate line, move, wrap) to a named macro; replay.
+
+These enhancements aim to keep the app lightweight, fast, and fully offline‑capable while meaningfully improving day‑to‑day productivity, AI workflows, and the authoring/preview loop—without heavy dependencies or paid services.

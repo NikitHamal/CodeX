@@ -14,12 +14,12 @@ public class AiProcessor {
     private static final Gson gson = new Gson();
     private final File projectDir;
     private final Context context;
-    private final FileManager fileManager;
+    private final AdvancedFileManager advancedFileManager;
 
     public AiProcessor(File projectDir, Context context) {
         this.projectDir = projectDir;
         this.context = context;
-        this.fileManager = new FileManager(context, projectDir);
+        this.advancedFileManager = new AdvancedFileManager(context, projectDir);
     }
 
     public String applyFileAction(ChatMessage.FileActionDetail detail) throws IOException, IllegalArgumentException {
@@ -33,7 +33,7 @@ public class AiProcessor {
                 break;
             case "updateFile":
             case "smartUpdate":
-                summary = handleUpdateFile(detail);
+                summary = handleAdvancedUpdateFile(detail);
                 break;
             case "deleteFile":
                 summary = handleDeleteFile(detail);
@@ -44,14 +44,16 @@ public class AiProcessor {
             case "searchAndReplace":
                 summary = handleSearchAndReplace(detail);
                 break;
-            // patchFile case removed as per user request to remove advanced file manager features
+            case "patchFile":
+                summary = handlePatchFile(detail);
+                break;
             default:
                 throw new IllegalArgumentException("Unknown action type: " + actionType);
         }
         return summary;
     }
 
-    private String handleUpdateFile(ChatMessage.FileActionDetail detail) throws IOException {
+    private String handleAdvancedUpdateFile(ChatMessage.FileActionDetail detail) throws IOException {
         String path = detail.path;
         String content = detail.newContent;
         File fileToUpdate = new File(projectDir, path);
@@ -60,7 +62,18 @@ public class AiProcessor {
             throw new IOException("File not found for update: " + path);
         }
 
-        fileManager.writeFileContent(fileToUpdate, content);
+        String updateType = detail.updateType != null ? detail.updateType : "full";
+        boolean validateContent = detail.validateContent;
+        String contentType = detail.contentType;
+        String errorHandling = detail.errorHandling != null ? detail.errorHandling : "strict";
+
+        AdvancedFileManager.FileOperationResult result = advancedFileManager.smartUpdateFile(
+            fileToUpdate, content, updateType, validateContent, contentType, errorHandling
+        );
+
+        if (!result.isSuccess()) {
+            throw new IOException("Update failed: " + result.getMessage());
+        }
 
         return "Updated file: " + path;
     }
@@ -76,7 +89,7 @@ public class AiProcessor {
             throw new IOException("File not found for search and replace: " + path);
         }
 
-        String content = fileManager.readFileContent(fileToUpdate);
+        String content = advancedFileManager.readFileContent(fileToUpdate);
         String newContent;
 
         if (searchPattern != null && !searchPattern.isEmpty()) {
@@ -89,9 +102,39 @@ public class AiProcessor {
             newContent = content.replace(search, replace);
         }
 
-        fileManager.writeFileContent(fileToUpdate, newContent);
+        AdvancedFileManager.FileOperationResult result = advancedFileManager.smartUpdateFile(
+            fileToUpdate, newContent, "replace", true, detail.contentType, "strict"
+        );
+
+        if (!result.isSuccess()) {
+            throw new IOException("Search and replace failed: " + result.getMessage());
+        }
 
         return "Performed search and replace on file: " + path;
+    }
+
+    private String handlePatchFile(ChatMessage.FileActionDetail detail) throws IOException {
+        String path = detail.path;
+        String patchContent = detail.diffPatch;
+        File fileToUpdate = new File(projectDir, path);
+
+        if (!fileToUpdate.exists()) {
+            throw new IOException("File not found for patch: " + path);
+        }
+
+        if (patchContent == null || patchContent.trim().isEmpty()) {
+            throw new IllegalArgumentException("Patch content is empty");
+        }
+
+        AdvancedFileManager.FileOperationResult result = advancedFileManager.smartUpdateFile(
+            fileToUpdate, patchContent, "patch", true, detail.contentType, "strict"
+        );
+
+        if (!result.isSuccess()) {
+            throw new IOException("Patch application failed: " + result.getMessage());
+        }
+
+        return "Applied patch to file: " + path;
     }
 
     private String handleCreateFile(ChatMessage.FileActionDetail detail) throws IOException {
@@ -104,15 +147,14 @@ public class AiProcessor {
             parentDir.mkdirs();
         }
 
-        if (newFile.exists()) {
-            throw new IOException("File already exists");
+        if (detail.validateContent) {
+            AdvancedFileManager.ValidationResult validation = advancedFileManager.validateContent(content, detail.contentType);
+            if (!validation.isValid()) {
+                throw new IllegalArgumentException("Content validation failed: " + validation.getReason());
+            }
         }
 
-        if (!newFile.createNewFile()) {
-            throw new IOException("Failed to create file");
-        }
-        
-        fileManager.writeFileContent(newFile, content);
+        advancedFileManager.writeFileContent(newFile, content);
         
         return "Created file: " + path;
     }
@@ -122,11 +164,14 @@ public class AiProcessor {
         File fileToDelete = new File(projectDir, path);
         
         if (!fileToDelete.exists()) {
-            Log.w(TAG, "deleteFileByPath: File or directory does not exist: " + fileToDelete.getAbsolutePath());
-            return "File or directory does not exist: " + path;
+            throw new IOException("File not found for deletion: " + path);
         }
 
-        fileManager.deleteFileOrDirectory(fileToDelete);
+        if (fileToDelete.isDirectory()) {
+            deleteDirectoryRecursive(fileToDelete);
+        } else {
+            fileToDelete.delete();
+        }
         
         return "Deleted file/directory: " + path;
     }
@@ -137,8 +182,36 @@ public class AiProcessor {
         File oldFile = new File(projectDir, oldPath);
         File newFile = new File(projectDir, newPath);
         
-        fileManager.renameFileOrDir(oldFile, newFile);
+        if (!oldFile.exists()) {
+            throw new IOException("Source file/directory not found for rename: " + oldPath);
+        }
+
+        if (newFile.exists()) {
+            throw new IOException("Target file/directory already exists for rename: " + newPath);
+        }
+
+        File newParentDir = newFile.getParentFile();
+        if (newParentDir != null && !newParentDir.exists()) {
+            newParentDir.mkdirs();
+        }
+
+        boolean success = oldFile.renameTo(newFile);
+        if (!success) {
+            throw new IOException("Failed to rename file from " + oldPath + " to " + newPath);
+        }
         
         return "Renamed " + oldPath + " to " + newPath;
+    }
+
+    private boolean deleteDirectoryRecursive(File dir) {
+        if (dir.isDirectory()) {
+            File[] children = dir.listFiles();
+            if (children != null) {
+                for (File child : children) {
+                    deleteDirectoryRecursive(child);
+                }
+            }
+        }
+        return dir.delete();
     }
 }

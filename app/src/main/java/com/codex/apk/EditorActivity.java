@@ -184,6 +184,22 @@ public class EditorActivity extends AppCompatActivity implements
     }
 
     @Override
+    public boolean onPrepareOptionsMenu(Menu menu) {
+        TabItem activeTab = tabManager.getActiveTabItem();
+        if (activeTab != null) {
+            MenuItem wrapMenuItem = menu.findItem(R.id.action_toggle_wrap);
+            if (wrapMenuItem != null) {
+                wrapMenuItem.setChecked(activeTab.isWrapEnabled());
+            }
+            MenuItem readOnlyMenuItem = menu.findItem(R.id.action_toggle_read_only);
+            if (readOnlyMenuItem != null) {
+                readOnlyMenuItem.setChecked(activeTab.isReadOnly());
+            }
+        }
+        return super.onPrepareOptionsMenu(menu);
+    }
+
+    @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         int id = item.getItemId();
 

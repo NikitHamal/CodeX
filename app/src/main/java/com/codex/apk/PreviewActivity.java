@@ -360,6 +360,7 @@ public class PreviewActivity extends AppCompatActivity {
                 }
                 Toast.makeText(this, "Desktop mode disabled", Toast.LENGTH_SHORT).show();
             }
+            webViewPreview.clearCache(true);
             webViewPreview.reload();
         } catch (Exception e) {
             Log.e(TAG, "Failed to set desktop mode", e);

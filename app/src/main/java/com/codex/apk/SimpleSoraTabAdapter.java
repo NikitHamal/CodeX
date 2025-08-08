@@ -17,11 +17,7 @@ import io.github.rosemoe.sora.widget.schemes.EditorColorScheme;
 import io.github.rosemoe.sora.langs.textmate.TextMateLanguage;
 import io.github.rosemoe.sora.langs.textmate.registry.GrammarRegistry;
 import io.github.rosemoe.sora.langs.textmate.registry.ThemeRegistry;
-import io.github.rosemoe.sora.langs.textmate.theme.IThemeSource;
-import io.github.rosemoe.sora.langs.textmate.theme.ThemeModel;
-import io.github.rosemoe.sora.langs.textmate.theme.TextMateColorScheme;
-import io.github.rosemoe.sora.langs.textmate.resource.FileProviderRegistry;
-import io.github.rosemoe.sora.langs.textmate.resource.AssetsFileResolver;
+import io.github.rosemoe.sora.langs.textmate.TextMateColorScheme;
 
 import java.io.File;
 import java.util.List;
@@ -193,31 +189,11 @@ public class SimpleSoraTabAdapter extends RecyclerView.Adapter<SimpleSoraTabAdap
     private static synchronized void ensureTextMateInitialized(Context context) {
         if (textMateInitialized) return;
         try {
-            // Register assets resolver once
-            FileProviderRegistry.getInstance().addFileProvider(
-                    new AssetsFileResolver(context.getApplicationContext().getAssets())
-            );
-
-            // Load theme
-            ThemeRegistry themeRegistry = ThemeRegistry.getInstance();
-            ThemeModel themeModel = new ThemeModel(
-                    IThemeSource.fromInputStream(
-                            FileProviderRegistry.getInstance().tryGetInputStream(TEXTMATE_THEME_PATH),
-                            TEXTMATE_THEME_PATH,
-                            null
-                    ),
-                    TEXTMATE_THEME_NAME
-            );
-            // If you add a dark theme in future, call themeModel.setDark(true)
-            themeRegistry.loadTheme(themeModel);
-            themeRegistry.setTheme(TEXTMATE_THEME_NAME);
-
-            // Load grammars
+            // Load grammars from assets
             GrammarRegistry.getInstance().loadGrammars(TEXTMATE_LANG_INDEX);
-
             textMateInitialized = true;
         } catch (Throwable t) {
-            Log.w(TAG, "Failed to initialize TextMate registries. Syntax highlight may be limited.", t);
+            Log.w(TAG, "Failed to initialize TextMate grammars. Syntax highlight may be limited.", t);
             textMateInitialized = false;
         }
     }

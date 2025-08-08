@@ -85,24 +85,18 @@ public class FileTreeManager {
     public void loadFileTree() {
         if (treeContainer == null) return;
 
-        // Initialize tree once
-        if (androidTreeView == null) {
-            rootNode = TreeNode.root();
-            androidTreeView = new AndroidTreeView(activity, rootNode);
-            androidTreeView.setDefaultContainerStyle(R.style.TreeNodeStyle);
-            androidTreeView.setDefaultAnimation(true);
-            androidTreeView.setDefaultViewHolder(FileNodeViewHolder.class);
-            androidTreeView.setUseAutoToggle(true);
-            ViewGroup container = (ViewGroup) treeContainer;
-            container.removeAllViews();
-            container.addView(androidTreeView.getView());
+        // Remove existing tree view from its parent if present, then recreate
+        if (androidTreeView != null && androidTreeView.getView() != null) {
+            View existing = androidTreeView.getView();
+            ViewGroup parent = (ViewGroup) existing.getParent();
+            if (parent != null) {
+                parent.removeView(existing);
+            }
+            androidTreeView = null;
+            rootNode = null;
         }
 
-        // Remove all existing children safely
-        List<TreeNode> childrenCopy = new java.util.ArrayList<>(rootNode.getChildren());
-        for (TreeNode child : childrenCopy) {
-            androidTreeView.removeNode(child);
-        }
+        rootNode = TreeNode.root();
 
         File projectDir = activity.getProjectDirectory();
         TreeNode projectNode = null;
@@ -115,6 +109,16 @@ public class FileTreeManager {
                 buildFilteredTree(projectNode, projectDir, currentSearchQuery);
             }
         }
+
+        androidTreeView = new AndroidTreeView(activity, rootNode);
+        androidTreeView.setDefaultContainerStyle(R.style.TreeNodeStyle);
+        androidTreeView.setDefaultAnimation(true);
+        androidTreeView.setDefaultViewHolder(FileNodeViewHolder.class);
+        androidTreeView.setUseAutoToggle(true);
+
+        ViewGroup container = (ViewGroup) treeContainer;
+        container.removeAllViews();
+        container.addView(androidTreeView.getView());
 
         // Empty state visibility
         View emptyStateView = activity.findViewById(R.id.empty_state_view);

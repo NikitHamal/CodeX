@@ -14,6 +14,14 @@ import androidx.recyclerview.widget.RecyclerView;
 import io.github.rosemoe.sora.widget.CodeEditor;
 import io.github.rosemoe.sora.lang.EmptyLanguage;
 import io.github.rosemoe.sora.widget.schemes.EditorColorScheme;
+import io.github.rosemoe.sora.lang.textmate.TextMateLanguage;
+import io.github.rosemoe.sora.lang.textmate.registry.GrammarRegistry;
+import io.github.rosemoe.sora.lang.textmate.registry.ThemeRegistry;
+import io.github.rosemoe.sora.lang.textmate.theme.IThemeSource;
+import io.github.rosemoe.sora.lang.textmate.theme.ThemeModel;
+import io.github.rosemoe.sora.textmate.core.internal.css.TextMateColorScheme;
+import io.github.rosemoe.sora.textmate.core.resource.FileProviderRegistry;
+import io.github.rosemoe.sora.textmate.core.resource.AssetsFileResolver;
 
 import java.io.File;
 import java.util.List;
@@ -26,6 +34,10 @@ import java.util.Map;
  */
 public class SimpleSoraTabAdapter extends RecyclerView.Adapter<SimpleSoraTabAdapter.ViewHolder> {
     private static final String TAG = "SimpleSoraTabAdapter";
+    private static boolean textMateInitialized = false;
+    private static final String TEXTMATE_LANG_INDEX = "textmate/languages.json";
+    private static final String TEXTMATE_THEME_NAME = "quietlight";
+    private static final String TEXTMATE_THEME_PATH = "textmate/quietlight.json";
     private final Context context;
     private final List<TabItem> openTabs;
     private final TabActionListener tabActionListener;
@@ -133,30 +145,35 @@ public class SimpleSoraTabAdapter extends RecyclerView.Adapter<SimpleSoraTabAdap
      */
     private void configureEditor(CodeEditor codeEditor, TabItem tabItem) {
         String fileName = tabItem.getFileName();
-        String extension = getFileExtension(fileName);
+        ensureTextMateInitialized(codeEditor.getContext());
 
-        // Set appropriate language based on file extension
+        // Choose language scope based on file extension
+        String scope = resolveScopeForFile(fileName);
         try {
-            // For now, use EmptyLanguage for all file types
-            // This still provides line numbers and basic editing features
-            codeEditor.setEditorLanguage(new io.github.rosemoe.sora.lang.EmptyLanguage());
-        } catch (Exception e) {
-            Log.w(TAG, "Failed to set language, using empty language", e);
-            codeEditor.setEditorLanguage(new io.github.rosemoe.sora.lang.EmptyLanguage());
+            if (scope != null) {
+                // Apply TextMate color scheme and language (with completion enabled)
+                codeEditor.setColorScheme(TextMateColorScheme.create(ThemeRegistry.getInstance()));
+                codeEditor.setEditorLanguage(TextMateLanguage.create(scope, true));
+            } else {
+                // Fallback if not supported
+                codeEditor.setEditorLanguage(new EmptyLanguage());
+                codeEditor.setColorScheme(new EditorColorScheme());
+            }
+        } catch (Throwable t) {
+            Log.w(TAG, "Falling back to empty language for " + fileName, t);
+            codeEditor.setEditorLanguage(new EmptyLanguage());
+            codeEditor.setColorScheme(new EditorColorScheme());
         }
 
-        // Configure editor appearance
+        // Configure editor appearance & ergonomics
         codeEditor.setTextSize(14f);
         codeEditor.setLineNumberEnabled(true);
         codeEditor.setWordwrap(false);
-        codeEditor.setHighlightCurrentBlock(false);
-        codeEditor.setHighlightCurrentLine(false);
+        codeEditor.setHighlightCurrentBlock(true);
+        codeEditor.setHighlightCurrentLine(true);
         codeEditor.setTypefaceText(android.graphics.Typeface.MONOSPACE);
 
-        // Set a clean color scheme
-        codeEditor.setColorScheme(new EditorColorScheme());
-
-        // Enable features for better editing experience
+        // Reduce scrollbars for a cleaner, mobile-friendly UI
         codeEditor.setScrollBarEnabled(false);
         codeEditor.setVerticalScrollBarEnabled(false);
         codeEditor.setHorizontalScrollBarEnabled(false);
@@ -171,6 +188,58 @@ public class SimpleSoraTabAdapter extends RecyclerView.Adapter<SimpleSoraTabAdap
             return fileName.substring(lastDot + 1);
         }
         return "";
+    }
+
+    private static synchronized void ensureTextMateInitialized(Context context) {
+        if (textMateInitialized) return;
+        try {
+            // Register assets resolver once
+            FileProviderRegistry.getInstance().addFileProvider(
+                    new AssetsFileResolver(context.getApplicationContext().getAssets())
+            );
+
+            // Load theme
+            ThemeRegistry themeRegistry = ThemeRegistry.getInstance();
+            ThemeModel themeModel = new ThemeModel(
+                    IThemeSource.fromInputStream(
+                            FileProviderRegistry.getInstance().tryGetInputStream(TEXTMATE_THEME_PATH),
+                            TEXTMATE_THEME_PATH,
+                            null
+                    ),
+                    TEXTMATE_THEME_NAME
+            );
+            // If you add a dark theme in future, call themeModel.setDark(true)
+            themeRegistry.loadTheme(themeModel);
+            themeRegistry.setTheme(TEXTMATE_THEME_NAME);
+
+            // Load grammars
+            GrammarRegistry.getInstance().loadGrammars(TEXTMATE_LANG_INDEX);
+
+            textMateInitialized = true;
+        } catch (Throwable t) {
+            Log.w(TAG, "Failed to initialize TextMate registries. Syntax highlight may be limited.", t);
+            textMateInitialized = false;
+        }
+    }
+
+    private static String resolveScopeForFile(String fileName) {
+        String ext = "";
+        int dot = fileName.lastIndexOf('.');
+        if (dot >= 0 && dot < fileName.length() - 1) {
+            ext = fileName.substring(dot + 1).toLowerCase();
+        }
+        switch (ext) {
+            case "html":
+            case "htm":
+                return "text.html.basic";
+            case "css":
+                return "source.css";
+            case "js":
+            case "mjs":
+                return "source.js";
+            default:
+                return null;
+        }
     }
 
 

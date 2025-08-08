@@ -1,0 +1,63 @@
+{
+  "name": "HTML",
+  "scopeName": "text.html.basic",
+  "patterns": [
+    { "include": "#comment" },
+    { "include": "#doctype" },
+    { "include": "#tag" }
+  ],
+  "repository": {
+    "comment": {
+      "name": "comment.block.html",
+      "begin": "<!--",
+      "end": "-->",
+      "patterns": [ { "match": "--", "name": "invalid.illegal.badcomment.html" } ]
+    },
+    "doctype": {
+      "name": "meta.tag.sgml.doctype.html",
+      "begin": "<!DOCTYPE",
+      "beginCaptures": { "0": { "name": "entity.name.tag.doctype.html" } },
+      "end": ">"
+    },
+    "tag": {
+      "name": "meta.tag.html",
+      "begin": "(<)(/?)([A-Za-z0-9:_-]+)",
+      "beginCaptures": {
+        "1": { "name": "punctuation.definition.tag.begin.html" },
+        "2": { "name": "punctuation.definition.tag.begin.html" },
+        "3": { "name": "entity.name.tag" }
+      },
+      "end": ">(?!>)",
+      "endCaptures": { "0": { "name": "punctuation.definition.tag.end.html" } },
+      "patterns": [
+        { "include": "#attributes" },
+        { "match": "/", "name": "punctuation.definition.tag.end.html" }
+      ]
+    },
+    "attributes": {
+      "patterns": [
+        {
+          "name": "entity.other.attribute-name",
+          "match": "[A-Za-z_:][-A-Za-z0-9_:.]*"
+        },
+        {
+          "begin": "=",
+          "beginCaptures": { "0": { "name": "keyword.operator.assignment.html" } },
+          "end": "(?=\n|>|/>)",
+          "patterns": [
+            {
+              "name": "string.quoted.double.html",
+              "begin": "\"",
+              "end": "\""
+            },
+            {
+              "name": "string.quoted.single.html",
+              "begin": "'",
+              "end": "'"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

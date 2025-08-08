@@ -54,6 +54,8 @@ public class PreviewActivity extends AppCompatActivity {
     private LinearLayout consoleContainer;
     private ProgressBar progressBar;
     private Toolbar toolbar;
+    private String originalUserAgent;
+    private static final String DESKTOP_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0 Safari/537.36 CodeXDesktop";
 
     // Data
     private File projectDir;
@@ -175,6 +177,7 @@ public class PreviewActivity extends AppCompatActivity {
 
         // User agent for better compatibility
         webSettings.setUserAgentString(webSettings.getUserAgentString() + " CodeX/1.0");
+        originalUserAgent = webSettings.getUserAgentString();
 
         // Setup WebViewClient with local file serving
         webViewPreview.setWebViewClient(new OptimizedWebViewClient());
@@ -345,9 +348,7 @@ public class PreviewActivity extends AppCompatActivity {
                 // Enable desktop user agent and wide viewport
                 webSettings.setUseWideViewPort(true);
                 webSettings.setLoadWithOverviewMode(true);
-                String ua = webSettings.getUserAgentString();
-                String desktopUa = ua.replace("Mobile", "").replace("Android", "");
-                webSettings.setUserAgentString(desktopUa + " Desktop");
+                webSettings.setUserAgentString(DESKTOP_UA);
                 webViewPreview.getSettings().setSupportZoom(true);
                 webViewPreview.getSettings().setBuiltInZoomControls(true);
                 webViewPreview.getSettings().setDisplayZoomControls(false);
@@ -355,8 +356,10 @@ public class PreviewActivity extends AppCompatActivity {
                 // Restore defaults
                 webSettings.setUseWideViewPort(false);
                 webSettings.setLoadWithOverviewMode(false);
-                // Reset to default UA suffix set earlier
-                webSettings.setUserAgentString(webSettings.getUserAgentString().replace(" Desktop", ""));
+                // Reset to original UA captured during setup
+                if (originalUserAgent != null) {
+                    webSettings.setUserAgentString(originalUserAgent);
+                }
             }
             webViewPreview.reload();
         } catch (Exception ignored) {}

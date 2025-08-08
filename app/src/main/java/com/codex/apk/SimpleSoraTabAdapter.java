@@ -18,6 +18,10 @@ import io.github.rosemoe.sora.langs.textmate.TextMateLanguage;
 import io.github.rosemoe.sora.langs.textmate.registry.GrammarRegistry;
 import io.github.rosemoe.sora.langs.textmate.registry.ThemeRegistry;
 import io.github.rosemoe.sora.langs.textmate.TextMateColorScheme;
+import io.github.rosemoe.sora.langs.textmate.registry.FileProviderRegistry;
+import io.github.rosemoe.sora.langs.textmate.registry.model.ThemeModel;
+import io.github.rosemoe.sora.langs.textmate.registry.provider.AssetsFileResolver;
+import org.eclipse.tm4e.core.registry.IThemeSource;
 
 import java.io.File;
 import java.util.List;
@@ -167,6 +171,11 @@ public class SimpleSoraTabAdapter extends RecyclerView.Adapter<SimpleSoraTabAdap
         codeEditor.setWordwrap(false);
         codeEditor.setHighlightCurrentBlock(true);
         codeEditor.setHighlightCurrentLine(true);
+        codeEditor.setHighlightBracketPair(true);
+        codeEditor.setBlockLineEnabled(true);
+        codeEditor.setScalable(true);
+        codeEditor.setCursorAnimationEnabled(true);
+        codeEditor.setTabWidth(2);
         codeEditor.setTypefaceText(android.graphics.Typeface.MONOSPACE);
 
         // Reduce scrollbars for a cleaner, mobile-friendly UI
@@ -189,6 +198,23 @@ public class SimpleSoraTabAdapter extends RecyclerView.Adapter<SimpleSoraTabAdap
     private static synchronized void ensureTextMateInitialized(Context context) {
         if (textMateInitialized) return;
         try {
+            Context appContext = context.getApplicationContext();
+            // Register assets resolver for TextMate
+            FileProviderRegistry.getInstance().addFileProvider(
+                    new AssetsFileResolver(appContext.getAssets())
+            );
+
+            // Load and activate theme
+            String themePath = TEXTMATE_THEME_PATH;
+            IThemeSource source = IThemeSource.fromInputStream(
+                    FileProviderRegistry.getInstance().tryGetInputStream(themePath),
+                    themePath,
+                    null
+            );
+            ThemeModel model = new ThemeModel(source, TEXTMATE_THEME_NAME);
+            ThemeRegistry.getInstance().loadTheme(model);
+            ThemeRegistry.getInstance().setTheme(TEXTMATE_THEME_NAME);
+
             // Load grammars from assets
             GrammarRegistry.getInstance().loadGrammars(TEXTMATE_LANG_INDEX);
             textMateInitialized = true;

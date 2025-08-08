@@ -345,24 +345,26 @@ public class PreviewActivity extends AppCompatActivity {
         WebSettings webSettings = webViewPreview.getSettings();
         try {
             if (enable) {
-                // Enable desktop user agent and wide viewport
                 webSettings.setUseWideViewPort(true);
                 webSettings.setLoadWithOverviewMode(true);
                 webSettings.setUserAgentString(DESKTOP_UA);
-                webViewPreview.getSettings().setSupportZoom(true);
-                webViewPreview.getSettings().setBuiltInZoomControls(true);
-                webViewPreview.getSettings().setDisplayZoomControls(false);
+                webSettings.setSupportZoom(true);
+                webSettings.setBuiltInZoomControls(true);
+                webSettings.setDisplayZoomControls(false);
+                Toast.makeText(this, "Desktop mode enabled", Toast.LENGTH_SHORT).show();
             } else {
-                // Restore defaults
                 webSettings.setUseWideViewPort(false);
                 webSettings.setLoadWithOverviewMode(false);
-                // Reset to original UA captured during setup
                 if (originalUserAgent != null) {
                     webSettings.setUserAgentString(originalUserAgent);
                 }
+                Toast.makeText(this, "Desktop mode disabled", Toast.LENGTH_SHORT).show();
             }
             webViewPreview.reload();
-        } catch (Exception ignored) {}
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to set desktop mode", e);
+            Toast.makeText(this, "Failed to change mode", Toast.LENGTH_SHORT).show();
+        }
     }
 
     @Override

@@ -154,7 +154,8 @@
                 android:fontFamily="monospace"
                 android:textColor="@android:color/white"
                 android:textSize="12sp"
-                android:lineSpacingExtra="2dp" />
+                android:lineSpacingExtra="2dp"
+                android:textIsSelectable="true" />
 
         </ScrollView>
 

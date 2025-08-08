@@ -74,9 +74,9 @@ public class FileTreeAdapter extends RecyclerView.Adapter<FileTreeAdapter.ViewHo
 
         // Enhanced icon handling
         if (item.isDirectory()) {
-            holder.imageFileIcon.setImageResource(item.isExpanded() ? R.drawable.ic_folder_open : R.drawable.icon_folder_round);
+            holder.imageFileIcon.setImageResource(item.isExpanded() ? R.drawable.icon_folder_open_round : R.drawable.icon_folder_round);
             holder.imageExpandIcon.setVisibility(View.VISIBLE);
-            holder.imageExpandIcon.setImageResource(item.isExpanded() ? R.drawable.ic_expand_less : R.drawable.ic_expand_more);
+            holder.imageExpandIcon.setImageResource(item.isExpanded() ? R.drawable.icon_expand_less_round : R.drawable.icon_expand_more_round);
             
             // Animate expand icon rotation
             float rotation = item.isExpanded() ? 180f : 0f;
@@ -194,7 +194,7 @@ public class FileTreeAdapter extends RecyclerView.Adapter<FileTreeAdapter.ViewHo
         if (fileName.endsWith(".pdf")) return R.drawable.ic_pdf;
         if (fileName.endsWith(".zip") || fileName.endsWith(".rar") || fileName.endsWith(".7z") || 
             fileName.endsWith(".tar") || fileName.endsWith(".gz")) return R.drawable.ic_archive;
-        return R.drawable.ic_file;
+        return R.drawable.icon_file_round;
     }
 
     private void showFileContextMenu(View anchor, final FileItem item) {

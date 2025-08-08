@@ -22,8 +22,7 @@
             app:titleTextColor="@color/on_surface"
             app:title="CodeX"
             app:titleTextAppearance="@style/TextAppearance.Material3.HeadlineSmall"
-            app:navigationIconTint="@color/on_surface"
-            app:menu="@menu/menu_main" />
+            app:navigationIconTint="@color/on_surface" />
 
     </com.google.android.material.appbar.AppBarLayout>
 

@@ -87,6 +87,12 @@ public class PreviewActivity extends AppCompatActivity {
         setupWebView();
 
 
+        // Wire console header buttons
+        View clearHeader = findViewById(R.id.btn_clear_console_header);
+        if (clearHeader != null) clearHeader.setOnClickListener(v -> clearConsole());
+        View closeConsole = findViewById(R.id.btn_close_console);
+        if (closeConsole != null) closeConsole.setOnClickListener(v -> toggleConsole());
+
         // Load initial content
         loadContent();
     }

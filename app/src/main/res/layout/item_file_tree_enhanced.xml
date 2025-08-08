@@ -34,7 +34,7 @@
                 android:id="@+id/image_file_icon"
                 android:layout_width="20dp"
                 android:layout_height="20dp"
-                android:src="@drawable/ic_file"
+                android:src="@drawable/icon_file_round"
                 android:contentDescription="File icon"
                 app:tint="@color/on_surface_variant" />
 
@@ -42,7 +42,7 @@
                 android:id="@+id/image_expand_icon"
                 android:layout_width="16dp"
                 android:layout_height="16dp"
-                android:src="@drawable/ic_expand_more"
+                android:src="@drawable/icon_expand_more_round"
                 android:contentDescription="Expand icon"
                 android:layout_marginStart="4dp"
                 android:visibility="gone"

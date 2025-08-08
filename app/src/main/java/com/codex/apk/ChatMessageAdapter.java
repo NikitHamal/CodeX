@@ -38,6 +38,8 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
         void onDiscardClicked(int messagePosition, ChatMessage message);
         void onReapplyClicked(int messagePosition, ChatMessage message);
         void onFileChangeClicked(ChatMessage.FileActionDetail fileActionDetail);
+        void onPlanAcceptClicked(int messagePosition, ChatMessage message);
+        void onPlanDiscardClicked(int messagePosition, ChatMessage message);
     }
 
     public ChatMessageAdapter(Context context, List<ChatMessage> messages) {
@@ -121,6 +123,7 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
 
     static class AiMessageViewHolder extends RecyclerView.ViewHolder {
         TextView textMessage; TextView textAiModelName; RecyclerView fileChangesContainer; LinearLayout layoutThinkingSection; TextView textThinkingContent; ImageView iconThinkingExpand; LinearLayout layoutWebSources; TextView buttonWebSources; LinearLayout layoutTypingIndicator; TextView textTypingIndicator; LinearLayout layoutPlanSteps; RecyclerView recyclerPlanSteps; TextView textAgentThinking;
+        LinearLayout layoutPlanActions; MaterialButton buttonAcceptPlan; MaterialButton buttonDiscardPlan;
         private final OnAiActionInteractionListener listener; private final Context context; private MarkdownFormatter markdownFormatter;
         AiMessageViewHolder(View itemView, OnAiActionInteractionListener listener) {
             super(itemView); this.listener = listener; this.context = itemView.getContext();
@@ -137,6 +140,9 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
             layoutPlanSteps = itemView.findViewById(R.id.layout_plan_steps);
             recyclerPlanSteps = itemView.findViewById(R.id.recycler_plan_steps);
             textAgentThinking = itemView.findViewById(R.id.text_agent_thinking);
+            layoutPlanActions = itemView.findViewById(R.id.layout_plan_actions);
+            buttonAcceptPlan = itemView.findViewById(R.id.button_accept_plan);
+            buttonDiscardPlan = itemView.findViewById(R.id.button_discard_plan);
             markdownFormatter = MarkdownFormatter.getInstance(context);
             // Long click is set in bind with the bound message to avoid outer messages reference
         }
@@ -163,6 +169,15 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
             itemView.setOnLongClickListener(v -> { showRawApiResponseDialog(message); return true; });
 
             layoutTypingIndicator.setVisibility(isTyping ? View.VISIBLE : View.GONE);
+            if (isTyping) {
+                AlphaAnimation anim = new AlphaAnimation(0.2f, 1.0f);
+                anim.setDuration(800);
+                anim.setRepeatMode(AlphaAnimation.REVERSE);
+                anim.setRepeatCount(AlphaAnimation.INFINITE);
+                layoutTypingIndicator.startAnimation(anim);
+            } else {
+                layoutTypingIndicator.clearAnimation();
+            }
             textMessage.setVisibility(isTyping ? View.GONE : View.VISIBLE);
             layoutThinkingSection.setVisibility(isTyping ? View.GONE : (message.getThinkingContent() != null && !message.getThinkingContent().trim().isEmpty() ? View.VISIBLE : View.GONE));
             layoutWebSources.setVisibility(isTyping ? View.GONE : (message.getWebSources() != null && !message.getWebSources().isEmpty() ? View.VISIBLE : View.GONE));
@@ -218,6 +233,23 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
                 AlphaAnimation anim = new AlphaAnimation(0.2f, 1.0f); anim.setDuration(800); anim.setRepeatMode(AlphaAnimation.REVERSE); anim.setRepeatCount(AlphaAnimation.INFINITE); bottom.startAnimation(anim);
             } else {
                 bottom.clearAnimation(); bottom.setVisibility(View.GONE);
+            }
+
+            boolean isPlan = message.getPlanSteps() != null && !message.getPlanSteps().isEmpty();
+            if (isPlan && message.getStatus() == ChatMessage.STATUS_PENDING_APPROVAL) {
+                layoutPlanActions.setVisibility(View.VISIBLE);
+                buttonAcceptPlan.setOnClickListener(v -> {
+                    if (listener != null) {
+                        listener.onPlanAcceptClicked(messagePosition, message);
+                    }
+                });
+                buttonDiscardPlan.setOnClickListener(v -> {
+                    if (listener != null) {
+                        listener.onPlanDiscardClicked(messagePosition, message);
+                    }
+                });
+            } else {
+                layoutPlanActions.setVisibility(View.GONE);
             }
         }
     }

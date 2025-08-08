@@ -182,6 +182,30 @@
                 android:foreground="?attr/selectableItemBackground" />
         </LinearLayout>
 
+        <LinearLayout
+            android:id="@+id/layout_plan_actions"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="8dp"
+            android:gravity="end"
+            android:visibility="gone">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/button_discard_plan"
+                style="?attr/materialButtonOutlinedStyle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Discard" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/button_accept_plan"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:text="Accept" />
+        </LinearLayout>
+
         <!-- Thinking indicator at bottom for running steps -->
         <TextView
             android:id="@+id/text_agent_thinking"

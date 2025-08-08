@@ -95,6 +95,12 @@ public class TabManager {
      * @param diffContent The content of the diff (e.g., unified diff format).
      */
     public void openDiffTab(String fileName, String diffContent) {
+        if (activity.getCodeEditorFragment() == null) {
+            activity.addPendingDiffToOpen(fileName, diffContent);
+            activity.getMainViewPager().setCurrentItem(1, true); // Switch to editor view
+            return;
+        }
+
         // Create a unique file object for the diff tab.
         File diffFile = new File(activity.getProjectDirectory(), "DIFF_" + fileName); // Use projectDir from activity
 

@@ -12,7 +12,15 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import io.github.rosemoe.sora.widget.CodeEditor;
-import io.github.rosemoe.sora.lang.EmptyLanguage;
+import io.github.rosemoe.sora.lang.Language;
+import io.github.rosemoe.sora.lang.textmate.TextMateLanguage;
+import io.github.rosemoe.sora.lang.textmate.TextMateColorScheme;
+import io.github.rosemoe.sora.lang.textmate.registry.FileProviderRegistry;
+import io.github.rosemoe.sora.lang.textmate.registry.ThemeRegistry;
+import io.github.rosemoe.sora.lang.textmate.registry.GrammarRegistry;
+import io.github.rosemoe.sora.lang.textmate.registry.model.ThemeModel;
+import io.github.rosemoe.sora.lang.textmate.registry.model.IThemeSource;
+import io.github.rosemoe.sora.lang.textmate.registry.provider.AssetsFileResolver;
 import io.github.rosemoe.sora.widget.schemes.EditorColorScheme;
 
 import java.io.File;
@@ -60,11 +68,43 @@ public class SimpleSoraTabAdapter extends RecyclerView.Adapter<SimpleSoraTabAdap
     /**
      * Constructor for SimpleSoraTabAdapter
      */
+    private boolean isTextMateInitialized = false;
+
     public SimpleSoraTabAdapter(Context context, List<TabItem> openTabs, TabActionListener tabActionListener, FileManager fileManager) {
         this.context = context;
         this.openTabs = openTabs;
         this.tabActionListener = tabActionListener;
         this.fileManager = fileManager;
+        ensureTextmateInitialized();
+    }
+
+    private void ensureTextmateInitialized() {
+        if (isTextMateInitialized) {
+            return;
+        }
+        try {
+            // Add a file provider to resolve assets
+            FileProviderRegistry.getInstance().addFileProvider(new AssetsFileResolver(context.getAssets()));
+
+            // Load a theme
+            String themeName = "darcula";
+            String themePath = "textmate/themes/" + themeName + ".json";
+            ThemeRegistry.getInstance().loadTheme(new ThemeModel(
+                IThemeSource.fromInputStream(
+                    FileProviderRegistry.getInstance().tryGetInputStream(themePath), themePath, null
+                ), themeName
+            ));
+
+            // Set the theme
+            ThemeRegistry.getInstance().setTheme(themeName);
+
+            // Load grammars
+            GrammarRegistry.getInstance().loadGrammars("textmate/languages.json");
+
+            isTextMateInitialized = true;
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to initialize TextMate resources", e);
+        }
     }
 
     @NonNull
@@ -135,14 +175,21 @@ public class SimpleSoraTabAdapter extends RecyclerView.Adapter<SimpleSoraTabAdap
         String fileName = tabItem.getFileName();
         String extension = getFileExtension(fileName);
 
-        // Set appropriate language based on file extension
+        // Set language and theme
         try {
-            // For now, use EmptyLanguage for all file types
-            // This still provides line numbers and basic editing features
-            codeEditor.setEditorLanguage(new EmptyLanguage());
+            String scopeName = getScopeNameForExtension(extension);
+            if (scopeName != null) {
+                Language language = TextMateLanguage.create(scopeName, true);
+                codeEditor.setEditorLanguage(language);
+                codeEditor.setColorScheme(TextMateColorScheme.create(ThemeRegistry.getInstance()));
+            } else {
+                codeEditor.setEditorLanguage(new io.github.rosemoe.sora.lang.EmptyLanguage());
+                codeEditor.setColorScheme(new EditorColorScheme()); // Fallback to default
+            }
         } catch (Exception e) {
-            Log.w(TAG, "Failed to set language, using empty language", e);
-            codeEditor.setEditorLanguage(new EmptyLanguage());
+            Log.w(TAG, "Failed to set TextMate language for " + fileName, e);
+            codeEditor.setEditorLanguage(new io.github.rosemoe.sora.lang.EmptyLanguage());
+            codeEditor.setColorScheme(new EditorColorScheme());
         }
 
         // Configure editor appearance
@@ -152,9 +199,6 @@ public class SimpleSoraTabAdapter extends RecyclerView.Adapter<SimpleSoraTabAdap
         codeEditor.setHighlightCurrentBlock(false);
         codeEditor.setHighlightCurrentLine(false);
         codeEditor.setTypefaceText(android.graphics.Typeface.MONOSPACE);
-
-        // Set a clean color scheme
-        codeEditor.setColorScheme(new EditorColorScheme());
 
         // Enable features for better editing experience
         codeEditor.setScrollBarEnabled(false);
@@ -171,6 +215,30 @@ public class SimpleSoraTabAdapter extends RecyclerView.Adapter<SimpleSoraTabAdap
             return fileName.substring(lastDot + 1);
         }
         return "";
+    }
+
+    private String getScopeNameForExtension(String extension) {
+        switch (extension) {
+            case "java":
+                return "source.java";
+            case "kt":
+                return "source.kotlin";
+            case "html":
+            case "htm":
+                return "text.html.basic";
+            case "css":
+                return "source.css";
+            case "js":
+                return "source.js";
+            case "json":
+                return "source.json";
+            case "xml":
+                return "text.xml";
+            case "md":
+                return "text.html.markdown";
+            default:
+                return null;
+        }
     }
 
 

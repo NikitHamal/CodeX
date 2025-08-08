@@ -126,11 +126,11 @@ public class FileActionAdapter extends RecyclerView.Adapter<FileActionAdapter.Vi
             }
 
             // Strike-through when completed
-            if ("completed".equals(status)) {
-                textFileName.setPaintFlags(textFileName.getPaintFlags() | Paint.STRIKE_THRU_TEXT_FLAG);
-            } else {
-                textFileName.setPaintFlags(textFileName.getPaintFlags() & (~Paint.STRIKE_THRU_TEXT_FLAG));
-            }
+            // if ("completed".equals(status)) {
+            //     textFileName.setPaintFlags(textFileName.getPaintFlags() | Paint.STRIKE_THRU_TEXT_FLAG);
+            // } else {
+            //     textFileName.setPaintFlags(textFileName.getPaintFlags() & (~Paint.STRIKE_THRU_TEXT_FLAG));
+            // }
 
             itemView.setOnClickListener(v -> listener.onFileActionClicked(action));
         }

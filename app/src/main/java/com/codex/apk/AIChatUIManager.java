@@ -216,7 +216,9 @@ public class AIChatUIManager {
 
     public void scrollToBottom() {
         if (recyclerViewChatHistory.getAdapter() != null && recyclerViewChatHistory.getAdapter().getItemCount() > 0) {
-            recyclerViewChatHistory.scrollToPosition(recyclerViewChatHistory.getAdapter().getItemCount() - 1);
+            recyclerViewChatHistory.post(() -> {
+                recyclerViewChatHistory.scrollToPosition(recyclerViewChatHistory.getAdapter().getItemCount() - 1);
+            });
         }
     }
 

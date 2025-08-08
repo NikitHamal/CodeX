@@ -11,8 +11,11 @@ import java.util.ArrayList;
  * Enhanced AI Processor with advanced file operations.
  * Merges updateFile and searchAndReplace with versioning, diff generation, and smart updates.
  */
+import com.google.gson.Gson;
+
 public class AiProcessor {
     private static final String TAG = "AiProcessor";
+    private static final Gson gson = new Gson();
     private final File projectDir;
     private final Context context;
     private final AdvancedFileManager advancedFileManager;
@@ -33,6 +36,7 @@ public class AiProcessor {
      * @throws IllegalArgumentException If the action type is unknown or parameters are invalid.
      */
     public String applyFileAction(ChatMessage.FileActionDetail detail) throws IOException, IllegalArgumentException {
+        Log.d(TAG, "Applying file action: " + gson.toJson(detail));
         String actionType = detail.type;
         String summary = "";
 

@@ -170,6 +170,14 @@ public class AdvancedFileManager {
             // Simple patch application - can be enhanced with proper diff library
             String[] lines = currentContent.split("\n");
             String[] patchLines = patchContent.split("\n");
+
+            // Safety check for complex patches
+            for (String patchLine : patchLines) {
+                if (!patchLine.startsWith("+") && !patchLine.startsWith("-") && !patchLine.startsWith("@@") && !patchLine.startsWith("---") && !patchLine.startsWith("+++") && !patchLine.trim().isEmpty()) {
+                    Log.w(TAG, "applyPatch: Found complex line in patch that cannot be handled: '" + patchLine + "'. Aborting patch.");
+                    return currentContent; // Return original if patch is too complex for this simple parser
+                }
+            }
             
             List<String> result = new ArrayList<>(Arrays.asList(lines));
             

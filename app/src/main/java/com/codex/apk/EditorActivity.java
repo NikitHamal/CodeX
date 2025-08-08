@@ -63,6 +63,8 @@ public class EditorActivity extends AppCompatActivity implements
 
     private EditorViewModel viewModel;
     private List<File> pendingFilesToOpen = new ArrayList<>();
+    private String pendingDiffFileName;
+    private String pendingDiffContent;
 
     // In onCreate or fragment setup logic, ensure chat fragment is attached and visible
     // Remove ensureChatFragment and its call in onCreate, as there is no fragment_container_chat in the layout.
@@ -147,10 +149,22 @@ public class EditorActivity extends AppCompatActivity implements
             tabManager.openFile(file);
         }
         pendingFilesToOpen.clear();
+
+        // Process any pending diff
+        if (pendingDiffFileName != null && pendingDiffContent != null) {
+            tabManager.openDiffTab(pendingDiffFileName, pendingDiffContent);
+            pendingDiffFileName = null;
+            pendingDiffContent = null;
+        }
     }
 
     public void addPendingFileToOpen(File file) {
         pendingFilesToOpen.add(file);
+    }
+
+    public void addPendingDiffToOpen(String fileName, String diffContent) {
+        this.pendingDiffFileName = fileName;
+        this.pendingDiffContent = diffContent;
     }
 
     @Override
@@ -334,6 +348,16 @@ public class EditorActivity extends AppCompatActivity implements
         if (aiChatFragment != null) {
             aiChatFragment.onQwenConversationStateUpdated(state);
         }
+    }
+
+    @Override
+    public void onPlanAcceptClicked(int messagePosition, ChatMessage message) {
+        aiAssistantManager.acceptPlan(messagePosition, message);
+    }
+
+    @Override
+    public void onPlanDiscardClicked(int messagePosition, ChatMessage message) {
+        aiAssistantManager.discardPlan(messagePosition, message);
     }
 
     // Public methods for managers to call back to EditorActivity for UI updates or core actions

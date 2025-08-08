@@ -48,6 +48,7 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
     // Track the last plan message for status updates and autonomous run
     private Integer lastPlanMessagePosition = null;
     private int planProgressIndex = 0; // index into plan steps list for file-kind steps
+    private int planStepRetryCount = 0;
     private boolean isExecutingPlan = false;
     private Deque<String> executedStepSummaries = new ArrayDeque<>();
 
@@ -199,7 +200,6 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
 
             activity.runOnUiThread(() -> {
                 message.setStatus(ChatMessage.STATUS_ACCEPTED);
-                message.setActionSummaries(appliedSummaries);
                 AIChatFragment frag = activity.getAiChatFragment();
                 if (frag != null) frag.updateMessage(messagePosition, message);
                 activity.tabManager.refreshOpenTabsAfterAi();
@@ -275,7 +275,7 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
         }
         if (idx >= steps.size()) {
             isExecutingPlan = false;
-            activity.showToast("Plan completed");
+            activity.runOnUiThread(() -> activity.showToast("Plan completed"));
             return;
         }
         planProgressIndex = idx; // align index
@@ -365,6 +365,29 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
         onAiAcceptActions(messagePosition, message);
     }
 
+    public void acceptPlan(int messagePosition, ChatMessage message) {
+        Log.d(TAG, "User accepted plan for message at position: " + messagePosition);
+        isExecutingPlan = true;
+        planStepRetryCount = 0;
+        message.setStatus(ChatMessage.STATUS_ACCEPTED);
+        AIChatFragment aiChatFragment = activity.getAiChatFragment();
+        if (aiChatFragment != null) {
+            aiChatFragment.updateMessage(messagePosition, message);
+        }
+        sendNextPlanStepFollowUp();
+    }
+
+    public void discardPlan(int messagePosition, ChatMessage message) {
+        Log.d(TAG, "User discarded plan for message at position: " + messagePosition);
+        isExecutingPlan = false;
+        message.setStatus(ChatMessage.STATUS_DISCARDED);
+        AIChatFragment aiChatFragment = activity.getAiChatFragment();
+        if (aiChatFragment != null) {
+            aiChatFragment.updateMessage(messagePosition, message);
+        }
+        activity.showToast("Plan discarded.");
+    }
+
     public void onAiFileChangeClicked(ChatMessage.FileActionDetail fileActionDetail) {
         Log.d(TAG, "User clicked on file change: " + fileActionDetail.path + " (" + fileActionDetail.type + ")");
 
@@ -420,22 +443,33 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                 }
 
                 // If this is a file_operation response during an executing plan, update the existing plan message
-                if (!isPlan && aiAssistant != null && aiAssistant.isAgentModeEnabled() && lastPlanMessagePosition != null && proposedFileChanges != null && !proposedFileChanges.isEmpty()) {
-                    AIChatFragment frag = activity.getAiChatFragment();
-                    ChatMessage planMsg = frag.getMessageAt(lastPlanMessagePosition);
-                    if (planMsg != null) {
-                        // Append short explanation under the plan
-                        String existing = planMsg.getContent() != null ? planMsg.getContent() : "";
-                        String sep = existing.endsWith("\n") ? "" : "\n\n";
-                        String toAppend = (explanation != null && !explanation.trim().isEmpty()) ? (sep + explanation.trim()) : "";
-                        planMsg.setContent(existing + toAppend);
-                        // Merge proposed file changes for this step
-                        List<ChatMessage.FileActionDetail> merged = planMsg.getProposedFileChanges() != null ? planMsg.getProposedFileChanges() : new ArrayList<>();
-                        merged.addAll(proposedFileChanges);
-                        planMsg.setProposedFileChanges(merged);
-                        // Update the single message and auto-apply
-                        frag.updateMessage(lastPlanMessagePosition, planMsg);
-                        onAiAcceptActions(lastPlanMessagePosition, planMsg);
+                if (!isPlan && isExecutingPlan && lastPlanMessagePosition != null) {
+                    if (proposedFileChanges != null && !proposedFileChanges.isEmpty()) {
+                        planStepRetryCount = 0; // Reset retry count on successful action
+                        AIChatFragment frag = activity.getAiChatFragment();
+                        ChatMessage planMsg = frag.getMessageAt(lastPlanMessagePosition);
+                        if (planMsg != null) {
+                            // Merge proposed file changes for this step
+                            List<ChatMessage.FileActionDetail> merged = planMsg.getProposedFileChanges() != null ? planMsg.getProposedFileChanges() : new ArrayList<>();
+                            merged.addAll(proposedFileChanges);
+                            planMsg.setProposedFileChanges(merged);
+                            // Update the single message and auto-apply
+                            frag.updateMessage(lastPlanMessagePosition, planMsg);
+                            onAiAcceptActions(lastPlanMessagePosition, planMsg);
+                            return;
+                        }
+                    } else {
+                        // AI returned no file ops, retry the step
+                        planStepRetryCount++;
+                        if (planStepRetryCount > 2) {
+                            Log.e(TAG, "AI failed to produce file ops for step after 3 retries. Marking as failed.");
+                            setCurrentRunningPlanStepStatus("failed");
+                            planStepRetryCount = 0; // Reset for next step
+                            sendNextPlanStepFollowUp(); // Move to next step
+                        } else {
+                            Log.w(TAG, "AI did not return file operations. Retrying step (attempt " + planStepRetryCount + ")");
+                            sendNextPlanStepFollowUp(); // Re-prompt for the same step
+                        }
                         return;
                     }
                 }
@@ -465,10 +499,11 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                     lastPlanMessagePosition = insertedPos;
                     planProgressIndex = 0;
                     executedStepSummaries.clear();
-                    if (aiAssistant != null && aiAssistant.isAgentModeEnabled()) {
-                        isExecutingPlan = true;
-                        sendNextPlanStepFollowUp();
-                    }
+                    // Auto-execution removed, user must click "Accept"
+                    // if (aiAssistant != null && aiAssistant.isAgentModeEnabled()) {
+                    //     isExecutingPlan = true;
+                    //     sendNextPlanStepFollowUp();
+                    // }
                 } else {
                     if (aiAssistant != null && aiAssistant.isAgentModeEnabled() && proposedFileChanges != null && !proposedFileChanges.isEmpty()) {
                         onAiAcceptActions(insertedPos, aiMessage);

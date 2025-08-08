@@ -267,6 +267,17 @@ public class FileTreeManager {
         loadFileTree();
     }
 
+    public void toggleNode(TreeNode node) {
+        if (androidTreeView != null && node != null) {
+            boolean expanded = androidTreeView.isNodeExpanded(node);
+            if (expanded) {
+                androidTreeView.collapseNode(node);
+            } else {
+                androidTreeView.expandNode(node);
+            }
+        }
+    }
+
     public static class FileNode {
         public final File file;
         public FileNode(File file) { this.file = file; }
@@ -296,7 +307,7 @@ public class FileTreeManager {
 
             view.setOnClickListener(v -> {
                 if (value.file.isDirectory()) {
-                    node.toggle();
+                    manager.toggleNode(node);
                 } else {
                     activity.openFile(value.file);
                 }

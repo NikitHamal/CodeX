@@ -203,8 +203,13 @@ public class EditorActivity extends AppCompatActivity implements
             Intent settingsIntent = new Intent(this, SettingsActivity.class);
             startActivity(settingsIntent);
             return true;
-        } else if (id == R.id.action_share) {
-            uiManager.shareProject();
+        } else if (id == R.id.action_toggle_wrap) {
+            item.setChecked(!item.isChecked());
+            applyWrapToActiveEditor(item.isChecked());
+            return true;
+        } else if (id == R.id.action_toggle_read_only) {
+            item.setChecked(!item.isChecked());
+            applyReadOnlyToActiveEditor(item.isChecked());
             return true;
         }
         return super.onOptionsItemSelected(item);
@@ -443,5 +448,27 @@ public class EditorActivity extends AppCompatActivity implements
         }
 
         startActivity(previewIntent);
+    }
+
+    private void applyWrapToActiveEditor(boolean enable) {
+        CodeEditorFragment fragment = getCodeEditorFragment();
+        if (fragment == null) return;
+        SimpleSoraTabAdapter adapter = fragment.getFileTabAdapter();
+        if (adapter == null) return;
+        int pos = adapter.getActiveTabPosition();
+        if (pos >= 0) {
+            adapter.setWrapForPosition(pos, enable);
+        }
+    }
+
+    private void applyReadOnlyToActiveEditor(boolean readOnly) {
+        CodeEditorFragment fragment = getCodeEditorFragment();
+        if (fragment == null) return;
+        SimpleSoraTabAdapter adapter = fragment.getFileTabAdapter();
+        if (adapter == null) return;
+        int pos = adapter.getActiveTabPosition();
+        if (pos >= 0) {
+            adapter.setReadOnlyForPosition(pos, readOnly);
+        }
     }
 }

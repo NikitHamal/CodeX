@@ -77,6 +77,7 @@ public class SimpleSoraTabAdapter extends RecyclerView.Adapter<SimpleSoraTabAdap
         this.openTabs = openTabs;
         this.tabActionListener = tabActionListener;
         this.fileManager = fileManager;
+        setHasStableIds(true);
     }
 
     @NonNull
@@ -106,6 +107,9 @@ public class SimpleSoraTabAdapter extends RecyclerView.Adapter<SimpleSoraTabAdap
 
             // Set content without triggering change events
             codeEditor.setText(tabItem.getContent());
+            // Apply persistent flags
+            codeEditor.setWordwrap(tabItem.isWrapEnabled());
+            codeEditor.setEditable(!tabItem.isReadOnly());
 
             // Set up content change listener only once per tab
             if (!holder.isListenerAttached) {
@@ -138,6 +142,14 @@ public class SimpleSoraTabAdapter extends RecyclerView.Adapter<SimpleSoraTabAdap
                 tabActionListener.onActiveTabChanged(tabItem.getFile());
             }
         }
+    }
+
+    @Override
+    public long getItemId(int position) {
+        if (position >= 0 && position < openTabs.size()) {
+            return openTabs.get(position).getFile().getAbsolutePath().hashCode();
+        }
+        return RecyclerView.NO_ID;
     }
 
     /**
@@ -177,6 +189,10 @@ public class SimpleSoraTabAdapter extends RecyclerView.Adapter<SimpleSoraTabAdap
         codeEditor.setCursorAnimationEnabled(true);
         codeEditor.setTabWidth(2);
         codeEditor.setTypefaceText(android.graphics.Typeface.MONOSPACE);
+        // Performance tweaks
+        codeEditor.setInterceptParentHorizontalScrollIfNeeded(true);
+        codeEditor.setAntiWordBreaking(false);
+        codeEditor.setBasicDisplayMode(false);
 
         // Reduce scrollbars for a cleaner, mobile-friendly UI
         codeEditor.setScrollBarEnabled(false);
@@ -273,6 +289,37 @@ public class SimpleSoraTabAdapter extends RecyclerView.Adapter<SimpleSoraTabAdap
      */
     public int getActiveTabPosition() {
         return activeTabPosition;
+    }
+
+    /**
+     * Toggle word wrap for the editor at given position if bound.
+     */
+    public void setWrapForPosition(int position, boolean enable) {
+        RecyclerView recycler = null;
+        try {
+            // Try to find a RecyclerView parent to query ViewHolder
+            // This adapter is attached to the ViewPager2's internal RecyclerView, but we can't access it directly here.
+            // Instead, request a re-bind and apply in onBindViewHolder by storing the preference on TabItem temporarily if needed.
+            // For simplicity, just notifyItemChanged to rebind and then apply in onBindViewHolder via a flag on TabItem.
+            if (position >= 0 && position < openTabs.size()) {
+                TabItem tab = openTabs.get(position);
+                tab.setWrapEnabled(enable);
+                notifyItemChanged(position);
+            }
+        } catch (Throwable ignore) {}
+    }
+
+    /**
+     * Toggle read-only for the editor at given position if bound.
+     */
+    public void setReadOnlyForPosition(int position, boolean readOnly) {
+        try {
+            if (position >= 0 && position < openTabs.size()) {
+                TabItem tab = openTabs.get(position);
+                tab.setReadOnly(readOnly);
+                notifyItemChanged(position);
+            }
+        } catch (Throwable ignore) {}
     }
 
     /**

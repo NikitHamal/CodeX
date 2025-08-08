@@ -199,6 +199,10 @@ public class CodeEditorFragment extends Fragment implements SimpleSoraTabAdapter
         return tabAdapter;
     }
 
+    public int getActivePosition() {
+        return tabAdapter != null ? tabAdapter.getActiveTabPosition() : -1;
+    }
+
     public TabItem getActiveTabItem() {
         if (tabAdapter != null) {
             return tabAdapter.getActiveTabItem();

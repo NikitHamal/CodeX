@@ -7,6 +7,8 @@ public class TabItem {
     private String content; 
     private boolean modified;
     private boolean lastNotifiedModifiedState;
+    private boolean wrapEnabled = false;
+    private boolean readOnly = false;
     
     public TabItem(File file, String initialContent) {
         this.file = file;
@@ -24,4 +26,10 @@ public class TabItem {
     public void setModified(boolean modified) { this.modified = modified; }
     public boolean getLastNotifiedModifiedState() { return lastNotifiedModifiedState; }
     public void setLastNotifiedModifiedState(boolean lastNotifiedModifiedState) { this.lastNotifiedModifiedState = lastNotifiedModifiedState; }
+
+    public boolean isWrapEnabled() { return wrapEnabled; }
+    public void setWrapEnabled(boolean wrapEnabled) { this.wrapEnabled = wrapEnabled; }
+
+    public boolean isReadOnly() { return readOnly; }
+    public void setReadOnly(boolean readOnly) { this.readOnly = readOnly; }
 }

@@ -17,8 +17,13 @@
         android:title="Settings"
         app:showAsAction="ifRoom" />
     <item
-        android:id="@+id/action_share"
-        android:icon="@drawable/ic_share"
-        android:title="Share"
+        android:id="@+id/action_toggle_wrap"
+        android:title="Wrap"
+        android:checkable="true"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/action_toggle_read_only"
+        android:title="Read Only"
+        android:checkable="true"
         app:showAsAction="never" />
 </menu>

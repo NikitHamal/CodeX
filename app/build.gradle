@@ -33,8 +33,8 @@ android {
 	}
 	compileOptions {
 		coreLibraryDesugaringEnabled true
-		sourceCompatibility JavaVersion.VERSION_1_8
-		targetCompatibility JavaVersion.VERSION_1_8
+		sourceCompatibility JavaVersion.VERSION_17
+		targetCompatibility JavaVersion.VERSION_17
 	}
 	buildFeatures {
 		viewBinding true
@@ -42,16 +42,17 @@ android {
 }
 
 dependencies {
-	coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.0.4'
+	coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.5'
 	implementation fileTree(dir: 'libs', include: ['*.jar'])
 	implementation 'androidx.appcompat:appcompat:1.7.0'
 	implementation 'com.google.android.material:material:1.12.0'
 	implementation 'com.google.code.gson:gson:2.8.9'
 	implementation 'androidx.preference:preference:1.2.1'
 	implementation 'com.squareup.okhttp3:okhttp:4.9.3'
-	implementation 'io.github.Rosemoe.sora-editor:editor:0.23.5'
-	implementation 'io.github.Rosemoe.sora-editor:language-textmate:0.23.5'
-	implementation 'io.github.Rosemoe.sora-editor:language-java:0.23.5'
+	implementation platform('io.github.rosemoe:editor-bom:0.23.7')
+	implementation 'io.github.rosemoe:editor'
+	implementation 'io.github.rosemoe:language-textmate'
+	implementation 'io.github.rosemoe:language-java'
 	
 	// Markwon for markdown formatting
 	implementation 'io.noties.markwon:core:4.6.2'

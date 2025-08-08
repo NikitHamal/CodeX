@@ -20,5 +20,12 @@
         android:title="Clear Console"
         app:showAsAction="never" />
 
+    <item
+        android:id="@+id/action_desktop_mode"
+        android:title="Desktop"
+        android:checkable="true"
+        android:checked="false"
+        app:showAsAction="never" />
+
 
 </menu>

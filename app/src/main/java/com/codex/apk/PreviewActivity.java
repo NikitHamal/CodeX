@@ -338,6 +338,30 @@ public class PreviewActivity extends AppCompatActivity {
         }
     }
 
+    private void setDesktopMode(boolean enable) {
+        WebSettings webSettings = webViewPreview.getSettings();
+        try {
+            if (enable) {
+                // Enable desktop user agent and wide viewport
+                webSettings.setUseWideViewPort(true);
+                webSettings.setLoadWithOverviewMode(true);
+                String ua = webSettings.getUserAgentString();
+                String desktopUa = ua.replace("Mobile", "").replace("Android", "");
+                webSettings.setUserAgentString(desktopUa + " Desktop");
+                webViewPreview.getSettings().setSupportZoom(true);
+                webViewPreview.getSettings().setBuiltInZoomControls(true);
+                webViewPreview.getSettings().setDisplayZoomControls(false);
+            } else {
+                // Restore defaults
+                webSettings.setUseWideViewPort(false);
+                webSettings.setLoadWithOverviewMode(false);
+                // Reset to default UA suffix set earlier
+                webSettings.setUserAgentString(webSettings.getUserAgentString().replace(" Desktop", ""));
+            }
+            webViewPreview.reload();
+        } catch (Exception ignored) {}
+    }
+
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         MenuInflater inflater = getMenuInflater();
@@ -360,6 +384,10 @@ public class PreviewActivity extends AppCompatActivity {
             return true;
         } else if (id == R.id.action_clear_console) {
             clearConsole();
+            return true;
+        } else if (id == R.id.action_desktop_mode) {
+            item.setChecked(!item.isChecked());
+            setDesktopMode(item.isChecked());
             return true;
         }
 

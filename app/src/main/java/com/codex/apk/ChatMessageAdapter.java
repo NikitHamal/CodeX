@@ -218,9 +218,25 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
                 buttonWebSources.setOnClickListener(v -> showWebSourcesDialog(message.getWebSources()));
             }
 
-            if (itemView.findViewById(R.id.layout_proposed_file_changes).getVisibility() == View.VISIBLE) {
+            boolean hasFileChanges = itemView.findViewById(R.id.layout_proposed_file_changes).getVisibility() == View.VISIBLE;
+            if (hasFileChanges) {
                 FileActionAdapter fileActionAdapter = new FileActionAdapter(message.getProposedFileChanges(), fileActionDetail -> { if (listener != null) listener.onFileChangeClicked(fileActionDetail); });
                 fileChangesContainer.setAdapter(fileActionAdapter);
+            }
+
+            // Show file actions Accept/Discard only when not in agent mode
+            boolean isAgent = false;
+            if (context instanceof EditorActivity) {
+                AIAssistant assistant = ((EditorActivity) context).aiAssistantManager != null ? ((EditorActivity) context).aiAssistantManager.getAIAssistant() : null;
+                isAgent = assistant != null && assistant.isAgentModeEnabled();
+            }
+            View layoutFileActions = itemView.findViewById(R.id.layout_file_actions);
+            if (hasFileChanges && message.getStatus() == ChatMessage.STATUS_PENDING_APPROVAL && !isAgent) {
+                layoutFileActions.setVisibility(View.VISIBLE);
+                itemView.findViewById(R.id.button_accept_file_actions).setOnClickListener(v -> { if (listener != null) listener.onAcceptClicked(messagePosition, message); });
+                itemView.findViewById(R.id.button_discard_file_actions).setOnClickListener(v -> { if (listener != null) listener.onDiscardClicked(messagePosition, message); });
+            } else {
+                layoutFileActions.setVisibility(View.GONE);
             }
 
             boolean anyRunning = false;

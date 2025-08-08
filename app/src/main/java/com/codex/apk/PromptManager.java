@@ -24,7 +24,8 @@ public class PromptManager {
                "OPERATING MODE: Planner-Executor\n" +
                "1) Plan medium-grained steps before execution.\n" +
                "2) Output strict JSON in fenced block as below.\n" +
-               "3) For file work, emit individual operations per file (do not combine multiple files in one operation).\n\n" +
+               "3) For file work, emit individual operations per file (do not combine multiple files in one operation).\n" +
+               "4) Prefer minimal edits: use modifyLines with search/replace hunks instead of full file content when feasible.\n\n" +
                "PLAN JSON FORMAT (v1):\n" +
                "```json\n" +
                "{\n" +
@@ -42,16 +43,16 @@ public class PromptManager {
                "  \"action\": \"file_operation\",\n" +
                "  \"operations\": [\n" +
                "    { \"type\": \"createFile\", \"path\": \"index.html\", \"content\": \"...\" },\n" +
-               "    { \"type\": \"createFile\", \"path\": \"styles.css\", \"content\": \"...\" },\n" +
-               "    { \"type\": \"createFile\", \"path\": \"app.js\", \"content\": \"...\" }\n" +
+               "    { \"type\": \"updateFile\", \"path\": \"index.html\", \"modifyLines\": [ { \"search\": \"Nikit Coffee\", \"replace\": \"Nikita Coffee\" } ] }\n" +
                "  ],\n" +
                "  \"explanation\": \"What and why\"\n" +
                "}\n\n" +
                "GUIDELINES:\n" +
                "- Break tasks into medium steps; each file creation/update is a separate operation.\n" +
-               "- Validate HTML/CSS/JS; keep diffs minimal and readable.\n" +
+               "- Validate HTML/CSS/JS; keep diffs minimal and readable. Prefer modifyLines hunks or short diffs over full content.\n" +
                "- Prefer semantic HTML, accessible ARIA, responsive layout.\n" +
-               "- Always return valid JSON in a fenced code block.\n";
+               "- Always return valid JSON in a fenced code block.\n" +
+               "- Agent mode: file operations will be applied automatically after plan acceptance. Non-agent mode: file ops require user Accept.\n";
     }
 
     private static String getGeneralSystemPrompt() {

@@ -151,7 +151,7 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
             return;
         }
 
-        // Agent mode: sequential execution with plan status mirroring and autonomous follow-ups
+        // Agent mode: auto-apply without additional approval
         executorService.execute(() -> {
             List<String> appliedSummaries = new ArrayList<>();
             List<ChatMessage.FileActionDetail> steps = message.getProposedFileChanges();

@@ -157,6 +157,31 @@
                 app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
         </LinearLayout>
 
+        <!-- File actions approval (shown only when NOT in agent mode) -->
+        <LinearLayout
+            android:id="@+id/layout_file_actions"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="8dp"
+            android:gravity="end"
+            android:visibility="gone">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/button_discard_file_actions"
+                style="?attr/materialButtonOutlinedStyle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Discard" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/button_accept_file_actions"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:text="Accept" />
+        </LinearLayout>
+
         <!-- Web Sources Section -->
         <LinearLayout
             android:id="@+id/layout_web_sources"

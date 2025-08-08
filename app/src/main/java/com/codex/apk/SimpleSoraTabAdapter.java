@@ -108,8 +108,8 @@ public class SimpleSoraTabAdapter extends RecyclerView.Adapter<SimpleSoraTabAdap
             // Set content without triggering change events
             codeEditor.setText(tabItem.getContent());
             // Apply persistent flags
-            codeEditor.setEditable(!tabItem.isReadOnly());
             codeEditor.setWordwrap(tabItem.isWrapEnabled());
+            codeEditor.setEditable(!tabItem.isReadOnly());
 
             // Set up content change listener only once per tab
             if (!holder.isListenerAttached) {

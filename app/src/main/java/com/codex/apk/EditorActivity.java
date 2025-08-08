@@ -469,22 +469,30 @@ public class EditorActivity extends AppCompatActivity implements
     private void applyWrapToActiveEditor(boolean enable) {
         CodeEditorFragment fragment = getCodeEditorFragment();
         if (fragment == null) return;
-        SimpleSoraTabAdapter adapter = fragment.getFileTabAdapter();
-        if (adapter == null) return;
-        int pos = adapter.getActiveTabPosition();
-        if (pos >= 0) {
-            adapter.setWrapForPosition(pos, enable);
+
+        TabItem activeTab = tabManager.getActiveTabItem();
+        if (activeTab != null) {
+            activeTab.setWrapEnabled(enable);
+        }
+
+        io.github.rosemoe.sora.widget.CodeEditor codeEditor = fragment.getActiveCodeEditor();
+        if (codeEditor != null) {
+            codeEditor.setWordwrap(enable);
         }
     }
 
     private void applyReadOnlyToActiveEditor(boolean readOnly) {
         CodeEditorFragment fragment = getCodeEditorFragment();
         if (fragment == null) return;
-        SimpleSoraTabAdapter adapter = fragment.getFileTabAdapter();
-        if (adapter == null) return;
-        int pos = adapter.getActiveTabPosition();
-        if (pos >= 0) {
-            adapter.setReadOnlyForPosition(pos, readOnly);
+
+        TabItem activeTab = tabManager.getActiveTabItem();
+        if (activeTab != null) {
+            activeTab.setReadOnly(readOnly);
+        }
+
+        io.github.rosemoe.sora.widget.CodeEditor codeEditor = fragment.getActiveCodeEditor();
+        if (codeEditor != null) {
+            codeEditor.setEditable(!readOnly);
         }
     }
 }

@@ -210,6 +210,21 @@ public class CodeEditorFragment extends Fragment implements SimpleSoraTabAdapter
         return null;
     }
 
+    public io.github.rosemoe.sora.widget.CodeEditor getActiveCodeEditor() {
+        if (fileViewPager == null) {
+            return null;
+        }
+        int position = fileViewPager.getCurrentItem();
+        if (position < 0) {
+            return null;
+        }
+        RecyclerView.ViewHolder holder = ((RecyclerView) fileViewPager.getChildAt(0)).findViewHolderForAdapterPosition(position);
+        if (holder instanceof SimpleSoraTabAdapter.ViewHolder) {
+            return ((SimpleSoraTabAdapter.ViewHolder) holder).codeEditor;
+        }
+        return null;
+    }
+
     @Override
     public void onDestroyView() {
         super.onDestroyView();

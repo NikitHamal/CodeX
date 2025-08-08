@@ -5,60 +5,38 @@ import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
+
 import com.codex.apk.EditorActivity;
-import com.codex.apk.FileItem;
-import com.codex.apk.FileManager;
 import com.codex.apk.R;
-import com.codex.apk.TabItem;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
-
-import android.widget.LinearLayout;
-import android.widget.ImageView;
-import android.view.ViewGroup;
-
-import com.unnamed.b.atv.model.TreeNode;
-import com.unnamed.b.atv.view.AndroidTreeView;
 
 public class FileTreeManager {
     private final EditorActivity activity;
-    private final FileManager fileManager;
-    private final com.codex.apk.DialogHelper dialogHelper;
-    private final List<FileItem> fileItems;
-    private final List<FileItem> filteredFileItems;
-    private final List<TabItem> openTabs;
-
-    private AndroidTreeView androidTreeView;
-    private TreeNode rootNode;
-    private View treeContainer;
+    private RecyclerView recyclerView;
+    private ExpandableTreeAdapter adapter;
     private EditText searchEditText;
-    private View searchContainer;
     private String currentSearchQuery = "";
 
-    public FileTreeManager(EditorActivity activity, FileManager fileManager, com.codex.apk.DialogHelper dialogHelper, List<FileItem> fileItems, List<TabItem> openTabs) {
+    public FileTreeManager(EditorActivity activity, com.codex.apk.FileManager fileManager, com.codex.apk.DialogHelper dialogHelper, List<com.codex.apk.FileItem> fileItems, List<com.codex.apk.TabItem> openTabs) {
         this.activity = activity;
-        this.fileManager = fileManager;
-        this.dialogHelper = dialogHelper;
-        this.fileItems = fileItems;
-        this.filteredFileItems = new ArrayList<>();
-        this.openTabs = openTabs;
     }
 
     public void setupFileTree() {
-        treeContainer = activity.findViewById(R.id.tree_container);
-        searchContainer = activity.findViewById(R.id.search_container);
+        recyclerView = activity.findViewById(R.id.recycler_view_file_tree);
         searchEditText = activity.findViewById(R.id.search_edit_text);
+        recyclerView.setLayoutManager(new LinearLayoutManager(activity));
+        adapter = new ExpandableTreeAdapter(activity, new ArrayList<>());
+        recyclerView.setAdapter(adapter);
 
-        setupSearch();
-        setupActionButtons();
-        loadFileTree();
-    }
-
-    private void setupSearch() {
         if (searchEditText != null) {
             searchEditText.addTextChangedListener(new android.text.TextWatcher() {
                 @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
@@ -69,112 +47,76 @@ public class FileTreeManager {
                 @Override public void afterTextChanged(android.text.Editable s) {}
             });
         }
-    }
 
-    private void setupActionButtons() {
         View btnNewFile = activity.findViewById(R.id.btn_new_file);
         if (btnNewFile != null) btnNewFile.setOnClickListener(v -> showNewFileDialog(activity.getProjectDirectory()));
         View btnNewFolder = activity.findViewById(R.id.btn_new_folder);
         if (btnNewFolder != null) btnNewFolder.setOnClickListener(v -> showNewFolderDialog(activity.getProjectDirectory()));
         View btnRefresh = activity.findViewById(R.id.btn_refresh_file_tree);
         if (btnRefresh != null) btnRefresh.setOnClickListener(v -> loadFileTree());
-        View btnOpenFromDevice = activity.findViewById(R.id.btn_open_from_device);
-        if (btnOpenFromDevice != null) btnOpenFromDevice.setOnClickListener(v -> activity.showToast("Open from device: Not yet implemented"));
+
+        loadFileTree();
     }
 
     public void loadFileTree() {
-        if (treeContainer == null) return;
-
-        // Remove existing tree view from its parent if present, then recreate
-        if (androidTreeView != null && androidTreeView.getView() != null) {
-            View existing = androidTreeView.getView();
-            ViewGroup parent = (ViewGroup) existing.getParent();
-            if (parent != null) {
-                parent.removeView(existing);
-            }
-            androidTreeView = null;
-            rootNode = null;
+        File root = activity.getProjectDirectory();
+        List<TreeNode> nodes = new ArrayList<>();
+        if (root != null && root.exists()) {
+            TreeNode rootNode = buildTree(root, 0);
+            nodes.add(rootNode);
         }
-
-        rootNode = TreeNode.root();
-
-        File projectDir = activity.getProjectDirectory();
-        TreeNode projectNode = null;
-        if (projectDir != null && projectDir.exists()) {
-            projectNode = createNodeForFile(projectDir);
-            rootNode.addChild(projectNode);
-            if (currentSearchQuery.isEmpty()) {
-                buildTree(projectNode, projectDir);
-            } else {
-                buildFilteredTree(projectNode, projectDir, currentSearchQuery);
-            }
+        if (!currentSearchQuery.isEmpty()) {
+            nodes = filterNodes(nodes, currentSearchQuery);
         }
+        adapter.setNodes(nodes);
+        updateEmptyState(nodes);
+    }
 
-        androidTreeView = new AndroidTreeView(activity, rootNode);
-        androidTreeView.setDefaultContainerStyle(R.style.TreeNodeStyle);
-        androidTreeView.setDefaultAnimation(true);
-        androidTreeView.setDefaultViewHolder(FileNodeViewHolder.class);
-        androidTreeView.setUseAutoToggle(true);
-
-        ViewGroup container = (ViewGroup) treeContainer;
-        container.removeAllViews();
-        container.addView(androidTreeView.getView());
-
-        // Empty state visibility
+    private void updateEmptyState(List<TreeNode> nodes) {
         View emptyStateView = activity.findViewById(R.id.empty_state_view);
         if (emptyStateView != null) {
-            boolean hasAny = projectNode != null && !projectNode.getChildren().isEmpty();
+            boolean hasAny = !nodes.isEmpty() && !nodes.get(0).children.isEmpty();
             emptyStateView.setVisibility(hasAny ? View.GONE : View.VISIBLE);
             TextView emptyStateText = activity.findViewById(R.id.empty_state_text);
             if (emptyStateText != null) {
-                if (!currentSearchQuery.isEmpty()) {
-                    emptyStateText.setText("No files match your search");
-                } else {
-                    emptyStateText.setText("No files in this directory");
+                emptyStateText.setText(currentSearchQuery.isEmpty() ? "No files in this directory" : "No files match your search");
+            }
+        }
+    }
+
+    private TreeNode buildTree(File file, int level) {
+        TreeNode node = new TreeNode(file, level);
+        if (file.isDirectory()) {
+            File[] list = file.listFiles();
+            if (list != null) {
+                Arrays.sort(list, new Comparator<File>() {
+                    @Override public int compare(File f1, File f2) {
+                        if (f1.isDirectory() && !f2.isDirectory()) return -1;
+                        if (!f1.isDirectory() && f2.isDirectory()) return 1;
+                        return f1.getName().compareToIgnoreCase(f2.getName());
+                    }
+                });
+                for (File child : list) {
+                    node.children.add(buildTree(child, level + 1));
                 }
             }
         }
+        return node;
     }
 
-    private void buildTree(TreeNode parentNode, File dir) {
-        File[] files = dir.listFiles();
-        if (files == null) return;
-        java.util.Arrays.sort(files, (f1, f2) -> {
-            if (f1.isDirectory() && !f2.isDirectory()) return -1;
-            if (!f1.isDirectory() && f2.isDirectory()) return 1;
-            return f1.getName().compareToIgnoreCase(f2.getName());
-        });
-        for (File file : files) {
-            TreeNode node = createNodeForFile(file);
-            parentNode.addChild(node);
-            if (file.isDirectory()) {
-                buildTree(node, file);
-            }
+    private List<TreeNode> filterNodes(List<TreeNode> nodes, String query) {
+        List<TreeNode> result = new ArrayList<>();
+        for (TreeNode n : nodes) {
+            TreeNode copy = n.copyPruned(query);
+            if (copy != null) result.add(copy);
         }
-    }
-
-    private void buildFilteredTree(TreeNode parentNode, File dir, String query) {
-        File[] files = dir.listFiles();
-        if (files == null) return;
-        for (File file : files) {
-            if (file.getName().toLowerCase().contains(query)) {
-                parentNode.addChild(createNodeForFile(file));
-            }
-            if (file.isDirectory()) {
-                buildFilteredTree(parentNode, file, query);
-            }
-        }
-    }
-
-    private TreeNode createNodeForFile(File file) {
-        return new TreeNode(new FileNode(file)).setViewHolder(new FileNodeViewHolder(activity, fileManager, this));
+        return result;
     }
 
     public void showNewFileDialog(File parentDirectory) {
         View dialogView = activity.getLayoutInflater().inflate(R.layout.dialog_new_file, null);
         EditText fileNameEditText = dialogView.findViewById(R.id.edit_text_file_name);
         EditText fileExtensionEditText = dialogView.findViewById(R.id.edit_text_file_extension);
-
         new MaterialAlertDialogBuilder(activity)
             .setTitle("Create New File")
             .setView(dialogView)
@@ -185,15 +127,15 @@ public class FileTreeManager {
                     Toast.makeText(activity, "File name cannot be empty", Toast.LENGTH_SHORT).show();
                     return;
                 }
-                String fullFileName = extension.isEmpty() ? fileName : fileName + "." + extension;
-                File newFile = new File(parentDirectory, fullFileName);
+                String full = extension.isEmpty() ? fileName : fileName + "." + extension;
+                File newFile = new File(parentDirectory, full);
                 if (newFile.exists()) {
                     Toast.makeText(activity, "File already exists", Toast.LENGTH_SHORT).show();
                     return;
                 }
                 try {
                     if (newFile.createNewFile()) {
-                        activity.showToast("File created: " + fullFileName);
+                        activity.showToast("File created: " + full);
                         loadFileTree();
                         activity.openFile(newFile);
                     } else {
@@ -210,7 +152,6 @@ public class FileTreeManager {
     public void showNewFolderDialog(File parentDirectory) {
         View dialogView = activity.getLayoutInflater().inflate(R.layout.dialog_new_folder, null);
         EditText folderNameEditText = dialogView.findViewById(R.id.edit_text_folder_name);
-
         new MaterialAlertDialogBuilder(activity)
             .setTitle("Create New Folder")
             .setView(dialogView)
@@ -259,108 +200,33 @@ public class FileTreeManager {
             File[] children = file.listFiles();
             if (children != null) {
                 for (File child : children) {
-                    if (!deleteRecursively(child)) {
-                        return false;
-                    }
+                    if (!deleteRecursively(child)) return false;
                 }
             }
         }
         return file.delete();
     }
 
-    public void rebuildFileTree() {
-        loadFileTree();
-    }
+    public void rebuildFileTree() { loadFileTree(); }
 
-    public void toggleNode(TreeNode node) {
-        if (androidTreeView != null && node != null) {
-            boolean expanded = node.isExpanded();
-            if (expanded) {
-                androidTreeView.collapseNode(node);
-            } else {
-                androidTreeView.expandNode(node);
+    // TreeNode model
+    static class TreeNode {
+        final File file;
+        final int level;
+        boolean expanded = true;
+        final List<TreeNode> children = new ArrayList<>();
+
+        TreeNode(File file, int level) { this.file = file; this.level = level; }
+
+        TreeNode copyPruned(String query) {
+            boolean matches = file.getName().toLowerCase().contains(query);
+            TreeNode copy = new TreeNode(file, level);
+            for (TreeNode c : children) {
+                TreeNode pruned = c.copyPruned(query);
+                if (pruned != null) copy.children.add(pruned);
             }
-        }
-    }
-
-    public static class FileNode {
-        public final File file;
-        public FileNode(File file) { this.file = file; }
-    }
-
-    public static class FileNodeViewHolder extends TreeNode.BaseNodeViewHolder<FileNode> {
-        private final EditorActivity activity;
-        private final FileManager fileManager;
-        private final FileTreeManager manager;
-
-        public FileNodeViewHolder(EditorActivity activity, FileManager fileManager, FileTreeManager manager) {
-            super(activity);
-            this.activity = activity;
-            this.fileManager = fileManager;
-            this.manager = manager;
-        }
-
-        @Override
-        public View createNodeView(TreeNode node, FileNode value) {
-            View view = activity.getLayoutInflater().inflate(R.layout.item_tree_node, null, false);
-            TextView tv = view.findViewById(R.id.text_file_name);
-            ImageView icon = view.findViewById(R.id.image_icon);
-            ImageView more = view.findViewById(R.id.image_more);
-
-            tv.setText(value.file.getName());
-            icon.setImageResource(value.file.isDirectory() ? R.drawable.icon_folder_round : R.drawable.icon_file_round);
-
-            view.setOnClickListener(v -> {
-                if (value.file.isDirectory()) {
-                    manager.toggleNode(node);
-                } else {
-                    activity.openFile(value.file);
-                }
-            });
-
-            more.setOnClickListener(v -> {
-                android.widget.PopupMenu popup = new android.widget.PopupMenu(activity, more);
-                popup.inflate(R.menu.file_context_menu);
-                popup.setOnMenuItemClickListener(item -> {
-                    int id = item.getItemId();
-                    if (id == R.id.action_rename) {
-                        View dialogView = activity.getLayoutInflater().inflate(R.layout.dialog_rename_file, null);
-                        com.google.android.material.textfield.TextInputEditText editText = dialogView.findViewById(R.id.edit_text_new_name);
-                        editText.setText(value.file.getName());
-                        new MaterialAlertDialogBuilder(activity)
-                            .setTitle("Rename")
-                            .setView(dialogView)
-                            .setPositiveButton("Rename", (d, w) -> {
-                                String newName = editText.getText().toString().trim();
-                                if (!newName.isEmpty()) {
-                                    File newFile = new File(value.file.getParentFile(), newName);
-                                    manager.renameFileOrDir(value.file, newFile);
-                                }
-                            })
-                            .setNegativeButton("Cancel", null)
-                            .show();
-                        return true;
-                    } else if (id == R.id.action_delete) {
-                        new MaterialAlertDialogBuilder(activity)
-                            .setTitle("Confirm Delete")
-                            .setMessage("Delete " + value.file.getName() + "?")
-                            .setPositiveButton("Delete", (d, w) -> manager.deleteFileByPath(value.file))
-                            .setNegativeButton("Cancel", null)
-                            .show();
-                        return true;
-                    } else if (id == R.id.action_new_file && value.file.isDirectory()) {
-                        manager.showNewFileDialog(value.file);
-                        return true;
-                    } else if (id == R.id.action_new_folder && value.file.isDirectory()) {
-                        manager.showNewFolderDialog(value.file);
-                        return true;
-                    }
-                    return false;
-                });
-                popup.show();
-            });
-
-            return view;
+            if (matches || !copy.children.isEmpty()) return copy;
+            return null;
         }
     }
 }

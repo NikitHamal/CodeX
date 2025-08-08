@@ -72,9 +72,6 @@ dependencies {
 	
 	// Animation libraries for smooth transitions
 	implementation 'androidx.dynamicanimation:dynamicanimation:1.0.0'
-
-	// AndroidTreeView for proper hierarchical file tree
-	implementation 'com.github.bmelnychuk:atv:1.2.+'
 }
 
 configurations.all {

@@ -195,16 +195,9 @@
 
         <!-- File Tree Content -->
         <FrameLayout
+            android:id="@+id/tree_container"
             android:layout_width="match_parent"
             android:layout_height="match_parent">
-
-            <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/recycler_view_file_tree"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:clipToPadding="false"
-                android:padding="8dp"
-                android:scrollbars="none" />
 
             <!-- Empty State -->
             <LinearLayout

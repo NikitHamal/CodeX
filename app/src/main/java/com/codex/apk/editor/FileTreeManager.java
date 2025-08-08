@@ -269,7 +269,7 @@ public class FileTreeManager {
 
     public void toggleNode(TreeNode node) {
         if (androidTreeView != null && node != null) {
-            boolean expanded = androidTreeView.isNodeExpanded(node);
+            boolean expanded = node.isExpanded();
             if (expanded) {
                 androidTreeView.collapseNode(node);
             } else {

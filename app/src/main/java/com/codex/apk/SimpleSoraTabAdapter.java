@@ -36,8 +36,8 @@ public class SimpleSoraTabAdapter extends RecyclerView.Adapter<SimpleSoraTabAdap
     private static final String TAG = "SimpleSoraTabAdapter";
     private static boolean textMateInitialized = false;
     private static final String TEXTMATE_LANG_INDEX = "textmate/languages.json";
-    private static final String TEXTMATE_THEME_NAME = "quietlight";
-    private static final String TEXTMATE_THEME_PATH = "textmate/quietlight.json";
+    private static final String TEXTMATE_THEME_NAME = "github";
+    private static final String TEXTMATE_THEME_PATH = "textmate/github.json";
     private final Context context;
     private final List<TabItem> openTabs;
     private final TabActionListener tabActionListener;
@@ -191,7 +191,6 @@ public class SimpleSoraTabAdapter extends RecyclerView.Adapter<SimpleSoraTabAdap
         codeEditor.setTypefaceText(android.graphics.Typeface.MONOSPACE);
         // Performance tweaks
         codeEditor.setInterceptParentHorizontalScrollIfNeeded(true);
-        codeEditor.setAntiWordBreaking(false);
         codeEditor.setBasicDisplayMode(false);
 
         // Reduce scrollbars for a cleaner, mobile-friendly UI

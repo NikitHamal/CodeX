@@ -1,0 +1,25 @@
+{
+  "$schema": "vscode://schemas/color-theme",
+  "name": "github",
+  "type": "light",
+  "colors": {
+    "editor.background": "#ffffff",
+    "editor.foreground": "#24292e",
+    "editorLineNumber.foreground": "#959da5",
+    "editorLineNumber.activeForeground": "#24292e",
+    "editor.selectionBackground": "#c8c8fa",
+    "editor.inactiveSelectionBackground": "#fafbfc",
+    "editor.lineHighlightBackground": "#fafbfc"
+  },
+  "tokenColors": [
+    { "scope": ["comment", "punctuation.definition.comment"], "settings": { "foreground": "#6a737d", "fontStyle": "italic" } },
+    { "scope": ["string", "string.quoted", "string.template"], "settings": { "foreground": "#032f62" } },
+    { "scope": ["constant.numeric", "number"], "settings": { "foreground": "#005cc5" } },
+    { "scope": ["keyword", "storage.type", "storage.modifier"], "settings": { "foreground": "#d73a49", "fontStyle": "bold" } },
+    { "scope": ["entity.name.tag"], "settings": { "foreground": "#22863a", "fontStyle": "bold" } },
+    { "scope": ["entity.other.attribute-name"], "settings": { "foreground": "#6f42c1" } },
+    { "scope": ["support.type.property-name"], "settings": { "foreground": "#005cc5" } },
+    { "scope": ["variable", "identifier"], "settings": { "foreground": "#e36209" } },
+    { "scope": ["entity.name.function"], "settings": { "foreground": "#6f42c1" } }
+  ]
+}

@@ -64,6 +64,7 @@ public class PreviewActivity extends AppCompatActivity {
     private String htmlContent;
     private String fileName;
     private boolean isConsoleVisible = false;
+    private boolean isDesktopModeEnabled = false;
 
     // Performance optimizations
     private Map<String, byte[]> fileCache = new HashMap<>();
@@ -341,7 +342,7 @@ public class PreviewActivity extends AppCompatActivity {
         }
     }
 
-    private void setDesktopMode(boolean enable) {
+    private void applyDesktopModeSettings(boolean enable) {
         WebSettings webSettings = webViewPreview.getSettings();
         try {
             if (enable) {
@@ -352,7 +353,6 @@ public class PreviewActivity extends AppCompatActivity {
                 webSettings.setBuiltInZoomControls(true);
                 webSettings.setDisplayZoomControls(false);
                 webViewPreview.evaluateJavascript("document.querySelector('meta[name=\"viewport\"]').setAttribute('content', 'width=1024');", null);
-                Toast.makeText(this, "Desktop mode enabled", Toast.LENGTH_SHORT).show();
             } else {
                 webSettings.setUseWideViewPort(false);
                 webSettings.setLoadWithOverviewMode(false);
@@ -360,14 +360,19 @@ public class PreviewActivity extends AppCompatActivity {
                     webSettings.setUserAgentString(originalUserAgent);
                 }
                 webViewPreview.evaluateJavascript("document.querySelector('meta[name=\"viewport\"]').setAttribute('content', 'width=device-width, initial-scale=1.0, user-scalable=yes');", null);
-                Toast.makeText(this, "Desktop mode disabled", Toast.LENGTH_SHORT).show();
             }
-            webViewPreview.clearCache(true);
-            webViewPreview.reload();
         } catch (Exception e) {
-            Log.e(TAG, "Failed to set desktop mode", e);
-            Toast.makeText(this, "Failed to change mode", Toast.LENGTH_SHORT).show();
+            Log.e(TAG, "Failed to apply desktop mode settings", e);
         }
+    }
+
+    @Override
+    public boolean onPrepareOptionsMenu(Menu menu) {
+        MenuItem desktopModeMenuItem = menu.findItem(R.id.action_desktop_mode);
+        if (desktopModeMenuItem != null) {
+            desktopModeMenuItem.setChecked(isDesktopModeEnabled);
+        }
+        return super.onPrepareOptionsMenu(menu);
     }
 
     @Override
@@ -395,7 +400,8 @@ public class PreviewActivity extends AppCompatActivity {
             return true;
         } else if (id == R.id.action_desktop_mode) {
             item.setChecked(!item.isChecked());
-            setDesktopMode(item.isChecked());
+            isDesktopModeEnabled = item.isChecked();
+            webViewPreview.reload();
             return true;
         }
 
@@ -499,6 +505,9 @@ public class PreviewActivity extends AppCompatActivity {
             super.onPageFinished(view, url);
             progressBar.setVisibility(View.GONE);
             addConsoleMessage("Loaded: " + url);
+            if (isDesktopModeEnabled) {
+                applyDesktopModeSettings(true);
+            }
         }
 
         @Override

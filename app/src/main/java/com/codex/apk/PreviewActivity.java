@@ -351,6 +351,7 @@ public class PreviewActivity extends AppCompatActivity {
                 webSettings.setSupportZoom(true);
                 webSettings.setBuiltInZoomControls(true);
                 webSettings.setDisplayZoomControls(false);
+                webViewPreview.evaluateJavascript("document.querySelector('meta[name=\"viewport\"]').setAttribute('content', 'width=1024');", null);
                 Toast.makeText(this, "Desktop mode enabled", Toast.LENGTH_SHORT).show();
             } else {
                 webSettings.setUseWideViewPort(false);
@@ -358,6 +359,7 @@ public class PreviewActivity extends AppCompatActivity {
                 if (originalUserAgent != null) {
                     webSettings.setUserAgentString(originalUserAgent);
                 }
+                webViewPreview.evaluateJavascript("document.querySelector('meta[name=\"viewport\"]').setAttribute('content', 'width=device-width, initial-scale=1.0, user-scalable=yes');", null);
                 Toast.makeText(this, "Desktop mode disabled", Toast.LENGTH_SHORT).show();
             }
             webViewPreview.clearCache(true);

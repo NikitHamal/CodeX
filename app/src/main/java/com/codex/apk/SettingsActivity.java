@@ -398,15 +398,25 @@ public class SettingsActivity extends AppCompatActivity {
 			}
 
 			
-			// Auto save preference
-			SwitchPreferenceCompat autoSavePreference = findPreference("auto_save");
-			if (autoSavePreference != null) {
-				autoSavePreference.setOnPreferenceChangeListener((preference, newValue) -> {
-					boolean enabled = (Boolean) newValue;
-					Toast.makeText(getContext(), enabled ? "Auto save enabled" : "Auto save disabled", Toast.LENGTH_SHORT).show();
-					return true;
-				});
-			}
+            // Default read-only preference
+            SwitchPreferenceCompat readOnlyPref = findPreference("default_read_only");
+            if (readOnlyPref != null) {
+                readOnlyPref.setOnPreferenceChangeListener((preference, newValue) -> {
+                    boolean enabled = (Boolean) newValue;
+                    Toast.makeText(getContext(), enabled ? "Read-only by default" : "Editable by default", Toast.LENGTH_SHORT).show();
+                    return true;
+                });
+            }
+
+            // Default wrap preference
+            SwitchPreferenceCompat wrapPref = findPreference("default_word_wrap");
+            if (wrapPref != null) {
+                wrapPref.setOnPreferenceChangeListener((preference, newValue) -> {
+                    boolean enabled = (Boolean) newValue;
+                    Toast.makeText(getContext(), enabled ? "Word wrap enabled by default" : "Word wrap disabled by default", Toast.LENGTH_SHORT).show();
+                    return true;
+                });
+            }
 			
 			// Line numbers preference
 			SwitchPreferenceCompat lineNumbersPreference = findPreference("line_numbers");
@@ -494,9 +504,13 @@ public class SettingsActivity extends AppCompatActivity {
 		return getPreferences(context).getString("qwen_api_token", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjhiYjQ1NjVmLTk3NjUtNDQwNi04OWQ5LTI3NmExMTIxMjBkNiIsImxhc3RfcGFzc3dvcmRfY2hhbmdlIjoxNzUwNjYwODczLCJleHAiOjE3NTU4NDg1NDh9.pb0IybY9tQkriqMUOos72FKtZM3G4p1_aDzwqqh5zX4");
 	}
 
-	public static boolean isAutoSaveEnabled(android.content.Context context) {
-		return getPreferences(context).getBoolean("auto_save", true);
-	}
+    public static boolean isDefaultReadOnly(android.content.Context context) {
+        return getPreferences(context).getBoolean("default_read_only", false);
+    }
+
+    public static boolean isDefaultWordWrap(android.content.Context context) {
+        return getPreferences(context).getBoolean("default_word_wrap", true);
+    }
 	
 	public static boolean isLineNumbersEnabled(android.content.Context context) {
 		return getPreferences(context).getBoolean("line_numbers", true);

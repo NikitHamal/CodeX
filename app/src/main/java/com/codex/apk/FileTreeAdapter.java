@@ -61,10 +61,14 @@ public class FileTreeAdapter extends RecyclerView.Adapter<FileTreeAdapter.ViewHo
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         FileItem item = items.get(position);
         
-        // Set indentation based on level
-        int paddingStartPx = (int) (16 * context.getResources().getDisplayMetrics().density * item.getLevel());
-        holder.itemView.setPadding(paddingStartPx, holder.itemView.getPaddingTop(),
-                holder.itemView.getPaddingRight(), holder.itemView.getPaddingBottom());
+        // Set indentation based on level with clearer hierarchy spacing
+        float density = context.getResources().getDisplayMetrics().density;
+        int base = (int) (12 * density);
+        int indent = base + (int) (14 * density) * Math.max(0, item.getLevel());
+        holder.itemView.setPadding(indent,
+                (int) (4 * density),
+                holder.itemView.getPaddingRight(),
+                (int) (4 * density));
 
         // Set file name with enhanced typography
         holder.textFileName.setText(item.getName());

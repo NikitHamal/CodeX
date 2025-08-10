@@ -60,8 +60,10 @@ public class ExpandableTreeAdapter extends RecyclerView.Adapter<ExpandableTreeAd
         FileTreeManager.TreeNode node = visibleNodes.get(position);
         File f = node.file;
 
-        int paddingStartPx = (int) (16 * holder.itemView.getResources().getDisplayMetrics().density * node.level);
-        holder.itemView.setPadding(paddingStartPx, holder.itemView.getPaddingTop(), holder.itemView.getPaddingRight(), holder.itemView.getPaddingBottom());
+        float density = holder.itemView.getResources().getDisplayMetrics().density;
+        int base = (int) (12 * density);
+        int indent = base + (int) (14 * density) * Math.max(0, node.level);
+        holder.itemView.setPadding(indent, (int) (4 * density), holder.itemView.getPaddingRight(), (int) (4 * density));
 
         holder.textFileName.setText(f.getName());
         if (f.isDirectory()) {

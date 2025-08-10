@@ -77,6 +77,9 @@ public class TabManager {
             }
             String content = fileManager.readFileContent(file);
             TabItem tabItem = new TabItem(file, content);
+            // Initialize tab defaults from Settings
+            tabItem.setWrapEnabled(SettingsActivity.isDefaultWordWrap(activity));
+            tabItem.setReadOnly(SettingsActivity.isDefaultReadOnly(activity));
             openTabs.add(tabItem);
             activity.getCodeEditorFragment().addFileTab(tabItem); // Add to fragment's adapter
             // Switch to Code tab (position 1) and then to the newly opened file

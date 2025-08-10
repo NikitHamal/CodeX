@@ -58,7 +58,21 @@ public class GitManager {
                     .setDirectory(projectDir)
                     .setProgressMonitor(new ProgressMonitor() {
                         private int totalTasks = 0;
-                        private int completedTasks = 0;
+                        private int tasksCompleted = 0;
+                        private int currentTaskTotal = 0;
+                        private int currentTaskDone = 0;
+
+                        private int computeProgressPercent() {
+                            if (totalTasks <= 0) {
+                                return clamp(currentTaskTotal > 0 ? (int) (100.0 * currentTaskDone / Math.max(1, currentTaskTotal)) : 0, 0, 99);
+                            }
+                            double perTask = 100.0 / totalTasks;
+                            double progress = tasksCompleted * perTask;
+                            if (currentTaskTotal > 0) {
+                                progress += perTask * ((double) currentTaskDone / (double) currentTaskTotal);
+                            }
+                            return clamp((int) progress, 0, 99);
+                        }
 
                         @Override
                         public void start(int totalTasks) {
@@ -68,22 +82,30 @@ public class GitManager {
 
                         @Override
                         public void beginTask(String title, int totalWork) {
-                            callback.onProgress("Cloning: " + title, 
-                                totalWork > 0 ? (completedTasks * 100 / totalTasks) : 0);
+                            // Reset current task counters
+                            currentTaskTotal = totalWork > 0 ? totalWork : 0;
+                            currentTaskDone = 0;
+                            int pct = computeProgressPercent();
+                            callback.onProgress("Cloning: " + title, pct);
                         }
 
                         @Override
                         public void update(int completed) {
-                            completedTasks += completed;
-                            if (totalTasks > 0) {
-                                int percentage = (completedTasks * 100 / totalTasks);
-                                callback.onProgress("Cloning in progress...", percentage);
+                            // Increment current task progress; avoid overflow
+                            if (completed > 0 && currentTaskTotal > 0) {
+                                currentTaskDone = Math.min(currentTaskTotal, currentTaskDone + completed);
                             }
+                            int pct = computeProgressPercent();
+                            callback.onProgress("Cloning in progress...", pct);
                         }
 
                         @Override
                         public void endTask() {
-                            // Task completed
+                            // Mark current task as completed
+                            if (tasksCompleted < totalTasks) {
+                                tasksCompleted++;
+                            }
+                            currentTaskDone = currentTaskTotal; // finalize
                         }
 
                         @Override
@@ -115,6 +137,28 @@ public class GitManager {
                 callback.onError(context.getString(R.string.failed_to_clone_repository, e.getMessage()));
             }
         }).start();
+    }
+
+    private int clamp(int value, int min, int max) {
+        return Math.max(min, Math.min(max, value));
+    }
+
+    // Compute overall percentage based on tasks and current task progress
+    private int computePercentInternal(int totalTasks, int tasksCompleted, int currentTaskDone, int currentTaskTotal) {
+        if (totalTasks <= 0) return clamp(currentTaskTotal > 0 ? (int) (100.0 * currentTaskDone / Math.max(1, currentTaskTotal)) : 0, 0, 99);
+        double perTask = 100.0 / totalTasks;
+        double progress = tasksCompleted * perTask;
+        if (currentTaskTotal > 0) {
+            progress += perTask * ((double) currentTaskDone / (double) currentTaskTotal);
+        }
+        return clamp((int) progress, 0, 99);
+    }
+
+    // Wrapper to compute using the instance fields within ProgressMonitor
+    private int computeProgressPercent() {
+        // This method body will be overridden at runtime by the anonymous ProgressMonitor's context,
+        // but the compiler requires it here. Not used outside the monitor.
+        return 0;
     }
 
     public boolean isValidGitUrl(String url) {

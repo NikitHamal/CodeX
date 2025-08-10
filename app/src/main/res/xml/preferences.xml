@@ -3,11 +3,12 @@
         <ListPreference app:key="app_theme" app:title="Theme" app:summary="Choose app theme" app:entries="@array/theme_entries" app:entryValues="@array/theme_values" app:defaultValue="light" app:iconSpaceReserved="false"/>
         <ListPreference app:key="font_size" app:title="Font Size" app:summary="Choose editor font size" app:entries="@array/font_size_entries" app:entryValues="@array/font_size_values" app:defaultValue="medium" app:iconSpaceReserved="false"/>
         <Preference app:key="font_family" app:title="Font Family" app:summary="Choose editor font family" app:iconSpaceReserved="false"/>
-        <SwitchPreferenceCompat app:key="auto_save" app:title="Auto Save" app:summary="Automatically save files when switching tabs" app:defaultValue="true" app:iconSpaceReserved="false"/>
+        <!-- Removed Auto Save; replaced with Read Only and Wrap toggles applied globally -->
     </PreferenceCategory>
     <PreferenceCategory app:title="Editor Settings" app:iconSpaceReserved="false">
         <SwitchPreferenceCompat app:key="line_numbers" app:title="Line Numbers" app:summary="Show line numbers in editor" app:defaultValue="true" app:iconSpaceReserved="false"/>
-        <SwitchPreferenceCompat app:key="word_wrap" app:title="Word Wrap" app:summary="Wrap long lines in editor" app:defaultValue="true" app:iconSpaceReserved="false"/>
+        <SwitchPreferenceCompat app:key="default_read_only" app:title="Read Only" app:summary="Open files as read-only by default" app:defaultValue="false" app:iconSpaceReserved="false"/>
+        <SwitchPreferenceCompat app:key="default_word_wrap" app:title="Word Wrap" app:summary="Wrap long lines by default" app:defaultValue="true" app:iconSpaceReserved="false"/>
     </PreferenceCategory>
     <PreferenceCategory app:title="AI Assistant Settings" app:iconSpaceReserved="false">
         <EditTextPreference app:key="gemini_api_key" app:title="Gemini API Key" app:summary="Enter your Gemini API key" app:dialogTitle="Enter API Key" app:iconSpaceReserved="false"/>

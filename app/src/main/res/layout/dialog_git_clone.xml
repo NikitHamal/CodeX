@@ -102,7 +102,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Clone"
-            app:icon="@drawable/ic_git"
+            app:icon="@drawable/ic_github"
             app:iconGravity="textStart"
             app:iconPadding="8dp"
             android:textColor="@color/on_primary"

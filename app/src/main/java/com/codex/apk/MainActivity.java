@@ -208,7 +208,8 @@ public class MainActivity extends AppCompatActivity {
                     runOnUiThread(() -> {
                         progressDetails.setText(message);
                         if (progress >= 0) {
-                            progressStatus.setText("Cloning repository... " + progress + "%");
+                            int safe = Math.max(0, Math.min(100, progress));
+                            progressStatus.setText("Cloning repository... " + safe + "%");
                         }
                     });
                 }

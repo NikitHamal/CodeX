@@ -177,10 +177,12 @@ public class SimpleSoraTabAdapter extends RecyclerView.Adapter<SimpleSoraTabAdap
             codeEditor.setColorScheme(new EditorColorScheme());
         }
 
-        // Configure editor appearance & ergonomics
-        codeEditor.setTextSize(14f);
-        codeEditor.setLineNumberEnabled(true);
-        codeEditor.setWordwrap(false);
+        // Configure editor appearance & ergonomics using Settings defaults and tab state
+        float textSizeSp = SettingsActivity.getFontSize(codeEditor.getContext());
+        codeEditor.setTextSize(textSizeSp);
+        codeEditor.setLineNumberEnabled(SettingsActivity.isLineNumbersEnabled(codeEditor.getContext()));
+        boolean wrap = tabItem.isWrapEnabled() || SettingsActivity.isDefaultWordWrap(codeEditor.getContext());
+        codeEditor.setWordwrap(wrap);
         codeEditor.setHighlightCurrentBlock(true);
         codeEditor.setHighlightCurrentLine(true);
         codeEditor.setHighlightBracketPair(true);
@@ -189,6 +191,10 @@ public class SimpleSoraTabAdapter extends RecyclerView.Adapter<SimpleSoraTabAdap
         codeEditor.setCursorAnimationEnabled(true);
         codeEditor.setTabWidth(2);
         codeEditor.setTypefaceText(android.graphics.Typeface.MONOSPACE);
+
+        // Apply read-only from tab state or default setting
+        boolean readOnly = tabItem.isReadOnly() || SettingsActivity.isDefaultReadOnly(codeEditor.getContext());
+        codeEditor.setEditable(!readOnly);
         // Performance tweaks
         codeEditor.setInterceptParentHorizontalScrollIfNeeded(true);
         codeEditor.setBasicDisplayMode(false);

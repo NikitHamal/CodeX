@@ -1,0 +1,531 @@
+Together Chat AI; Reverse Engineering Doccumentatin
+
+chat-completion:
+curl ^"https://www.google-analytics.com/privacy-sandbox/register-conversion?_c=1^&cid=1052294871.1754834642^&dbk=8065350125710184534^&dma=0^&en=form_start^&ga_rb_key=^%^2500^%^EFU^%^DAb^%^7Fc^%^3B^%^B0^%^3A^%^07^%^20^%^7FxP^%^96^%^F8^%^97^%^A5^%^9A^%^BD^&gtm=45je5861v897253922za200zd897253922^&npa=0^&tid=G-BS43X21GZ2^&dl=https^%^3A^%^2F^%^2Fchat.together.ai^%^3F^" ^
+  -H ^"User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36^" ^
+  -H ^"Referer: https://chat.together.ai/^" &
+curl ^"https://clerk.chat.together.ai/v1/client/sessions/sess_316BbZuIKcZG0HSVFGeCIl36trK/touch?__clerk_api_version=2025-04-10^&_clerk_js_version=5.80.0^" ^
+  -H ^"accept: */*^" ^
+  -H ^"accept-language: en-US,en;q=0.9^" ^
+  -H ^"content-type: application/x-www-form-urlencoded^" ^
+  -b ^"_ga=GA1.1.1052294871.1754834642; _cfuvid=pY_W7YgDnWDJjtnDBIb7FwGdrver8vtrLM25HlsqhU4-1754834672122-0.0.1.1-604800000; __client=eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImNsaWVudF8zMTZCV0tmWVFCeXZyQ1czbmJORE1VU2dsSnYiLCJyb3RhdGluZ190b2tlbiI6InhpdzFoeTY4MDU1ZTU4bHZkeGRvbTA4cWt2cWRkbmZ5anFvMThwN2sifQ.OG1f8FGDpVrvd-udutLZPebaDWAPKfH0AU7sY_KwM8oxhEkdHb2UoYRwPmJIRdAevSQsrxpRv1nJ3rCdTVn9QR0ikA-HzojAgp9941Cy9XpQ9fDuk6rTbfv3190pdNcfUQ-4BrGwZLYSpSM7aPEOYS6fSJx2VUPyYgNsUjINLzq4tzj3bDLjXGsaebTO89LzCFGdCHQv_QGX2fg98-27h8TXkl6ZAiPMa1GbeVUloJRnLboupPpptYsVPrSXInKViSU9_ph7tzjkWflg2uZg9ciHQXxlYHR_1U-kWf9cAW-UGpPAGsLT5eEHF-XW28ig7swAlpHTWJih5nYEXFX2HQ; __client_uat=1754834713; __client_uat_QCPDW_r5=1754834713; __cf_bm=d2xTkVUVgrziLHI6BGhhDOcZGbKzOMx0Y6NYq9HKf.g-1754837746-1.0.1.1-tY_QPtWCLq7znqEtcJfF.OZlWfHVo7yQyE2CIkDEJL5x_5g3HIaMT1HRNyg4q86u1ce11vHl2msu9mk_eBhTmqQPgDwZsjTIoZ8LveVRG7i34h1oYpwYNGC17iHuE_by; _gcl_au=1.1.704077363.1754837743; _ga_BS43X21GZ2=GS2.1.s1754837132^$o2^$g1^$t1754837742^$j34^$l0^$h2050270268; _ga_BBHKJ5V8S0=GS2.1.s1754837132^$o2^$g1^$t1754837742^$j34^$l0^$h750091915^" ^
+  -H ^"origin: https://chat.together.ai^" ^
+  -H ^"priority: u=1, i^" ^
+  -H ^"referer: https://chat.together.ai/^" ^
+  -H ^"sec-ch-ua: ^\^"Not)A;Brand^\^";v=^\^"8^\^", ^\^"Chromium^\^";v=^\^"138^\^", ^\^"Google Chrome^\^";v=^\^"138^\^"^" ^
+  -H ^"sec-ch-ua-mobile: ?0^" ^
+  -H ^"sec-ch-ua-platform: ^\^"Windows^\^"^" ^
+  -H ^"sec-fetch-dest: empty^" ^
+  -H ^"sec-fetch-mode: cors^" ^
+  -H ^"sec-fetch-site: same-site^" ^
+  -H ^"user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36^" ^
+  --data-raw ^"active_organization_id=^" &
+curl ^"https://chat.together.ai/^" ^
+  -H ^"accept: text/x-component^" ^
+  -H ^"accept-language: en-US,en;q=0.9^" ^
+  -H ^"content-type: text/plain;charset=UTF-8^" ^
+  -b ^"_ga=GA1.1.1052294871.1754834642; __client_uat=1754834713; __refresh_QCPDW_r5=kuhRpJrCHwymmFBeLd5M; __client_uat_QCPDW_r5=1754834713; clerk_active_context=sess_316BbZuIKcZG0HSVFGeCIl36trK:; dismissed-homepage-alerts=gpt-oss-120b-new-model; __session=eyJhbGciOiJSUzI1NiIsImNhdCI6ImNsX0I3ZDRQRDExMUFBQSIsImtpZCI6Imluc18yc2l3SnFqU0lzWDR2NzN0RlhzcFBsVlpscVciLCJ0eXAiOiJKV1QifQ.eyJhenAiOiJodHRwczovL2NoYXQudG9nZXRoZXIuYWkiLCJleHAiOjE3NTQ4Mzc4MjQsImZ2YSI6WzUwLC0xXSwiaWF0IjoxNzU0ODM3NzY0LCJpc3MiOiJodHRwczovL2NsZXJrLmNoYXQudG9nZXRoZXIuYWkiLCJuYmYiOjE3NTQ4Mzc3NTQsInNpZCI6InNlc3NfMzE2QmJadUlLY1pHMEhTVkZHZUNJbDM2dHJLIiwic3ViIjoidXNlcl8zMTZCYlVLY1Z5dUFvS2gwSno5bTVxRDVNYU4ifQ.Xj6F9qh-CR-wRsI0LN3oB8Ej8V1b6-sstR0AgPoaufc5f3cIyMoUrmf6IXesmnqlqjXoUHG3riWA8cGR7bUgO3NdHqWtOQPS0Tw3a8B3EZvTuI4ZLxdnKJvYfFPwVelyd5CzKzjyDDtcMnkFVa2UnDAMcBofyCbTO_AHyOBg4XeCYmCsHgMHPunDQrn8TOB58uS2EU1Af5iuWTS07PHCFA0YxIQ4AR4sPmMSoLHnG0cNK5ehRGLLtk87E6K6WcxvLwX8GLalt0hAl_cqCdrLvcl6FI-COaD0YyZ1XeBaJP5mojs826qOIyR96SuXcizArzaJqdSuU2NbUdDWHLKT2Q; __session_QCPDW_r5=eyJhbGciOiJSUzI1NiIsImNhdCI6ImNsX0I3ZDRQRDExMUFBQSIsImtpZCI6Imluc18yc2l3SnFqU0lzWDR2NzN0RlhzcFBsVlpscVciLCJ0eXAiOiJKV1QifQ.eyJhenAiOiJodHRwczovL2NoYXQudG9nZXRoZXIuYWkiLCJleHAiOjE3NTQ4Mzc4MjQsImZ2YSI6WzUwLC0xXSwiaWF0IjoxNzU0ODM3NzY0LCJpc3MiOiJodHRwczovL2NsZXJrLmNoYXQudG9nZXRoZXIuYWkiLCJuYmYiOjE3NTQ4Mzc3NTQsInNpZCI6InNlc3NfMzE2QmJadUlLY1pHMEhTVkZHZUNJbDM2dHJLIiwic3ViIjoidXNlcl8zMTZCYlVLY1Z5dUFvS2gwSno5bTVxRDVNYU4ifQ.Xj6F9qh-CR-wRsI0LN3oB8Ej8V1b6-sstR0AgPoaufc5f3cIyMoUrmf6IXesmnqlqjXoUHG3riWA8cGR7bUgO3NdHqWtOQPS0Tw3a8B3EZvTuI4ZLxdnKJvYfFPwVelyd5CzKzjyDDtcMnkFVa2UnDAMcBofyCbTO_AHyOBg4XeCYmCsHgMHPunDQrn8TOB58uS2EU1Af5iuWTS07PHCFA0YxIQ4AR4sPmMSoLHnG0cNK5ehRGLLtk87E6K6WcxvLwX8GLalt0hAl_cqCdrLvcl6FI-COaD0YyZ1XeBaJP5mojs826qOIyR96SuXcizArzaJqdSuU2NbUdDWHLKT2Q; _gcl_au=1.1.704077363.1754837743; _ga_BS43X21GZ2=GS2.1.s1754837132^$o2^$g1^$t1754837742^$j34^$l0^$h2050270268; _ga_BBHKJ5V8S0=GS2.1.s1754837132^$o2^$g1^$t1754837742^$j34^$l0^$h750091915^" ^
+  -H ^"next-action: 40939f63aa37c263df0739d7c574ff55271c6b7743^" ^
+  -H ^"next-router-state-tree: ^%^5B^%^22^%^22^%^2C^%^7B^%^22children^%^22^%^3A^%^5B^%^22(main)^%^22^%^2C^%^7B^%^22children^%^22^%^3A^%^5B^%^22__PAGE__^%^22^%^2C^%^7B^%^7D^%^2C^%^22^%^2F^%^22^%^2C^%^22refresh^%^22^%^5D^%^7D^%^5D^%^7D^%^2Cnull^%^2Cnull^%^2Ctrue^%^5D^" ^
+  -H ^"origin: https://chat.together.ai^" ^
+  -H ^"priority: u=1, i^" ^
+  -H ^"referer: https://chat.together.ai/^" ^
+  -H ^"sec-ch-ua: ^\^"Not)A;Brand^\^";v=^\^"8^\^", ^\^"Chromium^\^";v=^\^"138^\^", ^\^"Google Chrome^\^";v=^\^"138^\^"^" ^
+  -H ^"sec-ch-ua-mobile: ?0^" ^
+  -H ^"sec-ch-ua-platform: ^\^"Windows^\^"^" ^
+  -H ^"sec-fetch-dest: empty^" ^
+  -H ^"sec-fetch-mode: cors^" ^
+  -H ^"sec-fetch-site: same-origin^" ^
+  -H ^"user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36^" ^
+  -H ^"x-deployment-id: dpl_9j8WPfVLA9t9qUUNuSEmcSWS3g3K^" ^
+  --data-raw ^"^[^{^\^"id^\^":^\^"31d8665b-9424-4c7a-88c3-dc799f6b63b4^\^",^\^"title^\^":^\^"New chat^\^",^\^"createdAt^\^":^\^"^$D2025-08-10T14:55:45.647Z^\^",^\^"status^\^":^\^"new^\^",^\^"visibility^\^":^\^"unlisted^\^",^\^"isTemporary^\^":false,^\^"branchedFromMessageId^\^":null,^\^"summary^\^":null,^\^"lastSummarizedMessageId^\^":null,^\^"projectId^\^":null,^\^"messages^\^":^[^{^\^"id^\^":^\^"2eb24185-5ab5-4486-9e5e-4587ee3ecadd^\^",^\^"chatId^\^":^\^"31d8665b-9424-4c7a-88c3-dc799f6b63b4^\^",^\^"role^\^":^\^"user^\^",^\^"content^\^":^\^"hi^\^",^\^"position^\^":0,^\^"model^\^":^\^"openai/gpt-oss-120b^\^",^\^"rating^\^":null,^\^"decision^\^":null,^\^"finishReason^\^":null,^\^"meta^\^":^{^\^"webSearchEnabledV2^\^":^\^"auto^\^",^\^"thinkingModeEnabled^\^":^\^"^$undefined^\^",^\^"uploads^\^":^[^],^\^"sites^\^":^[^]^},^\^"sources^\^":^[^],^\^"status^\^":^\^"saving^\^"^}^]^}^]^" &
+curl ^"https://chat.together.ai/api/chat-completion^" ^
+  -H ^"accept: */*^" ^
+  -H ^"accept-language: en-US,en;q=0.9^" ^
+  -H ^"content-type: text/plain;charset=UTF-8^" ^
+  -b ^"_ga=GA1.1.1052294871.1754834642; __client_uat=1754834713; __refresh_QCPDW_r5=kuhRpJrCHwymmFBeLd5M; __client_uat_QCPDW_r5=1754834713; clerk_active_context=sess_316BbZuIKcZG0HSVFGeCIl36trK:; dismissed-homepage-alerts=gpt-oss-120b-new-model; _gcl_au=1.1.704077363.1754837743; _ga_BS43X21GZ2=GS2.1.s1754837132^$o2^$g1^$t1754837742^$j34^$l0^$h2050270268; _ga_BBHKJ5V8S0=GS2.1.s1754837132^$o2^$g1^$t1754837742^$j34^$l0^$h750091915; __session=eyJhbGciOiJSUzI1NiIsImNhdCI6ImNsX0I3ZDRQRDExMUFBQSIsImtpZCI6Imluc18yc2l3SnFqU0lzWDR2NzN0RlhzcFBsVlpscVciLCJ0eXAiOiJKV1QifQ.eyJhenAiOiJodHRwczovL2NoYXQudG9nZXRoZXIuYWkiLCJleHAiOjE3NTQ4Mzc4MzUsImZ2YSI6WzUxLC0xXSwiaWF0IjoxNzU0ODM3Nzc1LCJpc3MiOiJodHRwczovL2NsZXJrLmNoYXQudG9nZXRoZXIuYWkiLCJuYmYiOjE3NTQ4Mzc3NjUsInNpZCI6InNlc3NfMzE2QmJadUlLY1pHMEhTVkZHZUNJbDM2dHJLIiwic3ViIjoidXNlcl8zMTZCYlVLY1Z5dUFvS2gwSno5bTVxRDVNYU4ifQ.GZrV7mkW6VFhc_G9G-7Zl3WU0NMF68GLpaLcpma3YIX8tbQsUVnqVJMBJA_NhoCBv1-GIXl2K7KtGvEOP_vkpmfI_7_9_KzvuT6zuqX9Rz2vW8YSHM4ZdJjhBS6rjr5U7e6Wega57rwVFwdbQOHwX56AnKL4AX4z53PkgGYIHze-5AZsb-J9g3QFidBlMgH-ia8VIK8-fq3AAmkKIZu863P7oFXYJgCgz6T-gYMcXhQuT7oGqJOgI4HqY6ALh6Mb-iy5QZKbUwQndNg5vwGyhLQNLyh3cTrqlSCw5UpMhtMwqAoS_Li_5NyRHQYk08JrCbpHz21slntGflYTJPu3tQ; __session_QCPDW_r5=eyJhbGciOiJSUzI1NiIsImNhdCI6ImNsX0I3ZDRQRDExMUFBQSIsImtpZCI6Imluc18yc2l3SnFqU0lzWDR2NzN0RlhzcFBsVlpscVciLCJ0eXAiOiJKV1QifQ.eyJhenAiOiJodHRwczovL2NoYXQudG9nZXRoZXIuYWkiLCJleHAiOjE3NTQ4Mzc4MzUsImZ2YSI6WzUxLC0xXSwiaWF0IjoxNzU0ODM3Nzc1LCJpc3MiOiJodHRwczovL2NsZXJrLmNoYXQudG9nZXRoZXIuYWkiLCJuYmYiOjE3NTQ4Mzc3NjUsInNpZCI6InNlc3NfMzE2QmJadUlLY1pHMEhTVkZHZUNJbDM2dHJLIiwic3ViIjoidXNlcl8zMTZCYlVLY1Z5dUFvS2gwSno5bTVxRDVNYU4ifQ.GZrV7mkW6VFhc_G9G-7Zl3WU0NMF68GLpaLcpma3YIX8tbQsUVnqVJMBJA_NhoCBv1-GIXl2K7KtGvEOP_vkpmfI_7_9_KzvuT6zuqX9Rz2vW8YSHM4ZdJjhBS6rjr5U7e6Wega57rwVFwdbQOHwX56AnKL4AX4z53PkgGYIHze-5AZsb-J9g3QFidBlMgH-ia8VIK8-fq3AAmkKIZu863P7oFXYJgCgz6T-gYMcXhQuT7oGqJOgI4HqY6ALh6Mb-iy5QZKbUwQndNg5vwGyhLQNLyh3cTrqlSCw5UpMhtMwqAoS_Li_5NyRHQYk08JrCbpHz21slntGflYTJPu3tQ^" ^
+  -H ^"origin: https://chat.together.ai^" ^
+  -H ^"priority: u=1, i^" ^
+  -H ^"referer: https://chat.together.ai/^" ^
+  -H ^"sec-ch-ua: ^\^"Not)A;Brand^\^";v=^\^"8^\^", ^\^"Chromium^\^";v=^\^"138^\^", ^\^"Google Chrome^\^";v=^\^"138^\^"^" ^
+  -H ^"sec-ch-ua-mobile: ?0^" ^
+  -H ^"sec-ch-ua-platform: ^\^"Windows^\^"^" ^
+  -H ^"sec-fetch-dest: empty^" ^
+  -H ^"sec-fetch-mode: cors^" ^
+  -H ^"sec-fetch-site: same-origin^" ^
+  -H ^"user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36^" ^
+  --data-raw ^"^{^\^"modelId^\^":^\^"0bbf06d8-22bd-47a9-89ad-75e8b2183389^\^",^\^"messages^\^":^[^{^\^"role^\^":^\^"system^\^",^\^"content^\^":^\^"Your job is to summarize the user's prompt into a few words, 5-6 max. Do not include any punctuation. The summary will be used as link text in a web application. Use title case.^\^"^},^{^\^"role^\^":^\^"user^\^",^\^"content^\^":^\^"Here is the user's prompt to summarize: hi^\^"^}^],^\^"stream^\^":false,^\^"maxTokens^\^":10,^\^"options^\^":^{^\^"task^\^":^\^"generate-title^\^"^}^}^" &
+curl ^"https://chat.together.ai/^" ^
+  -H ^"accept: text/x-component^" ^
+  -H ^"accept-language: en-US,en;q=0.9^" ^
+  -H ^"content-type: text/plain;charset=UTF-8^" ^
+  -b ^"_ga=GA1.1.1052294871.1754834642; __client_uat=1754834713; __refresh_QCPDW_r5=kuhRpJrCHwymmFBeLd5M; __client_uat_QCPDW_r5=1754834713; clerk_active_context=sess_316BbZuIKcZG0HSVFGeCIl36trK:; dismissed-homepage-alerts=gpt-oss-120b-new-model; _gcl_au=1.1.704077363.1754837743; _ga_BS43X21GZ2=GS2.1.s1754837132^$o2^$g1^$t1754837742^$j34^$l0^$h2050270268; _ga_BBHKJ5V8S0=GS2.1.s1754837132^$o2^$g1^$t1754837742^$j34^$l0^$h750091915; __session=eyJhbGciOiJSUzI1NiIsImNhdCI6ImNsX0I3ZDRQRDExMUFBQSIsImtpZCI6Imluc18yc2l3SnFqU0lzWDR2NzN0RlhzcFBsVlpscVciLCJ0eXAiOiJKV1QifQ.eyJhenAiOiJodHRwczovL2NoYXQudG9nZXRoZXIuYWkiLCJleHAiOjE3NTQ4Mzc4MzUsImZ2YSI6WzUxLC0xXSwiaWF0IjoxNzU0ODM3Nzc1LCJpc3MiOiJodHRwczovL2NsZXJrLmNoYXQudG9nZXRoZXIuYWkiLCJuYmYiOjE3NTQ4Mzc3NjUsInNpZCI6InNlc3NfMzE2QmJadUlLY1pHMEhTVkZHZUNJbDM2dHJLIiwic3ViIjoidXNlcl8zMTZCYlVLY1Z5dUFvS2gwSno5bTVxRDVNYU4ifQ.GZrV7mkW6VFhc_G9G-7Zl3WU0NMF68GLpaLcpma3YIX8tbQsUVnqVJMBJA_NhoCBv1-GIXl2K7KtGvEOP_vkpmfI_7_9_KzvuT6zuqX9Rz2vW8YSHM4ZdJjhBS6rjr5U7e6Wega57rwVFwdbQOHwX56AnKL4AX4z53PkgGYIHze-5AZsb-J9g3QFidBlMgH-ia8VIK8-fq3AAmkKIZu863P7oFXYJgCgz6T-gYMcXhQuT7oGqJOgI4HqY6ALh6Mb-iy5QZKbUwQndNg5vwGyhLQNLyh3cTrqlSCw5UpMhtMwqAoS_Li_5NyRHQYk08JrCbpHz21slntGflYTJPu3tQ; __session_QCPDW_r5=eyJhbGciOiJSUzI1NiIsImNhdCI6ImNsX0I3ZDRQRDExMUFBQSIsImtpZCI6Imluc18yc2l3SnFqU0lzWDR2NzN0RlhzcFBsVlpscVciLCJ0eXAiOiJKV1QifQ.eyJhenAiOiJodHRwczovL2NoYXQudG9nZXRoZXIuYWkiLCJleHAiOjE3NTQ4Mzc4MzUsImZ2YSI6WzUxLC0xXSwiaWF0IjoxNzU0ODM3Nzc1LCJpc3MiOiJodHRwczovL2NsZXJrLmNoYXQudG9nZXRoZXIuYWkiLCJuYmYiOjE3NTQ4Mzc3NjUsInNpZCI6InNlc3NfMzE2QmJadUlLY1pHMEhTVkZHZUNJbDM2dHJLIiwic3ViIjoidXNlcl8zMTZCYlVLY1Z5dUFvS2gwSno5bTVxRDVNYU4ifQ.GZrV7mkW6VFhc_G9G-7Zl3WU0NMF68GLpaLcpma3YIX8tbQsUVnqVJMBJA_NhoCBv1-GIXl2K7KtGvEOP_vkpmfI_7_9_KzvuT6zuqX9Rz2vW8YSHM4ZdJjhBS6rjr5U7e6Wega57rwVFwdbQOHwX56AnKL4AX4z53PkgGYIHze-5AZsb-J9g3QFidBlMgH-ia8VIK8-fq3AAmkKIZu863P7oFXYJgCgz6T-gYMcXhQuT7oGqJOgI4HqY6ALh6Mb-iy5QZKbUwQndNg5vwGyhLQNLyh3cTrqlSCw5UpMhtMwqAoS_Li_5NyRHQYk08JrCbpHz21slntGflYTJPu3tQ^" ^
+  -H ^"next-action: 60c0c92125622020550755e0393f1f8db5ff7e54e1^" ^
+  -H ^"next-router-state-tree: ^%^5B^%^22^%^22^%^2C^%^7B^%^22children^%^22^%^3A^%^5B^%^22(main)^%^22^%^2C^%^7B^%^22children^%^22^%^3A^%^5B^%^22__PAGE__^%^22^%^2C^%^7B^%^7D^%^2C^%^22^%^2F^%^22^%^2C^%^22refresh^%^22^%^5D^%^7D^%^5D^%^7D^%^2Cnull^%^2Cnull^%^2Ctrue^%^5D^" ^
+  -H ^"origin: https://chat.together.ai^" ^
+  -H ^"priority: u=1, i^" ^
+  -H ^"referer: https://chat.together.ai/^" ^
+  -H ^"sec-ch-ua: ^\^"Not)A;Brand^\^";v=^\^"8^\^", ^\^"Chromium^\^";v=^\^"138^\^", ^\^"Google Chrome^\^";v=^\^"138^\^"^" ^
+  -H ^"sec-ch-ua-mobile: ?0^" ^
+  -H ^"sec-ch-ua-platform: ^\^"Windows^\^"^" ^
+  -H ^"sec-fetch-dest: empty^" ^
+  -H ^"sec-fetch-mode: cors^" ^
+  -H ^"sec-fetch-site: same-origin^" ^
+  -H ^"user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36^" ^
+  -H ^"x-deployment-id: dpl_9j8WPfVLA9t9qUUNuSEmcSWS3g3K^" ^
+  --data-raw ^"^[^\^"31d8665b-9424-4c7a-88c3-dc799f6b63b4^\^",^{^\^"title^\^":^\^"Hello Message^\^"^}^]^" &
+curl ^"https://chat.together.ai/api/chat-completion^" ^
+  -H ^"accept: */*^" ^
+  -H ^"accept-language: en-US,en;q=0.9^" ^
+  -H ^"content-type: text/plain;charset=UTF-8^" ^
+  -b ^"_ga=GA1.1.1052294871.1754834642; __client_uat=1754834713; __refresh_QCPDW_r5=kuhRpJrCHwymmFBeLd5M; __client_uat_QCPDW_r5=1754834713; clerk_active_context=sess_316BbZuIKcZG0HSVFGeCIl36trK:; dismissed-homepage-alerts=gpt-oss-120b-new-model; _gcl_au=1.1.704077363.1754837743; _ga_BS43X21GZ2=GS2.1.s1754837132^$o2^$g1^$t1754837742^$j34^$l0^$h2050270268; _ga_BBHKJ5V8S0=GS2.1.s1754837132^$o2^$g1^$t1754837742^$j34^$l0^$h750091915; __session=eyJhbGciOiJSUzI1NiIsImNhdCI6ImNsX0I3ZDRQRDExMUFBQSIsImtpZCI6Imluc18yc2l3SnFqU0lzWDR2NzN0RlhzcFBsVlpscVciLCJ0eXAiOiJKV1QifQ.eyJhenAiOiJodHRwczovL2NoYXQudG9nZXRoZXIuYWkiLCJleHAiOjE3NTQ4Mzc4MzUsImZ2YSI6WzUxLC0xXSwiaWF0IjoxNzU0ODM3Nzc1LCJpc3MiOiJodHRwczovL2NsZXJrLmNoYXQudG9nZXRoZXIuYWkiLCJuYmYiOjE3NTQ4Mzc3NjUsInNpZCI6InNlc3NfMzE2QmJadUlLY1pHMEhTVkZHZUNJbDM2dHJLIiwic3ViIjoidXNlcl8zMTZCYlVLY1Z5dUFvS2gwSno5bTVxRDVNYU4ifQ.GZrV7mkW6VFhc_G9G-7Zl3WU0NMF68GLpaLcpma3YIX8tbQsUVnqVJMBJA_NhoCBv1-GIXl2K7KtGvEOP_vkpmfI_7_9_KzvuT6zuqX9Rz2vW8YSHM4ZdJjhBS6rjr5U7e6Wega57rwVFwdbQOHwX56AnKL4AX4z53PkgGYIHze-5AZsb-J9g3QFidBlMgH-ia8VIK8-fq3AAmkKIZu863P7oFXYJgCgz6T-gYMcXhQuT7oGqJOgI4HqY6ALh6Mb-iy5QZKbUwQndNg5vwGyhLQNLyh3cTrqlSCw5UpMhtMwqAoS_Li_5NyRHQYk08JrCbpHz21slntGflYTJPu3tQ; __session_QCPDW_r5=eyJhbGciOiJSUzI1NiIsImNhdCI6ImNsX0I3ZDRQRDExMUFBQSIsImtpZCI6Imluc18yc2l3SnFqU0lzWDR2NzN0RlhzcFBsVlpscVciLCJ0eXAiOiJKV1QifQ.eyJhenAiOiJodHRwczovL2NoYXQudG9nZXRoZXIuYWkiLCJleHAiOjE3NTQ4Mzc4MzUsImZ2YSI6WzUxLC0xXSwiaWF0IjoxNzU0ODM3Nzc1LCJpc3MiOiJodHRwczovL2NsZXJrLmNoYXQudG9nZXRoZXIuYWkiLCJuYmYiOjE3NTQ4Mzc3NjUsInNpZCI6InNlc3NfMzE2QmJadUlLY1pHMEhTVkZHZUNJbDM2dHJLIiwic3ViIjoidXNlcl8zMTZCYlVLY1Z5dUFvS2gwSno5bTVxRDVNYU4ifQ.GZrV7mkW6VFhc_G9G-7Zl3WU0NMF68GLpaLcpma3YIX8tbQsUVnqVJMBJA_NhoCBv1-GIXl2K7KtGvEOP_vkpmfI_7_9_KzvuT6zuqX9Rz2vW8YSHM4ZdJjhBS6rjr5U7e6Wega57rwVFwdbQOHwX56AnKL4AX4z53PkgGYIHze-5AZsb-J9g3QFidBlMgH-ia8VIK8-fq3AAmkKIZu863P7oFXYJgCgz6T-gYMcXhQuT7oGqJOgI4HqY6ALh6Mb-iy5QZKbUwQndNg5vwGyhLQNLyh3cTrqlSCw5UpMhtMwqAoS_Li_5NyRHQYk08JrCbpHz21slntGflYTJPu3tQ^" ^
+  -H ^"origin: https://chat.together.ai^" ^
+  -H ^"priority: u=1, i^" ^
+  -H ^"referer: https://chat.together.ai/^" ^
+  -H ^"sec-ch-ua: ^\^"Not)A;Brand^\^";v=^\^"8^\^", ^\^"Chromium^\^";v=^\^"138^\^", ^\^"Google Chrome^\^";v=^\^"138^\^"^" ^
+  -H ^"sec-ch-ua-mobile: ?0^" ^
+  -H ^"sec-ch-ua-platform: ^\^"Windows^\^"^" ^
+  -H ^"sec-fetch-dest: empty^" ^
+  -H ^"sec-fetch-mode: cors^" ^
+  -H ^"sec-fetch-site: same-origin^" ^
+  -H ^"user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36^" ^
+  --data-raw ^"^{^\^"modelId^\^":^\^"506726ab-8f81-4118-8941-fba0e60227e6^\^",^\^"temperature^\^":0.2,^\^"messages^\^":^[^{^\^"role^\^":^\^"system^\^",^\^"content^\^":^\^"Given a user message and a history of previous messages, your task is to evaluate the latest user message and determine whether the user wants to:^\^\n^\^\n- Generate an image (reply with ^\^\^\^"image^\^\^\^")^\^\n- Perform a web search for real-time or recent information (reply with ^\^\^\^"search^\^\^\^")^\^\n- Receive a text response based on general knowledge (reply with ^\^\^\^"chat^\^\^\^")^\^\n^\^\n^#^# Context:^\^\n^\^\n- Current date: 08/10/2025.^\^\n- Knowledge cutoff for chat models: October 2023.^\^\n^\^\n^#^# Instructions:^\^\n^\^\n1. Image: Respond with ^\^\^\^"image^\^\^\^" if the user explicitly requests an image. This includes phrases like ^\^\^\^"generate an image,^\^\^\^" ^\^\^\^"draw,^\^\^\^" ^\^\^\^"create a picture,^\^\^\^" ^\^\^\^"show me a photo,^\^\^\^" or similar requests implying image generation.^\^\n2. Search: Respond with ^\^\^\^"search^\^\^\^" if the user asks for:^\^\n    - Real-time data (e.g., stock prices, current events)^\^\n    - Information about events or developments after October 2023^\^\n    - Specific current details that may not be in the model's knowledge base (e.g., recent news, updates about individuals, or future predictions)^\^\n    - Requests related to the weather in specific locations^\^\n3. Chat: Respond with ^\^\^\^"chat^\^\^\^" for all other queries, including:^\^\n    - General knowledge or facts available up to October 2023^\^\n    - Requests for weather information^\^\n    - Requests the model can answer without needing real-time or recent information^\^\n    - Code generation or programming-related questions that don't require real-time data^\^\n    - Requests for mermaid diagrams or code charting libraries ^\^\n^\^\n^#^# Additional Notes:^\^\n^\^\n- Use the conversation history for context, but base your decision solely on the latest user message.^\^\n- Respond only with one word: ^\^\^\^"image,^\^\^\^" ^\^\^\^"search,^\^\^\^" or ^\^\^\^"chat.^\^\^\^" Do not include any explanation or additional text.^\^\n- If unsure which category to choose, respond with ^\^\^\^"chat^\^\^\^".^\^\n^\^\n^#^# Examples:^\^\n^\^\n**Example 1:**^\^\n^\^\n    History of previous messages:^\^\n    User: ^\^\^\^"What's going on with the stock market in the last day?^\^\^\^"^\^\n    Final user message: ^\^\^\^"What's the weather in New York today?^\^\^\^"^\^\n^\^\n^→ Expected output: search^\^\n^\^\n**Example 2:**^\^\n^\^\n    Final user message: ^\^\^\^"Generate an image of a cat playing with a ball.^\^\^\^"^\^\n^\^\n^→ Expected output: image^\^\n^\^\n**Example 3:**^\^\n^\^\n    History of previous messages:^\^\n    User: ^\^\^\^"Generate an image of the statue of liberty^\^\^\^"^\^\n    Final user message: ^\^\^\^"What's the current Apple stock price?^\^\^\^"^\^\n^\^\n^→ Expected output: search^\^\n^\^\n**Example 4:**^\^\n^\^\n    History of previous messages:^\^\n    User: ^\^\^\^"I've been reading about urban history.^\^\^\^"^\^\n    Final user message: ^\^\^\^"Tell me about New York's founding.^\^\^\^"^\^\n^\^\n^→ Expected output: chat^\^\n^\^\n**Example 5:**^\^\n^\^\n    History of previous messages:^\^\n    User: ^\^\^\^"I missed today's headlines.^\^\^\^"^\^\n    Final user message: ^\^\^\^"What happened over the weekend?^\^\^\^"^\^\n^\^\n^→ Expected output: search^\^\n^\^\n**Example 6:**^\^\n^\^\n    Final user message: ^\^\^\^"Where is the Panama Canal?^\^\^\^"^\^\n^\^\n^→ Expected output: chat^\^\n^\^\n**Example 7:**^\^\n^\^\n    History of previous messages:^\^\n    User: ^\^\^\^"Was the Luka Doncic trade a good move?^\^\^\^"^\^\n    Final user message: ^\^\^\^"How are the Celtics doing tonight?^\^\^\^"^\^\n^\^\n^→ Expected output: search^\^\n^\^\n**Example 8:**^\^\n^\^\n    Final user message: ^\^\^\^"Show me a picture of a dog^\^\^\^"^\^\n^\^\n^→ Expected output: image^\^\n^\^\n**Example 9:**^\^\n^\^\n    History of previous messages:^\^\n    User: ^\^\^\^"I'm fascinated by architecture, can you draw me a pic of the eiffel tower?^\^\^\^"^\^\n    Final user message: ^\^\^\^"Tell me about the history of the Eiffel Tower^\^\^\^"^\^\n^\^\n^→ Expected output: chat^\^\n^\^\n**Example 10:**^\^\n^\^\n    Final user message: ^\^\^\^"Tell me the best spots for fruit salad in SF in 2025^\^\^\^"^\^\n^\^\n^→ Expected output: search^\^\n^\^\n**Example 11:**^\^\n^\^\n    Final user message: ^\^\^\^"Generate a contour plot of terrain elevation with Python^\^\^\^"^\^\n^\^\n^→ Expected output: chat^\^\n^\^\n**Example 12:**^\^\n^\^\n    Final user message: ^\^\^\^"Draw a mermaid diagram of an HTTP request^\^\^\^"^\^\n^\^\n^→ Expected output: chat^\^\n^\^\n**Example 1:**^\^\n^\^\n    Final user message: ^\^\^\^"What's the weather in New York and San Francisco?^\^\^\^"^\^\n^\^\n^→ Expected output: search^\^"^},^{^\^"role^\^":^\^"user^\^",^\^"content^\^":^\^"^#^# Final user message:^\^\nhi^\^"^}^],^\^"stream^\^":false,^\^"maxTokens^\^":50,^\^"options^\^":^{^\^"task^\^":^\^"router^\^"^}^}^" &
+curl ^"https://chat.together.ai/manifest.json^" ^
+  -H ^"sec-ch-ua-platform: ^\^"Windows^\^"^" ^
+  -H ^"Referer: https://chat.together.ai/^" ^
+  -H ^"User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36^" ^
+  -H ^"sec-ch-ua: ^\^"Not)A;Brand^\^";v=^\^"8^\^", ^\^"Chromium^\^";v=^\^"138^\^", ^\^"Google Chrome^\^";v=^\^"138^\^"^" ^
+  -H ^"sec-ch-ua-mobile: ?0^" &
+curl ^"https://analytics.google.com/g/collect?v=2^&tid=G-BBHKJ5V8S0^&gtm=45je5861v897253922za200zd897253922^&_p=1754837716242^&gcd=13l3l3l3l1l1^&npa=0^&dma=0^&tag_exp=101509157~103116026~103200004~103233427~104527906~104528501~104684208~104684211~104948813~105033763~105033765~105103161~105103163~105135708~105135710^&cid=1052294871.1754834642^&ecid=750091915^&ul=en-us^&sr=1280x800^&lps=1^&uaa=x86^&uab=64^&uafvl=Not)A^%^253BBrand^%^3B8.0.0.0^%^7CChromium^%^3B138.0.7204.184^%^7CGoogle^%^2520Chrome^%^3B138.0.7204.184^&uamb=0^&uam=^&uap=Windows^&uapv=19.0.0^&uaw=0^&are=1^&frm=0^&pscdl=noapi^&_eu=AEEAAAQ^&_s=3^&sid=1754837132^&sct=2^&seg=1^&dl=https^%^3A^%^2F^%^2Fchat.together.ai^%^2F^&dr=https^%^3A^%^2F^%^2Fwww.google.com^%^2F^&dt=Together^%^20Chat^&en=form_start^&ep.form_id=^&ep.form_name=^&ep.form_destination=https^%^3A^%^2F^%^2Fchat.together.ai^%^2F^&epn.form_length=10^&ep.first_field_id=^&ep.first_field_name=prompt^&ep.first_field_type=^&epn.first_field_position=1^&_et=11342^&tfd=33371^" ^
+  -X ^"POST^" ^
+  -H ^"accept: */*^" ^
+  -H ^"accept-language: en-US,en;q=0.9^" ^
+  -H ^"content-length: 0^" ^
+  -b ^"__Secure-3PAPISID=sP3WELOgcUv2blcS/ArbX1YylxFXKoJ45E; __Secure-3PSID=g.a000zgiCF6_9RYXyYUAk9SWkz8IMPmJwkbEIE1uxfY-1XzWO9Kf-FHFGKL5WF1HjR2yzZSimSQACgYKAfISARUSFQHGX2MiHg1IwW9OBAq506TrjA69_BoVAUF8yKpiQdre0Og8cIToe8BgcgXv0076; NID=525=jgaKy8r4ZYnm5ITKm0UUsk2-cFgKTh6DOfc5L0hA5XsmDpBpAIFISDshXjTA9p2zjjPFbppoqFa6gj9_qx2305QEZcNCjlXWj18E4iP99Vmm_HAZR1P8XFY5-lItF3bRwWXt-YhCEyswwhNyTvcmeI6nCsarA7bPJsMoS1UA-v1MOze4pMCttUJQEpTCXOA5Ybxmnyb-BbaI57vP7WPLFOA6chMByBEKyxqvpPdit7Wc88GksHvidDb-DBVRRvgXx58X5IM8Vg0bofnVezRp0cS2H2URG85qf8zagRaFswroZXeKFyy4B__KdRQh2BwEO1A-TauDSImmXkh1bCVF5Uvxah8yG7STBnf54kk5dSLzktJPxNMEYTAzHqToFUY2I2OlhqvvuSVsf8qiwrEa7_Im9kD7zdTnoCAn-DKXYOoQcTKD4CNxVbOyEsYJwIhKF5omugENJOOEFjd4co7NPfeOmOocNH_EpS5c4puc9DA4Z_gNHV1AIHyhpQOTlQdjpQ5zTZs3zy89USN_L6RjubiLYxlrEtKJSqzY4ARXKC0o29RSH5fmneewvRG7xh904ke7iehNSLah8UKQAI1q1Y8VWIySjcvc8Ca4kZ0gvPIOnXq2Y7MSoexMrbQDE6w05k5hwjrFNKej1ExeAVNk_jVIJhE3nqDZnl3Yh1BrCw7_YXq29wyv6ZSIcmHgr6tc2t3LIMAMJuqSf1J97f8B1hsWPOoZdFw8L50FDYFDzmmlKlt2EBxsZnxw1vOgdGX_oZlSA0gOXvSElVDoBMApDSpKNONbi_rI2Ne2_13ubjLxx6Gd8ZbKihouHljHdOOTOITHiTHTYEnibNXPbfc; __Secure-3PSIDTS=sidts-CjcB5H03P5LfkV2Ehv0wNi6Ommx3ghr7WETwb7QE5_tBkrKaXkNSM11-zFOG_kv4p64o860rHSKAEAA; __Secure-3PSIDRTS=sidts-CjcB5H03P5LfkV2Ehv0wNi6Ommx3ghr7WETwb7QE5_tBkrKaXkNSM11-zFOG_kv4p64o860rHSKAEAA; __Secure-3PSIDCC=AKEyXzVdvN8ljWgZT8ksjLnL8sAbUr_70QVbfriRBmH0DQAkb76Ho1Kg6WzS5PPWHlPwR4b7-w^" ^
+  -H ^"origin: https://chat.together.ai^" ^
+  -H ^"priority: u=1, i^" ^
+  -H ^"referer: https://chat.together.ai/^" ^
+  -H ^"sec-ch-ua: ^\^"Not)A;Brand^\^";v=^\^"8^\^", ^\^"Chromium^\^";v=^\^"138^\^", ^\^"Google Chrome^\^";v=^\^"138^\^"^" ^
+  -H ^"sec-ch-ua-mobile: ?0^" ^
+  -H ^"sec-ch-ua-platform: ^\^"Windows^\^"^" ^
+  -H ^"sec-fetch-dest: empty^" ^
+  -H ^"sec-fetch-mode: no-cors^" ^
+  -H ^"sec-fetch-site: cross-site^" ^
+  -H ^"sec-fetch-storage-access: active^" ^
+  -H ^"user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36^" ^
+  -H ^"x-browser-channel: stable^" ^
+  -H ^"x-browser-copyright: Copyright 2025 Google LLC. All rights reserved.^" ^
+  -H ^"x-browser-validation: 6h3XF8YcD8syi2FF2BbuE2KllQo=^" ^
+  -H ^"x-browser-year: 2025^" ^
+  -H ^"x-client-data: CJe2yQEIorbJAQipncoBCKXsygEIkqHLAQijo8sBCIWgzQEY4eLOAQ==^" &
+curl ^"https://chat.together.ai/api/chat-completion^" ^
+  -H ^"accept: */*^" ^
+  -H ^"accept-language: en-US,en;q=0.9^" ^
+  -H ^"content-type: text/plain;charset=UTF-8^" ^
+  -b ^"_ga=GA1.1.1052294871.1754834642; __client_uat=1754834713; __refresh_QCPDW_r5=kuhRpJrCHwymmFBeLd5M; __client_uat_QCPDW_r5=1754834713; clerk_active_context=sess_316BbZuIKcZG0HSVFGeCIl36trK:; dismissed-homepage-alerts=gpt-oss-120b-new-model; _gcl_au=1.1.704077363.1754837743; _ga_BS43X21GZ2=GS2.1.s1754837132^$o2^$g1^$t1754837742^$j34^$l0^$h2050270268; _ga_BBHKJ5V8S0=GS2.1.s1754837132^$o2^$g1^$t1754837742^$j34^$l0^$h750091915; __session=eyJhbGciOiJSUzI1NiIsImNhdCI6ImNsX0I3ZDRQRDExMUFBQSIsImtpZCI6Imluc18yc2l3SnFqU0lzWDR2NzN0RlhzcFBsVlpscVciLCJ0eXAiOiJKV1QifQ.eyJhenAiOiJodHRwczovL2NoYXQudG9nZXRoZXIuYWkiLCJleHAiOjE3NTQ4Mzc4MzUsImZ2YSI6WzUxLC0xXSwiaWF0IjoxNzU0ODM3Nzc1LCJpc3MiOiJodHRwczovL2NsZXJrLmNoYXQudG9nZXRoZXIuYWkiLCJuYmYiOjE3NTQ4Mzc3NjUsInNpZCI6InNlc3NfMzE2QmJadUlLY1pHMEhTVkZHZUNJbDM2dHJLIiwic3ViIjoidXNlcl8zMTZCYlVLY1Z5dUFvS2gwSno5bTVxRDVNYU4ifQ.GZrV7mkW6VFhc_G9G-7Zl3WU0NMF68GLpaLcpma3YIX8tbQsUVnqVJMBJA_NhoCBv1-GIXl2K7KtGvEOP_vkpmfI_7_9_KzvuT6zuqX9Rz2vW8YSHM4ZdJjhBS6rjr5U7e6Wega57rwVFwdbQOHwX56AnKL4AX4z53PkgGYIHze-5AZsb-J9g3QFidBlMgH-ia8VIK8-fq3AAmkKIZu863P7oFXYJgCgz6T-gYMcXhQuT7oGqJOgI4HqY6ALh6Mb-iy5QZKbUwQndNg5vwGyhLQNLyh3cTrqlSCw5UpMhtMwqAoS_Li_5NyRHQYk08JrCbpHz21slntGflYTJPu3tQ; __session_QCPDW_r5=eyJhbGciOiJSUzI1NiIsImNhdCI6ImNsX0I3ZDRQRDExMUFBQSIsImtpZCI6Imluc18yc2l3SnFqU0lzWDR2NzN0RlhzcFBsVlpscVciLCJ0eXAiOiJKV1QifQ.eyJhenAiOiJodHRwczovL2NoYXQudG9nZXRoZXIuYWkiLCJleHAiOjE3NTQ4Mzc4MzUsImZ2YSI6WzUxLC0xXSwiaWF0IjoxNzU0ODM3Nzc1LCJpc3MiOiJodHRwczovL2NsZXJrLmNoYXQudG9nZXRoZXIuYWkiLCJuYmYiOjE3NTQ4Mzc3NjUsInNpZCI6InNlc3NfMzE2QmJadUlLY1pHMEhTVkZHZUNJbDM2dHJLIiwic3ViIjoidXNlcl8zMTZCYlVLY1Z5dUFvS2gwSno5bTVxRDVNYU4ifQ.GZrV7mkW6VFhc_G9G-7Zl3WU0NMF68GLpaLcpma3YIX8tbQsUVnqVJMBJA_NhoCBv1-GIXl2K7KtGvEOP_vkpmfI_7_9_KzvuT6zuqX9Rz2vW8YSHM4ZdJjhBS6rjr5U7e6Wega57rwVFwdbQOHwX56AnKL4AX4z53PkgGYIHze-5AZsb-J9g3QFidBlMgH-ia8VIK8-fq3AAmkKIZu863P7oFXYJgCgz6T-gYMcXhQuT7oGqJOgI4HqY6ALh6Mb-iy5QZKbUwQndNg5vwGyhLQNLyh3cTrqlSCw5UpMhtMwqAoS_Li_5NyRHQYk08JrCbpHz21slntGflYTJPu3tQ^" ^
+  -H ^"origin: https://chat.together.ai^" ^
+  -H ^"priority: u=1, i^" ^
+  -H ^"referer: https://chat.together.ai/^" ^
+  -H ^"sec-ch-ua: ^\^"Not)A;Brand^\^";v=^\^"8^\^", ^\^"Chromium^\^";v=^\^"138^\^", ^\^"Google Chrome^\^";v=^\^"138^\^"^" ^
+  -H ^"sec-ch-ua-mobile: ?0^" ^
+  -H ^"sec-ch-ua-platform: ^\^"Windows^\^"^" ^
+  -H ^"sec-fetch-dest: empty^" ^
+  -H ^"sec-fetch-mode: cors^" ^
+  -H ^"sec-fetch-site: same-origin^" ^
+  -H ^"user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36^" ^
+  --data-raw ^"^{^\^"modelId^\^":^\^"0617c096-4e77-41c6-a8c7-dde113b8a460^\^",^\^"temperature^\^":0.6,^\^"topP^\^":0.95,^\^"messages^\^":^[^{^\^"role^\^":^\^"system^\^",^\^"content^\^":^\^"^# General instructions^\^\n^\^\n- You are Together Chat, an AI assistant created by Together AI, using the GPT OSS 120B model. ^\^\n- The current date is 08/10/2025. Your knowledge cutoff is October 2023.^\^\n- You are designed to be concise, helpful, and friendly.^\^\n- Give concise responses to very simple questions, but provide more detailed responses to more complex and open-ended questions.^\^\n^\^\n^# Capabilities^\^\n^\^\nIf the user asks you about your capabilities, or the features of this app, you can say:^\^\n^\^\n- Chat with state of the art large language models, like DeepSeek R1, Meta Llama4, and Qwen3.^\^\n- Generate and edit images with high-quality image models.^\^\n- Create diagrams and flowcharts using Mermaid.^\^\n- Perform web searches to find up-to-date information.^\^\n- Get real-time weather information.^\^\n- Generate code examples and run them.^\^\n- Chat with PDFs and websites, and extract information from them.^\^\n- Chat with images and analyze their content.^\^\n^\^\nDo not mention your knowledge cutoff date, as this is not relevant to the user experience. Instead, focus on your capabilities and how you can assist the user.^\^\n^\^\nYou should only talk about these capabilities if the user directly asks you about them, or if they are relevant to the user's question.^\^\n^\^\n^\^\n^\^\n^# Latex^\^\n^\^\nIf you include math equations, you must use LaTeX formatting with double dollar ^$^$ delimiters. For example, an inline statement should look like this: ^\^\^\^"The variable ^$^$p^$^$ is the population.^\^\^\^" And a block statement should look like this:^\^\n^\^\n  ^\^\^\^"The formula for GDP is:^\^\n^\^\n  ^$^$^\^\n  GDP = C + I + G + NX^\^\n  ^$^$^\^\n  ^\^\^\^"^\^\n^\^\nWhen generating math equations, make sure to use LaTeX formatting only. Do not use any other formatting styles or languages for math equations.^\^\n^\^\nFor example:^\^\n^\^\n- ^\^\^\^"^$^\^\^\^\^\^\^\^\alpha^$^\^\^\^" should be written as ^\^\^\^"^$^$alpha^$^$^\^\^\^".^\^\n- (^\^\^\^\^\^\^\^\eta) should be written as ^\^\^\^"^$^$eta^$^$^\^\^\^".^\^\n^\^\nNever use LaTex formatting when generating code examples. LaTex is only for mathematical equations and should not be used in code blocks.^\^\n^\^\nOnly use LaTeX formatting if the user specifically asks for math equations or if the question is about math. You should be very hesitant to answer with academic-style math equations unless the user explicitly asks for them.^\^\n^\^\n^# Mermaid diagrams^\^\n^\^\nUse mermaid to generate diagrams and flowcharts ^– only if a user asks you to. Make sure to only use valid Mermaid syntax. In Mermaid, arrows with labels are always written as -- Label --^>. Do not use ^|^> or any other variation. ^\^\tDo not use ^<br^>, ^\^\n, or other HTML in node labels. Avoid parentheses ( and ) in node labels, as they can break Mermaid parsing. Use colons (:), commas (,), or vertical bars (^|) instead to separate values inside labels. Keep labels short and flat.^\^\n^\^\nHere are some examples you can use to understand correct syntax:^\^\n^\^\n  Mermaid Example ^#1: Basic Flowchart^\^\n^\^\n  ```mermaid^\^\n  graph TD;^\^\n    A^[Start^] --^> B^{Is user logged in?^};^\^\n    B -- Yes --^> C^[Show dashboard^];^\^\n    B -- No --^> D^[Redirect to login^];^\^\n    C --^> E^[End^];^\^\n    D --^> E;^\^\n  ```^\^\n^\^\n  Mermaid Example ^#2: Sequence Diagram^\^\n^\^\n  ```mermaid^\^\n  sequenceDiagram^\^\n    participant User^\^\n    participant Browser^\^\n    participant Server^\^\n^\^\n    User-^>^>Browser: Enter credentials^\^\n    Browser-^>^>Server: Send login request^\^\n    Server--^>^>Browser: Response (200 OK)^\^\n    Browser--^>^>User: Show dashboard^\^\n  ```^\^\n^\^\n^# Coding^\^\n^\^\nIf you decide to write a code example to answer the user's question, make sure it doesn't depend on user input, and also make it include test cases to make it runnable.^\^"^},^{^\^"role^\^":^\^"user^\^",^\^"content^\^":^\^"hi^\^"^}^],^\^"stream^\^":true,^\^"options^\^":^{^}^}^" &
+curl ^"https://chat.together.ai/^" ^
+  -H ^"accept: text/x-component^" ^
+  -H ^"accept-language: en-US,en;q=0.9^" ^
+  -H ^"content-type: text/plain;charset=UTF-8^" ^
+  -b ^"_ga=GA1.1.1052294871.1754834642; __client_uat=1754834713; __refresh_QCPDW_r5=kuhRpJrCHwymmFBeLd5M; __client_uat_QCPDW_r5=1754834713; clerk_active_context=sess_316BbZuIKcZG0HSVFGeCIl36trK:; dismissed-homepage-alerts=gpt-oss-120b-new-model; _gcl_au=1.1.704077363.1754837743; _ga_BS43X21GZ2=GS2.1.s1754837132^$o2^$g1^$t1754837742^$j34^$l0^$h2050270268; _ga_BBHKJ5V8S0=GS2.1.s1754837132^$o2^$g1^$t1754837742^$j34^$l0^$h750091915; __session=eyJhbGciOiJSUzI1NiIsImNhdCI6ImNsX0I3ZDRQRDExMUFBQSIsImtpZCI6Imluc18yc2l3SnFqU0lzWDR2NzN0RlhzcFBsVlpscVciLCJ0eXAiOiJKV1QifQ.eyJhenAiOiJodHRwczovL2NoYXQudG9nZXRoZXIuYWkiLCJleHAiOjE3NTQ4Mzc4MzUsImZ2YSI6WzUxLC0xXSwiaWF0IjoxNzU0ODM3Nzc1LCJpc3MiOiJodHRwczovL2NsZXJrLmNoYXQudG9nZXRoZXIuYWkiLCJuYmYiOjE3NTQ4Mzc3NjUsInNpZCI6InNlc3NfMzE2QmJadUlLY1pHMEhTVkZHZUNJbDM2dHJLIiwic3ViIjoidXNlcl8zMTZCYlVLY1Z5dUFvS2gwSno5bTVxRDVNYU4ifQ.GZrV7mkW6VFhc_G9G-7Zl3WU0NMF68GLpaLcpma3YIX8tbQsUVnqVJMBJA_NhoCBv1-GIXl2K7KtGvEOP_vkpmfI_7_9_KzvuT6zuqX9Rz2vW8YSHM4ZdJjhBS6rjr5U7e6Wega57rwVFwdbQOHwX56AnKL4AX4z53PkgGYIHze-5AZsb-J9g3QFidBlMgH-ia8VIK8-fq3AAmkKIZu863P7oFXYJgCgz6T-gYMcXhQuT7oGqJOgI4HqY6ALh6Mb-iy5QZKbUwQndNg5vwGyhLQNLyh3cTrqlSCw5UpMhtMwqAoS_Li_5NyRHQYk08JrCbpHz21slntGflYTJPu3tQ; __session_QCPDW_r5=eyJhbGciOiJSUzI1NiIsImNhdCI6ImNsX0I3ZDRQRDExMUFBQSIsImtpZCI6Imluc18yc2l3SnFqU0lzWDR2NzN0RlhzcFBsVlpscVciLCJ0eXAiOiJKV1QifQ.eyJhenAiOiJodHRwczovL2NoYXQudG9nZXRoZXIuYWkiLCJleHAiOjE3NTQ4Mzc4MzUsImZ2YSI6WzUxLC0xXSwiaWF0IjoxNzU0ODM3Nzc1LCJpc3MiOiJodHRwczovL2NsZXJrLmNoYXQudG9nZXRoZXIuYWkiLCJuYmYiOjE3NTQ4Mzc3NjUsInNpZCI6InNlc3NfMzE2QmJadUlLY1pHMEhTVkZHZUNJbDM2dHJLIiwic3ViIjoidXNlcl8zMTZCYlVLY1Z5dUFvS2gwSno5bTVxRDVNYU4ifQ.GZrV7mkW6VFhc_G9G-7Zl3WU0NMF68GLpaLcpma3YIX8tbQsUVnqVJMBJA_NhoCBv1-GIXl2K7KtGvEOP_vkpmfI_7_9_KzvuT6zuqX9Rz2vW8YSHM4ZdJjhBS6rjr5U7e6Wega57rwVFwdbQOHwX56AnKL4AX4z53PkgGYIHze-5AZsb-J9g3QFidBlMgH-ia8VIK8-fq3AAmkKIZu863P7oFXYJgCgz6T-gYMcXhQuT7oGqJOgI4HqY6ALh6Mb-iy5QZKbUwQndNg5vwGyhLQNLyh3cTrqlSCw5UpMhtMwqAoS_Li_5NyRHQYk08JrCbpHz21slntGflYTJPu3tQ^" ^
+  -H ^"next-action: 40aa6533ca623aa4d504fccd027d2dcc52a915ecab^" ^
+  -H ^"next-router-state-tree: ^%^5B^%^22^%^22^%^2C^%^7B^%^22children^%^22^%^3A^%^5B^%^22(main)^%^22^%^2C^%^7B^%^22children^%^22^%^3A^%^5B^%^22__PAGE__^%^22^%^2C^%^7B^%^7D^%^2C^%^22^%^2F^%^22^%^2C^%^22refresh^%^22^%^5D^%^7D^%^5D^%^7D^%^2Cnull^%^2Cnull^%^2Ctrue^%^5D^" ^
+  -H ^"origin: https://chat.together.ai^" ^
+  -H ^"priority: u=1, i^" ^
+  -H ^"referer: https://chat.together.ai/^" ^
+  -H ^"sec-ch-ua: ^\^"Not)A;Brand^\^";v=^\^"8^\^", ^\^"Chromium^\^";v=^\^"138^\^", ^\^"Google Chrome^\^";v=^\^"138^\^"^" ^
+  -H ^"sec-ch-ua-mobile: ?0^" ^
+  -H ^"sec-ch-ua-platform: ^\^"Windows^\^"^" ^
+  -H ^"sec-fetch-dest: empty^" ^
+  -H ^"sec-fetch-mode: cors^" ^
+  -H ^"sec-fetch-site: same-origin^" ^
+  -H ^"user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36^" ^
+  -H ^"x-deployment-id: dpl_9j8WPfVLA9t9qUUNuSEmcSWS3g3K^" ^
+  --data-raw ^"^[^{^\^"id^\^":^\^"3e0f3d28-6149-4001-b88e-66795bc5bc89^\^",^\^"chatId^\^":^\^"31d8665b-9424-4c7a-88c3-dc799f6b63b4^\^",^\^"role^\^":^\^"assistant^\^",^\^"content^\^":^\^"Hello^! How can I help you today?^\^",^\^"position^\^":1,^\^"model^\^":^\^"openai/gpt-oss-120b^\^",^\^"rating^\^":null,^\^"decision^\^":^\^"chat^\^",^\^"finishReason^\^":^\^"stop^\^",^\^"meta^\^":^{^},^\^"sources^\^":^[^],^\^"status^\^":^\^"generating^\^"^}^]^" &
+curl ^"https://chat.together.ai/chat/31d8665b-9424-4c7a-88c3-dc799f6b63b4?_rsc=1t3gj^" ^
+  -H ^"accept: */*^" ^
+  -H ^"accept-language: en-US,en;q=0.9^" ^
+  -b ^"_ga=GA1.1.1052294871.1754834642; __client_uat=1754834713; __refresh_QCPDW_r5=kuhRpJrCHwymmFBeLd5M; __client_uat_QCPDW_r5=1754834713; clerk_active_context=sess_316BbZuIKcZG0HSVFGeCIl36trK:; dismissed-homepage-alerts=gpt-oss-120b-new-model; _gcl_au=1.1.704077363.1754837743; _ga_BS43X21GZ2=GS2.1.s1754837132^$o2^$g1^$t1754837742^$j34^$l0^$h2050270268; _ga_BBHKJ5V8S0=GS2.1.s1754837132^$o2^$g1^$t1754837742^$j34^$l0^$h750091915; __session=eyJhbGciOiJSUzI1NiIsImNhdCI6ImNsX0I3ZDRQRDExMUFBQSIsImtpZCI6Imluc18yc2l3SnFqU0lzWDR2NzN0RlhzcFBsVlpscVciLCJ0eXAiOiJKV1QifQ.eyJhenAiOiJodHRwczovL2NoYXQudG9nZXRoZXIuYWkiLCJleHAiOjE3NTQ4Mzc4MzUsImZ2YSI6WzUxLC0xXSwiaWF0IjoxNzU0ODM3Nzc1LCJpc3MiOiJodHRwczovL2NsZXJrLmNoYXQudG9nZXRoZXIuYWkiLCJuYmYiOjE3NTQ4Mzc3NjUsInNpZCI6InNlc3NfMzE2QmJadUlLY1pHMEhTVkZHZUNJbDM2dHJLIiwic3ViIjoidXNlcl8zMTZCYlVLY1Z5dUFvS2gwSno5bTVxRDVNYU4ifQ.GZrV7mkW6VFhc_G9G-7Zl3WU0NMF68GLpaLcpma3YIX8tbQsUVnqVJMBJA_NhoCBv1-GIXl2K7KtGvEOP_vkpmfI_7_9_KzvuT6zuqX9Rz2vW8YSHM4ZdJjhBS6rjr5U7e6Wega57rwVFwdbQOHwX56AnKL4AX4z53PkgGYIHze-5AZsb-J9g3QFidBlMgH-ia8VIK8-fq3AAmkKIZu863P7oFXYJgCgz6T-gYMcXhQuT7oGqJOgI4HqY6ALh6Mb-iy5QZKbUwQndNg5vwGyhLQNLyh3cTrqlSCw5UpMhtMwqAoS_Li_5NyRHQYk08JrCbpHz21slntGflYTJPu3tQ; __session_QCPDW_r5=eyJhbGciOiJSUzI1NiIsImNhdCI6ImNsX0I3ZDRQRDExMUFBQSIsImtpZCI6Imluc18yc2l3SnFqU0lzWDR2NzN0RlhzcFBsVlpscVciLCJ0eXAiOiJKV1QifQ.eyJhenAiOiJodHRwczovL2NoYXQudG9nZXRoZXIuYWkiLCJleHAiOjE3NTQ4Mzc4MzUsImZ2YSI6WzUxLC0xXSwiaWF0IjoxNzU0ODM3Nzc1LCJpc3MiOiJodHRwczovL2NsZXJrLmNoYXQudG9nZXRoZXIuYWkiLCJuYmYiOjE3NTQ4Mzc3NjUsInNpZCI6InNlc3NfMzE2QmJadUlLY1pHMEhTVkZHZUNJbDM2dHJLIiwic3ViIjoidXNlcl8zMTZCYlVLY1Z5dUFvS2gwSno5bTVxRDVNYU4ifQ.GZrV7mkW6VFhc_G9G-7Zl3WU0NMF68GLpaLcpma3YIX8tbQsUVnqVJMBJA_NhoCBv1-GIXl2K7KtGvEOP_vkpmfI_7_9_KzvuT6zuqX9Rz2vW8YSHM4ZdJjhBS6rjr5U7e6Wega57rwVFwdbQOHwX56AnKL4AX4z53PkgGYIHze-5AZsb-J9g3QFidBlMgH-ia8VIK8-fq3AAmkKIZu863P7oFXYJgCgz6T-gYMcXhQuT7oGqJOgI4HqY6ALh6Mb-iy5QZKbUwQndNg5vwGyhLQNLyh3cTrqlSCw5UpMhtMwqAoS_Li_5NyRHQYk08JrCbpHz21slntGflYTJPu3tQ^" ^
+  -H ^"next-router-state-tree: ^%^5B^%^22^%^22^%^2C^%^7B^%^22children^%^22^%^3A^%^5B^%^22(main)^%^22^%^2C^%^7B^%^22children^%^22^%^3A^%^5B^%^22__PAGE__^%^22^%^2C^%^7B^%^7D^%^2C^%^22^%^2F^%^22^%^2C^%^22refresh^%^22^%^5D^%^7D^%^5D^%^7D^%^2Cnull^%^2Cnull^%^2Ctrue^%^5D^" ^
+  -H ^"next-url: /^" ^
+  -H ^"priority: u=1, i^" ^
+  -H ^"referer: https://chat.together.ai/^" ^
+  -H ^"rsc: 1^" ^
+  -H ^"sec-ch-ua: ^\^"Not)A;Brand^\^";v=^\^"8^\^", ^\^"Chromium^\^";v=^\^"138^\^", ^\^"Google Chrome^\^";v=^\^"138^\^"^" ^
+  -H ^"sec-ch-ua-mobile: ?0^" ^
+  -H ^"sec-ch-ua-platform: ^\^"Windows^\^"^" ^
+  -H ^"sec-fetch-dest: empty^" ^
+  -H ^"sec-fetch-mode: cors^" ^
+  -H ^"sec-fetch-site: same-origin^" ^
+  -H ^"user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36^" ^
+  -H ^"x-deployment-id: dpl_9j8WPfVLA9t9qUUNuSEmcSWS3g3K^" &
+curl ^"https://chat.together.ai/chat/31d8665b-9424-4c7a-88c3-dc799f6b63b4?_rsc=1ojkn^" ^
+  -H ^"accept: */*^" ^
+  -H ^"accept-language: en-US,en;q=0.9^" ^
+  -b ^"_ga=GA1.1.1052294871.1754834642; __client_uat=1754834713; __refresh_QCPDW_r5=kuhRpJrCHwymmFBeLd5M; __client_uat_QCPDW_r5=1754834713; clerk_active_context=sess_316BbZuIKcZG0HSVFGeCIl36trK:; dismissed-homepage-alerts=gpt-oss-120b-new-model; _gcl_au=1.1.704077363.1754837743; _ga_BS43X21GZ2=GS2.1.s1754837132^$o2^$g1^$t1754837742^$j34^$l0^$h2050270268; _ga_BBHKJ5V8S0=GS2.1.s1754837132^$o2^$g1^$t1754837742^$j34^$l0^$h750091915; __session=eyJhbGciOiJSUzI1NiIsImNhdCI6ImNsX0I3ZDRQRDExMUFBQSIsImtpZCI6Imluc18yc2l3SnFqU0lzWDR2NzN0RlhzcFBsVlpscVciLCJ0eXAiOiJKV1QifQ.eyJhenAiOiJodHRwczovL2NoYXQudG9nZXRoZXIuYWkiLCJleHAiOjE3NTQ4Mzc4MzUsImZ2YSI6WzUxLC0xXSwiaWF0IjoxNzU0ODM3Nzc1LCJpc3MiOiJodHRwczovL2NsZXJrLmNoYXQudG9nZXRoZXIuYWkiLCJuYmYiOjE3NTQ4Mzc3NjUsInNpZCI6InNlc3NfMzE2QmJadUlLY1pHMEhTVkZHZUNJbDM2dHJLIiwic3ViIjoidXNlcl8zMTZCYlVLY1Z5dUFvS2gwSno5bTVxRDVNYU4ifQ.GZrV7mkW6VFhc_G9G-7Zl3WU0NMF68GLpaLcpma3YIX8tbQsUVnqVJMBJA_NhoCBv1-GIXl2K7KtGvEOP_vkpmfI_7_9_KzvuT6zuqX9Rz2vW8YSHM4ZdJjhBS6rjr5U7e6Wega57rwVFwdbQOHwX56AnKL4AX4z53PkgGYIHze-5AZsb-J9g3QFidBlMgH-ia8VIK8-fq3AAmkKIZu863P7oFXYJgCgz6T-gYMcXhQuT7oGqJOgI4HqY6ALh6Mb-iy5QZKbUwQndNg5vwGyhLQNLyh3cTrqlSCw5UpMhtMwqAoS_Li_5NyRHQYk08JrCbpHz21slntGflYTJPu3tQ; __session_QCPDW_r5=eyJhbGciOiJSUzI1NiIsImNhdCI6ImNsX0I3ZDRQRDExMUFBQSIsImtpZCI6Imluc18yc2l3SnFqU0lzWDR2NzN0RlhzcFBsVlpscVciLCJ0eXAiOiJKV1QifQ.eyJhenAiOiJodHRwczovL2NoYXQudG9nZXRoZXIuYWkiLCJleHAiOjE3NTQ4Mzc4MzUsImZ2YSI6WzUxLC0xXSwiaWF0IjoxNzU0ODM3Nzc1LCJpc3MiOiJodHRwczovL2NsZXJrLmNoYXQudG9nZXRoZXIuYWkiLCJuYmYiOjE3NTQ4Mzc3NjUsInNpZCI6InNlc3NfMzE2QmJadUlLY1pHMEhTVkZHZUNJbDM2dHJLIiwic3ViIjoidXNlcl8zMTZCYlVLY1Z5dUFvS2gwSno5bTVxRDVNYU4ifQ.GZrV7mkW6VFhc_G9G-7Zl3WU0NMF68GLpaLcpma3YIX8tbQsUVnqVJMBJA_NhoCBv1-GIXl2K7KtGvEOP_vkpmfI_7_9_KzvuT6zuqX9Rz2vW8YSHM4ZdJjhBS6rjr5U7e6Wega57rwVFwdbQOHwX56AnKL4AX4z53PkgGYIHze-5AZsb-J9g3QFidBlMgH-ia8VIK8-fq3AAmkKIZu863P7oFXYJgCgz6T-gYMcXhQuT7oGqJOgI4HqY6ALh6Mb-iy5QZKbUwQndNg5vwGyhLQNLyh3cTrqlSCw5UpMhtMwqAoS_Li_5NyRHQYk08JrCbpHz21slntGflYTJPu3tQ^" ^
+  -H ^"next-router-state-tree: ^%^5B^%^22^%^22^%^2C^%^7B^%^22children^%^22^%^3A^%^5B^%^22(main)^%^22^%^2C^%^7B^%^22children^%^22^%^3A^%^5B^%^22chat^%^22^%^2C^%^7B^%^22children^%^22^%^3A^%^5B^%^5B^%^22id^%^22^%^2C^%^2231d8665b-9424-4c7a-88c3-dc799f6b63b4^%^22^%^2C^%^22d^%^22^%^5D^%^2C^%^7B^%^22children^%^22^%^3A^%^5B^%^22__PAGE__^%^22^%^2C^%^7B^%^7D^%^2C^%^22^%^2Fchat^%^2F31d8665b-9424-4c7a-88c3-dc799f6b63b4^%^22^%^2C^%^22refresh^%^22^%^5D^%^7D^%^5D^%^7D^%^5D^%^7D^%^2Cnull^%^2Cnull^%^5D^%^7D^%^2Cnull^%^2C^%^22refetch^%^22^%^5D^" ^
+  -H ^"priority: u=1, i^" ^
+  -H ^"referer: https://chat.together.ai/^" ^
+  -H ^"rsc: 1^" ^
+  -H ^"sec-ch-ua: ^\^"Not)A;Brand^\^";v=^\^"8^\^", ^\^"Chromium^\^";v=^\^"138^\^", ^\^"Google Chrome^\^";v=^\^"138^\^"^" ^
+  -H ^"sec-ch-ua-mobile: ?0^" ^
+  -H ^"sec-ch-ua-platform: ^\^"Windows^\^"^" ^
+  -H ^"sec-fetch-dest: empty^" ^
+  -H ^"sec-fetch-mode: cors^" ^
+  -H ^"sec-fetch-site: same-origin^" ^
+  -H ^"user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36^" ^
+  -H ^"x-deployment-id: dpl_9j8WPfVLA9t9qUUNuSEmcSWS3g3K^" &
+curl ^"https://plausible.io/api/event^" ^
+  -H ^"accept: */*^" ^
+  -H ^"accept-language: en-US,en;q=0.9^" ^
+  -H ^"content-type: text/plain^" ^
+  -H ^"origin: https://chat.together.ai^" ^
+  -H ^"priority: u=1, i^" ^
+  -H ^"referer: https://chat.together.ai/^" ^
+  -H ^"sec-ch-ua: ^\^"Not)A;Brand^\^";v=^\^"8^\^", ^\^"Chromium^\^";v=^\^"138^\^", ^\^"Google Chrome^\^";v=^\^"138^\^"^" ^
+  -H ^"sec-ch-ua-mobile: ?0^" ^
+  -H ^"sec-ch-ua-platform: ^\^"Windows^\^"^" ^
+  -H ^"sec-fetch-dest: empty^" ^
+  -H ^"sec-fetch-mode: cors^" ^
+  -H ^"sec-fetch-site: cross-site^" ^
+  -H ^"user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36^" ^
+  --data-raw ^"^{^\^"n^\^":^\^"pageview^\^",^\^"v^\^":27,^\^"u^\^":^\^"https://chat.together.ai/chat/31d8665b-9424-4c7a-88c3-dc799f6b63b4^\^",^\^"d^\^":^\^"chat.together.ai^\^",^\^"r^\^":^\^"https://www.google.com/^\^"^}^" &
+curl ^"https://chat.together.ai/?_rsc=1fsxu^" ^
+  -H ^"accept: */*^" ^
+  -H ^"accept-language: en-US,en;q=0.9^" ^
+  -b ^"_ga=GA1.1.1052294871.1754834642; __client_uat=1754834713; __refresh_QCPDW_r5=kuhRpJrCHwymmFBeLd5M; __client_uat_QCPDW_r5=1754834713; clerk_active_context=sess_316BbZuIKcZG0HSVFGeCIl36trK:; dismissed-homepage-alerts=gpt-oss-120b-new-model; _gcl_au=1.1.704077363.1754837743; _ga_BS43X21GZ2=GS2.1.s1754837132^$o2^$g1^$t1754837742^$j34^$l0^$h2050270268; _ga_BBHKJ5V8S0=GS2.1.s1754837132^$o2^$g1^$t1754837742^$j34^$l0^$h750091915; __session=eyJhbGciOiJSUzI1NiIsImNhdCI6ImNsX0I3ZDRQRDExMUFBQSIsImtpZCI6Imluc18yc2l3SnFqU0lzWDR2NzN0RlhzcFBsVlpscVciLCJ0eXAiOiJKV1QifQ.eyJhenAiOiJodHRwczovL2NoYXQudG9nZXRoZXIuYWkiLCJleHAiOjE3NTQ4Mzc4MzUsImZ2YSI6WzUxLC0xXSwiaWF0IjoxNzU0ODM3Nzc1LCJpc3MiOiJodHRwczovL2NsZXJrLmNoYXQudG9nZXRoZXIuYWkiLCJuYmYiOjE3NTQ4Mzc3NjUsInNpZCI6InNlc3NfMzE2QmJadUlLY1pHMEhTVkZHZUNJbDM2dHJLIiwic3ViIjoidXNlcl8zMTZCYlVLY1Z5dUFvS2gwSno5bTVxRDVNYU4ifQ.GZrV7mkW6VFhc_G9G-7Zl3WU0NMF68GLpaLcpma3YIX8tbQsUVnqVJMBJA_NhoCBv1-GIXl2K7KtGvEOP_vkpmfI_7_9_KzvuT6zuqX9Rz2vW8YSHM4ZdJjhBS6rjr5U7e6Wega57rwVFwdbQOHwX56AnKL4AX4z53PkgGYIHze-5AZsb-J9g3QFidBlMgH-ia8VIK8-fq3AAmkKIZu863P7oFXYJgCgz6T-gYMcXhQuT7oGqJOgI4HqY6ALh6Mb-iy5QZKbUwQndNg5vwGyhLQNLyh3cTrqlSCw5UpMhtMwqAoS_Li_5NyRHQYk08JrCbpHz21slntGflYTJPu3tQ; __session_QCPDW_r5=eyJhbGciOiJSUzI1NiIsImNhdCI6ImNsX0I3ZDRQRDExMUFBQSIsImtpZCI6Imluc18yc2l3SnFqU0lzWDR2NzN0RlhzcFBsVlpscVciLCJ0eXAiOiJKV1QifQ.eyJhenAiOiJodHRwczovL2NoYXQudG9nZXRoZXIuYWkiLCJleHAiOjE3NTQ4Mzc4MzUsImZ2YSI6WzUxLC0xXSwiaWF0IjoxNzU0ODM3Nzc1LCJpc3MiOiJodHRwczovL2NsZXJrLmNoYXQudG9nZXRoZXIuYWkiLCJuYmYiOjE3NTQ4Mzc3NjUsInNpZCI6InNlc3NfMzE2QmJadUlLY1pHMEhTVkZHZUNJbDM2dHJLIiwic3ViIjoidXNlcl8zMTZCYlVLY1Z5dUFvS2gwSno5bTVxRDVNYU4ifQ.GZrV7mkW6VFhc_G9G-7Zl3WU0NMF68GLpaLcpma3YIX8tbQsUVnqVJMBJA_NhoCBv1-GIXl2K7KtGvEOP_vkpmfI_7_9_KzvuT6zuqX9Rz2vW8YSHM4ZdJjhBS6rjr5U7e6Wega57rwVFwdbQOHwX56AnKL4AX4z53PkgGYIHze-5AZsb-J9g3QFidBlMgH-ia8VIK8-fq3AAmkKIZu863P7oFXYJgCgz6T-gYMcXhQuT7oGqJOgI4HqY6ALh6Mb-iy5QZKbUwQndNg5vwGyhLQNLyh3cTrqlSCw5UpMhtMwqAoS_Li_5NyRHQYk08JrCbpHz21slntGflYTJPu3tQ^" ^
+  -H ^"next-router-prefetch: 1^" ^
+  -H ^"next-router-state-tree: ^%^5B^%^22^%^22^%^2C^%^7B^%^22children^%^22^%^3A^%^5B^%^22(main)^%^22^%^2C^%^7B^%^22children^%^22^%^3A^%^5B^%^22chat^%^22^%^2C^%^7B^%^22children^%^22^%^3A^%^5B^%^5B^%^22id^%^22^%^2C^%^2231d8665b-9424-4c7a-88c3-dc799f6b63b4^%^22^%^2C^%^22d^%^22^%^5D^%^2C^%^7B^%^22children^%^22^%^3A^%^5B^%^22__PAGE__^%^22^%^2C^%^7B^%^7D^%^2C^%^22^%^2Fchat^%^2F31d8665b-9424-4c7a-88c3-dc799f6b63b4^%^22^%^2C^%^22refresh^%^22^%^5D^%^7D^%^5D^%^7D^%^5D^%^7D^%^5D^%^7D^%^2Cnull^%^2Cnull^%^2Ctrue^%^5D^" ^
+  -H ^"next-url: /chat/31d8665b-9424-4c7a-88c3-dc799f6b63b4^" ^
+  -H ^"priority: i^" ^
+  -H ^"referer: https://chat.together.ai/chat/31d8665b-9424-4c7a-88c3-dc799f6b63b4^" ^
+  -H ^"rsc: 1^" ^
+  -H ^"sec-ch-ua: ^\^"Not)A;Brand^\^";v=^\^"8^\^", ^\^"Chromium^\^";v=^\^"138^\^", ^\^"Google Chrome^\^";v=^\^"138^\^"^" ^
+  -H ^"sec-ch-ua-mobile: ?0^" ^
+  -H ^"sec-ch-ua-platform: ^\^"Windows^\^"^" ^
+  -H ^"sec-fetch-dest: empty^" ^
+  -H ^"sec-fetch-mode: cors^" ^
+  -H ^"sec-fetch-site: same-origin^" ^
+  -H ^"user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36^" ^
+  -H ^"x-deployment-id: dpl_9j8WPfVLA9t9qUUNuSEmcSWS3g3K^" &
+curl ^"https://chat.together.ai/manifest.json^" ^
+  -H ^"sec-ch-ua-platform: ^\^"Windows^\^"^" ^
+  -H ^"Referer: https://chat.together.ai/chat/31d8665b-9424-4c7a-88c3-dc799f6b63b4^" ^
+  -H ^"User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36^" ^
+  -H ^"sec-ch-ua: ^\^"Not)A;Brand^\^";v=^\^"8^\^", ^\^"Chromium^\^";v=^\^"138^\^", ^\^"Google Chrome^\^";v=^\^"138^\^"^" ^
+  -H ^"sec-ch-ua-mobile: ?0^" &
+curl ^"https://analytics.google.com/g/collect?v=2^&tid=G-BS43X21GZ2^&gtm=45je5861v897253922za200zd897253922^&_p=1754837716242^&gcd=13l3l3l3l1l1^&npa=0^&dma=0^&tag_exp=101509157~103116026~103200004~103233427~104527906~104528501~104684208~104684211~104948813~105033763~105033765~105103161~105103163~105135708~105135710^&cid=1052294871.1754834642^&ecid=2050270268^&ul=en-us^&sr=1280x800^&lps=1^&uaa=x86^&uab=64^&uafvl=Not)A^%^253BBrand^%^3B8.0.0.0^%^7CChromium^%^3B138.0.7204.184^%^7CGoogle^%^2520Chrome^%^3B138.0.7204.184^&uamb=0^&uam=^&uap=Windows^&uapv=19.0.0^&uaw=0^&are=1^&frm=0^&pscdl=noapi^&ec_mode=a^&_eu=AEAAAAQ^&_s=4^&dl=https^%^3A^%^2F^%^2Fchat.together.ai^%^2Fchat^%^2F31d8665b-9424-4c7a-88c3-dc799f6b63b4^&dr=https^%^3A^%^2F^%^2Fchat.together.ai^%^2F^&sid=1754837132^&sct=2^&seg=1^&dt=Hello^%^20Message^&en=page_view^&_et=2299^&tfd=36528^" ^
+  -X ^"POST^" ^
+  -H ^"accept: */*^" ^
+  -H ^"accept-language: en-US,en;q=0.9^" ^
+  -H ^"content-length: 0^" ^
+  -b ^"__Secure-3PAPISID=sP3WELOgcUv2blcS/ArbX1YylxFXKoJ45E; __Secure-3PSID=g.a000zgiCF6_9RYXyYUAk9SWkz8IMPmJwkbEIE1uxfY-1XzWO9Kf-FHFGKL5WF1HjR2yzZSimSQACgYKAfISARUSFQHGX2MiHg1IwW9OBAq506TrjA69_BoVAUF8yKpiQdre0Og8cIToe8BgcgXv0076; NID=525=jgaKy8r4ZYnm5ITKm0UUsk2-cFgKTh6DOfc5L0hA5XsmDpBpAIFISDshXjTA9p2zjjPFbppoqFa6gj9_qx2305QEZcNCjlXWj18E4iP99Vmm_HAZR1P8XFY5-lItF3bRwWXt-YhCEyswwhNyTvcmeI6nCsarA7bPJsMoS1UA-v1MOze4pMCttUJQEpTCXOA5Ybxmnyb-BbaI57vP7WPLFOA6chMByBEKyxqvpPdit7Wc88GksHvidDb-DBVRRvgXx58X5IM8Vg0bofnVezRp0cS2H2URG85qf8zagRaFswroZXeKFyy4B__KdRQh2BwEO1A-TauDSImmXkh1bCVF5Uvxah8yG7STBnf54kk5dSLzktJPxNMEYTAzHqToFUY2I2OlhqvvuSVsf8qiwrEa7_Im9kD7zdTnoCAn-DKXYOoQcTKD4CNxVbOyEsYJwIhKF5omugENJOOEFjd4co7NPfeOmOocNH_EpS5c4puc9DA4Z_gNHV1AIHyhpQOTlQdjpQ5zTZs3zy89USN_L6RjubiLYxlrEtKJSqzY4ARXKC0o29RSH5fmneewvRG7xh904ke7iehNSLah8UKQAI1q1Y8VWIySjcvc8Ca4kZ0gvPIOnXq2Y7MSoexMrbQDE6w05k5hwjrFNKej1ExeAVNk_jVIJhE3nqDZnl3Yh1BrCw7_YXq29wyv6ZSIcmHgr6tc2t3LIMAMJuqSf1J97f8B1hsWPOoZdFw8L50FDYFDzmmlKlt2EBxsZnxw1vOgdGX_oZlSA0gOXvSElVDoBMApDSpKNONbi_rI2Ne2_13ubjLxx6Gd8ZbKihouHljHdOOTOITHiTHTYEnibNXPbfc; __Secure-3PSIDTS=sidts-CjcB5H03P5LfkV2Ehv0wNi6Ommx3ghr7WETwb7QE5_tBkrKaXkNSM11-zFOG_kv4p64o860rHSKAEAA; __Secure-3PSIDRTS=sidts-CjcB5H03P5LfkV2Ehv0wNi6Ommx3ghr7WETwb7QE5_tBkrKaXkNSM11-zFOG_kv4p64o860rHSKAEAA; __Secure-3PSIDCC=AKEyXzVdvN8ljWgZT8ksjLnL8sAbUr_70QVbfriRBmH0DQAkb76Ho1Kg6WzS5PPWHlPwR4b7-w^" ^
+  -H ^"origin: https://chat.together.ai^" ^
+  -H ^"priority: u=1, i^" ^
+  -H ^"referer: https://chat.together.ai/^" ^
+  -H ^"sec-ch-ua: ^\^"Not)A;Brand^\^";v=^\^"8^\^", ^\^"Chromium^\^";v=^\^"138^\^", ^\^"Google Chrome^\^";v=^\^"138^\^"^" ^
+  -H ^"sec-ch-ua-mobile: ?0^" ^
+  -H ^"sec-ch-ua-platform: ^\^"Windows^\^"^" ^
+  -H ^"sec-fetch-dest: empty^" ^
+  -H ^"sec-fetch-mode: no-cors^" ^
+  -H ^"sec-fetch-site: cross-site^" ^
+  -H ^"sec-fetch-storage-access: active^" ^
+  -H ^"user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36^" ^
+  -H ^"x-browser-channel: stable^" ^
+  -H ^"x-browser-copyright: Copyright 2025 Google LLC. All rights reserved.^" ^
+  -H ^"x-browser-validation: 6h3XF8YcD8syi2FF2BbuE2KllQo=^" ^
+  -H ^"x-browser-year: 2025^" ^
+  -H ^"x-client-data: CJe2yQEIorbJAQipncoBCKXsygEIkqHLAQijo8sBCIWgzQEY4eLOAQ==^" &
+curl ^"https://analytics.google.com/g/collect?v=2^&tid=G-BBHKJ5V8S0^&gtm=45je5861v897253922za200zd897253922^&_p=1754837716242^&gcd=13l3l3l3l1l1^&npa=0^&dma=0^&tag_exp=101509157~103116026~103200004~103233427~104527906~104528501~104684208~104684211~104948813~105033763~105033765~105103161~105103163~105135708~105135710^&cid=1052294871.1754834642^&ecid=750091915^&ul=en-us^&sr=1280x800^&lps=1^&uaa=x86^&uab=64^&uafvl=Not)A^%^253BBrand^%^3B8.0.0.0^%^7CChromium^%^3B138.0.7204.184^%^7CGoogle^%^2520Chrome^%^3B138.0.7204.184^&uamb=0^&uam=^&uap=Windows^&uapv=19.0.0^&uaw=0^&are=1^&frm=0^&pscdl=noapi^&ec_mode=a^&_eu=AEAAAAQ^&_s=4^&dl=https^%^3A^%^2F^%^2Fchat.together.ai^%^2Fchat^%^2F31d8665b-9424-4c7a-88c3-dc799f6b63b4^&dr=https^%^3A^%^2F^%^2Fchat.together.ai^%^2F^&sid=1754837132^&sct=2^&seg=1^&dt=Hello^%^20Message^&en=page_view^&_et=2299^&tfd=36541^" ^
+  -X ^"POST^" ^
+  -H ^"accept: */*^" ^
+  -H ^"accept-language: en-US,en;q=0.9^" ^
+  -H ^"content-length: 0^" ^
+  -b ^"__Secure-3PAPISID=sP3WELOgcUv2blcS/ArbX1YylxFXKoJ45E; __Secure-3PSID=g.a000zgiCF6_9RYXyYUAk9SWkz8IMPmJwkbEIE1uxfY-1XzWO9Kf-FHFGKL5WF1HjR2yzZSimSQACgYKAfISARUSFQHGX2MiHg1IwW9OBAq506TrjA69_BoVAUF8yKpiQdre0Og8cIToe8BgcgXv0076; NID=525=jgaKy8r4ZYnm5ITKm0UUsk2-cFgKTh6DOfc5L0hA5XsmDpBpAIFISDshXjTA9p2zjjPFbppoqFa6gj9_qx2305QEZcNCjlXWj18E4iP99Vmm_HAZR1P8XFY5-lItF3bRwWXt-YhCEyswwhNyTvcmeI6nCsarA7bPJsMoS1UA-v1MOze4pMCttUJQEpTCXOA5Ybxmnyb-BbaI57vP7WPLFOA6chMByBEKyxqvpPdit7Wc88GksHvidDb-DBVRRvgXx58X5IM8Vg0bofnVezRp0cS2H2URG85qf8zagRaFswroZXeKFyy4B__KdRQh2BwEO1A-TauDSImmXkh1bCVF5Uvxah8yG7STBnf54kk5dSLzktJPxNMEYTAzHqToFUY2I2OlhqvvuSVsf8qiwrEa7_Im9kD7zdTnoCAn-DKXYOoQcTKD4CNxVbOyEsYJwIhKF5omugENJOOEFjd4co7NPfeOmOocNH_EpS5c4puc9DA4Z_gNHV1AIHyhpQOTlQdjpQ5zTZs3zy89USN_L6RjubiLYxlrEtKJSqzY4ARXKC0o29RSH5fmneewvRG7xh904ke7iehNSLah8UKQAI1q1Y8VWIySjcvc8Ca4kZ0gvPIOnXq2Y7MSoexMrbQDE6w05k5hwjrFNKej1ExeAVNk_jVIJhE3nqDZnl3Yh1BrCw7_YXq29wyv6ZSIcmHgr6tc2t3LIMAMJuqSf1J97f8B1hsWPOoZdFw8L50FDYFDzmmlKlt2EBxsZnxw1vOgdGX_oZlSA0gOXvSElVDoBMApDSpKNONbi_rI2Ne2_13ubjLxx6Gd8ZbKihouHljHdOOTOITHiTHTYEnibNXPbfc; __Secure-3PSIDTS=sidts-CjcB5H03P5LfkV2Ehv0wNi6Ommx3ghr7WETwb7QE5_tBkrKaXkNSM11-zFOG_kv4p64o860rHSKAEAA; __Secure-3PSIDRTS=sidts-CjcB5H03P5LfkV2Ehv0wNi6Ommx3ghr7WETwb7QE5_tBkrKaXkNSM11-zFOG_kv4p64o860rHSKAEAA; __Secure-3PSIDCC=AKEyXzVdvN8ljWgZT8ksjLnL8sAbUr_70QVbfriRBmH0DQAkb76Ho1Kg6WzS5PPWHlPwR4b7-w^" ^
+  -H ^"origin: https://chat.together.ai^" ^
+  -H ^"priority: u=1, i^" ^
+  -H ^"referer: https://chat.together.ai/^" ^
+  -H ^"sec-ch-ua: ^\^"Not)A;Brand^\^";v=^\^"8^\^", ^\^"Chromium^\^";v=^\^"138^\^", ^\^"Google Chrome^\^";v=^\^"138^\^"^" ^
+  -H ^"sec-ch-ua-mobile: ?0^" ^
+  -H ^"sec-ch-ua-platform: ^\^"Windows^\^"^" ^
+  -H ^"sec-fetch-dest: empty^" ^
+  -H ^"sec-fetch-mode: no-cors^" ^
+  -H ^"sec-fetch-site: cross-site^" ^
+  -H ^"sec-fetch-storage-access: active^" ^
+  -H ^"user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36^" ^
+  -H ^"x-browser-channel: stable^" ^
+  -H ^"x-browser-copyright: Copyright 2025 Google LLC. All rights reserved.^" ^
+  -H ^"x-browser-validation: 6h3XF8YcD8syi2FF2BbuE2KllQo=^" ^
+  -H ^"x-browser-year: 2025^" ^
+  -H ^"x-client-data: CJe2yQEIorbJAQipncoBCKXsygEIkqHLAQijo8sBCIWgzQEY4eLOAQ==^" &
+curl ^"https://plausible.io/api/event^" ^
+  -H ^"accept: */*^" ^
+  -H ^"accept-language: en-US,en;q=0.9^" ^
+  -H ^"content-type: text/plain^" ^
+  -H ^"origin: https://chat.together.ai^" ^
+  -H ^"priority: u=1, i^" ^
+  -H ^"referer: https://chat.together.ai/^" ^
+  -H ^"sec-ch-ua: ^\^"Not)A;Brand^\^";v=^\^"8^\^", ^\^"Chromium^\^";v=^\^"138^\^", ^\^"Google Chrome^\^";v=^\^"138^\^"^" ^
+  -H ^"sec-ch-ua-mobile: ?0^" ^
+  -H ^"sec-ch-ua-platform: ^\^"Windows^\^"^" ^
+  -H ^"sec-fetch-dest: empty^" ^
+  -H ^"sec-fetch-mode: cors^" ^
+  -H ^"sec-fetch-site: cross-site^" ^
+  -H ^"user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36^" ^
+  --data-raw ^"^{^\^"n^\^":^\^"engagement^\^",^\^"sd^\^":100,^\^"d^\^":^\^"chat.together.ai^\^",^\^"u^\^":^\^"https://chat.together.ai/chat/31d8665b-9424-4c7a-88c3-dc799f6b63b4^\^",^\^"e^\^":21596,^\^"v^\^":27^}^" &
+curl ^"https://clerk.chat.together.ai/v1/client/sessions/sess_316BbZuIKcZG0HSVFGeCIl36trK/tokens?__clerk_api_version=2025-04-10^&_clerk_js_version=5.80.0^" ^
+  -H ^"accept: */*^" ^
+  -H ^"accept-language: en-US,en;q=0.9^" ^
+  -H ^"content-type: application/x-www-form-urlencoded^" ^
+  -b ^"_ga=GA1.1.1052294871.1754834642; _cfuvid=pY_W7YgDnWDJjtnDBIb7FwGdrver8vtrLM25HlsqhU4-1754834672122-0.0.1.1-604800000; __client=eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImNsaWVudF8zMTZCV0tmWVFCeXZyQ1czbmJORE1VU2dsSnYiLCJyb3RhdGluZ190b2tlbiI6InhpdzFoeTY4MDU1ZTU4bHZkeGRvbTA4cWt2cWRkbmZ5anFvMThwN2sifQ.OG1f8FGDpVrvd-udutLZPebaDWAPKfH0AU7sY_KwM8oxhEkdHb2UoYRwPmJIRdAevSQsrxpRv1nJ3rCdTVn9QR0ikA-HzojAgp9941Cy9XpQ9fDuk6rTbfv3190pdNcfUQ-4BrGwZLYSpSM7aPEOYS6fSJx2VUPyYgNsUjINLzq4tzj3bDLjXGsaebTO89LzCFGdCHQv_QGX2fg98-27h8TXkl6ZAiPMa1GbeVUloJRnLboupPpptYsVPrSXInKViSU9_ph7tzjkWflg2uZg9ciHQXxlYHR_1U-kWf9cAW-UGpPAGsLT5eEHF-XW28ig7swAlpHTWJih5nYEXFX2HQ; __client_uat=1754834713; __client_uat_QCPDW_r5=1754834713; __cf_bm=d2xTkVUVgrziLHI6BGhhDOcZGbKzOMx0Y6NYq9HKf.g-1754837746-1.0.1.1-tY_QPtWCLq7znqEtcJfF.OZlWfHVo7yQyE2CIkDEJL5x_5g3HIaMT1HRNyg4q86u1ce11vHl2msu9mk_eBhTmqQPgDwZsjTIoZ8LveVRG7i34h1oYpwYNGC17iHuE_by; _gcl_au=1.1.704077363.1754837743; _ga_BS43X21GZ2=GS2.1.s1754837132^$o2^$g1^$t1754837750^$j26^$l0^$h2050270268; _ga_BBHKJ5V8S0=GS2.1.s1754837132^$o2^$g1^$t1754837750^$j26^$l0^$h750091915^" ^
+  -H ^"origin: https://chat.together.ai^" ^
+  -H ^"priority: u=1, i^" ^
+  -H ^"referer: https://chat.together.ai/^" ^
+  -H ^"sec-ch-ua: ^\^"Not)A;Brand^\^";v=^\^"8^\^", ^\^"Chromium^\^";v=^\^"138^\^", ^\^"Google Chrome^\^";v=^\^"138^\^"^" ^
+  -H ^"sec-ch-ua-mobile: ?0^" ^
+  -H ^"sec-ch-ua-platform: ^\^"Windows^\^"^" ^
+  -H ^"sec-fetch-dest: empty^" ^
+  -H ^"sec-fetch-mode: cors^" ^
+  -H ^"sec-fetch-site: same-site^" ^
+  -H ^"user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36^" ^
+  --data-raw ^"organization_id=^" &
+curl ^"https://clerk.chat.together.ai/v1/client/sessions/sess_316BbZuIKcZG0HSVFGeCIl36trK/tokens?__clerk_api_version=2025-04-10^&_clerk_js_version=5.80.0^" ^
+  -H ^"accept: */*^" ^
+  -H ^"accept-language: en-US,en;q=0.9^" ^
+  -H ^"content-type: application/x-www-form-urlencoded^" ^
+  -b ^"_ga=GA1.1.1052294871.1754834642; _cfuvid=pY_W7YgDnWDJjtnDBIb7FwGdrver8vtrLM25HlsqhU4-1754834672122-0.0.1.1-604800000; __client=eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImNsaWVudF8zMTZCV0tmWVFCeXZyQ1czbmJORE1VU2dsSnYiLCJyb3RhdGluZ190b2tlbiI6InhpdzFoeTY4MDU1ZTU4bHZkeGRvbTA4cWt2cWRkbmZ5anFvMThwN2sifQ.OG1f8FGDpVrvd-udutLZPebaDWAPKfH0AU7sY_KwM8oxhEkdHb2UoYRwPmJIRdAevSQsrxpRv1nJ3rCdTVn9QR0ikA-HzojAgp9941Cy9XpQ9fDuk6rTbfv3190pdNcfUQ-4BrGwZLYSpSM7aPEOYS6fSJx2VUPyYgNsUjINLzq4tzj3bDLjXGsaebTO89LzCFGdCHQv_QGX2fg98-27h8TXkl6ZAiPMa1GbeVUloJRnLboupPpptYsVPrSXInKViSU9_ph7tzjkWflg2uZg9ciHQXxlYHR_1U-kWf9cAW-UGpPAGsLT5eEHF-XW28ig7swAlpHTWJih5nYEXFX2HQ; __client_uat=1754834713; __client_uat_QCPDW_r5=1754834713; __cf_bm=d2xTkVUVgrziLHI6BGhhDOcZGbKzOMx0Y6NYq9HKf.g-1754837746-1.0.1.1-tY_QPtWCLq7znqEtcJfF.OZlWfHVo7yQyE2CIkDEJL5x_5g3HIaMT1HRNyg4q86u1ce11vHl2msu9mk_eBhTmqQPgDwZsjTIoZ8LveVRG7i34h1oYpwYNGC17iHuE_by; _gcl_au=1.1.704077363.1754837743; _ga_BS43X21GZ2=GS2.1.s1754837132^$o2^$g1^$t1754837750^$j26^$l0^$h2050270268; _ga_BBHKJ5V8S0=GS2.1.s1754837132^$o2^$g1^$t1754837750^$j26^$l0^$h750091915^" ^
+  -H ^"origin: https://chat.together.ai^" ^
+  -H ^"priority: u=1, i^" ^
+  -H ^"referer: https://chat.together.ai/^" ^
+  -H ^"sec-ch-ua: ^\^"Not)A;Brand^\^";v=^\^"8^\^", ^\^"Chromium^\^";v=^\^"138^\^", ^\^"Google Chrome^\^";v=^\^"138^\^"^" ^
+  -H ^"sec-ch-ua-mobile: ?0^" ^
+  -H ^"sec-ch-ua-platform: ^\^"Windows^\^"^" ^
+  -H ^"sec-fetch-dest: empty^" ^
+  -H ^"sec-fetch-mode: cors^" ^
+  -H ^"sec-fetch-site: same-site^" ^
+  -H ^"user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36^" ^
+  --data-raw ^"organization_id=^" &
+curl ^"https://clerk.chat.together.ai/v1/client/sessions/sess_316BbZuIKcZG0HSVFGeCIl36trK/tokens?__clerk_api_version=2025-04-10^&_clerk_js_version=5.80.0^" ^
+  -H ^"accept: */*^" ^
+  -H ^"accept-language: en-US,en;q=0.9^" ^
+  -H ^"content-type: application/x-www-form-urlencoded^" ^
+  -b ^"_ga=GA1.1.1052294871.1754834642; _cfuvid=pY_W7YgDnWDJjtnDBIb7FwGdrver8vtrLM25HlsqhU4-1754834672122-0.0.1.1-604800000; __client=eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImNsaWVudF8zMTZCV0tmWVFCeXZyQ1czbmJORE1VU2dsSnYiLCJyb3RhdGluZ190b2tlbiI6InhpdzFoeTY4MDU1ZTU4bHZkeGRvbTA4cWt2cWRkbmZ5anFvMThwN2sifQ.OG1f8FGDpVrvd-udutLZPebaDWAPKfH0AU7sY_KwM8oxhEkdHb2UoYRwPmJIRdAevSQsrxpRv1nJ3rCdTVn9QR0ikA-HzojAgp9941Cy9XpQ9fDuk6rTbfv3190pdNcfUQ-4BrGwZLYSpSM7aPEOYS6fSJx2VUPyYgNsUjINLzq4tzj3bDLjXGsaebTO89LzCFGdCHQv_QGX2fg98-27h8TXkl6ZAiPMa1GbeVUloJRnLboupPpptYsVPrSXInKViSU9_ph7tzjkWflg2uZg9ciHQXxlYHR_1U-kWf9cAW-UGpPAGsLT5eEHF-XW28ig7swAlpHTWJih5nYEXFX2HQ; __client_uat=1754834713; __client_uat_QCPDW_r5=1754834713; __cf_bm=d2xTkVUVgrziLHI6BGhhDOcZGbKzOMx0Y6NYq9HKf.g-1754837746-1.0.1.1-tY_QPtWCLq7znqEtcJfF.OZlWfHVo7yQyE2CIkDEJL5x_5g3HIaMT1HRNyg4q86u1ce11vHl2msu9mk_eBhTmqQPgDwZsjTIoZ8LveVRG7i34h1oYpwYNGC17iHuE_by; _gcl_au=1.1.704077363.1754837743; _ga_BS43X21GZ2=GS2.1.s1754837132^$o2^$g1^$t1754837750^$j26^$l0^$h2050270268; _ga_BBHKJ5V8S0=GS2.1.s1754837132^$o2^$g1^$t1754837750^$j26^$l0^$h750091915^" ^
+  -H ^"origin: https://chat.together.ai^" ^
+  -H ^"priority: u=1, i^" ^
+  -H ^"referer: https://chat.together.ai/^" ^
+  -H ^"sec-ch-ua: ^\^"Not)A;Brand^\^";v=^\^"8^\^", ^\^"Chromium^\^";v=^\^"138^\^", ^\^"Google Chrome^\^";v=^\^"138^\^"^" ^
+  -H ^"sec-ch-ua-mobile: ?0^" ^
+  -H ^"sec-ch-ua-platform: ^\^"Windows^\^"^" ^
+  -H ^"sec-fetch-dest: empty^" ^
+  -H ^"sec-fetch-mode: cors^" ^
+  -H ^"sec-fetch-site: same-site^" ^
+  -H ^"user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36^" ^
+  --data-raw ^"organization_id=^" &
+curl ^"https://clerk.chat.together.ai/v1/client/sessions/sess_316BbZuIKcZG0HSVFGeCIl36trK/tokens?__clerk_api_version=2025-04-10^&_clerk_js_version=5.80.0^" ^
+  -H ^"accept: */*^" ^
+  -H ^"accept-language: en-US,en;q=0.9^" ^
+  -H ^"content-type: application/x-www-form-urlencoded^" ^
+  -b ^"_ga=GA1.1.1052294871.1754834642; _cfuvid=pY_W7YgDnWDJjtnDBIb7FwGdrver8vtrLM25HlsqhU4-1754834672122-0.0.1.1-604800000; __client=eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImNsaWVudF8zMTZCV0tmWVFCeXZyQ1czbmJORE1VU2dsSnYiLCJyb3RhdGluZ190b2tlbiI6InhpdzFoeTY4MDU1ZTU4bHZkeGRvbTA4cWt2cWRkbmZ5anFvMThwN2sifQ.OG1f8FGDpVrvd-udutLZPebaDWAPKfH0AU7sY_KwM8oxhEkdHb2UoYRwPmJIRdAevSQsrxpRv1nJ3rCdTVn9QR0ikA-HzojAgp9941Cy9XpQ9fDuk6rTbfv3190pdNcfUQ-4BrGwZLYSpSM7aPEOYS6fSJx2VUPyYgNsUjINLzq4tzj3bDLjXGsaebTO89LzCFGdCHQv_QGX2fg98-27h8TXkl6ZAiPMa1GbeVUloJRnLboupPpptYsVPrSXInKViSU9_ph7tzjkWflg2uZg9ciHQXxlYHR_1U-kWf9cAW-UGpPAGsLT5eEHF-XW28ig7swAlpHTWJih5nYEXFX2HQ; __client_uat=1754834713; __client_uat_QCPDW_r5=1754834713; __cf_bm=d2xTkVUVgrziLHI6BGhhDOcZGbKzOMx0Y6NYq9HKf.g-1754837746-1.0.1.1-tY_QPtWCLq7znqEtcJfF.OZlWfHVo7yQyE2CIkDEJL5x_5g3HIaMT1HRNyg4q86u1ce11vHl2msu9mk_eBhTmqQPgDwZsjTIoZ8LveVRG7i34h1oYpwYNGC17iHuE_by; _gcl_au=1.1.704077363.1754837743; _ga_BS43X21GZ2=GS2.1.s1754837132^$o2^$g1^$t1754837750^$j26^$l0^$h2050270268; _ga_BBHKJ5V8S0=GS2.1.s1754837132^$o2^$g1^$t1754837750^$j26^$l0^$h750091915^" ^
+  -H ^"origin: https://chat.together.ai^" ^
+  -H ^"priority: u=1, i^" ^
+  -H ^"referer: https://chat.together.ai/^" ^
+  -H ^"sec-ch-ua: ^\^"Not)A;Brand^\^";v=^\^"8^\^", ^\^"Chromium^\^";v=^\^"138^\^", ^\^"Google Chrome^\^";v=^\^"138^\^"^" ^
+  -H ^"sec-ch-ua-mobile: ?0^" ^
+  -H ^"sec-ch-ua-platform: ^\^"Windows^\^"^" ^
+  -H ^"sec-fetch-dest: empty^" ^
+  -H ^"sec-fetch-mode: cors^" ^
+  -H ^"sec-fetch-site: same-site^" ^
+  -H ^"user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36^" ^
+  --data-raw ^"organization_id=^" &
+curl ^"https://clerk.chat.together.ai/v1/client/sessions/sess_316BbZuIKcZG0HSVFGeCIl36trK/tokens?__clerk_api_version=2025-04-10^&_clerk_js_version=5.80.0^" ^
+  -H ^"accept: */*^" ^
+  -H ^"accept-language: en-US,en;q=0.9^" ^
+  -H ^"content-type: application/x-www-form-urlencoded^" ^
+  -b ^"_ga=GA1.1.1052294871.1754834642; _cfuvid=pY_W7YgDnWDJjtnDBIb7FwGdrver8vtrLM25HlsqhU4-1754834672122-0.0.1.1-604800000; __client=eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImNsaWVudF8zMTZCV0tmWVFCeXZyQ1czbmJORE1VU2dsSnYiLCJyb3RhdGluZ190b2tlbiI6InhpdzFoeTY4MDU1ZTU4bHZkeGRvbTA4cWt2cWRkbmZ5anFvMThwN2sifQ.OG1f8FGDpVrvd-udutLZPebaDWAPKfH0AU7sY_KwM8oxhEkdHb2UoYRwPmJIRdAevSQsrxpRv1nJ3rCdTVn9QR0ikA-HzojAgp9941Cy9XpQ9fDuk6rTbfv3190pdNcfUQ-4BrGwZLYSpSM7aPEOYS6fSJx2VUPyYgNsUjINLzq4tzj3bDLjXGsaebTO89LzCFGdCHQv_QGX2fg98-27h8TXkl6ZAiPMa1GbeVUloJRnLboupPpptYsVPrSXInKViSU9_ph7tzjkWflg2uZg9ciHQXxlYHR_1U-kWf9cAW-UGpPAGsLT5eEHF-XW28ig7swAlpHTWJih5nYEXFX2HQ; __client_uat=1754834713; __client_uat_QCPDW_r5=1754834713; __cf_bm=d2xTkVUVgrziLHI6BGhhDOcZGbKzOMx0Y6NYq9HKf.g-1754837746-1.0.1.1-tY_QPtWCLq7znqEtcJfF.OZlWfHVo7yQyE2CIkDEJL5x_5g3HIaMT1HRNyg4q86u1ce11vHl2msu9mk_eBhTmqQPgDwZsjTIoZ8LveVRG7i34h1oYpwYNGC17iHuE_by; _gcl_au=1.1.704077363.1754837743; _ga_BS43X21GZ2=GS2.1.s1754837132^$o2^$g1^$t1754837750^$j26^$l0^$h2050270268; _ga_BBHKJ5V8S0=GS2.1.s1754837132^$o2^$g1^$t1754837750^$j26^$l0^$h750091915^" ^
+  -H ^"origin: https://chat.together.ai^" ^
+  -H ^"priority: u=1, i^" ^
+  -H ^"referer: https://chat.together.ai/^" ^
+  -H ^"sec-ch-ua: ^\^"Not)A;Brand^\^";v=^\^"8^\^", ^\^"Chromium^\^";v=^\^"138^\^", ^\^"Google Chrome^\^";v=^\^"138^\^"^" ^
+  -H ^"sec-ch-ua-mobile: ?0^" ^
+  -H ^"sec-ch-ua-platform: ^\^"Windows^\^"^" ^
+  -H ^"sec-fetch-dest: empty^" ^
+  -H ^"sec-fetch-mode: cors^" ^
+  -H ^"sec-fetch-site: same-site^" ^
+  -H ^"user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36^" ^
+  --data-raw ^"organization_id=^" &
+curl ^"https://clerk.chat.together.ai/v1/client/sessions/sess_316BbZuIKcZG0HSVFGeCIl36trK/tokens?__clerk_api_version=2025-04-10^&_clerk_js_version=5.80.0^" ^
+  -H ^"accept: */*^" ^
+  -H ^"accept-language: en-US,en;q=0.9^" ^
+  -H ^"content-type: application/x-www-form-urlencoded^" ^
+  -b ^"_ga=GA1.1.1052294871.1754834642; _cfuvid=pY_W7YgDnWDJjtnDBIb7FwGdrver8vtrLM25HlsqhU4-1754834672122-0.0.1.1-604800000; __client=eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImNsaWVudF8zMTZCV0tmWVFCeXZyQ1czbmJORE1VU2dsSnYiLCJyb3RhdGluZ190b2tlbiI6InhpdzFoeTY4MDU1ZTU4bHZkeGRvbTA4cWt2cWRkbmZ5anFvMThwN2sifQ.OG1f8FGDpVrvd-udutLZPebaDWAPKfH0AU7sY_KwM8oxhEkdHb2UoYRwPmJIRdAevSQsrxpRv1nJ3rCdTVn9QR0ikA-HzojAgp9941Cy9XpQ9fDuk6rTbfv3190pdNcfUQ-4BrGwZLYSpSM7aPEOYS6fSJx2VUPyYgNsUjINLzq4tzj3bDLjXGsaebTO89LzCFGdCHQv_QGX2fg98-27h8TXkl6ZAiPMa1GbeVUloJRnLboupPpptYsVPrSXInKViSU9_ph7tzjkWflg2uZg9ciHQXxlYHR_1U-kWf9cAW-UGpPAGsLT5eEHF-XW28ig7swAlpHTWJih5nYEXFX2HQ; __client_uat=1754834713; __client_uat_QCPDW_r5=1754834713; __cf_bm=d2xTkVUVgrziLHI6BGhhDOcZGbKzOMx0Y6NYq9HKf.g-1754837746-1.0.1.1-tY_QPtWCLq7znqEtcJfF.OZlWfHVo7yQyE2CIkDEJL5x_5g3HIaMT1HRNyg4q86u1ce11vHl2msu9mk_eBhTmqQPgDwZsjTIoZ8LveVRG7i34h1oYpwYNGC17iHuE_by; _gcl_au=1.1.704077363.1754837743; _ga_BS43X21GZ2=GS2.1.s1754837132^$o2^$g1^$t1754837750^$j26^$l0^$h2050270268; _ga_BBHKJ5V8S0=GS2.1.s1754837132^$o2^$g1^$t1754837750^$j26^$l0^$h750091915^" ^
+  -H ^"origin: https://chat.together.ai^" ^
+  -H ^"priority: u=1, i^" ^
+  -H ^"referer: https://chat.together.ai/^" ^
+  -H ^"sec-ch-ua: ^\^"Not)A;Brand^\^";v=^\^"8^\^", ^\^"Chromium^\^";v=^\^"138^\^", ^\^"Google Chrome^\^";v=^\^"138^\^"^" ^
+  -H ^"sec-ch-ua-mobile: ?0^" ^
+  -H ^"sec-ch-ua-platform: ^\^"Windows^\^"^" ^
+  -H ^"sec-fetch-dest: empty^" ^
+  -H ^"sec-fetch-mode: cors^" ^
+  -H ^"sec-fetch-site: same-site^" ^
+  -H ^"user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36^" ^
+  --data-raw ^"organization_id=^" &
+curl ^"https://clerk.chat.together.ai/v1/client/sessions/sess_316BbZuIKcZG0HSVFGeCIl36trK/tokens?__clerk_api_version=2025-04-10^&_clerk_js_version=5.80.0^" ^
+  -H ^"accept: */*^" ^
+  -H ^"accept-language: en-US,en;q=0.9^" ^
+  -H ^"content-type: application/x-www-form-urlencoded^" ^
+  -b ^"_ga=GA1.1.1052294871.1754834642; _cfuvid=pY_W7YgDnWDJjtnDBIb7FwGdrver8vtrLM25HlsqhU4-1754834672122-0.0.1.1-604800000; __client=eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImNsaWVudF8zMTZCV0tmWVFCeXZyQ1czbmJORE1VU2dsSnYiLCJyb3RhdGluZ190b2tlbiI6InhpdzFoeTY4MDU1ZTU4bHZkeGRvbTA4cWt2cWRkbmZ5anFvMThwN2sifQ.OG1f8FGDpVrvd-udutLZPebaDWAPKfH0AU7sY_KwM8oxhEkdHb2UoYRwPmJIRdAevSQsrxpRv1nJ3rCdTVn9QR0ikA-HzojAgp9941Cy9XpQ9fDuk6rTbfv3190pdNcfUQ-4BrGwZLYSpSM7aPEOYS6fSJx2VUPyYgNsUjINLzq4tzj3bDLjXGsaebTO89LzCFGdCHQv_QGX2fg98-27h8TXkl6ZAiPMa1GbeVUloJRnLboupPpptYsVPrSXInKViSU9_ph7tzjkWflg2uZg9ciHQXxlYHR_1U-kWf9cAW-UGpPAGsLT5eEHF-XW28ig7swAlpHTWJih5nYEXFX2HQ; __client_uat=1754834713; __client_uat_QCPDW_r5=1754834713; __cf_bm=d2xTkVUVgrziLHI6BGhhDOcZGbKzOMx0Y6NYq9HKf.g-1754837746-1.0.1.1-tY_QPtWCLq7znqEtcJfF.OZlWfHVo7yQyE2CIkDEJL5x_5g3HIaMT1HRNyg4q86u1ce11vHl2msu9mk_eBhTmqQPgDwZsjTIoZ8LveVRG7i34h1oYpwYNGC17iHuE_by; _gcl_au=1.1.704077363.1754837743; _ga_BS43X21GZ2=GS2.1.s1754837132^$o2^$g1^$t1754837750^$j26^$l0^$h2050270268; _ga_BBHKJ5V8S0=GS2.1.s1754837132^$o2^$g1^$t1754837750^$j26^$l0^$h750091915^" ^
+  -H ^"origin: https://chat.together.ai^" ^
+  -H ^"priority: u=1, i^" ^
+  -H ^"referer: https://chat.together.ai/^" ^
+  -H ^"sec-ch-ua: ^\^"Not)A;Brand^\^";v=^\^"8^\^", ^\^"Chromium^\^";v=^\^"138^\^", ^\^"Google Chrome^\^";v=^\^"138^\^"^" ^
+  -H ^"sec-ch-ua-mobile: ?0^" ^
+  -H ^"sec-ch-ua-platform: ^\^"Windows^\^"^" ^
+  -H ^"sec-fetch-dest: empty^" ^
+  -H ^"sec-fetch-mode: cors^" ^
+  -H ^"sec-fetch-site: same-site^" ^
+  -H ^"user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36^" ^
+  --data-raw ^"organization_id=^" &
+curl ^"https://clerk.chat.together.ai/v1/client/sessions/sess_316BbZuIKcZG0HSVFGeCIl36trK/tokens?__clerk_api_version=2025-04-10^&_clerk_js_version=5.80.0^" ^
+  -H ^"accept: */*^" ^
+  -H ^"accept-language: en-US,en;q=0.9^" ^
+  -H ^"content-type: application/x-www-form-urlencoded^" ^
+  -b ^"_ga=GA1.1.1052294871.1754834642; _cfuvid=pY_W7YgDnWDJjtnDBIb7FwGdrver8vtrLM25HlsqhU4-1754834672122-0.0.1.1-604800000; __client=eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImNsaWVudF8zMTZCV0tmWVFCeXZyQ1czbmJORE1VU2dsSnYiLCJyb3RhdGluZ190b2tlbiI6InhpdzFoeTY4MDU1ZTU4bHZkeGRvbTA4cWt2cWRkbmZ5anFvMThwN2sifQ.OG1f8FGDpVrvd-udutLZPebaDWAPKfH0AU7sY_KwM8oxhEkdHb2UoYRwPmJIRdAevSQsrxpRv1nJ3rCdTVn9QR0ikA-HzojAgp9941Cy9XpQ9fDuk6rTbfv3190pdNcfUQ-4BrGwZLYSpSM7aPEOYS6fSJx2VUPyYgNsUjINLzq4tzj3bDLjXGsaebTO89LzCFGdCHQv_QGX2fg98-27h8TXkl6ZAiPMa1GbeVUloJRnLboupPpptYsVPrSXInKViSU9_ph7tzjkWflg2uZg9ciHQXxlYHR_1U-kWf9cAW-UGpPAGsLT5eEHF-XW28ig7swAlpHTWJih5nYEXFX2HQ; __client_uat=1754834713; __client_uat_QCPDW_r5=1754834713; __cf_bm=d2xTkVUVgrziLHI6BGhhDOcZGbKzOMx0Y6NYq9HKf.g-1754837746-1.0.1.1-tY_QPtWCLq7znqEtcJfF.OZlWfHVo7yQyE2CIkDEJL5x_5g3HIaMT1HRNyg4q86u1ce11vHl2msu9mk_eBhTmqQPgDwZsjTIoZ8LveVRG7i34h1oYpwYNGC17iHuE_by; _gcl_au=1.1.704077363.1754837743; _ga_BS43X21GZ2=GS2.1.s1754837132^$o2^$g1^$t1754837750^$j26^$l0^$h2050270268; _ga_BBHKJ5V8S0=GS2.1.s1754837132^$o2^$g1^$t1754837750^$j26^$l0^$h750091915^" ^
+  -H ^"origin: https://chat.together.ai^" ^
+  -H ^"priority: u=1, i^" ^
+  -H ^"referer: https://chat.together.ai/^" ^
+  -H ^"sec-ch-ua: ^\^"Not)A;Brand^\^";v=^\^"8^\^", ^\^"Chromium^\^";v=^\^"138^\^", ^\^"Google Chrome^\^";v=^\^"138^\^"^" ^
+  -H ^"sec-ch-ua-mobile: ?0^" ^
+  -H ^"sec-ch-ua-platform: ^\^"Windows^\^"^" ^
+  -H ^"sec-fetch-dest: empty^" ^
+  -H ^"sec-fetch-mode: cors^" ^
+  -H ^"sec-fetch-site: same-site^" ^
+  -H ^"user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36^" ^
+  --data-raw ^"organization_id=^" &
+curl ^"https://clerk.chat.together.ai/v1/client/sessions/sess_316BbZuIKcZG0HSVFGeCIl36trK/tokens?__clerk_api_version=2025-04-10^&_clerk_js_version=5.80.0^" ^
+  -H ^"accept: */*^" ^
+  -H ^"accept-language: en-US,en;q=0.9^" ^
+  -H ^"content-type: application/x-www-form-urlencoded^" ^
+  -b ^"_ga=GA1.1.1052294871.1754834642; _cfuvid=pY_W7YgDnWDJjtnDBIb7FwGdrver8vtrLM25HlsqhU4-1754834672122-0.0.1.1-604800000; __client=eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImNsaWVudF8zMTZCV0tmWVFCeXZyQ1czbmJORE1VU2dsSnYiLCJyb3RhdGluZ190b2tlbiI6InhpdzFoeTY4MDU1ZTU4bHZkeGRvbTA4cWt2cWRkbmZ5anFvMThwN2sifQ.OG1f8FGDpVrvd-udutLZPebaDWAPKfH0AU7sY_KwM8oxhEkdHb2UoYRwPmJIRdAevSQsrxpRv1nJ3rCdTVn9QR0ikA-HzojAgp9941Cy9XpQ9fDuk6rTbfv3190pdNcfUQ-4BrGwZLYSpSM7aPEOYS6fSJx2VUPyYgNsUjINLzq4tzj3bDLjXGsaebTO89LzCFGdCHQv_QGX2fg98-27h8TXkl6ZAiPMa1GbeVUloJRnLboupPpptYsVPrSXInKViSU9_ph7tzjkWflg2uZg9ciHQXxlYHR_1U-kWf9cAW-UGpPAGsLT5eEHF-XW28ig7swAlpHTWJih5nYEXFX2HQ; __client_uat=1754834713; __client_uat_QCPDW_r5=1754834713; __cf_bm=d2xTkVUVgrziLHI6BGhhDOcZGbKzOMx0Y6NYq9HKf.g-1754837746-1.0.1.1-tY_QPtWCLq7znqEtcJfF.OZlWfHVo7yQyE2CIkDEJL5x_5g3HIaMT1HRNyg4q86u1ce11vHl2msu9mk_eBhTmqQPgDwZsjTIoZ8LveVRG7i34h1oYpwYNGC17iHuE_by; _gcl_au=1.1.704077363.1754837743; _ga_BS43X21GZ2=GS2.1.s1754837132^$o2^$g1^$t1754837750^$j26^$l0^$h2050270268; _ga_BBHKJ5V8S0=GS2.1.s1754837132^$o2^$g1^$t1754837750^$j26^$l0^$h750091915^" ^
+  -H ^"origin: https://chat.together.ai^" ^
+  -H ^"priority: u=1, i^" ^
+  -H ^"referer: https://chat.together.ai/^" ^
+  -H ^"sec-ch-ua: ^\^"Not)A;Brand^\^";v=^\^"8^\^", ^\^"Chromium^\^";v=^\^"138^\^", ^\^"Google Chrome^\^";v=^\^"138^\^"^" ^
+  -H ^"sec-ch-ua-mobile: ?0^" ^
+  -H ^"sec-ch-ua-platform: ^\^"Windows^\^"^" ^
+  -H ^"sec-fetch-dest: empty^" ^
+  -H ^"sec-fetch-mode: cors^" ^
+  -H ^"sec-fetch-site: same-site^" ^
+  -H ^"user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36^" ^
+  --data-raw ^"organization_id=^" &
+curl ^"https://clerk.chat.together.ai/v1/client/sessions/sess_316BbZuIKcZG0HSVFGeCIl36trK/tokens?__clerk_api_version=2025-04-10^&_clerk_js_version=5.80.0^" ^
+  -H ^"accept: */*^" ^
+  -H ^"accept-language: en-US,en;q=0.9^" ^
+  -H ^"content-type: application/x-www-form-urlencoded^" ^
+  -b ^"_ga=GA1.1.1052294871.1754834642; _cfuvid=pY_W7YgDnWDJjtnDBIb7FwGdrver8vtrLM25HlsqhU4-1754834672122-0.0.1.1-604800000; __client=eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImNsaWVudF8zMTZCV0tmWVFCeXZyQ1czbmJORE1VU2dsSnYiLCJyb3RhdGluZ190b2tlbiI6InhpdzFoeTY4MDU1ZTU4bHZkeGRvbTA4cWt2cWRkbmZ5anFvMThwN2sifQ.OG1f8FGDpVrvd-udutLZPebaDWAPKfH0AU7sY_KwM8oxhEkdHb2UoYRwPmJIRdAevSQsrxpRv1nJ3rCdTVn9QR0ikA-HzojAgp9941Cy9XpQ9fDuk6rTbfv3190pdNcfUQ-4BrGwZLYSpSM7aPEOYS6fSJx2VUPyYgNsUjINLzq4tzj3bDLjXGsaebTO89LzCFGdCHQv_QGX2fg98-27h8TXkl6ZAiPMa1GbeVUloJRnLboupPpptYsVPrSXInKViSU9_ph7tzjkWflg2uZg9ciHQXxlYHR_1U-kWf9cAW-UGpPAGsLT5eEHF-XW28ig7swAlpHTWJih5nYEXFX2HQ; __client_uat=1754834713; __client_uat_QCPDW_r5=1754834713; __cf_bm=d2xTkVUVgrziLHI6BGhhDOcZGbKzOMx0Y6NYq9HKf.g-1754837746-1.0.1.1-tY_QPtWCLq7znqEtcJfF.OZlWfHVo7yQyE2CIkDEJL5x_5g3HIaMT1HRNyg4q86u1ce11vHl2msu9mk_eBhTmqQPgDwZsjTIoZ8LveVRG7i34h1oYpwYNGC17iHuE_by; _gcl_au=1.1.704077363.1754837743; _ga_BS43X21GZ2=GS2.1.s1754837132^$o2^$g1^$t1754837750^$j26^$l0^$h2050270268; _ga_BBHKJ5V8S0=GS2.1.s1754837132^$o2^$g1^$t1754837750^$j26^$l0^$h750091915^" ^
+  -H ^"origin: https://chat.together.ai^" ^
+  -H ^"priority: u=1, i^" ^
+  -H ^"referer: https://chat.together.ai/^" ^
+  -H ^"sec-ch-ua: ^\^"Not)A;Brand^\^";v=^\^"8^\^", ^\^"Chromium^\^";v=^\^"138^\^", ^\^"Google Chrome^\^";v=^\^"138^\^"^" ^
+  -H ^"sec-ch-ua-mobile: ?0^" ^
+  -H ^"sec-ch-ua-platform: ^\^"Windows^\^"^" ^
+  -H ^"sec-fetch-dest: empty^" ^
+  -H ^"sec-fetch-mode: cors^" ^
+  -H ^"sec-fetch-site: same-site^" ^
+  -H ^"user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36^" ^
+  --data-raw ^"organization_id=^" &
+curl ^"https://clerk.chat.together.ai/v1/client/sessions/sess_316BbZuIKcZG0HSVFGeCIl36trK/tokens?__clerk_api_version=2025-04-10^&_clerk_js_version=5.80.0^" ^
+  -H ^"accept: */*^" ^
+  -H ^"accept-language: en-US,en;q=0.9^" ^
+  -H ^"content-type: application/x-www-form-urlencoded^" ^
+  -b ^"_ga=GA1.1.1052294871.1754834642; _cfuvid=pY_W7YgDnWDJjtnDBIb7FwGdrver8vtrLM25HlsqhU4-1754834672122-0.0.1.1-604800000; __client=eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImNsaWVudF8zMTZCV0tmWVFCeXZyQ1czbmJORE1VU2dsSnYiLCJyb3RhdGluZ190b2tlbiI6InhpdzFoeTY4MDU1ZTU4bHZkeGRvbTA4cWt2cWRkbmZ5anFvMThwN2sifQ.OG1f8FGDpVrvd-udutLZPebaDWAPKfH0AU7sY_KwM8oxhEkdHb2UoYRwPmJIRdAevSQsrxpRv1nJ3rCdTVn9QR0ikA-HzojAgp9941Cy9XpQ9fDuk6rTbfv3190pdNcfUQ-4BrGwZLYSpSM7aPEOYS6fSJx2VUPyYgNsUjINLzq4tzj3bDLjXGsaebTO89LzCFGdCHQv_QGX2fg98-27h8TXkl6ZAiPMa1GbeVUloJRnLboupPpptYsVPrSXInKViSU9_ph7tzjkWflg2uZg9ciHQXxlYHR_1U-kWf9cAW-UGpPAGsLT5eEHF-XW28ig7swAlpHTWJih5nYEXFX2HQ; __client_uat=1754834713; __client_uat_QCPDW_r5=1754834713; __cf_bm=d2xTkVUVgrziLHI6BGhhDOcZGbKzOMx0Y6NYq9HKf.g-1754837746-1.0.1.1-tY_QPtWCLq7znqEtcJfF.OZlWfHVo7yQyE2CIkDEJL5x_5g3HIaMT1HRNyg4q86u1ce11vHl2msu9mk_eBhTmqQPgDwZsjTIoZ8LveVRG7i34h1oYpwYNGC17iHuE_by; _gcl_au=1.1.704077363.1754837743; _ga_BS43X21GZ2=GS2.1.s1754837132^$o2^$g1^$t1754837750^$j26^$l0^$h2050270268; _ga_BBHKJ5V8S0=GS2.1.s1754837132^$o2^$g1^$t1754837750^$j26^$l0^$h750091915^" ^
+  -H ^"origin: https://chat.together.ai^" ^
+  -H ^"priority: u=1, i^" ^
+  -H ^"referer: https://chat.together.ai/^" ^
+  -H ^"sec-ch-ua: ^\^"Not)A;Brand^\^";v=^\^"8^\^", ^\^"Chromium^\^";v=^\^"138^\^", ^\^"Google Chrome^\^";v=^\^"138^\^"^" ^
+  -H ^"sec-ch-ua-mobile: ?0^" ^
+  -H ^"sec-ch-ua-platform: ^\^"Windows^\^"^" ^
+  -H ^"sec-fetch-dest: empty^" ^
+  -H ^"sec-fetch-mode: cors^" ^
+  -H ^"sec-fetch-site: same-site^" ^
+  -H ^"user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36^" ^
+  --data-raw ^"organization_id=^" &
+curl ^"https://clerk.chat.together.ai/v1/client/sessions/sess_316BbZuIKcZG0HSVFGeCIl36trK/tokens?__clerk_api_version=2025-04-10^&_clerk_js_version=5.80.0^" ^
+  -H ^"accept: */*^" ^
+  -H ^"accept-language: en-US,en;q=0.9^" ^
+  -H ^"content-type: application/x-www-form-urlencoded^" ^
+  -b ^"_ga=GA1.1.1052294871.1754834642; _cfuvid=pY_W7YgDnWDJjtnDBIb7FwGdrver8vtrLM25HlsqhU4-1754834672122-0.0.1.1-604800000; __client=eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImNsaWVudF8zMTZCV0tmWVFCeXZyQ1czbmJORE1VU2dsSnYiLCJyb3RhdGluZ190b2tlbiI6InhpdzFoeTY4MDU1ZTU4bHZkeGRvbTA4cWt2cWRkbmZ5anFvMThwN2sifQ.OG1f8FGDpVrvd-udutLZPebaDWAPKfH0AU7sY_KwM8oxhEkdHb2UoYRwPmJIRdAevSQsrxpRv1nJ3rCdTVn9QR0ikA-HzojAgp9941Cy9XpQ9fDuk6rTbfv3190pdNcfUQ-4BrGwZLYSpSM7aPEOYS6fSJx2VUPyYgNsUjINLzq4tzj3bDLjXGsaebTO89LzCFGdCHQv_QGX2fg98-27h8TXkl6ZAiPMa1GbeVUloJRnLboupPpptYsVPrSXInKViSU9_ph7tzjkWflg2uZg9ciHQXxlYHR_1U-kWf9cAW-UGpPAGsLT5eEHF-XW28ig7swAlpHTWJih5nYEXFX2HQ; __client_uat=1754834713; __client_uat_QCPDW_r5=1754834713; __cf_bm=d2xTkVUVgrziLHI6BGhhDOcZGbKzOMx0Y6NYq9HKf.g-1754837746-1.0.1.1-tY_QPtWCLq7znqEtcJfF.OZlWfHVo7yQyE2CIkDEJL5x_5g3HIaMT1HRNyg4q86u1ce11vHl2msu9mk_eBhTmqQPgDwZsjTIoZ8LveVRG7i34h1oYpwYNGC17iHuE_by; _gcl_au=1.1.704077363.1754837743; _ga_BS43X21GZ2=GS2.1.s1754837132^$o2^$g1^$t1754837750^$j26^$l0^$h2050270268; _ga_BBHKJ5V8S0=GS2.1.s1754837132^$o2^$g1^$t1754837750^$j26^$l0^$h750091915^" ^
+  -H ^"origin: https://chat.together.ai^" ^
+  -H ^"priority: u=1, i^" ^
+  -H ^"referer: https://chat.together.ai/^" ^
+  -H ^"sec-ch-ua: ^\^"Not)A;Brand^\^";v=^\^"8^\^", ^\^"Chromium^\^";v=^\^"138^\^", ^\^"Google Chrome^\^";v=^\^"138^\^"^" ^
+  -H ^"sec-ch-ua-mobile: ?0^" ^
+  -H ^"sec-ch-ua-platform: ^\^"Windows^\^"^" ^
+  -H ^"sec-fetch-dest: empty^" ^
+  -H ^"sec-fetch-mode: cors^" ^
+  -H ^"sec-fetch-site: same-site^" ^
+  -H ^"user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36^" ^
+  --data-raw ^"organization_id=^" &
+curl ^"https://clerk.chat.together.ai/v1/client/sessions/sess_316BbZuIKcZG0HSVFGeCIl36trK/tokens?__clerk_api_version=2025-04-10^&_clerk_js_version=5.80.0^" ^
+  -H ^"accept: */*^" ^
+  -H ^"accept-language: en-US,en;q=0.9^" ^
+  -H ^"content-type: application/x-www-form-urlencoded^" ^
+  -b ^"_ga=GA1.1.1052294871.1754834642; _cfuvid=pY_W7YgDnWDJjtnDBIb7FwGdrver8vtrLM25HlsqhU4-1754834672122-0.0.1.1-604800000; __client=eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImNsaWVudF8zMTZCV0tmWVFCeXZyQ1czbmJORE1VU2dsSnYiLCJyb3RhdGluZ190b2tlbiI6InhpdzFoeTY4MDU1ZTU4bHZkeGRvbTA4cWt2cWRkbmZ5anFvMThwN2sifQ.OG1f8FGDpVrvd-udutLZPebaDWAPKfH0AU7sY_KwM8oxhEkdHb2UoYRwPmJIRdAevSQsrxpRv1nJ3rCdTVn9QR0ikA-HzojAgp9941Cy9XpQ9fDuk6rTbfv3190pdNcfUQ-4BrGwZLYSpSM7aPEOYS6fSJx2VUPyYgNsUjINLzq4tzj3bDLjXGsaebTO89LzCFGdCHQv_QGX2fg98-27h8TXkl6ZAiPMa1GbeVUloJRnLboupPpptYsVPrSXInKViSU9_ph7tzjkWflg2uZg9ciHQXxlYHR_1U-kWf9cAW-UGpPAGsLT5eEHF-XW28ig7swAlpHTWJih5nYEXFX2HQ; __client_uat=1754834713; __client_uat_QCPDW_r5=1754834713; __cf_bm=d2xTkVUVgrziLHI6BGhhDOcZGbKzOMx0Y6NYq9HKf.g-1754837746-1.0.1.1-tY_QPtWCLq7znqEtcJfF.OZlWfHVo7yQyE2CIkDEJL5x_5g3HIaMT1HRNyg4q86u1ce11vHl2msu9mk_eBhTmqQPgDwZsjTIoZ8LveVRG7i34h1oYpwYNGC17iHuE_by; _gcl_au=1.1.704077363.1754837743; _ga_BS43X21GZ2=GS2.1.s1754837132^$o2^$g1^$t1754837750^$j26^$l0^$h2050270268; _ga_BBHKJ5V8S0=GS2.1.s1754837132^$o2^$g1^$t1754837750^$j26^$l0^$h750091915^" ^
+  -H ^"origin: https://chat.together.ai^" ^
+  -H ^"priority: u=1, i^" ^
+  -H ^"referer: https://chat.together.ai/^" ^
+  -H ^"sec-ch-ua: ^\^"Not)A;Brand^\^";v=^\^"8^\^", ^\^"Chromium^\^";v=^\^"138^\^", ^\^"Google Chrome^\^";v=^\^"138^\^"^" ^
+  -H ^"sec-ch-ua-mobile: ?0^" ^
+  -H ^"sec-ch-ua-platform: ^\^"Windows^\^"^" ^
+  -H ^"sec-fetch-dest: empty^" ^
+  -H ^"sec-fetch-mode: cors^" ^
+  -H ^"sec-fetch-site: same-site^" ^
+  -H ^"user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36^" ^
+  --data-raw ^"organization_id=^" &
+curl ^"https://clerk.chat.together.ai/v1/client/sessions/sess_316BbZuIKcZG0HSVFGeCIl36trK/tokens?__clerk_api_version=2025-04-10^&_clerk_js_version=5.80.0^" ^
+  -H ^"accept: */*^" ^
+  -H ^"accept-language: en-US,en;q=0.9^" ^
+  -H ^"content-type: application/x-www-form-urlencoded^" ^
+  -b ^"_ga=GA1.1.1052294871.1754834642; _cfuvid=pY_W7YgDnWDJjtnDBIb7FwGdrver8vtrLM25HlsqhU4-1754834672122-0.0.1.1-604800000; __client=eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImNsaWVudF8zMTZCV0tmWVFCeXZyQ1czbmJORE1VU2dsSnYiLCJyb3RhdGluZ190b2tlbiI6InhpdzFoeTY4MDU1ZTU4bHZkeGRvbTA4cWt2cWRkbmZ5anFvMThwN2sifQ.OG1f8FGDpVrvd-udutLZPebaDWAPKfH0AU7sY_KwM8oxhEkdHb2UoYRwPmJIRdAevSQsrxpRv1nJ3rCdTVn9QR0ikA-HzojAgp9941Cy9XpQ9fDuk6rTbfv3190pdNcfUQ-4BrGwZLYSpSM7aPEOYS6fSJx2VUPyYgNsUjINLzq4tzj3bDLjXGsaebTO89LzCFGdCHQv_QGX2fg98-27h8TXkl6ZAiPMa1GbeVUloJRnLboupPpptYsVPrSXInKViSU9_ph7tzjkWflg2uZg9ciHQXxlYHR_1U-kWf9cAW-UGpPAGsLT5eEHF-XW28ig7swAlpHTWJih5nYEXFX2HQ; __client_uat=1754834713; __client_uat_QCPDW_r5=1754834713; __cf_bm=d2xTkVUVgrziLHI6BGhhDOcZGbKzOMx0Y6NYq9HKf.g-1754837746-1.0.1.1-tY_QPtWCLq7znqEtcJfF.OZlWfHVo7yQyE2CIkDEJL5x_5g3HIaMT1HRNyg4q86u1ce11vHl2msu9mk_eBhTmqQPgDwZsjTIoZ8LveVRG7i34h1oYpwYNGC17iHuE_by; _gcl_au=1.1.704077363.1754837743; _ga_BS43X21GZ2=GS2.1.s1754837132^$o2^$g1^$t1754837750^$j26^$l0^$h2050270268; _ga_BBHKJ5V8S0=GS2.1.s1754837132^$o2^$g1^$t1754837750^$j26^$l0^$h750091915^" ^
+  -H ^"origin: https://chat.together.ai^" ^
+  -H ^"priority: u=1, i^" ^
+  -H ^"referer: https://chat.together.ai/^" ^
+  -H ^"sec-ch-ua: ^\^"Not)A;Brand^\^";v=^\^"8^\^", ^\^"Chromium^\^";v=^\^"138^\^", ^\^"Google Chrome^\^";v=^\^"138^\^"^" ^
+  -H ^"sec-ch-ua-mobile: ?0^" ^
+  -H ^"sec-ch-ua-platform: ^\^"Windows^\^"^" ^
+  -H ^"sec-fetch-dest: empty^" ^
+  -H ^"sec-fetch-mode: cors^" ^
+  -H ^"sec-fetch-site: same-site^" ^
+  -H ^"user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36^" ^
+  --data-raw ^"organization_id=^" &
+curl ^"https://clerk.chat.together.ai/v1/client/sessions/sess_316BbZuIKcZG0HSVFGeCIl36trK/tokens?__clerk_api_version=2025-04-10^&_clerk_js_version=5.80.0^" ^
+  -H ^"accept: */*^" ^
+  -H ^"accept-language: en-US,en;q=0.9^" ^
+  -H ^"content-type: application/x-www-form-urlencoded^" ^
+  -b ^"_ga=GA1.1.1052294871.1754834642; _cfuvid=pY_W7YgDnWDJjtnDBIb7FwGdrver8vtrLM25HlsqhU4-1754834672122-0.0.1.1-604800000; __client=eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImNsaWVudF8zMTZCV0tmWVFCeXZyQ1czbmJORE1VU2dsSnYiLCJyb3RhdGluZ190b2tlbiI6InhpdzFoeTY4MDU1ZTU4bHZkeGRvbTA4cWt2cWRkbmZ5anFvMThwN2sifQ.OG1f8FGDpVrvd-udutLZPebaDWAPKfH0AU7sY_KwM8oxhEkdHb2UoYRwPmJIRdAevSQsrxpRv1nJ3rCdTVn9QR0ikA-HzojAgp9941Cy9XpQ9fDuk6rTbfv3190pdNcfUQ-4BrGwZLYSpSM7aPEOYS6fSJx2VUPyYgNsUjINLzq4tzj3bDLjXGsaebTO89LzCFGdCHQv_QGX2fg98-27h8TXkl6ZAiPMa1GbeVUloJRnLboupPpptYsVPrSXInKViSU9_ph7tzjkWflg2uZg9ciHQXxlYHR_1U-kWf9cAW-UGpPAGsLT5eEHF-XW28ig7swAlpHTWJih5nYEXFX2HQ; __client_uat=1754834713; __client_uat_QCPDW_r5=1754834713; __cf_bm=d2xTkVUVgrziLHI6BGhhDOcZGbKzOMx0Y6NYq9HKf.g-1754837746-1.0.1.1-tY_QPtWCLq7znqEtcJfF.OZlWfHVo7yQyE2CIkDEJL5x_5g3HIaMT1HRNyg4q86u1ce11vHl2msu9mk_eBhTmqQPgDwZsjTIoZ8LveVRG7i34h1oYpwYNGC17iHuE_by; _gcl_au=1.1.704077363.1754837743; _ga_BS43X21GZ2=GS2.1.s1754837132^$o2^$g1^$t1754837750^$j26^$l0^$h2050270268; _ga_BBHKJ5V8S0=GS2.1.s1754837132^$o2^$g1^$t1754837750^$j26^$l0^$h750091915^" ^
+  -H ^"origin: https://chat.together.ai^" ^
+  -H ^"priority: u=1, i^" ^
+  -H ^"referer: https://chat.together.ai/^" ^
+  -H ^"sec-ch-ua: ^\^"Not)A;Brand^\^";v=^\^"8^\^", ^\^"Chromium^\^";v=^\^"138^\^", ^\^"Google Chrome^\^";v=^\^"138^\^"^" ^
+  -H ^"sec-ch-ua-mobile: ?0^" ^
+  -H ^"sec-ch-ua-platform: ^\^"Windows^\^"^" ^
+  -H ^"sec-fetch-dest: empty^" ^
+  -H ^"sec-fetch-mode: cors^" ^
+  -H ^"sec-fetch-site: same-site^" ^
+  -H ^"user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36^" ^
+  --data-raw ^"organization_id=^"
+
+
+Response: 
+{"id":"o6c1JBm-4YNCb4-96d056c3e8c5f289","object":"chat.completion","created":1754837776,"model":"meta-llama/Llama-3.3-70B-Instruct-Turbo","prompt":[],"choices":[{"finish_reason":"stop","seed":16889012962147512000,"logprobs":null,"index":0,"message":{"role":"assistant","content":"Hello Message","tool_calls":[]}}],"usage":{"prompt_tokens":88,"completion_tokens":3,"total_tokens":91,"cached_tokens":0}}
+

@@ -73,9 +73,7 @@ dependencies {
 	implementation 'androidx.dynamicanimation:dynamicanimation:1.0.0'
 	
 	// Git operations and enhanced functionality
-	implementation 'org.eclipse.jgit:org.eclipse.jgit:6.7.0.202309050840-r'
-	implementation 'org.eclipse.jgit:org.eclipse.jgit.ssh.apache:6.7.0.202309050840-r'
-	implementation 'org.eclipse.jgit:org.eclipse.jgit.http:6.7.0.202309050840-r'
+	implementation 'org.eclipse.jgit:org.eclipse.jgit:6.8.0.202311291450-r'
 	
 	// Enhanced UI components
 	implementation 'androidx.cardview:cardview:1.0.0'

@@ -181,7 +181,7 @@ public class MainActivity extends AppCompatActivity {
                 .setView(dialogView)
                 .setCancelable(false);
 
-        android.app.AlertDialog dialog = builder.create();
+        androidx.appcompat.app.AlertDialog dialog = builder.create();
 
         cloneButton.setOnClickListener(v -> {
             String url = urlInput.getText().toString().trim();

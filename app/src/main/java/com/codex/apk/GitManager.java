@@ -90,6 +90,11 @@ public class GitManager {
                         public boolean isCancelled() {
                             return false;
                         }
+
+                        @Override
+                        public void showDuration(boolean enabled) {
+                            // Duration display not needed for this implementation
+                        }
                     })
                     .call();
 
@@ -117,7 +122,7 @@ public class GitManager {
         }).start();
     }
 
-    private boolean isValidGitUrl(String url) {
+    public boolean isValidGitUrl(String url) {
         if (url == null || url.trim().isEmpty()) {
             return false;
         }

@@ -386,7 +386,7 @@ public class TemplateManager {
                 "})";
     }
 
-    public String getAngularConfigTemplate() {
+    public String getAngularConfigTemplate(String projectName) {
         return "{\n" +
                 "  \"$schema\": \"./node_modules/@angular/cli/lib/config/schema.json\",\n" +
                 "  \"version\": 1,\n" +

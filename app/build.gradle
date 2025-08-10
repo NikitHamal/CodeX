@@ -46,7 +46,6 @@ dependencies {
 	implementation 'com.google.android.material:material:1.12.0'
 	implementation 'com.google.code.gson:gson:2.8.9'
 	implementation 'androidx.preference:preference:1.2.1'
-	implementation 'com.squareup.okhttp3:okhttp:4.9.3'
 	implementation platform('io.github.rosemoe:editor-bom:0.23.7')
 	implementation 'io.github.rosemoe:editor'
 	implementation 'io.github.rosemoe:language-textmate'
@@ -80,8 +79,8 @@ dependencies {
 	implementation 'androidx.swiperefreshlayout:swiperefreshlayout:1.1.0'
 	
 	// Local server functionality
-	implementation 'com.squareup.okhttp3:okhttp:4.9.3'
-	implementation 'com.squareup.okhttp3:mockwebserver:4.9.3'
+	implementation 'com.squareup.okhttp3:okhttp:4.12.0'
+	implementation 'com.squareup.okhttp3:mockwebserver:4.12.0'
 	
 	// Enhanced file operations
 	implementation 'commons-io:commons-io:2.11.0'

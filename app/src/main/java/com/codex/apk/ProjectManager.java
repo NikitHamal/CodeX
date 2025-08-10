@@ -491,7 +491,7 @@ public class ProjectManager {
         
         // Create angular.json
         fileManager.writeFileContent(new File(projectDir, "angular.json"),
-                templateManager.getAngularConfigTemplate());
+                templateManager.getAngularConfigTemplate(projectName));
         
         // Create package.json
         fileManager.writeFileContent(new File(projectDir, "package.json"),

@@ -75,6 +75,7 @@ public class PreviewActivity extends AppCompatActivity {
     // Local server management
     private LocalServerManager localServerManager;
     private boolean isLocalServerRunning = false;
+    private View loadingOverlay;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -104,8 +105,8 @@ public class PreviewActivity extends AppCompatActivity {
         View closeConsole = findViewById(R.id.btn_close_console);
         if (closeConsole != null) closeConsole.setOnClickListener(v -> toggleConsole());
 
-        // Load initial content
-        loadContent();
+        // Load initial content or start environment based on project type
+        initializeEnvironmentAndLoad();
     }
 
     private void extractIntentData() {
@@ -135,6 +136,7 @@ public class PreviewActivity extends AppCompatActivity {
         scrollViewConsole = findViewById(R.id.scrollview_console);
         consoleContainer = findViewById(R.id.console_container);
         progressBar = findViewById(R.id.progress_bar);
+        loadingOverlay = findViewById(R.id.loading_overlay);
     }
 
     private void setupToolbar() {
@@ -226,6 +228,124 @@ public class PreviewActivity extends AppCompatActivity {
         } else {
             loadDefaultTemplate();
         }
+    }
+
+    private void initializeEnvironmentAndLoad() {
+        String projectType = detectProjectType();
+        addConsoleMessage("Detected project type: " + projectType);
+
+        // For HTML/CSS/JS, Tailwind CDN-only, Bootstrap: load file:// directly
+        if ("html".equals(projectType) || "bootstrap".equals(projectType)) {
+            loadContent();
+            return;
+        }
+
+        // For Tailwind configured builds, React, Next.js, Vue, Angular, Material UI: start local server
+        if ("tailwind".equals(projectType) || "react".equals(projectType) ||
+                "nextjs".equals(projectType) || "vue".equals(projectType) ||
+                "angular".equals(projectType) || "material_ui".equals(projectType) ||
+                "node".equals(projectType)) {
+
+            // Preflight guidance for build-based frameworks
+            try {
+                if ("react".equals(projectType) || "material_ui".equals(projectType)) {
+                    boolean hasBuild = new File(projectDir, "build/index.html").exists();
+                    boolean hasPublic = new File(projectDir, "public/index.html").exists();
+                    if (!hasBuild && !hasPublic) {
+                        addConsoleMessage("No build or public assets found. For best results, build on your desktop (npm run build) and copy the 'build' folder here.");
+                    }
+                } else if ("nextjs".equals(projectType)) {
+                    boolean hasOut = new File(projectDir, "out/index.html").exists();
+                    if (!hasOut) {
+                        addConsoleMessage("Next.js static export not found. On desktop, run 'next build && next export' to generate '/out', then copy it to this project.");
+                    }
+                } else if ("vue".equals(projectType)) {
+                    boolean hasDist = new File(projectDir, "dist/index.html").exists();
+                    if (!hasDist) {
+                        addConsoleMessage("Vue build output not found. On desktop, run 'npm run build' to generate '/dist', then copy it to this project.");
+                    }
+                } else if ("angular".equals(projectType)) {
+                    File distDir = new File(projectDir, "dist");
+                    boolean hasDist = distDir.exists() && distDir.isDirectory();
+                    if (!hasDist) {
+                        addConsoleMessage("Angular build output not found. On desktop, run 'ng build' to generate '/dist', then copy it to this project.");
+                    }
+                } else if ("tailwind".equals(projectType)) {
+                    boolean hasCss = new File(projectDir, "dist/output.css").exists();
+                    if (!hasCss) {
+                        addConsoleMessage("Tailwind compiled CSS not found. On desktop, run 'npm run build' to generate '/dist/output.css', or include the Tailwind CDN in your HTML.");
+                    }
+                }
+            } catch (Exception ignored) {}
+
+            if (loadingOverlay != null) {
+                loadingOverlay.setVisibility(View.VISIBLE);
+                setLoadingOverlayText("Initializing environment for " + projectType + "...");
+            }
+
+            startLocalServerWithUi(projectType);
+            return;
+        }
+
+        // Default fallback
+        loadContent();
+    }
+
+    private void setLoadingOverlayText(String text) {
+        if (loadingOverlay == null) return;
+        // Update the dedicated text view if present
+        TextView tv = loadingOverlay.findViewById(R.id.loading_text);
+        if (tv != null) {
+            tv.setText(text);
+        }
+    }
+
+    private void startLocalServerWithUi(String projectType) {
+        if (isLocalServerRunning) {
+            String serverUrl = localServerManager.getServerUrl();
+            if (serverUrl != null) webViewPreview.loadUrl(serverUrl);
+            if (loadingOverlay != null) loadingOverlay.setVisibility(View.GONE);
+            return;
+        }
+
+        setLoadingOverlayText("Starting local server...");
+        startLocalServerInternal(projectType);
+    }
+
+    private void startLocalServerInternal(String projectType) {
+        String rootPath = projectDir != null ? projectDir.getAbsolutePath() : "";
+        localServerManager.startServer(rootPath, projectType, 8080, new LocalServerManager.ServerCallback() {
+            @Override
+            public void onServerStarted(int port) {
+                runOnUiThread(() -> {
+                    isLocalServerRunning = true;
+                    String serverUrl = localServerManager.getServerUrl();
+                    addConsoleMessage("Local server started at: " + serverUrl);
+                    if (serverUrl != null) webViewPreview.loadUrl(serverUrl);
+                    if (loadingOverlay != null) loadingOverlay.setVisibility(View.GONE);
+                    invalidateOptionsMenu();
+                });
+            }
+
+            @Override
+            public void onServerStopped() {
+                runOnUiThread(() -> {
+                    isLocalServerRunning = false;
+                    invalidateOptionsMenu();
+                });
+            }
+
+            @Override
+            public void onError(String error) {
+                runOnUiThread(() -> {
+                    addConsoleMessage("Server error: " + error);
+                    Toast.makeText(PreviewActivity.this, "Error starting local server: " + error, Toast.LENGTH_LONG).show();
+                    if (loadingOverlay != null) loadingOverlay.setVisibility(View.GONE);
+                    // Fallback to direct file loading
+                    loadContent();
+                });
+            }
+        });
     }
 
     private String enhanceHtmlContent(String originalHtml) {
@@ -585,7 +705,9 @@ public class PreviewActivity extends AppCompatActivity {
                 reader.close();
                 
                 String packageContent = content.toString().toLowerCase();
-                if (packageContent.contains("react") && packageContent.contains("next")) {
+                if (packageContent.contains("@mui/material")) {
+                    return "material_ui";
+                } else if (packageContent.contains("react") && packageContent.contains("next")) {
                     return "nextjs";
                 } else if (packageContent.contains("react")) {
                     return "react";
@@ -661,6 +783,9 @@ public class PreviewActivity extends AppCompatActivity {
             } catch (Exception e) {
                 Log.e(TAG, "Error stopping local server on destroy", e);
             }
+        }
+        if (localServerManager != null) {
+            localServerManager.shutdown();
         }
         
         if (webViewPreview != null) {

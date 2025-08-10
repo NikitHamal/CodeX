@@ -95,20 +95,21 @@ public class LocalServerManager {
             return;
         }
 
-        acceptExecutor.submit(() -> {
+        // Important: close the socket from a different thread than the accept loop to unblock accept()
+        new Thread(() -> {
             try {
                 isRunning = false;
                 if (serverSocket != null && !serverSocket.isClosed()) {
-                    serverSocket.close();
+                    try { serverSocket.close(); } catch (IOException ignore) {}
                 }
                 serverSocket = null;
                 Log.i(TAG, "Local server stopped");
                 callback.onServerStopped();
-            } catch (IOException e) {
+            } catch (Exception e) {
                 Log.e(TAG, "Error stopping server", e);
                 callback.onError("Error stopping server: " + e.getMessage());
             }
-        });
+        }).start();
     }
 
     private void handleClient(Socket client) {
@@ -317,7 +318,8 @@ public class LocalServerManager {
 
     public String getServerUrl() {
         if (isRunning) {
-            return "http://localhost:" + currentPort + "/";
+            // Use 127.0.0.1 for reliable loopback in WebView
+            return "http://127.0.0.1:" + currentPort + "/";
         }
         return null;
     }

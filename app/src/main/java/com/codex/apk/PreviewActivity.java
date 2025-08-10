@@ -283,12 +283,60 @@ public class PreviewActivity extends AppCompatActivity {
                 setLoadingOverlayText("Initializing environment for " + projectType + "...");
             }
 
+            // If there is a built static index.html we can load that immediately while server starts
+            File possibleIndex = findBestIndexForProjectType(projectType);
+            if (possibleIndex != null) {
+                webViewPreview.loadUrl("file://" + possibleIndex.getAbsolutePath());
+            }
+
             startLocalServerWithUi(projectType);
             return;
         }
 
         // Default fallback
         loadContent();
+    }
+
+    private File findBestIndexForProjectType(String projectType) {
+        if (projectDir == null) return null;
+        try {
+            switch (projectType) {
+                case "nextjs":
+                    File out = new File(projectDir, "out/index.html");
+                    if (out.exists()) return out;
+                    break;
+                case "react":
+                case "material_ui":
+                    File build = new File(projectDir, "build/index.html");
+                    if (build.exists()) return build;
+                    File publicDir = new File(projectDir, "public/index.html");
+                    if (publicDir.exists()) return publicDir;
+                    break;
+                case "vue":
+                    File dist = new File(projectDir, "dist/index.html");
+                    if (dist.exists()) return dist;
+                    break;
+                case "angular":
+                    File distDir = new File(projectDir, "dist");
+                    if (distDir.exists()) {
+                        File[] children = distDir.listFiles();
+                        if (children != null) {
+                            for (File c : children) {
+                                File idx = new File(c, "index.html");
+                                if (idx.exists()) return idx;
+                            }
+                        }
+                    }
+                    break;
+                case "tailwind":
+                    File rootIdx = new File(projectDir, "index.html");
+                    if (rootIdx.exists()) return rootIdx;
+                    break;
+                default:
+                    break;
+            }
+        } catch (Exception ignored) {}
+        return null;
     }
 
     private void setLoadingOverlayText(String text) {
@@ -314,14 +362,14 @@ public class PreviewActivity extends AppCompatActivity {
 
     private void startLocalServerInternal(String projectType) {
         String rootPath = projectDir != null ? projectDir.getAbsolutePath() : "";
-        localServerManager.startServer(rootPath, projectType, 8080, new LocalServerManager.ServerCallback() {
+            localServerManager.startServer(rootPath, projectType, 8080, new LocalServerManager.ServerCallback() {
             @Override
             public void onServerStarted(int port) {
                 runOnUiThread(() -> {
                     isLocalServerRunning = true;
-                    String serverUrl = localServerManager.getServerUrl();
-                    addConsoleMessage("Local server started at: " + serverUrl);
-                    if (serverUrl != null) webViewPreview.loadUrl(serverUrl);
+                        String serverUrl = localServerManager.getServerUrl();
+                        addConsoleMessage("Local server started at: " + serverUrl);
+                        if (serverUrl != null) webViewPreview.loadUrl(serverUrl);
                     if (loadingOverlay != null) loadingOverlay.setVisibility(View.GONE);
                     invalidateOptionsMenu();
                 });
@@ -682,7 +730,7 @@ public class PreviewActivity extends AppCompatActivity {
                 }
             });
             
-        } catch (Exception e) {
+            } catch (Exception e) {
             Log.e(TAG, "Error stopping local server", e);
             Toast.makeText(this, "Error stopping local server: " + e.getMessage(), Toast.LENGTH_LONG).show();
         }

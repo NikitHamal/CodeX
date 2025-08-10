@@ -213,8 +213,10 @@ public class QwenResponseParser {
                             if (s == null || r == null) continue;
                             operations.add(new FileOperation(
                                 "searchAndReplace", path, "", "", "", s, r,
-                                null, null, null,
-                                null, null, null, null, null, null, null, null
+                                (Integer) null, (Integer) null, (java.util.List<String>) null,
+                                (String) null, (String) null, (String) null, (String) null,
+                                (Boolean) null, (Boolean) null, (String) null, (String) null,
+                                (Boolean) null, (String) null
                             ));
                         } catch (Exception ignored) {}
                     }

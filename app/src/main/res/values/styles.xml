@@ -112,4 +112,11 @@
         <item name="android:paddingBottom">2dp</item>
     </style>
     
+    <!-- Custom Chip Style with Custom Font -->
+    <style name="Widget.App.Chip.Choice" parent="Widget.MaterialComponents.Chip.Choice">
+        <item name="android:fontFamily">@font/poppins_reg</item>
+        <item name="android:textSize">14sp</item>
+        <item name="chipCornerRadius">30dp</item>
+    </style>
+    
 </resources>

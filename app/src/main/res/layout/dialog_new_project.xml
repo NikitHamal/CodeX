@@ -54,96 +54,84 @@
                 android:layout_height="wrap_content"
                 android:text="Empty"
                 android:checked="true"
-                app:chipCornerRadius="30dp"
-                style="@style/Widget.MaterialComponents.Chip.Choice" />
+                style="@style/Widget.App.Chip.Choice" />
 
             <com.google.android.material.chip.Chip
                 android:id="@+id/chip_html_css_js"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="HTML/CSS/JS"
-                app:chipCornerRadius="30dp"
-                style="@style/Widget.MaterialComponents.Chip.Choice" />
+                style="@style/Widget.App.Chip.Choice" />
 
             <com.google.android.material.chip.Chip
                 android:id="@+id/chip_react"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="React App"
-                app:chipCornerRadius="30dp"
-                style="@style/Widget.MaterialComponents.Chip.Choice" />
+                style="@style/Widget.App.Chip.Choice" />
 
             <com.google.android.material.chip.Chip
                 android:id="@+id/chip_nextjs"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Next.js App"
-                app:chipCornerRadius="30dp"
-                style="@style/Widget.MaterialComponents.Chip.Choice" />
+                style="@style/Widget.App.Chip.Choice" />
 
             <com.google.android.material.chip.Chip
                 android:id="@+id/chip_vue"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Vue.js App"
-                app:chipCornerRadius="30dp"
-                style="@style/Widget.MaterialComponents.Chip.Choice" />
+                style="@style/Widget.App.Chip.Choice" />
 
             <com.google.android.material.chip.Chip
                 android:id="@+id/chip_angular"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Angular App"
-                app:chipCornerRadius="30dp"
-                style="@style/Widget.MaterialComponents.Chip.Choice" />
+                style="@style/Widget.App.Chip.Choice" />
 
             <com.google.android.material.chip.Chip
                 android:id="@+id/chip_node"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Node.js Backend"
-                app:chipCornerRadius="30dp"
-                style="@style/Widget.MaterialComponents.Chip.Choice" />
+                style="@style/Widget.App.Chip.Choice" />
 
             <com.google.android.material.chip.Chip
                 android:id="@+id/chip_python"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Python Backend"
-                app:chipCornerRadius="30dp"
-                style="@style/Widget.MaterialComponents.Chip.Choice" />
+                style="@style/Widget.App.Chip.Choice" />
 
             <com.google.android.material.chip.Chip
                 android:id="@+id/chip_php"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="PHP Backend"
-                app:chipCornerRadius="30dp"
-                style="@style/Widget.MaterialComponents.Chip.Choice" />
+                style="@style/Widget.App.Chip.Choice" />
 
             <com.google.android.material.chip.Chip
                 android:id="@+id/chip_tailwind"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Tailwind CSS"
-                app:chipCornerRadius="30dp"
-                style="@style/Widget.MaterialComponents.Chip.Choice" />
+                style="@style/Widget.App.Chip.Choice" />
 
             <com.google.android.material.chip.Chip
                 android:id="@+id/chip_bootstrap"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Bootstrap"
-                app:chipCornerRadius="30dp"
-                style="@style/Widget.MaterialComponents.Chip.Choice" />
+                style="@style/Widget.App.Chip.Choice" />
 
             <com.google.android.material.chip.Chip
                 android:id="@+id/chip_material_ui"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Material-UI"
-                app:chipCornerRadius="30dp"
-                style="@style/Widget.MaterialComponents.Chip.Choice" />
+                style="@style/Widget.App.Chip.Choice" />
 
         </com.google.android.material.chip.ChipGroup>
 
@@ -180,16 +168,14 @@
                 android:layout_height="wrap_content"
                 android:text="Basic"
                 android:checked="true"
-                app:chipCornerRadius="30dp"
-                style="@style/Widget.MaterialComponents.Chip.Choice" />
+                style="@style/Widget.App.Chip.Choice" />
 
             <com.google.android.material.chip.Chip
                 android:id="@+id/chip_responsive"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Responsive"
-                app:chipCornerRadius="30dp"
-                style="@style/Widget.MaterialComponents.Chip.Choice" />
+                style="@style/Widget.App.Chip.Choice" />
 
         </com.google.android.material.chip.ChipGroup>
 

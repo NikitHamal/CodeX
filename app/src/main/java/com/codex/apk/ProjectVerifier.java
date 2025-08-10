@@ -37,7 +37,7 @@ public class ProjectVerifier {
         CssLinter css = new CssLinter();
         JsLinter js = new JsLinter();
         if (appliedActions == null || appliedActions.isEmpty()) {
-            return new VerificationResult(true, issues);
+            return new VerificationResult(true, issues, new ArrayList<LintIssue>());
         }
 
         for (ChatMessage.FileActionDetail d : appliedActions) {

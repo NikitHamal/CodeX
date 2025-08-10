@@ -17,6 +17,7 @@ import com.codex.apk.ToolSpec;
 import com.codex.apk.SettingsActivity;
 import com.codex.apk.TabItem;
 import com.codex.apk.DiffGenerator;
+import com.codex.apk.ProjectVerifier;
 import android.content.SharedPreferences;
 
 

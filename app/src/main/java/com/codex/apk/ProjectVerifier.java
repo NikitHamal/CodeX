@@ -89,7 +89,7 @@ public class ProjectVerifier {
         if (paren != 0) out.add(path + ": Unbalanced parentheses in JS");
         if (brace != 0) out.add(path + ": Unbalanced braces in JS");
         if (bracket != 0) out.add(path + ": Unbalanced brackets in JS");
-        if (content.contains("console.log("")") ) { // silly but catches an easy typo
+        if (content.contains("console.log(\"\")") ) { // silly but catches an easy typo
             out.add(path + ": Suspicious console.log syntax");
         }
     }

@@ -35,6 +35,9 @@ public class AiProcessor {
             case "smartUpdate":
                 summary = handleAdvancedUpdateFile(detail);
                 break;
+            case "modifyLines":
+                summary = handleModifyLines(detail);
+                break;
             case "deleteFile":
                 summary = handleDeleteFile(detail);
                 break;
@@ -111,6 +114,43 @@ public class AiProcessor {
         }
 
         return "Performed search and replace on file: " + path;
+    }
+
+    private String handleModifyLines(ChatMessage.FileActionDetail detail) throws IOException {
+        String path = detail.path;
+        File fileToUpdate = new File(projectDir, path);
+
+        if (!fileToUpdate.exists()) {
+            throw new IOException("File not found for modifyLines: " + path);
+        }
+
+        String content = advancedFileManager.readFileContent(fileToUpdate);
+        int startLine = Math.max(1, detail.startLine);
+        int deleteCount = Math.max(0, detail.deleteCount);
+        java.util.List<String> insertLines = detail.insertLines != null ? detail.insertLines : new java.util.ArrayList<>();
+
+        String[] lines = content.split("\n", -1);
+        java.util.List<String> out = new java.util.ArrayList<>();
+        for (String l : lines) out.add(l);
+        int idx = Math.max(0, Math.min(out.size(), startLine - 1));
+        int toDelete = Math.max(0, Math.min(deleteCount, out.size() - idx));
+        for (int i = 0; i < toDelete; i++) out.remove(idx);
+        if (!insertLines.isEmpty()) out.addAll(idx, insertLines);
+
+        String newContent = String.join("\n", out);
+
+        AdvancedFileManager.FileOperationResult result = advancedFileManager.smartUpdateFile(
+            fileToUpdate, newContent, "replace",
+            detail.validateContent,
+            detail.contentType,
+            detail.errorHandling != null ? detail.errorHandling : "strict"
+        );
+
+        if (!result.isSuccess()) {
+            throw new IOException("modifyLines failed: " + result.getMessage());
+        }
+
+        return "Modified lines in file: " + path + " at line " + startLine;
     }
 
     private String handlePatchFile(ChatMessage.FileActionDetail detail) throws IOException {

@@ -21,7 +21,7 @@ public class PromptManager {
                "ALWAYS: \n" +
                "- Use TailwindCSS when possible (import <script src=\\\"https://cdn.tailwindcss.com\\\"></script> in <head> when needed).\n" +
                "- Write accessible, responsive UI; separate HTML, CSS, JS into distinct files.\n\n" +
-               "OPERATING MODE: Planner-Executor\n" +
+               "OPERATING MODE: Planner-Executor + Tool-Calling\n" +
                "1) Plan medium-grained steps before execution.\n" +
                "2) Output strict JSON in fenced block as below.\n" +
                "3) For file work, emit individual operations per file (do not combine multiple files in one operation).\n" +
@@ -52,7 +52,13 @@ public class PromptManager {
                "- Validate HTML/CSS/JS; keep diffs minimal and readable. Prefer modifyLines hunks or short diffs over full content.\n" +
                "- Prefer semantic HTML, accessible ARIA, responsive layout.\n" +
                "- Always return valid JSON in a fenced code block.\n" +
-               "- Agent mode: file operations will be applied automatically after plan acceptance. Non-agent mode: file ops require user Accept.\n";
+               "- Agent mode: file operations will be applied automatically after plan acceptance. Non-agent mode: file ops require user Accept.\n\n" +
+               "TOOL PROTOCOL (JSON):\n" +
+               "- When you need filesystem info before editing, emit:\n" +
+               "```json\n{\n  \"action\": \"tool_call\",\n  \"tool_calls\": [\n    { \"name\": \"readFile\", \"args\": { \"path\": \"index.html\" } },\n    { \"name\": \"searchInProject\", \"args\": { \"query\": \"<title>\\\\w+<\\/title>\", \"maxResults\": 10 } }\n  ]\n}\n```\n" +
+               "- The IDE will respond with:\n" +
+               "```json\n{\n  \"action\": \"tool_result\",\n  \"results\": [\n    { \"name\": \"readFile\", \"ok\": true, \"content\": \"...\" },\n    { \"name\": \"searchInProject\", \"ok\": true, \"matches\": [ { \"path\": \"...\", \"line\": 12, \"text\": \"...\" } ] }\n  ]\n}\n```\n" +
+               "- After receiving tool_result, continue with a single file_operation JSON focusing on minimal diffs.\n";
     }
 
     private static String getGeneralSystemPrompt() {

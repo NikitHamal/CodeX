@@ -68,6 +68,12 @@ public class AdvancedFileManager {
                 }
             }
 
+            // Backup before write if requested via updateType 'patch' or safety default
+            File backup = new File(file.getParentFile(), file.getName() + ".bak");
+            try {
+                writeFileContent(backup, currentContent);
+            } catch (Exception ignored) {}
+
             // Write the file
             writeFileContent(file, finalContent);
 
@@ -139,35 +145,125 @@ public class AdvancedFileManager {
      */
     private String applyPatch(String currentContent, String patchContent) {
         try {
-            // Simple patch application - can be enhanced with proper diff library
-            String[] lines = currentContent.split("\n");
-            String[] patchLines = patchContent.split("\n");
-
-            // Safety check for complex patches
-            for (String patchLine : patchLines) {
-                if (!patchLine.startsWith("+") && !patchLine.startsWith("-") && !patchLine.startsWith("@@") && !patchLine.startsWith("---") && !patchLine.startsWith("+++") && !patchLine.trim().isEmpty()) {
-                    Log.w(TAG, "applyPatch: Found complex line in patch that cannot be handled: '" + patchLine + "'. Aborting patch.");
-                    return currentContent; // Return original if patch is too complex for this simple parser
-                }
-            }
-
-            List<String> result = new ArrayList<>(Arrays.asList(lines));
-
-            for (String patchLine : patchLines) {
-                if (patchLine.startsWith("+") && !patchLine.startsWith("+++")) {
-                    // Add line
-                    result.add(patchLine.substring(1));
-                } else if (patchLine.startsWith("-") && !patchLine.startsWith("---")) {
-                    // Remove line
-                    String toRemove = patchLine.substring(1);
-                    result.removeIf(line -> line.equals(toRemove));
-                }
-            }
-
-            return String.join("\n", result);
+            // Robust unified diff application (context-aware)
+            return UnifiedDiff.applyUnifiedDiff(currentContent, patchContent);
         } catch (Exception e) {
             Log.e(TAG, "Patch application failed", e);
             return currentContent; // Return original if patch fails
+        }
+    }
+
+    /**
+     * Minimal unified diff applier supporting @@ hunks with context. Tolerates minor drift.
+     */
+    private static class UnifiedDiff {
+        private static class Hunk {
+            int startOld;
+            int lenOld;
+            int startNew;
+            int lenNew;
+            List<String> lines = new ArrayList<>();
+        }
+
+        public static String applyUnifiedDiff(String original, String patch) {
+            List<String> src = new ArrayList<>(Arrays.asList(original.split("\n", -1)));
+            List<Hunk> hunks = parseHunks(patch);
+            // Apply hunks in order, adjust offsets as we go
+            int offset = 0;
+            for (Hunk h : hunks) {
+                int applyPos = Math.max(0, Math.min(src.size(), h.startOld - 1 + offset));
+                // Try exact context match first; if not, do a fuzzy search window
+                int matchedIndex = findBestMatch(src, h, applyPos);
+                if (matchedIndex < 0) continue; // skip hunk if no reasonable match
+                // Remove old lines
+                int removeCount = Math.min(h.lenOld, Math.max(0, src.size() - matchedIndex));
+                for (int i = 0; i < removeCount; i++) {
+                    src.remove(matchedIndex);
+                }
+                // Insert new lines
+                List<String> toInsert = new ArrayList<>();
+                for (String l : h.lines) if (l.length() > 0 && (l.charAt(0) == ' ' || l.charAt(0) == '+')) {
+                    if (l.startsWith(" ") || l.startsWith("+")) {
+                        String content = l.substring(1);
+                        toInsert.add(content);
+                    }
+                }
+                src.addAll(matchedIndex, toInsert);
+                offset += toInsert.size() - removeCount;
+            }
+            return String.join("\n", src);
+        }
+
+        private static List<Hunk> parseHunks(String patch) {
+            List<Hunk> hunks = new ArrayList<>();
+            String[] lines = patch.split("\n");
+            Hunk current = null;
+            for (String line : lines) {
+                if (line.startsWith("@@")) {
+                    if (current != null) hunks.add(current);
+                    current = new Hunk();
+                    int[] nums = parseHunkHeader(line);
+                    current.startOld = nums[0];
+                    current.lenOld = nums[1];
+                    current.startNew = nums[2];
+                    current.lenNew = nums[3];
+                } else if (current != null) {
+                    if (line.startsWith("+") || line.startsWith("-") || line.startsWith(" ")) {
+                        current.lines.add(line);
+                    }
+                }
+            }
+            if (current != null) hunks.add(current);
+            return hunks;
+        }
+
+        private static int[] parseHunkHeader(String header) {
+            // @@ -a,b +c,d @@
+            try {
+                String core = header.substring(2, header.indexOf("@@", 2)).trim();
+                String[] parts = core.split(" ");
+                String[] oldPart = parts[0].substring(1).split(",");
+                String[] newPart = parts[1].substring(1).split(",");
+                int a = parseIntSafe(oldPart[0], 1);
+                int b = oldPart.length > 1 ? parseIntSafe(oldPart[1], 0) : 0;
+                int c = parseIntSafe(newPart[0], 1);
+                int d = newPart.length > 1 ? parseIntSafe(newPart[1], 0) : 0;
+                return new int[]{a, b, c, d};
+            } catch (Exception e) {
+                return new int[]{1, 0, 1, 0};
+            }
+        }
+
+        private static int parseIntSafe(String s, int def) {
+            try { return Integer.parseInt(s); } catch (Exception e) { return def; }
+        }
+
+        private static int findBestMatch(List<String> src, Hunk h, int expectedIndex) {
+            // Try exact expected index first
+            if (contextMatches(src, expectedIndex, h)) return expectedIndex;
+            // Fuzzy search in a small window around expected index
+            int window = 50;
+            for (int delta = 1; delta <= window; delta++) {
+                int left = expectedIndex - delta;
+                int right = expectedIndex + delta;
+                if (left >= 0 && contextMatches(src, left, h)) return left;
+                if (right <= src.size() && contextMatches(src, right, h)) return right;
+            }
+            return -1;
+        }
+
+        private static boolean contextMatches(List<String> src, int index, Hunk h) {
+            // Compare context lines (' ' and '-' from old) against source
+            int i = index;
+            for (String l : h.lines) {
+                if (l.startsWith(" ") || l.startsWith("-")) {
+                    String want = l.length() > 0 ? l.substring(1) : "";
+                    if (i >= src.size()) return false;
+                    if (!src.get(i).equals(want)) return false;
+                    i++;
+                }
+            }
+            return true;
         }
     }
 

@@ -137,6 +137,26 @@ public class ToolSpec {
                         new String[]{"Relative path to the file", "Unified diff patch content"}
                 )));
 
+        // listProjectTree
+        tools.add(new ToolSpec(
+                "listProjectTree",
+                "List the project tree from a path with depth and entry limits.",
+                buildSchema(
+                        new String[]{"path", "depth", "maxEntries"},
+                        new String[]{"string", "integer", "integer"},
+                        new String[]{"Relative path ('.' for root)", "Max depth (0-5)", "Max entries (10-1000)"}
+                )));
+
+        // searchInProject
+        tools.add(new ToolSpec(
+                "searchInProject",
+                "Search project files for a query. Supports regex when enabled.",
+                buildSchema(
+                        new String[]{"query", "maxResults", "regex"},
+                        new String[]{"string", "integer", "boolean"},
+                        new String[]{"Search query or regex pattern", "Maximum number of results", "Treat query as regex"}
+                )));
+
         return tools;
     }
 

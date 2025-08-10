@@ -23,7 +23,8 @@ public class AIAssistant {
 
     public AIAssistant(Context context, ExecutorService executorService, AIActionListener actionListener) {
         this.actionListener = actionListener;
-        this.currentModel = AIModel.fromModelId("gemini-2.5-flash"); // Default model
+        // Default to an Alibaba/Qwen model since we have a working client for it
+        this.currentModel = AIModel.fromModelId("qwen3-coder-plus");
 
         // Initialize API clients for each provider
         apiClients.put(AIProvider.ALIBABA, new QwenApiClient(context, actionListener, null)); // projectDir can be set later

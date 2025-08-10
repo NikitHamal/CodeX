@@ -86,7 +86,7 @@ public class AIChatFragment extends Fragment implements ChatMessageAdapter.OnAiA
         aiAssistant = listener.getAIAssistant();
         uiManager.updateUiVisibility(chatHistory.isEmpty());
         uiManager.setListeners();
-        if (aiAssistant != null) {
+        if (aiAssistant != null && aiAssistant.getCurrentModel() != null) {
             uiManager.textSelectedModel.setText(aiAssistant.getCurrentModel().getDisplayName());
             uiManager.updateSettingsButtonState(aiAssistant);
         }

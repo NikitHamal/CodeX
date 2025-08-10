@@ -165,6 +165,9 @@ public class QwenApiClient implements ApiClient {
         StringBuilder thinkingContent = new StringBuilder();
         StringBuilder answerContent = new StringBuilder();
         List<WebSource> webSources = new ArrayList<>();
+        // Tool-calling buffers
+        StringBuilder jsonBuffer = new StringBuilder();
+        boolean inToolLoop = false;
 
         String line;
         while ((line = response.body().source().readUtf8Line()) != null) {
@@ -208,10 +211,33 @@ public class QwenApiClient implements ApiClient {
 
                                 if (jsonToParse != null) {
                                     try {
+                                        // Check for tool_call envelope
+                                        JsonObject maybe = JsonParser.parseString(jsonToParse).getAsJsonObject();
+                                        if (maybe.has("action") && "tool_call".equals(maybe.get("action").getAsString())) {
+                                            // Execute tool calls, then continue in-loop by synthesizing a tool_result follow-up content
+                                            JsonArray calls = maybe.getAsJsonArray("tool_calls");
+                                            JsonArray results = new JsonArray();
+                                            for (int i = 0; i < calls.size(); i++) {
+                                                JsonObject c = calls.get(i).getAsJsonObject();
+                                                String name = c.get("name").getAsString();
+                                                JsonObject args = c.getAsJsonObject("args");
+                                                String toolResult = executeToolCall(name, args);
+                                                JsonObject res = new JsonObject();
+                                                res.addProperty("name", name);
+                                                try { res.add("result", JsonParser.parseString(toolResult)); }
+                                                catch (Exception ex) { res.addProperty("result", toolResult); }
+                                                results.add(res);
+                                            }
+                                            // Synthesize a continuation request by posting the tool_result back as a user message
+                                            String continuation = buildToolResultContinuation(results);
+                                            // Swap out answerContent and restart completion using the same chat
+                                            performContinuation(state, model, continuation);
+                                            continue;
+                                        }
+
                                         QwenResponseParser.ParsedResponse parsed = QwenResponseParser.parseResponse(jsonToParse);
                                         if (parsed != null && parsed.isValid) {
                                             if ("plan".equals(parsed.action)) {
-                                                // Show the plan now (explanation only; UI can render plan from raw JSON if needed)
                                                 if (actionListener != null) {
                                                     actionListener.onAiActionsProcessed(jsonToParse, parsed.explanation, new ArrayList<>(), new ArrayList<>(), model.getDisplayName());
                                                 }
@@ -247,6 +273,59 @@ public class QwenApiClient implements ApiClient {
                 } catch (Exception e) {
                     Log.w(TAG, "Error processing stream data chunk", e);
                 }
+            }
+        }
+    }
+
+    private String buildToolResultContinuation(JsonArray results) {
+        JsonObject payload = new JsonObject();
+        payload.addProperty("action", "tool_result");
+        payload.add("results", results);
+        return payload.toString();
+    }
+
+    private void performContinuation(QwenConversationState state, AIModel model, String toolResultJson) throws IOException {
+        // Continue the same conversation by sending tool_result as a user message
+        JsonObject requestBody = new JsonObject();
+        requestBody.addProperty("stream", true);
+        requestBody.addProperty("incremental_output", true);
+        requestBody.addProperty("chat_id", state.getConversationId());
+        requestBody.addProperty("chat_mode", "normal");
+        requestBody.addProperty("model", model.getModelId());
+        requestBody.addProperty("parent_id", state.getLastParentId());
+        requestBody.addProperty("timestamp", System.currentTimeMillis());
+
+        JsonArray messages = new JsonArray();
+        JsonObject msg = new JsonObject();
+        msg.addProperty("role", "user");
+        msg.addProperty("content", "```json\n" + toolResultJson + "\n```\n");
+        msg.addProperty("user_action", "chat");
+        msg.add("files", new JsonArray());
+        msg.addProperty("timestamp", System.currentTimeMillis());
+        JsonArray modelsArray = new JsonArray();
+        modelsArray.add(model.getModelId());
+        msg.add("models", modelsArray);
+        msg.addProperty("chat_type", "t2t");
+        JsonObject featureConfig = new JsonObject();
+        featureConfig.addProperty("thinking_enabled", false);
+        featureConfig.addProperty("output_schema", "phase");
+        msg.add("feature_config", featureConfig);
+        msg.addProperty("fid", java.util.UUID.randomUUID().toString());
+        msg.add("parentId", null);
+        msg.add("childrenIds", new JsonArray());
+        messages.add(msg);
+        requestBody.add("messages", messages);
+
+        String qwenToken = getQwenToken();
+        Request request = new Request.Builder()
+            .url(QWEN_BASE_URL + "/chat/completions?chat_id=" + state.getConversationId())
+            .post(RequestBody.create(requestBody.toString(), MediaType.parse("application/json")))
+            .headers(buildQwenHeaders(qwenToken, state.getConversationId()))
+            .build();
+
+        try (Response response = httpClient.newCall(request).execute()) {
+            if (response.isSuccessful() && response.body() != null) {
+                processQwenStreamResponse(response, state, model);
             }
         }
     }
@@ -321,6 +400,24 @@ public class QwenApiClient implements ApiClient {
         JsonObject result = new JsonObject();
         try {
             switch (name) {
+                case "listProjectTree": {
+                    String path = args.has("path") ? args.get("path").getAsString() : ".";
+                    int depth = args.has("depth") ? Math.max(0, Math.min(5, args.get("depth").getAsInt())) : 2;
+                    int maxEntries = args.has("maxEntries") ? Math.max(10, Math.min(2000, args.get("maxEntries").getAsInt())) : 500;
+                    String tree = buildFileTree(new java.io.File(projectDir, path), depth, maxEntries);
+                    result.addProperty("ok", true);
+                    result.addProperty("tree", tree);
+                    break;
+                }
+                case "searchInProject": {
+                    String query = args.get("query").getAsString();
+                    int maxResults = args.has("maxResults") ? Math.max(1, Math.min(2000, args.get("maxResults").getAsInt())) : 100;
+                    boolean regex = args.has("regex") && args.get("regex").getAsBoolean();
+                    JsonArray matches = searchInProject(projectDir, query, maxResults, regex);
+                    result.addProperty("ok", true);
+                    result.add("matches", matches);
+                    break;
+                }
                 case "createFile": {
                     String path = args.get("path").getAsString();
                     String content = args.get("content").getAsString();
@@ -416,6 +513,76 @@ public class QwenApiClient implements ApiClient {
             }
         }
         return f.delete();
+    }
+
+    private String buildFileTree(java.io.File root, int maxDepth, int maxEntries) {
+        StringBuilder sb = new StringBuilder();
+        explore(root, 0, maxDepth, sb, new int[]{0}, maxEntries);
+        return sb.toString();
+    }
+    private void explore(java.io.File dir, int depth, int maxDepth, StringBuilder sb, int[] count, int maxEntries) {
+        if (dir == null || !dir.exists() || count[0] >= maxEntries || depth > maxDepth) return;
+        java.io.File[] files = dir.listFiles();
+        if (files == null) return;
+        java.util.Arrays.sort(files, (a,b) -> a.getName().compareToIgnoreCase(b.getName()));
+        for (java.io.File f : files) {
+            if (count[0]++ >= maxEntries) return;
+            for (int i = 0; i < depth; i++) sb.append("  ");
+            sb.append(f.isDirectory() ? "[d] " : "[f] ").append(f.getName()).append("\n");
+            if (f.isDirectory()) explore(f, depth + 1, maxDepth, sb, count, maxEntries);
+        }
+    }
+
+    private JsonArray searchInProject(java.io.File root, String query, int maxResults, boolean regex) {
+        JsonArray out = new JsonArray();
+        java.util.regex.Pattern pattern = null;
+        if (regex) {
+            try { pattern = java.util.regex.Pattern.compile(query, java.util.regex.Pattern.MULTILINE); }
+            catch (Exception e) { pattern = null; }
+        }
+        java.util.Deque<java.io.File> dq = new java.util.ArrayDeque<>();
+        dq.add(root);
+        while (!dq.isEmpty() && out.size() < maxResults) {
+            java.io.File cur = dq.pollFirst();
+            java.io.File[] files = cur.listFiles();
+            if (files == null) continue;
+            for (java.io.File f : files) {
+                if (f.isDirectory()) { dq.addLast(f); continue; }
+                // Only scan text-like files (quick heuristic)
+                String name = f.getName().toLowerCase();
+                if (!(name.endsWith(".html") || name.endsWith(".htm") || name.endsWith(".css") || name.endsWith(".js") || name.endsWith(".json") || name.endsWith(".md")))
+                    continue;
+                try {
+                    String content = new String(java.nio.file.Files.readAllBytes(f.toPath()), java.nio.charset.StandardCharsets.UTF_8);
+                    if (regex) {
+                        if (pattern == null) continue;
+                        java.util.regex.Matcher m = pattern.matcher(content);
+                        int hits = 0;
+                        while (m.find() && out.size() < maxResults) {
+                            JsonObject mobj = new JsonObject();
+                            mobj.addProperty("path", root.toPath().relativize(f.toPath()).toString());
+                            mobj.addProperty("start", m.start());
+                            mobj.addProperty("end", m.end());
+                            mobj.addProperty("snippet", content.substring(Math.max(0, m.start()-80), Math.min(content.length(), m.end()+80)));
+                            out.add(mobj);
+                            if (++hits > 10) break; // throttle per-file
+                        }
+                    } else {
+                        int idx = content.indexOf(query);
+                        if (idx >= 0) {
+                            JsonObject mobj = new JsonObject();
+                            mobj.addProperty("path", root.toPath().relativize(f.toPath()).toString());
+                            mobj.addProperty("start", idx);
+                            mobj.addProperty("end", idx + query.length());
+                            mobj.addProperty("snippet", content.substring(Math.max(0, idx-80), Math.min(content.length(), idx+80)));
+                            out.add(mobj);
+                        }
+                    }
+                } catch (Exception ignored) {}
+                if (out.size() >= maxResults) break;
+            }
+        }
+        return out;
     }
 
     private String extractJsonFromCodeBlock(String content) {

@@ -64,7 +64,7 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
         this.aiAssistant.setEnabledTools(com.codex.apk.ToolSpec.defaultFileTools());
 
         SharedPreferences settingsPrefs = activity.getSharedPreferences("settings", Context.MODE_PRIVATE);
-        String defaultModelName = settingsPrefs.getString("selected_model", AIModel.fromModelId("gemini-2.5-flash").getDisplayName());
+        String defaultModelName = settingsPrefs.getString("selected_model", AIModel.fromModelId("qwen3-coder-plus").getDisplayName());
         AIModel defaultModel = AIModel.fromDisplayName(defaultModelName);
         if (defaultModel != null) {
             this.aiAssistant.setCurrentModel(defaultModel);
@@ -131,9 +131,21 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                         String summary = aiProcessor.applyFileAction(detail);
                         appliedSummaries.add(summary);
                     }
+                    // Post-apply verification
+                    ProjectVerifier verifier = new ProjectVerifier();
+                    ProjectVerifier.VerificationResult vr = verifier.verify(message.getProposedFileChanges(), activity.getProjectDirectory());
 
                     activity.runOnUiThread(() -> {
-                        activity.showToast("AI actions applied successfully!");
+                        if (vr.ok) {
+                            activity.showToast("AI actions applied successfully!");
+                        } else {
+                            activity.showToast("Applied with issues. Tap message for details.");
+                            // Append issues to message content for quick visibility
+                            StringBuilder c = new StringBuilder(message.getContent() != null ? message.getContent() : "");
+                            c.append("\n\n[Verification]\n");
+                            int shown = 0; for (String iss : vr.issues) { if (shown++ >= 8) break; c.append("- ").append(iss).append("\n"); }
+                            message.setContent(c.toString());
+                        }
                         message.setStatus(ChatMessage.STATUS_ACCEPTED);
                         message.setActionSummaries(appliedSummaries);
                         AIChatFragment aiChatFragment = activity.getAiChatFragment();
@@ -198,13 +210,32 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                 });
             }
 
+            // Post-batch verification for this message batch
+            ProjectVerifier verifier = new ProjectVerifier();
+            ProjectVerifier.VerificationResult vr = verifier.verify(steps, activity.getProjectDirectory());
+
             activity.runOnUiThread(() -> {
                 message.setStatus(ChatMessage.STATUS_ACCEPTED);
                 AIChatFragment frag = activity.getAiChatFragment();
                 if (frag != null) frag.updateMessage(messagePosition, message);
                 activity.tabManager.refreshOpenTabsAfterAi();
                 activity.loadFileTree();
-                activity.showToast("Agent step applied");
+                if (vr.ok) {
+                    activity.showToast("Agent step applied");
+                } else {
+                    activity.showToast("Applied with issues; continuing.");
+                    // Surface issues into plan message (if available)
+                    if (lastPlanMessagePosition != null && frag != null) {
+                        ChatMessage planMsg = frag.getMessageAt(lastPlanMessagePosition);
+                        if (planMsg != null) {
+                            StringBuilder c = new StringBuilder(planMsg.getContent() != null ? planMsg.getContent() : "");
+                            c.append("\n\n[Verification]\n");
+                            int shown = 0; for (String iss : vr.issues) { if (shown++ >= 8) break; c.append("- ").append(iss).append("\n"); }
+                            planMsg.setContent(c.toString());
+                            frag.updateMessage(lastPlanMessagePosition, planMsg);
+                        }
+                    }
+                }
                 // After finishing this file_operation batch as part of plan, advance to next step automatically
                 if (isExecutingPlan) {
                     sendNextPlanStepFollowUp();

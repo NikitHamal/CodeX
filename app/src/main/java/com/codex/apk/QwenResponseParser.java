@@ -40,6 +40,10 @@ public class QwenResponseParser {
         public final String newPath;
         public final String search;
         public final String replace;
+        // Line-edit fields
+        public final Integer startLine;
+        public final Integer deleteCount;
+        public final List<String> insertLines;
         // Advanced fields
         public final String updateType;
         public final String searchPattern;
@@ -53,6 +57,7 @@ public class QwenResponseParser {
         public final String diffFormat;
 
         public FileOperation(String type, String path, String content, String oldPath, String newPath, String search, String replace,
+                             Integer startLine, Integer deleteCount, List<String> insertLines,
                              String updateType, String searchPattern, String replaceWith, String diffPatch,
                              Boolean createBackup, Boolean validateContent, String contentType,
                              String errorHandling, Boolean generateDiff, String diffFormat) {
@@ -63,6 +68,9 @@ public class QwenResponseParser {
             this.newPath = newPath;
             this.search = search;
             this.replace = replace;
+            this.startLine = startLine;
+            this.deleteCount = deleteCount;
+            this.insertLines = insertLines;
             this.updateType = updateType;
             this.searchPattern = searchPattern;
             this.replaceWith = replaceWith;
@@ -150,7 +158,17 @@ public class QwenResponseParser {
                 Boolean generateDiff = jsonObj.has("generateDiff") ? jsonObj.get("generateDiff").getAsBoolean() : null;
                 String diffFormat = jsonObj.has("diffFormat") ? jsonObj.get("diffFormat").getAsString() : null;
 
+                Integer startLine = jsonObj.has("startLine") ? jsonObj.get("startLine").getAsInt() : null;
+                Integer deleteCount = jsonObj.has("deleteCount") ? jsonObj.get("deleteCount").getAsInt() : null;
+                List<String> insertLines = null;
+                if (jsonObj.has("insertLines") && jsonObj.get("insertLines").isJsonArray()) {
+                    insertLines = new ArrayList<>();
+                    JsonArray arr = jsonObj.getAsJsonArray("insertLines");
+                    for (int i = 0; i < arr.size(); i++) insertLines.add(arr.get(i).getAsString());
+                }
+
                 operations.add(new FileOperation(type, path, content, oldPath, newPath, search, replace,
+                        startLine, deleteCount, insertLines,
                         updateType, searchPattern, replaceWith, diffPatch, createBackup, validateContent, contentType,
                         errorHandling, generateDiff, diffFormat));
 
@@ -201,8 +219,17 @@ public class QwenResponseParser {
                 String errorHandling = operation.has("errorHandling") ? operation.get("errorHandling").getAsString() : null;
                 Boolean generateDiff = operation.has("generateDiff") ? operation.get("generateDiff").getAsBoolean() : null;
                 String diffFormat = operation.has("diffFormat") ? operation.get("diffFormat").getAsString() : null;
+                Integer startLine = operation.has("startLine") ? operation.get("startLine").getAsInt() : null;
+                Integer deleteCount = operation.has("deleteCount") ? operation.get("deleteCount").getAsInt() : null;
+                List<String> insertLines = null;
+                if (operation.has("insertLines") && operation.get("insertLines").isJsonArray()) {
+                    insertLines = new ArrayList<>();
+                    JsonArray arr = operation.getAsJsonArray("insertLines");
+                    for (int j = 0; j < arr.size(); j++) insertLines.add(arr.get(j).getAsString());
+                }
                 
                 operations.add(new FileOperation(type, path, content, oldPath, newPath, search, replace,
+                        startLine, deleteCount, insertLines,
                         updateType, searchPattern, replaceWith, diffPatch, createBackup, validateContent, contentType,
                         errorHandling, generateDiff, diffFormat));
             }
@@ -253,7 +280,12 @@ public class QwenResponseParser {
         
         for (FileOperation op : response.operations) {
             ChatMessage.FileActionDetail detail = new ChatMessage.FileActionDetail(
-                op.type, op.path, op.oldPath, op.newPath, "", op.content, 0, 0, null, op.search, op.replace
+                op.type, op.path, op.oldPath, op.newPath,
+                "", op.content,
+                op.startLine != null ? op.startLine : 0,
+                op.deleteCount != null ? op.deleteCount : 0,
+                op.insertLines,
+                op.search, op.replace
             );
             // Map advanced fields
             if (op.updateType != null) detail.updateType = op.updateType;

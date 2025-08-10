@@ -140,10 +140,14 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                             activity.showToast("AI actions applied successfully!");
                         } else {
                             activity.showToast("Applied with issues. Tap message for details.");
-                            // Append issues to message content for quick visibility
+                            // Append issues and lint findings to message content for quick visibility
                             StringBuilder c = new StringBuilder(message.getContent() != null ? message.getContent() : "");
                             c.append("\n\n[Verification]\n");
                             int shown = 0; for (String iss : vr.issues) { if (shown++ >= 8) break; c.append("- ").append(iss).append("\n"); }
+                            if (vr.lintIssues != null && !vr.lintIssues.isEmpty()) {
+                                c.append("\n[Lint] (first 10)\n");
+                                int lcount = 0; for (com.codex.apk.lint.LintIssue li : vr.lintIssues) { if (lcount++ >= 10) break; c.append("- ").append(li.toString()).append("\n"); }
+                            }
                             message.setContent(c.toString());
                         }
                         message.setStatus(ChatMessage.STATUS_ACCEPTED);
@@ -231,6 +235,10 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                             StringBuilder c = new StringBuilder(planMsg.getContent() != null ? planMsg.getContent() : "");
                             c.append("\n\n[Verification]\n");
                             int shown = 0; for (String iss : vr.issues) { if (shown++ >= 8) break; c.append("- ").append(iss).append("\n"); }
+                            if (vr.lintIssues != null && !vr.lintIssues.isEmpty()) {
+                                c.append("\n[Lint] (first 10)\n");
+                                int lcount = 0; for (com.codex.apk.lint.LintIssue li : vr.lintIssues) { if (lcount++ >= 10) break; c.append("- ").append(li.toString()).append("\n"); }
+                            }
                             planMsg.setContent(c.toString());
                             frag.updateMessage(lastPlanMessagePosition, planMsg);
                         }

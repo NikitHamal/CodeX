@@ -157,6 +157,16 @@ public class ToolSpec {
                         new String[]{"Search query or regex pattern", "Maximum number of results", "Treat query as regex"}
                 )));
 
+        // fixLint
+        tools.add(new ToolSpec(
+                "fixLint",
+                "Apply simple auto-fixes for common HTML/CSS/JS lint issues (adds missing doctype, alt/type, balances brackets).",
+                buildSchema(
+                        new String[]{"path", "aggressive"},
+                        new String[]{"string", "boolean"},
+                        new String[]{"Relative path to the file", "Allow more aggressive fixes (may alter formatting)"}
+                )));
+
         return tools;
     }
 

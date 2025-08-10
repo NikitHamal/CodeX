@@ -456,6 +456,22 @@ public class QwenApiClient implements ApiClient {
                     result.addProperty("message", "Renamed to: " + newPath);
                     break;
                 }
+                case "fixLint": {
+                    String path = args.get("path").getAsString();
+                    boolean aggressive = args.has("aggressive") && args.get("aggressive").getAsBoolean();
+                    java.io.File file = new java.io.File(projectDir, path);
+                    if (!file.exists()) {
+                        result.addProperty("ok", false);
+                        result.addProperty("error", "File not found");
+                        break;
+                    }
+                    String content = new String(java.nio.file.Files.readAllBytes(file.toPath()), java.nio.charset.StandardCharsets.UTF_8);
+                    String fixed = autoFix(path, content, aggressive);
+                    java.nio.file.Files.write(file.toPath(), fixed.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                    result.addProperty("ok", true);
+                    result.addProperty("message", "Applied basic lint fixes");
+                    break;
+                }
                 case "readFile": {
                     String path = args.get("path").getAsString();
                     java.io.File file = new java.io.File(projectDir, path);
@@ -513,6 +529,35 @@ public class QwenApiClient implements ApiClient {
             }
         }
         return f.delete();
+    }
+
+    private String autoFix(String path, String content, boolean aggressive) {
+        String lower = path.toLowerCase();
+        if (lower.endsWith(".html") || lower.endsWith(".htm")) {
+            String out = content;
+            if (!out.toLowerCase().contains("<!doctype")) out = "<!DOCTYPE html>\n" + out;
+            if (out.toLowerCase().contains("<img ") && !out.toLowerCase().contains(" alt=")) {
+                out = out.replaceAll("<img ", "<img alt=\"\" ");
+            }
+            return out;
+        }
+        if (lower.endsWith(".css")) {
+            // Attempt to balance braces by appending missing closes (very conservative)
+            int open = 0; for (int i=0;i<content.length();i++){ char c=content.charAt(i); if (c=='{') open++; else if (c=='}') open--; }
+            StringBuilder out = new StringBuilder(content);
+            while (open>0) { out.append("}\n"); open--; }
+            return out.toString();
+        }
+        if (lower.endsWith(".js")) {
+            // Balance brackets conservatively by appending closes
+            int par=0, brc=0, brk=0; for (int i=0;i<content.length();i++){ char c=content.charAt(i); if (c=='(') par++; else if(c==')') par--; if (c=='{') brc++; else if(c=='}') brc--; if (c=='[') brk++; else if(c==']') brk--; }
+            StringBuilder out = new StringBuilder(content);
+            while (par>0){ out.append(')'); par--; }
+            while (brc>0){ out.append('}'); brc--; }
+            while (brk>0){ out.append(']'); brk--; }
+            return out.toString();
+        }
+        return content;
     }
 
     private String buildFileTree(java.io.File root, int maxDepth, int maxEntries) {

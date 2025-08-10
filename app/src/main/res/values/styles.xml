@@ -115,9 +115,10 @@
     <!-- Custom Chip Style with Custom Font -->
     <style name="Widget.App.Chip.Choice" parent="Widget.Material3.Chip.Filter">
         <item name="android:textAppearance">@style/TextAppearance.App.Chip</item>
-        <item name="chipCornerRadius">8dp</item>
+        <item name="chipCornerRadius">30dp</item>
         <item name="chipBackgroundColor">@color/chip_background_color</item>
         <item name="android:textColor">@color/chip_text_color</item>
+        <item name="checkedIconVisible">false</item>
     </style>
 
     <style name="TextAppearance.App.Chip" parent="TextAppearance.Material3.LabelLarge">

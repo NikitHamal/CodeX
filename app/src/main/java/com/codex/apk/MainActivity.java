@@ -201,7 +201,8 @@ public class MainActivity extends AppCompatActivity {
             urlInput.setEnabled(false);
 
             // Start cloning
-            gitManager.cloneRepository(url, null, new GitManager.GitCloneCallback() {
+            String projectName = gitManager.extractProjectNameFromUrl(url);
+            gitManager.cloneRepository(url, projectName, new GitManager.GitCloneCallback() {
                 @Override
                 public void onProgress(String message, int progress) {
                     runOnUiThread(() -> {

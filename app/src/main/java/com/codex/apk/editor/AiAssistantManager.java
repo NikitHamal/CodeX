@@ -137,20 +137,8 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                     ProjectVerifier.VerificationResult vr = verifier.verify(message.getProposedFileChanges(), activity.getProjectDirectory());
 
                     activity.runOnUiThread(() -> {
-                        if (vr.ok) {
-                            activity.showToast("AI actions applied successfully!");
-                        } else {
-                            activity.showToast("Applied with issues. Tap message for details.");
-                            // Append issues and lint findings to message content for quick visibility
-                            StringBuilder c = new StringBuilder(message.getContent() != null ? message.getContent() : "");
-                            c.append("\n\n[Verification]\n");
-                            int shown = 0; for (String iss : vr.issues) { if (shown++ >= 8) break; c.append("- ").append(iss).append("\n"); }
-                            if (vr.lintIssues != null && !vr.lintIssues.isEmpty()) {
-                                c.append("\n[Lint] (first 10)\n");
-                                int lcount = 0; for (com.codex.apk.lint.LintIssue li : vr.lintIssues) { if (lcount++ >= 10) break; c.append("- ").append(li.toString()).append("\n"); }
-                            }
-                            message.setContent(c.toString());
-                        }
+                        // Always keep chat concise; do not append lint details
+                        activity.showToast(vr.ok ? "AI actions applied successfully!" : "Applied with issues.");
                         message.setStatus(ChatMessage.STATUS_ACCEPTED);
                         message.setActionSummaries(appliedSummaries);
                         AIChatFragment aiChatFragment = activity.getAiChatFragment();
@@ -225,26 +213,7 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                 if (frag != null) frag.updateMessage(messagePosition, message);
                 activity.tabManager.refreshOpenTabsAfterAi();
                 activity.loadFileTree();
-                if (vr.ok) {
-                    activity.showToast("Agent step applied");
-                } else {
-                    activity.showToast("Applied with issues; continuing.");
-                    // Surface issues into plan message (if available)
-                    if (lastPlanMessagePosition != null && frag != null) {
-                        ChatMessage planMsg = frag.getMessageAt(lastPlanMessagePosition);
-                        if (planMsg != null) {
-                            StringBuilder c = new StringBuilder(planMsg.getContent() != null ? planMsg.getContent() : "");
-                            c.append("\n\n[Verification]\n");
-                            int shown = 0; for (String iss : vr.issues) { if (shown++ >= 8) break; c.append("- ").append(iss).append("\n"); }
-                            if (vr.lintIssues != null && !vr.lintIssues.isEmpty()) {
-                                c.append("\n[Lint] (first 10)\n");
-                                int lcount = 0; for (com.codex.apk.lint.LintIssue li : vr.lintIssues) { if (lcount++ >= 10) break; c.append("- ").append(li.toString()).append("\n"); }
-                            }
-                            planMsg.setContent(c.toString());
-                            frag.updateMessage(lastPlanMessagePosition, planMsg);
-                        }
-                    }
-                }
+                activity.showToast(vr.ok ? "Agent step applied" : "Applied with issues; continuing.");
                 // After finishing this file_operation batch as part of plan, advance to next step automatically
                 if (isExecutingPlan) {
                     sendNextPlanStepFollowUp();

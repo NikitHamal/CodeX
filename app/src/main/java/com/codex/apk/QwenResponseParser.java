@@ -198,10 +198,30 @@ public class QwenResponseParser {
             JsonArray operationsArray = jsonObj.getAsJsonArray("operations");
             for (int i = 0; i < operationsArray.size(); i++) {
                 JsonObject operation = operationsArray.get(i).getAsJsonObject();
-                
+
                 String type = operation.get("type").getAsString();
                 String path = operation.has("path") ? operation.get("path").getAsString() : "";
-                String content = operation.has("content") ? operation.get("content").getAsString() : 
+
+                // If modifyLines is present with search/replace pairs, expand into multiple searchAndReplace operations
+                if (operation.has("modifyLines") && operation.get("modifyLines").isJsonArray()) {
+                    JsonArray hunks = operation.getAsJsonArray("modifyLines");
+                    for (int j = 0; j < hunks.size(); j++) {
+                        try {
+                            JsonObject h = hunks.get(j).getAsJsonObject();
+                            String s = h.has("search") ? h.get("search").getAsString() : null;
+                            String r = h.has("replace") ? h.get("replace").getAsString() : null;
+                            if (s == null || r == null) continue;
+                            operations.add(new FileOperation(
+                                "searchAndReplace", path, "", "", "", s, r,
+                                null, null, null,
+                                null, null, null, null, null, null, null, null
+                            ));
+                        } catch (Exception ignored) {}
+                    }
+                    continue;
+                }
+
+                String content = operation.has("content") ? operation.get("content").getAsString() :
                                (operation.has("newContent") ? operation.get("newContent").getAsString() : "");
                 String oldPath = operation.has("oldPath") ? operation.get("oldPath").getAsString() : "";
                 String newPath = operation.has("newPath") ? operation.get("newPath").getAsString() : "";
@@ -227,7 +247,7 @@ public class QwenResponseParser {
                     JsonArray arr = operation.getAsJsonArray("insertLines");
                     for (int j = 0; j < arr.size(); j++) insertLines.add(arr.get(j).getAsString());
                 }
-                
+
                 operations.add(new FileOperation(type, path, content, oldPath, newPath, search, replace,
                         startLine, deleteCount, insertLines,
                         updateType, searchPattern, replaceWith, diffPatch, createBackup, validateContent, contentType,

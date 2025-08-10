@@ -90,11 +90,6 @@ public class GitManager {
                         public boolean isCancelled() {
                             return false;
                         }
-
-                        @Override
-                        public void showDuration(boolean enabled) {
-                            // Duration display not needed for this implementation
-                        }
                     })
                     .call();
 

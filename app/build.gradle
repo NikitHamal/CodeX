@@ -32,7 +32,6 @@ android {
 		}
 	}
 	compileOptions {
-		coreLibraryDesugaringEnabled true
 		sourceCompatibility JavaVersion.VERSION_17
 		targetCompatibility JavaVersion.VERSION_17
 	}
@@ -42,7 +41,6 @@ android {
 }
 
 dependencies {
-	coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.5'
 	implementation fileTree(dir: 'libs', include: ['*.jar'])
 	implementation 'androidx.appcompat:appcompat:1.7.0'
 	implementation 'com.google.android.material:material:1.12.0'
@@ -73,6 +71,22 @@ dependencies {
 	
 	// Animation libraries for smooth transitions
 	implementation 'androidx.dynamicanimation:dynamicanimation:1.0.0'
+	
+	// Git operations and enhanced functionality
+	implementation 'org.eclipse.jgit:org.eclipse.jgit:6.7.0.202309050840-r'
+	implementation 'org.eclipse.jgit:org.eclipse.jgit.ssh.apache:6.7.0.202309050840-r'
+	implementation 'org.eclipse.jgit:org.eclipse.jgit.http:6.7.0.202309050840-r'
+	
+	// Enhanced UI components
+	implementation 'androidx.cardview:cardview:1.0.0'
+	implementation 'androidx.swiperefreshlayout:swiperefreshlayout:1.1.0'
+	
+	// Local server functionality
+	implementation 'com.squareup.okhttp3:okhttp:4.9.3'
+	implementation 'com.squareup.okhttp3:mockwebserver:4.9.3'
+	
+	// Enhanced file operations
+	implementation 'commons-io:commons-io:2.11.0'
 }
 
 configurations.all {

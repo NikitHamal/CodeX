@@ -41,4 +41,47 @@
         <item>med</item>
         <item>sem</item>
     </string-array>
+    
+    <!-- New arrays for enhanced project creation -->
+    <string-array name="project_types">
+        <item>Empty</item>
+        <item>HTML/CSS/JS</item>
+        <item>React App</item>
+        <item>Next.js App</item>
+        <item>Vue.js App</item>
+        <item>Angular App</item>
+        <item>Node.js Backend</item>
+        <item>Python Backend</item>
+        <item>PHP Backend</item>
+        <item>Tailwind CSS</item>
+        <item>Bootstrap</item>
+        <item>Material-UI</item>
+    </string-array>
+    
+    <string-array name="project_type_values">
+        <item>empty</item>
+        <item>html_css_js</item>
+        <item>react</item>
+        <item>nextjs</item>
+        <item>vue</item>
+        <item>angular</item>
+        <item>node</item>
+        <item>python</item>
+        <item>php</item>
+        <item>tailwind</item>
+        <item>bootstrap</item>
+        <item>material_ui</item>
+    </string-array>
+    
+    <string-array name="template_styles">
+        <item>Empty</item>
+        <item>Basic</item>
+        <item>Responsive</item>
+    </string-array>
+    
+    <string-array name="template_style_values">
+        <item>empty</item>
+        <item>basic</item>
+        <item>responsive</item>
+    </string-array>
 </resources>

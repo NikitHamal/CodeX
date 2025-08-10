@@ -27,5 +27,22 @@
         android:checked="false"
         app:showAsAction="never" />
 
+    <item
+        android:id="@+id/action_open_in_browser"
+        android:icon="@drawable/icon_open_in_new_round"
+        android:title="Open in Browser"
+        app:showAsAction="never" />
+
+    <item
+        android:id="@+id/action_start_local_server"
+        android:icon="@drawable/ic_server"
+        android:title="Start Local Server"
+        app:showAsAction="never" />
+
+    <item
+        android:id="@+id/action_stop_local_server"
+        android:icon="@drawable/ic_stop"
+        android:title="Stop Local Server"
+        app:showAsAction="never" />
 
 </menu>

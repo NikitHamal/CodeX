@@ -27,6 +27,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
+import com.codex.apk.LocalServerManager;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -71,6 +72,10 @@ public class PreviewActivity extends AppCompatActivity {
     private static final long MAX_CACHE_SIZE = 50 * 1024 * 1024; // 50MB cache limit
     private long currentCacheSize = 0;
 
+    // Local server management
+    private LocalServerManager localServerManager;
+    private boolean isLocalServerRunning = false;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -85,6 +90,9 @@ public class PreviewActivity extends AppCompatActivity {
 
         // Setup toolbar
         setupToolbar();
+
+        // Initialize local server manager
+        localServerManager = new LocalServerManager(this);
 
         // Setup WebView with full capabilities
         setupWebView();
@@ -372,6 +380,19 @@ public class PreviewActivity extends AppCompatActivity {
         if (desktopModeMenuItem != null) {
             desktopModeMenuItem.setChecked(isDesktopModeEnabled);
         }
+        
+        // Update local server menu items
+        MenuItem startServerMenuItem = menu.findItem(R.id.action_start_local_server);
+        MenuItem stopServerMenuItem = menu.findItem(R.id.action_stop_local_server);
+        
+        if (startServerMenuItem != null) {
+            startServerMenuItem.setEnabled(!isLocalServerRunning);
+        }
+        
+        if (stopServerMenuItem != null) {
+            stopServerMenuItem.setEnabled(isLocalServerRunning);
+        }
+        
         return super.onPrepareOptionsMenu(menu);
     }
 
@@ -403,14 +424,245 @@ public class PreviewActivity extends AppCompatActivity {
             isDesktopModeEnabled = item.isChecked();
             webViewPreview.reload();
             return true;
+        } else if (id == R.id.action_open_in_browser) {
+            openInBrowser();
+            return true;
+        } else if (id == R.id.action_start_local_server) {
+            startLocalServer();
+            return true;
+        } else if (id == R.id.action_stop_local_server) {
+            stopLocalServer();
+            return true;
         }
 
         return super.onOptionsItemSelected(item);
     }
 
+    private void openInBrowser() {
+        try {
+            // Get the current file path
+            String filePath = null;
+            if (htmlContent != null && !htmlContent.trim().isEmpty()) {
+                // If we have HTML content, save it to a temporary file first
+                File tempFile = new File(projectDir, "temp_preview.html");
+                java.io.FileWriter writer = new java.io.FileWriter(tempFile);
+                writer.write(htmlContent);
+                writer.close();
+                filePath = tempFile.getAbsolutePath();
+            } else if (projectDir != null) {
+                // Try to find the main HTML file
+                File htmlFile = new File(projectDir, fileName);
+                if (!htmlFile.exists()) {
+                    htmlFile = new File(projectDir, "index.html");
+                }
+                if (htmlFile.exists()) {
+                    filePath = htmlFile.getAbsolutePath();
+                }
+            }
+
+            if (filePath != null) {
+                // Create a file URI and open in browser
+                Uri fileUri = Uri.fromFile(new File(filePath));
+                Intent intent = new Intent(Intent.ACTION_VIEW);
+                intent.setDataAndType(fileUri, "text/html");
+                intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                
+                // Try to open in browser
+                if (intent.resolveActivity(getPackageManager()) != null) {
+                    startActivity(intent);
+                    Toast.makeText(this, "Opening in browser...", Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(this, "No browser app found", Toast.LENGTH_SHORT).show();
+                }
+            } else {
+                Toast.makeText(this, "No HTML file found to open", Toast.LENGTH_SHORT).show();
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error opening in browser", e);
+            Toast.makeText(this, "Error opening in browser: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void startLocalServer() {
+        if (isLocalServerRunning) {
+            Toast.makeText(this, "Local server is already running", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        try {
+            // Get project path and type
+            String projectPath = projectDir != null ? projectDir.getAbsolutePath() : "";
+            String projectType = detectProjectType();
+            
+            // Start the server with callback
+            localServerManager.startServer(projectPath, projectType, 8080, new LocalServerManager.ServerCallback() {
+                @Override
+                public void onServerStarted(int port) {
+                    runOnUiThread(() -> {
+                        isLocalServerRunning = true;
+                        String serverUrl = localServerManager.getServerUrl();
+                        addConsoleMessage("Local server started at: " + serverUrl);
+                        Toast.makeText(PreviewActivity.this, "Local server started at " + serverUrl, Toast.LENGTH_LONG).show();
+                        invalidateOptionsMenu();
+                    });
+                }
+
+                @Override
+                public void onServerStopped() {
+                    runOnUiThread(() -> {
+                        isLocalServerRunning = false;
+                        invalidateOptionsMenu();
+                    });
+                }
+
+                @Override
+                public void onError(String error) {
+                    runOnUiThread(() -> {
+                        Toast.makeText(PreviewActivity.this, "Error starting local server: " + error, Toast.LENGTH_LONG).show();
+                        Log.e(TAG, "Local server error: " + error);
+                    });
+                }
+            });
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Error starting local server", e);
+            Toast.makeText(this, "Error starting local server: " + e.getMessage(), Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void stopLocalServer() {
+        if (!isLocalServerRunning) {
+            Toast.makeText(this, "Local server is not running", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        try {
+            localServerManager.stopServer(new LocalServerManager.ServerCallback() {
+                @Override
+                public void onServerStarted(int port) {
+                    // Not used for stop operation
+                }
+
+                @Override
+                public void onServerStopped() {
+                    runOnUiThread(() -> {
+                        isLocalServerRunning = false;
+                        addConsoleMessage("Local server stopped");
+                        Toast.makeText(PreviewActivity.this, "Local server stopped", Toast.LENGTH_SHORT).show();
+                        invalidateOptionsMenu();
+                    });
+                }
+
+                @Override
+                public void onError(String error) {
+                    runOnUiThread(() -> {
+                        Toast.makeText(PreviewActivity.this, "Error stopping local server: " + error, Toast.LENGTH_LONG).show();
+                        Log.e(TAG, "Local server stop error: " + error);
+                    });
+                }
+            });
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Error stopping local server", e);
+            Toast.makeText(this, "Error stopping local server: " + e.getMessage(), Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private String detectProjectType() {
+        if (projectDir == null) return "html";
+        
+        // Check for package.json (Node.js/React/Next.js)
+        if (new File(projectDir, "package.json").exists()) {
+            try {
+                // Read package.json to determine exact type
+                java.io.BufferedReader reader = new java.io.BufferedReader(
+                    new java.io.FileReader(new File(projectDir, "package.json")));
+                StringBuilder content = new StringBuilder();
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    content.append(line);
+                }
+                reader.close();
+                
+                String packageContent = content.toString().toLowerCase();
+                if (packageContent.contains("react") && packageContent.contains("next")) {
+                    return "nextjs";
+                } else if (packageContent.contains("react")) {
+                    return "react";
+                } else if (packageContent.contains("vue")) {
+                    return "vue";
+                } else if (packageContent.contains("angular")) {
+                    return "angular";
+                } else {
+                    return "node";
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Error reading package.json", e);
+                return "node";
+            }
+        }
+        
+        // Check for Python files
+        if (new File(projectDir, "requirements.txt").exists() || 
+            new File(projectDir, "app.py").exists() || 
+            new File(projectDir, "main.py").exists()) {
+            return "python";
+        }
+        
+        // Check for PHP files
+        if (new File(projectDir, "composer.json").exists() || 
+            new File(projectDir, "index.php").exists()) {
+            return "php";
+        }
+        
+        // Check for Tailwind CSS
+        if (new File(projectDir, "tailwind.config.js").exists() || 
+            new File(projectDir, "tailwind.config.cjs").exists()) {
+            return "tailwind";
+        }
+        
+        // Check for Bootstrap
+        if (new File(projectDir, "bootstrap.min.css").exists() || 
+            new File(projectDir, "bootstrap.css").exists()) {
+            return "bootstrap";
+        }
+        
+        // Check for Material-UI
+        if (new File(projectDir, "material-ui").exists() || 
+            new File(projectDir, "mui").exists()) {
+            return "material_ui";
+        }
+        
+        // Default to HTML/CSS/JS
+        return "html";
+    }
+
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        
+        // Stop local server if running
+        if (isLocalServerRunning && localServerManager != null) {
+            try {
+                localServerManager.stopServer(new LocalServerManager.ServerCallback() {
+                    @Override
+                    public void onServerStarted(int port) {}
+
+                    @Override
+                    public void onServerStopped() {
+                        isLocalServerRunning = false;
+                    }
+
+                    @Override
+                    public void onError(String error) {
+                        Log.e(TAG, "Error stopping local server on destroy: " + error);
+                    }
+                });
+            } catch (Exception e) {
+                Log.e(TAG, "Error stopping local server on destroy", e);
+            }
+        }
+        
         if (webViewPreview != null) {
             webViewPreview.removeAllViews();
             webViewPreview.destroy();

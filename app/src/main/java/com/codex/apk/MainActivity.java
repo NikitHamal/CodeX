@@ -8,6 +8,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
@@ -15,6 +16,8 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.button.MaterialButton;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import com.google.android.material.textfield.TextInputEditText;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -31,6 +34,7 @@ public class MainActivity extends AppCompatActivity {
     public ProjectManager projectManager;
     public PermissionManager permissionManager;
     public ProjectImportExportManager importExportManager;
+    public GitManager gitManager;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -51,6 +55,7 @@ public class MainActivity extends AppCompatActivity {
         projectManager = new ProjectManager(this, projectsList, projectsAdapter);
         permissionManager = new PermissionManager(this);
         importExportManager = new ProjectImportExportManager(this);
+        gitManager = new GitManager(this);
 
         // Setup UI
         projectsRecyclerView.setLayoutManager(new LinearLayoutManager(this));
@@ -151,9 +156,9 @@ public class MainActivity extends AppCompatActivity {
             bottomSheet.dismiss();
             importExportManager.importProject();
         });
-        view.findViewById(R.id.action_open_settings).setOnClickListener(v -> {
+        view.findViewById(R.id.action_git_clone).setOnClickListener(v -> {
             bottomSheet.dismiss();
-            startActivity(new Intent(this, SettingsActivity.class));
+            showGitCloneDialog();
         });
         view.findViewById(R.id.action_open_about).setOnClickListener(v -> {
             bottomSheet.dismiss();
@@ -161,6 +166,77 @@ public class MainActivity extends AppCompatActivity {
         });
         bottomSheet.setContentView(view);
         bottomSheet.show();
+    }
+
+    private void showGitCloneDialog() {
+        View dialogView = getLayoutInflater().inflate(R.layout.dialog_git_clone, null);
+        TextInputEditText urlInput = dialogView.findViewById(R.id.edittext_repo_url);
+        View progressLayout = dialogView.findViewById(R.id.layout_progress);
+        TextView progressStatus = dialogView.findViewById(R.id.text_progress_status);
+        TextView progressDetails = dialogView.findViewById(R.id.text_progress_details);
+        MaterialButton cloneButton = dialogView.findViewById(R.id.button_clone);
+        MaterialButton cancelButton = dialogView.findViewById(R.id.button_cancel);
+
+        MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(this)
+                .setView(dialogView)
+                .setCancelable(false);
+
+        android.app.AlertDialog dialog = builder.create();
+
+        cloneButton.setOnClickListener(v -> {
+            String url = urlInput.getText().toString().trim();
+            if (url.isEmpty()) {
+                Toast.makeText(this, "Please enter a repository URL", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            if (!gitManager.isValidGitUrl(url)) {
+                Toast.makeText(this, "Please enter a valid Git repository URL", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            // Show progress
+            progressLayout.setVisibility(View.VISIBLE);
+            cloneButton.setEnabled(false);
+            urlInput.setEnabled(false);
+
+            // Start cloning
+            gitManager.cloneRepository(url, null, new GitManager.GitCloneCallback() {
+                @Override
+                public void onProgress(String message, int progress) {
+                    runOnUiThread(() -> {
+                        progressDetails.setText(message);
+                        if (progress >= 0) {
+                            progressStatus.setText("Cloning repository... " + progress + "%");
+                        }
+                    });
+                }
+
+                @Override
+                public void onSuccess(String projectPath, String projectName) {
+                    runOnUiThread(() -> {
+                        Toast.makeText(MainActivity.this, 
+                            "Repository cloned successfully: " + projectName, Toast.LENGTH_LONG).show();
+                        dialog.dismiss();
+                        projectManager.loadProjectsList();
+                    });
+                }
+
+                @Override
+                public void onError(String error) {
+                    runOnUiThread(() -> {
+                        Toast.makeText(MainActivity.this, "Error: " + error, Toast.LENGTH_LONG).show();
+                        progressLayout.setVisibility(View.GONE);
+                        cloneButton.setEnabled(true);
+                        urlInput.setEnabled(true);
+                    });
+                }
+            });
+        });
+
+        cancelButton.setOnClickListener(v -> dialog.dismiss());
+
+        dialog.show();
     }
 
     // Getter methods for managers to access activity context or other managers if needed

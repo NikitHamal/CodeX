@@ -37,6 +37,7 @@ public class GeminiFreeApiClient implements ApiClient {
     private static final String INIT_URL = "https://gemini.google.com/app";
     private static final String GOOGLE_URL = "https://www.google.com";
     private static final String GENERATE_URL = "https://gemini.google.com/_/BardChatUi/data/assistant.lamda.BardFrontendService/StreamGenerate";
+    private static final String ROTATE_COOKIES_URL = "https://accounts.google.com/RotateCookies";
 
     private final Context context;
     private final AIAssistant.AIActionListener actionListener;
@@ -87,6 +88,9 @@ public class GeminiFreeApiClient implements ApiClient {
                     return;
                 }
 
+                // Optionally rotate 1PSIDTS to keep fresh
+                rotate1psidtsIfPossible(cookies);
+
                 // Step 3: POST to StreamGenerate with model header and f.req
                 String modelId = model != null ? model.getModelId() : "gemini-2.5-flash";
                 Headers requestHeaders = buildGeminiHeaders(modelId);
@@ -100,8 +104,35 @@ public class GeminiFreeApiClient implements ApiClient {
 
                 try (Response resp = httpClient.newCall(req).execute()) {
                     if (!resp.isSuccessful() || resp.body() == null) {
+                        // Retry once: re-init token and try again (handles expired token case)
                         String errBody = null;
                         try { errBody = resp.body() != null ? resp.body().string() : null; } catch (Exception ignore) {}
+                        Log.w(TAG, "Gemini request failed (first attempt): " + resp.code() + ", body=" + errBody);
+
+                        accessToken = fetchAccessToken(cookies);
+                        if (accessToken != null) {
+                            Request retry = new Request.Builder()
+                                    .url(GENERATE_URL)
+                                    .headers(requestHeaders)
+                                    .header("Cookie", buildCookieHeader(cookies))
+                                    .post(buildGenerateForm(accessToken, message, null))
+                                    .build();
+                            try (Response resp2 = httpClient.newCall(retry).execute()) {
+                                if (!resp2.isSuccessful() || resp2.body() == null) {
+                                    String errBody2 = null;
+                                    try { errBody2 = resp2.body() != null ? resp2.body().string() : null; } catch (Exception ignore) {}
+                                    if (actionListener != null) actionListener.onAiError("Gemini request failed: " + resp2.code() + (errBody2 != null ? ": " + errBody2 : ""));
+                                    return;
+                                }
+                                String body2 = resp2.body().string();
+                                String text2 = parseStreamGenerateResponse(body2);
+                                if (actionListener != null) {
+                                    actionListener.onAiActionsProcessed(null, text2, new ArrayList<>(), new ArrayList<>(), model != null ? model.getDisplayName() : "Gemini (Free)");
+                                }
+                                return;
+                            }
+                        }
+
                         if (actionListener != null) actionListener.onAiError("Gemini request failed: " + resp.code() + (errBody != null ? ": " + errBody : ""));
                         return;
                     }
@@ -155,6 +186,31 @@ public class GeminiFreeApiClient implements ApiClient {
             }
         }
         return null;
+    }
+
+    private void rotate1psidtsIfPossible(Map<String, String> cookies) {
+        try {
+            if (!cookies.containsKey("__Secure-1PSID")) return;
+            Request req = new Request.Builder()
+                    .url(ROTATE_COOKIES_URL)
+                    .post(RequestBody.create("[000,\"-0000000000000000000\"]", MediaType.parse("application/json")))
+                    .headers(Headers.of(new HashMap<String, String>() {{
+                        put("Content-Type", "application/json");
+                    }}))
+                    .header("Cookie", buildCookieHeader(cookies))
+                    .build();
+            try (Response resp = httpClient.newCall(req).execute()) {
+                if (resp.code() == 401) return; // unauthorized, keep old
+                if (!resp.isSuccessful()) return;
+                if (resp.headers("Set-Cookie") != null) {
+                    for (String c : resp.headers("Set-Cookie")) {
+                        String[] parts = c.split(";", 2);
+                        String[] kv = parts[0].split("=", 2);
+                        if (kv.length == 2) cookies.put(kv[0], kv[1]);
+                    }
+                }
+            }
+        } catch (Exception ignore) {}
     }
 
     private Headers buildGeminiHeaders(String modelId) {

@@ -171,11 +171,11 @@ public class GeminiFreeApiClient implements ApiClient {
         // We send minimal: prompt only.
         JsonArray inner = new JsonArray();
         inner.add(prompt);
-        inner.add(null);
-        inner.add(null);
+        inner.add(com.google.gson.JsonNull.INSTANCE);
+        inner.add(com.google.gson.JsonNull.INSTANCE);
         String jsonInner = inner.toString();
         JsonArray outer = new JsonArray();
-        outer.add((String) null);
+        outer.add(com.google.gson.JsonNull.INSTANCE);
         outer.add(jsonInner);
         String fReq = outer.toString();
 

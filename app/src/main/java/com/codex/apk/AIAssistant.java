@@ -30,6 +30,8 @@ public class AIAssistant {
         apiClients.put(AIProvider.ALIBABA, new QwenApiClient(context, actionListener, null)); // projectDir can be set later
         // Register GLM client for Z provider
         apiClients.put(AIProvider.Z, new GLMApiClient(actionListener));
+        // Register Free Gemini client for FREE provider
+        apiClients.put(AIProvider.FREE, new GeminiFreeApiClient(context, actionListener));
     }
 
     // Legacy constructor for compatibility

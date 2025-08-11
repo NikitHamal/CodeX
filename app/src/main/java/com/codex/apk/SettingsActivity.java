@@ -69,6 +69,8 @@ public class SettingsActivity extends AppCompatActivity {
 		// Initialize settings controls from the layout
 		com.google.android.material.textfield.TextInputEditText apiKeyEditText = findViewById(R.id.edit_text_api_key);
 		com.google.android.material.textfield.TextInputEditText huggingFaceTokenEditText = findViewById(R.id.edit_text_hugging_face_token);
+		com.google.android.material.textfield.TextInputEditText cookie1psidEditText = findViewById(R.id.edit_text_secure_1psid);
+		com.google.android.material.textfield.TextInputEditText cookie1psidtsEditText = findViewById(R.id.edit_text_secure_1psidts);
 		LinearLayout modelSelectorLayout = findViewById(R.id.layout_model_selector);
 		TextView selectedModelText = findViewById(R.id.text_selected_model);
 		LinearLayout themeSelectorLayout = findViewById(R.id.layout_theme_selector);
@@ -81,6 +83,8 @@ public class SettingsActivity extends AppCompatActivity {
 		String savedHuggingFaceToken = prefs.getString("huggingface_token", "");
 		String savedModel = prefs.getString("selected_model", "Gemini 2.5 Flash");
 		String savedTheme = defaultPrefs.getString("app_theme", "light");
+		String saved1psid = prefs.getString("secure_1psid", "");
+		String saved1psidts = prefs.getString("secure_1psidts", "");
 		
 		if (apiKeyEditText != null) {
 			apiKeyEditText.setText(savedApiKey);
@@ -88,6 +92,13 @@ public class SettingsActivity extends AppCompatActivity {
 
 		if (huggingFaceTokenEditText != null) {
 			huggingFaceTokenEditText.setText(savedHuggingFaceToken);
+		}
+		
+		if (cookie1psidEditText != null) {
+			cookie1psidEditText.setText(saved1psid);
+		}
+		if (cookie1psidtsEditText != null) {
+			cookie1psidtsEditText.setText(saved1psidts);
 		}
 		
 		if (selectedModelText != null) {
@@ -184,6 +195,48 @@ public class SettingsActivity extends AppCompatActivity {
 						prefs.edit().putString("huggingface_token", token).apply();
 					};
 					handler.postDelayed(saveRunnable, 1000); // Save after 1 second of no typing
+				}
+			});
+		}
+
+		if (cookie1psidEditText != null) {
+			cookie1psidEditText.setOnFocusChangeListener((v, hasFocus) -> {
+				if (!hasFocus) {
+					String val = cookie1psidEditText.getText().toString().trim();
+					prefs.edit().putString("secure_1psid", val).apply();
+					Toast.makeText(this, "__Secure-1PSID saved", Toast.LENGTH_SHORT).show();
+				}
+			});
+			cookie1psidEditText.addTextChangedListener(new android.text.TextWatcher() {
+				private android.os.Handler handler = new android.os.Handler(android.os.Looper.getMainLooper());
+				private Runnable saveRunnable;
+				public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+				public void onTextChanged(CharSequence s, int start, int before, int count) {}
+				public void afterTextChanged(android.text.Editable s) {
+					if (saveRunnable != null) handler.removeCallbacks(saveRunnable);
+					saveRunnable = () -> prefs.edit().putString("secure_1psid", s.toString().trim()).apply();
+					handler.postDelayed(saveRunnable, 1000);
+				}
+			});
+		}
+
+		if (cookie1psidtsEditText != null) {
+			cookie1psidtsEditText.setOnFocusChangeListener((v, hasFocus) -> {
+				if (!hasFocus) {
+					String val = cookie1psidtsEditText.getText().toString().trim();
+					prefs.edit().putString("secure_1psidts", val).apply();
+					Toast.makeText(this, "__Secure-1PSIDTS saved", Toast.LENGTH_SHORT).show();
+				}
+			});
+			cookie1psidtsEditText.addTextChangedListener(new android.text.TextWatcher() {
+				private android.os.Handler handler = new android.os.Handler(android.os.Looper.getMainLooper());
+				private Runnable saveRunnable;
+				public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+				public void onTextChanged(CharSequence s, int start, int before, int count) {}
+				public void afterTextChanged(android.text.Editable s) {
+					if (saveRunnable != null) handler.removeCallbacks(saveRunnable);
+					saveRunnable = () -> prefs.edit().putString("secure_1psidts", s.toString().trim()).apply();
+					handler.postDelayed(saveRunnable, 1000);
 				}
 			});
 		}
@@ -304,7 +357,7 @@ public class SettingsActivity extends AppCompatActivity {
 			ListPreference themePreference = findPreference("app_theme");
 			if (themePreference != null) {
 				themePreference.setSummaryProvider(ListPreference.SimpleSummaryProvider.getInstance());
-							themePreference.setOnPreferenceChangeListener((preference, newValue) -> {
+						themePreference.setOnPreferenceChangeListener((preference, newValue) -> {
 				String theme = (String) newValue;
 				if (getActivity() != null) {
 					ThemeManager.switchTheme(getActivity(), theme);
@@ -398,25 +451,25 @@ public class SettingsActivity extends AppCompatActivity {
 			}
 
 			
-            // Default read-only preference
-            SwitchPreferenceCompat readOnlyPref = findPreference("default_read_only");
-            if (readOnlyPref != null) {
-                readOnlyPref.setOnPreferenceChangeListener((preference, newValue) -> {
-                    boolean enabled = (Boolean) newValue;
-                    Toast.makeText(getContext(), enabled ? "Read-only by default" : "Editable by default", Toast.LENGTH_SHORT).show();
-                    return true;
-                });
-            }
+			// Default read-only preference
+			SwitchPreferenceCompat readOnlyPref = findPreference("default_read_only");
+			if (readOnlyPref != null) {
+				readOnlyPref.setOnPreferenceChangeListener((preference, newValue) -> {
+					boolean enabled = (Boolean) newValue;
+					Toast.makeText(getContext(), enabled ? "Read-only by default" : "Editable by default", Toast.LENGTH_SHORT).show();
+					return true;
+				});
+			}
 
-            // Default wrap preference
-            SwitchPreferenceCompat wrapPref = findPreference("default_word_wrap");
-            if (wrapPref != null) {
-                wrapPref.setOnPreferenceChangeListener((preference, newValue) -> {
-                    boolean enabled = (Boolean) newValue;
-                    Toast.makeText(getContext(), enabled ? "Word wrap enabled by default" : "Word wrap disabled by default", Toast.LENGTH_SHORT).show();
-                    return true;
-                });
-            }
+			// Default wrap preference
+			SwitchPreferenceCompat wrapPref = findPreference("default_word_wrap");
+			if (wrapPref != null) {
+				wrapPref.setOnPreferenceChangeListener((preference, newValue) -> {
+					boolean enabled = (Boolean) newValue;
+					Toast.makeText(getContext(), enabled ? "Word wrap enabled by default" : "Word wrap disabled by default", Toast.LENGTH_SHORT).show();
+					return true;
+				});
+			}
 			
 			// Line numbers preference
 			SwitchPreferenceCompat lineNumbersPreference = findPreference("line_numbers");
@@ -502,6 +555,14 @@ public class SettingsActivity extends AppCompatActivity {
 	
 	public static String getQwenApiToken(Context context) {
 		return getPreferences(context).getString("qwen_api_token", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjhiYjQ1NjVmLTk3NjUtNDQwNi04OWQ5LTI3NmExMTIxMjBkNiIsImxhc3RfcGFzc3dvcmRfY2hhbmdlIjoxNzUwNjYwODczLCJleHAiOjE3NTU4NDg1NDh9.pb0IybY9tQkriqMUOos72FKtZM3G4p1_aDzwqqh5zX4");
+	}
+
+	public static String getSecure1PSID(Context context) {
+		return getPreferences(context).getString("secure_1psid", "");
+	}
+
+	public static String getSecure1PSIDTS(Context context) {
+		return getPreferences(context).getString("secure_1psidts", "");
 	}
 
     public static boolean isDefaultReadOnly(android.content.Context context) {

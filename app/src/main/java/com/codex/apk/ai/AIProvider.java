@@ -4,7 +4,8 @@ public enum AIProvider {
     GOOGLE("Google"),
     HUGGINGFACE("Huggingface"),
     ALIBABA("Alibaba"),
-    Z("Z");
+    Z("Z"),
+    FREE("Free");
 
     private final String displayName;
 

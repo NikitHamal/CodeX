@@ -66,7 +66,12 @@ public class AIModel {
             new AIModel("glm-4v", "GLM-4V", AIProvider.Z, new ModelCapabilities(false, false, true, true, true, false, true, 128000, 4096)),
             new AIModel("cogview-3-plus", "CogView-3-Plus", AIProvider.Z, new ModelCapabilities(false, false, false, false, false, false, false, 0, 0)),
             new AIModel("cogvideox", "CogVideoX", AIProvider.Z, new ModelCapabilities(false, false, false, false, false, true, false, 0, 0)),
-            new AIModel("glm-4-alltools", "GLM-4-AllTools", AIProvider.Z, new ModelCapabilities(false, false, true, true, false, false, true, 128000, 4096))
+            new AIModel("glm-4-alltools", "GLM-4-AllTools", AIProvider.Z, new ModelCapabilities(false, false, true, true, false, false, true, 128000, 4096)),
+
+            // Free Provider (Gemini reverse-engineered)
+            new AIModel("gemini-2.5-flash", "Gemini 2.5 Flash (Free)", AIProvider.FREE, new ModelCapabilities(true, true, true, true, true, true, true, 1048576, 8192)),
+            new AIModel("gemini-2.5-pro", "Gemini 2.5 Pro (Free)", AIProvider.FREE, new ModelCapabilities(true, true, true, true, true, true, true, 2097152, 8192)),
+            new AIModel("gemini-2.0-flash", "Gemini 2.0 Flash (Free)", AIProvider.FREE, new ModelCapabilities(true, true, true, true, true, true, true, 1048576, 8192))
         ));
         for (AIModel model : initialModels) {
             modelsByProvider.computeIfAbsent(model.getProvider(), k -> new ArrayList<>()).add(model);

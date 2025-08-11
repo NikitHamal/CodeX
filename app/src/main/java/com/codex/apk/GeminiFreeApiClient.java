@@ -80,7 +80,7 @@ public class GeminiFreeApiClient implements ApiClient {
                     }
                 }
 
-                // Step 2: fetch SNlM0e access token from INIT page with cookies
+                // Step 2: fetch SNlM0e access token from INIT page with cookies (merge any Set-Cookie into our cookie jar)
                 String accessToken = fetchAccessToken(cookies);
                 if (accessToken == null) {
                     if (actionListener != null) actionListener.onAiError("Failed to retrieve access token from Gemini INIT page");
@@ -100,7 +100,9 @@ public class GeminiFreeApiClient implements ApiClient {
 
                 try (Response resp = httpClient.newCall(req).execute()) {
                     if (!resp.isSuccessful() || resp.body() == null) {
-                        if (actionListener != null) actionListener.onAiError("Gemini request failed: " + resp.code());
+                        String errBody = null;
+                        try { errBody = resp.body() != null ? resp.body().string() : null; } catch (Exception ignore) {}
+                        if (actionListener != null) actionListener.onAiError("Gemini request failed: " + resp.code() + (errBody != null ? ": " + errBody : ""));
                         return;
                     }
                     String body = resp.body().string();
@@ -137,6 +139,14 @@ public class GeminiFreeApiClient implements ApiClient {
                 .build();
         try (Response resp = httpClient.newCall(init).execute()) {
             if (!resp.isSuccessful() || resp.body() == null) return null;
+            // Merge Set-Cookie from INIT into cookies map
+            if (resp.headers("Set-Cookie") != null) {
+                for (String c : resp.headers("Set-Cookie")) {
+                    String[] parts = c.split(";", 2);
+                    String[] kv = parts[0].split("=", 2);
+                    if (kv.length == 2) cookies.put(kv[0], kv[1]);
+                }
+            }
             String html = resp.body().string();
             // Extract "SNlM0e":"<token>"
             java.util.regex.Matcher m = java.util.regex.Pattern.compile("\"SNlM0e\":\"(.*?)\"").matcher(html);
@@ -155,6 +165,7 @@ public class GeminiFreeApiClient implements ApiClient {
         headers.put("Referer", "https://gemini.google.com/");
         headers.put("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
         headers.put("X-Same-Domain", "1");
+        headers.put("Accept", "*/*");
         // Per-model header similar to x-goog-ext-525001261-jspb in reference; minimal without it may still work for flash.
         if ("gemini-2.5-flash".equals(modelId)) {
             headers.put("x-goog-ext-525001261-jspb", "[1,null,null,null,\"71c2d248d3b102ff\"]");
@@ -170,7 +181,9 @@ public class GeminiFreeApiClient implements ApiClient {
         // Build f.req according to reference: [null, json.dumps([ prompt_or_files, null, chat_metadata ])]
         // We send minimal: prompt only.
         JsonArray inner = new JsonArray();
-        inner.add(prompt);
+        JsonArray promptArray = new JsonArray();
+        promptArray.add(prompt);
+        inner.add(promptArray);
         inner.add(com.google.gson.JsonNull.INSTANCE);
         inner.add(com.google.gson.JsonNull.INSTANCE);
         String jsonInner = inner.toString();
@@ -180,8 +193,8 @@ public class GeminiFreeApiClient implements ApiClient {
         String fReq = outer.toString();
 
         return new FormBody.Builder()
-                .add("at", accessToken)
-                .add("f.req", fReq)
+                .addEncoded("at", accessToken)
+                .addEncoded("f.req", fReq)
                 .build();
     }
 

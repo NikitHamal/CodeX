@@ -53,7 +53,13 @@ public class AIAssistant {
     public void sendMessage(String message, List<ChatMessage> chatHistory, QwenConversationState qwenState, List<File> attachments) {
         ApiClient client = apiClients.get(currentModel.getProvider());
         if (client != null) {
-            client.sendMessage(message, currentModel, chatHistory, qwenState, thinkingModeEnabled, webSearchEnabled, enabledTools, attachments);
+            String finalMessage = message;
+            if (currentModel.getProvider() == AIProvider.FREE) {
+                // Prepend system prompt for agent/coding parity with Qwen
+                String system = PromptManager.createSystemMessage(enabledTools).get("content").getAsString();
+                finalMessage = system + "\n\n" + message;
+            }
+            client.sendMessage(finalMessage, currentModel, chatHistory, qwenState, thinkingModeEnabled, webSearchEnabled, enabledTools, attachments);
         } else {
             if (actionListener != null) {
                 actionListener.onAiError("API client for provider " + currentModel.getProvider() + " not found.");

@@ -565,6 +565,20 @@ public class SettingsActivity extends AppCompatActivity {
 		return getPreferences(context).getString("secure_1psidts", "");
 	}
 
+	// Custom prompt settings
+	public static String getCustomFileOpsPrompt(Context context) {
+		return getPreferences(context).getString("custom_fileops_prompt", "");
+	}
+	public static void setCustomFileOpsPrompt(Context context, String prompt) {
+		getPreferences(context).edit().putString("custom_fileops_prompt", prompt != null ? prompt : "").apply();
+	}
+	public static String getCustomGeneralPrompt(Context context) {
+		return getPreferences(context).getString("custom_general_prompt", "");
+	}
+	public static void setCustomGeneralPrompt(Context context, String prompt) {
+		getPreferences(context).edit().putString("custom_general_prompt", prompt != null ? prompt : "").apply();
+	}
+
 	// Cache helpers for __Secure-1PSIDTS keyed by the 1PSID value
 	public static String getCached1psidts(Context context, String psid) {
 		if (psid == null || psid.isEmpty()) return "";

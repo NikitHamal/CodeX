@@ -17,6 +17,8 @@ public class PromptManager {
     }
 
     private static String getFileOpsSystemPrompt() {
+        String custom = SettingsActivity.getCustomFileOpsPrompt(CodeXApplication.getAppContext());
+        if (custom != null && !custom.isEmpty()) return custom;
         return "You are CodexAgent, an autonomous AI inside a code IDE strictly for web development (HTML, CSS, JavaScript).\n\n" +
                "ALWAYS: \n" +
                "- Use TailwindCSS when possible (import <script src=\\\"https://cdn.tailwindcss.com\\\"></script> in <head> when needed).\n" +
@@ -62,6 +64,8 @@ public class PromptManager {
     }
 
     private static String getGeneralSystemPrompt() {
+        String custom = SettingsActivity.getCustomGeneralPrompt(CodeXApplication.getAppContext());
+        if (custom != null && !custom.isEmpty()) return custom;
         return "You are CodexAgent, an AI inside a code editor for web development (HTML/CSS/JS).\n\n" +
                "- Use TailwindCSS when feasible; otherwise minimal custom CSS.\n" +
                "- Focus on accessibility, responsiveness, and modern patterns.\n\n" +

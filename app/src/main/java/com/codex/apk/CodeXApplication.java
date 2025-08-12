@@ -1,6 +1,7 @@
 package com.codex.apk;
 
 import android.app.Application;
+import android.content.Context;
 import android.content.Intent;
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -11,9 +12,12 @@ import java.io.StringWriter;
  */
 public class CodeXApplication extends Application {
 
+    private static CodeXApplication instance;
+
     @Override
     public void onCreate() {
         super.onCreate();
+        instance = this;
 
         // Set up theme based on user preferences at app startup
         ThemeManager.setupTheme(this);
@@ -25,6 +29,10 @@ public class CodeXApplication extends Application {
                 handleUncaughtException(e);
             }
         });
+    }
+
+    public static Context getAppContext() {
+        return instance != null ? instance.getApplicationContext() : null;
     }
 
     private void handleUncaughtException(Throwable e) {

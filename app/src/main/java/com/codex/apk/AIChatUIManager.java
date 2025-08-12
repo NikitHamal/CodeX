@@ -99,6 +99,7 @@ public class AIChatUIManager {
         RecyclerView huggingfaceModels = dialogView.findViewById(R.id.recycler_huggingface_models);
         RecyclerView alibabaModels = dialogView.findViewById(R.id.recycler_alibaba_models);
         RecyclerView zModels = dialogView.findViewById(R.id.recycler_z_models);
+        RecyclerView freeModels = dialogView.findViewById(R.id.recycler_free_models);
 
         ImageView refreshAlibaba = dialogView.findViewById(R.id.button_refresh_alibaba);
         ImageView refreshZ = dialogView.findViewById(R.id.button_refresh_z);
@@ -108,6 +109,7 @@ public class AIChatUIManager {
         setupProviderModels(huggingfaceModels, AIProvider.HUGGINGFACE, aiAssistant);
         setupProviderModels(alibabaModels, AIProvider.ALIBABA, aiAssistant);
         setupProviderModels(zModels, AIProvider.Z, aiAssistant);
+        setupProviderModels(freeModels, AIProvider.FREE, aiAssistant);
 
         refreshAlibaba.setOnClickListener(v -> {
             aiAssistant.refreshModelsForProvider(AIProvider.ALIBABA, new AIAssistant.RefreshCallback() {
@@ -198,7 +200,6 @@ public class AIChatUIManager {
         boolean hasSettings = capabilities.supportsThinking || capabilities.supportsWebSearch;
 
         buttonAiSettings.setEnabled(hasSettings);
-        buttonAiSettings.setAlpha(hasSettings ? 1.0f : 0.5f);
     }
 
     public void setListeners() {

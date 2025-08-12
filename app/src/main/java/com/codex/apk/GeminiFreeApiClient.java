@@ -9,6 +9,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -21,10 +22,12 @@ import java.util.concurrent.TimeUnit;
 import okhttp3.FormBody;
 import okhttp3.Headers;
 import okhttp3.MediaType;
+import okhttp3.MultipartBody;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
+import okio.BufferedSource;
 
 /**
  * Reverse-engineered Gemini client using cookies (__Secure-1PSID, __Secure-1PSIDTS).
@@ -37,6 +40,7 @@ public class GeminiFreeApiClient implements ApiClient {
     private static final String GOOGLE_URL = "https://www.google.com";
     private static final String GENERATE_URL = "https://gemini.google.com/_/BardChatUi/data/assistant.lamda.BardFrontendService/StreamGenerate";
     private static final String ROTATE_COOKIES_URL = "https://accounts.google.com/RotateCookies";
+    private static final String UPLOAD_URL = "https://content-push.googleapis.com/upload";
 
     private final Context context;
     private final AIAssistant.AIActionListener actionListener;
@@ -57,7 +61,7 @@ public class GeminiFreeApiClient implements ApiClient {
     }
 
     @Override
-    public void sendMessage(String message, AIModel model, List<ChatMessage> history, QwenConversationState unused, boolean thinkingModeEnabled, boolean webSearchEnabled, List<ToolSpec> enabledTools, List<java.io.File> attachments) {
+    public void sendMessage(String message, AIModel model, List<ChatMessage> history, QwenConversationState unused, boolean thinkingModeEnabled, boolean webSearchEnabled, List<ToolSpec> enabledTools, List<File> attachments) {
         new Thread(() -> {
             try {
                 if (actionListener != null) actionListener.onAiRequestStarted();
@@ -107,7 +111,19 @@ public class GeminiFreeApiClient implements ApiClient {
                     chatMeta = priorMeta; // Stored as JSON array string like [cid, rid, rcid]
                 }
 
-                RequestBody formBody = buildGenerateForm(accessToken, message, chatMeta);
+                // Upload attachments minimally and build files array entries
+                List<File> imageFiles = attachments != null ? attachments : new ArrayList<>();
+                List<UploadedRef> uploaded = new ArrayList<>();
+                for (File f : imageFiles) {
+                    try {
+                        String identifier = uploadFileReturnId(cookies, f);
+                        if (identifier != null) uploaded.add(new UploadedRef(identifier, f.getName()));
+                    } catch (Exception e) {
+                        Log.w(TAG, "Upload failed for " + f.getName() + ": " + e.getMessage());
+                    }
+                }
+
+                RequestBody formBody = buildGenerateForm(accessToken, message, chatMeta, uploaded);
                 Request req = new Request.Builder()
                         .url(GENERATE_URL)
                         .headers(requestHeaders)
@@ -127,7 +143,7 @@ public class GeminiFreeApiClient implements ApiClient {
                                     .url(GENERATE_URL)
                                     .headers(requestHeaders)
                                     .header("Cookie", buildCookieHeader(cookies))
-                                    .post(buildGenerateForm(accessToken, message, chatMeta))
+                                    .post(buildGenerateForm(accessToken, message, chatMeta, uploaded))
                                     .build();
                             try (Response resp2 = httpClient.newCall(retry).execute()) {
                                 if (!resp2.isSuccessful() || resp2.body() == null) {
@@ -150,7 +166,37 @@ public class GeminiFreeApiClient implements ApiClient {
                         if (actionListener != null) actionListener.onAiError("Gemini request failed: " + resp.code() + (errBody != null ? ": " + errBody : ""));
                         return;
                     }
-                    String body = resp.body().string();
+
+                    // Stream parse lines for partial updates
+                    BufferedSource source = resp.body().source();
+                    StringBuilder full = new StringBuilder();
+                    while (!source.exhausted()) {
+                        String line = source.readUtf8Line();
+                        if (line == null) break;
+                        full.append(line).append("\n");
+                        // emit incremental thinking/text when possible
+                        try {
+                            String[] parts = full.toString().split("\n");
+                            if (parts.length >= 3) {
+                                com.google.gson.JsonArray responseJson = JsonParser.parseString(parts[2]).getAsJsonArray();
+                                // naive partial: look at last part for candidate delta
+                                for (int i = 0; i < responseJson.size(); i++) {
+                                    try {
+                                        com.google.gson.JsonArray part = JsonParser.parseString(responseJson.get(i).getAsJsonArray().get(2).getAsString()).getAsJsonArray();
+                                        if (part.size() > 4 && !part.get(4).isJsonNull()) {
+                                            com.google.gson.JsonArray candidates = part.get(4).getAsJsonArray();
+                                            if (candidates.size() > 0) {
+                                                String partial = candidates.get(0).getAsJsonArray().get(1).getAsJsonArray().get(0).getAsString();
+                                                if (actionListener != null) actionListener.onAiStreamUpdate(partial, false);
+                                            }
+                                        }
+                                    } catch (Exception ignore) {}
+                                }
+                            }
+                        } catch (Exception ignore) {}
+                    }
+
+                    String body = full.toString();
                     ParsedOutput parsed = parseOutputFromStream(body);
                     persistConversationMetaIfAvailable(modelId, body);
                     String explanation = buildExplanationWithThinking(parsed.text, parsed.thoughts);
@@ -258,6 +304,30 @@ public class GeminiFreeApiClient implements ApiClient {
         }, 9, 9, TimeUnit.MINUTES); // default 540s in python
     }
 
+    private String uploadFileReturnId(Map<String, String> cookies, File file) throws IOException {
+        RequestBody fileBody = RequestBody.create(okio.Okio.buffer(okio.Okio.source(file)).readByteArray(), MediaType.parse("application/octet-stream"));
+        RequestBody multipart = new MultipartBody.Builder()
+                .setType(MultipartBody.FORM)
+                .addFormDataPart("file", file.getName(), fileBody)
+                .build();
+        Request upload = new Request.Builder()
+                .url(UPLOAD_URL)
+                .header("Push-ID", "feeds/mcudyrk2a4khkz")
+                .header("Cookie", buildCookieHeader(cookies))
+                .post(multipart)
+                .build();
+        try (Response r = httpClient.newCall(upload).execute()) {
+            if (!r.isSuccessful() || r.body() == null) throw new IOException("Upload failed: " + r.code());
+            return r.body().string();
+        }
+    }
+
+    private static class UploadedRef {
+        final String id;
+        final String name;
+        UploadedRef(String id, String name) { this.id = id; this.name = name; }
+    }
+
     private Headers buildGeminiHeaders(String modelId) {
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/x-www-form-urlencoded;charset=utf-8");
@@ -278,13 +348,32 @@ public class GeminiFreeApiClient implements ApiClient {
         return Headers.of(headers);
     }
 
-    private RequestBody buildGenerateForm(String accessToken, String prompt, String chatMetadataJsonArray) {
-        // Build f.req according to reference: [null, json.dumps([ prompt_or_files, null, chat_metadata ])]
-        // We send minimal: prompt only.
+    private RequestBody buildGenerateForm(String accessToken, String prompt, String chatMetadataJsonArray, List<UploadedRef> uploaded) {
         JsonArray inner = new JsonArray();
-        JsonArray promptArray = new JsonArray();
-        promptArray.add(prompt);
-        inner.add(promptArray);
+        if (uploaded != null && !uploaded.isEmpty()) {
+            // files payload: [ prompt, 0, null, [ [ [id], name ], ... ] ]
+            JsonArray filesEntry = new JsonArray();
+            filesEntry.add(prompt);
+            filesEntry.add(0);
+            filesEntry.add(com.google.gson.JsonNull.INSTANCE);
+            JsonArray filesArray = new JsonArray();
+            for (UploadedRef ur : uploaded) {
+                JsonArray item = new JsonArray();
+                JsonArray idArr = new JsonArray();
+                idArr.add(ur.id);
+                JsonArray pair = new JsonArray();
+                pair.add(idArr);
+                item.add(pair);
+                item.add(ur.name);
+                filesArray.add(item);
+            }
+            filesEntry.add(filesArray);
+            inner.add(filesEntry);
+        } else {
+            JsonArray promptArray = new JsonArray();
+            promptArray.add(prompt);
+            inner.add(promptArray);
+        }
         inner.add(com.google.gson.JsonNull.INSTANCE);
         if (chatMetadataJsonArray != null && !chatMetadataJsonArray.isEmpty()) {
             try {

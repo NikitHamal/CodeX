@@ -10,8 +10,6 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
 import java.io.IOException;
-import java.net.CookieManager;
-import java.net.CookiePolicy;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -20,7 +18,6 @@ import java.util.concurrent.TimeUnit;
 
 import okhttp3.FormBody;
 import okhttp3.Headers;
-import okhttp3.HttpUrl;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -48,8 +45,9 @@ public class GeminiFreeApiClient implements ApiClient {
         this.actionListener = actionListener;
         this.httpClient = new OkHttpClient.Builder()
                 .followRedirects(true)
-                .connectTimeout(30, TimeUnit.SECONDS)
-                .readTimeout(60, TimeUnit.SECONDS)
+                .connectTimeout(60, TimeUnit.SECONDS)
+                .writeTimeout(120, TimeUnit.SECONDS)
+                .readTimeout(180, TimeUnit.SECONDS)
                 .build();
     }
 
@@ -104,7 +102,6 @@ public class GeminiFreeApiClient implements ApiClient {
 
                 try (Response resp = httpClient.newCall(req).execute()) {
                     if (!resp.isSuccessful() || resp.body() == null) {
-                        // Retry once: re-init token and try again (handles expired token case)
                         String errBody = null;
                         try { errBody = resp.body() != null ? resp.body().string() : null; } catch (Exception ignore) {}
                         Log.w(TAG, "Gemini request failed (first attempt): " + resp.code() + ", body=" + errBody);
@@ -125,9 +122,10 @@ public class GeminiFreeApiClient implements ApiClient {
                                     return;
                                 }
                                 String body2 = resp2.body().string();
-                                String text2 = parseStreamGenerateResponse(body2);
+                                ParsedOutput parsed2 = parseOutputFromStream(body2);
+                                String explanation2 = buildExplanationWithThinking(parsed2.text, parsed2.thoughts);
                                 if (actionListener != null) {
-                                    actionListener.onAiActionsProcessed(null, text2, new ArrayList<>(), new ArrayList<>(), model != null ? model.getDisplayName() : "Gemini (Free)");
+                                    actionListener.onAiActionsProcessed(body2, explanation2, new ArrayList<>(), new ArrayList<>(), model != null ? model.getDisplayName() : "Gemini (Free)");
                                 }
                                 return;
                             }
@@ -137,9 +135,10 @@ public class GeminiFreeApiClient implements ApiClient {
                         return;
                     }
                     String body = resp.body().string();
-                    String text = parseStreamGenerateResponse(body);
+                    ParsedOutput parsed = parseOutputFromStream(body);
+                    String explanation = buildExplanationWithThinking(parsed.text, parsed.thoughts);
                     if (actionListener != null) {
-                        actionListener.onAiActionsProcessed(null, text, new ArrayList<>(), new ArrayList<>(), model != null ? model.getDisplayName() : "Gemini (Free)");
+                        actionListener.onAiActionsProcessed(body, explanation, new ArrayList<>(), new ArrayList<>(), model != null ? model.getDisplayName() : "Gemini (Free)");
                     }
                 }
             } catch (Exception e) {
@@ -254,33 +253,59 @@ public class GeminiFreeApiClient implements ApiClient {
                 .build();
     }
 
-    private String parseStreamGenerateResponse(String responseText) throws IOException {
-        // Response is text with several JSON lines; the 3rd line (index 2) contains the array; then find body part having [4]
+    // Python-style parsing adapted: returns text and thoughts when available
+    private ParsedOutput parseOutputFromStream(String responseText) throws IOException {
         try {
             String[] lines = responseText.split("\n");
             if (lines.length < 3) throw new IOException("Unexpected response");
             com.google.gson.JsonArray responseJson = JsonParser.parseString(lines[2]).getAsJsonArray();
+
             com.google.gson.JsonArray body = null;
-            int bodyIndex = -1;
-            for (int i = 0; i < responseJson.size(); i++) {
+            int bodyIndex = 0;
+            for (int partIndex = 0; partIndex < responseJson.size(); partIndex++) {
                 try {
-                    com.google.gson.JsonArray part = JsonParser.parseString(responseJson.get(i).getAsJsonArray().get(2).getAsString()).getAsJsonArray();
-                    if (part.size() > 4 && !part.get(4).isJsonNull()) {
-                        body = part;
-                        bodyIndex = i;
+                    com.google.gson.JsonArray mainPart = JsonParser.parseString(responseJson.get(partIndex).getAsJsonArray().get(2).getAsString()).getAsJsonArray();
+                    if (mainPart.size() > 4 && !mainPart.get(4).isJsonNull()) {
+                        body = mainPart;
+                        bodyIndex = partIndex;
                         break;
                     }
                 } catch (Exception ignore) {}
             }
-            if (body == null) throw new IOException("Invalid body");
+            if (body == null) throw new IOException("Invalid response body");
+
             com.google.gson.JsonArray candidates = body.get(4).getAsJsonArray();
             if (candidates.size() == 0) throw new IOException("No candidates");
-            // First candidate text at [1][0]
-            return candidates.get(0).getAsJsonArray().get(1).getAsJsonArray().get(0).getAsString();
+
+            // First candidate
+            com.google.gson.JsonArray cand = candidates.get(0).getAsJsonArray();
+            String text = cand.get(1).getAsJsonArray().get(0).getAsString();
+            if (text.matches("^http://googleusercontent\\.com/card_content/\\d+")) {
+                try {
+                    String fallback = cand.get(22).getAsJsonArray().get(0).getAsString();
+                    if (fallback != null && !fallback.isEmpty()) text = fallback;
+                } catch (Exception ignore) {}
+            }
+            String thoughts = null;
+            try {
+                thoughts = cand.get(37).getAsJsonArray().get(0).getAsJsonArray().get(0).getAsString();
+            } catch (Exception ignore) {}
+
+            return new ParsedOutput(text, thoughts);
         } catch (Exception e) {
             Log.e(TAG, "Failed to parse StreamGenerate response", e);
             throw new IOException("Failed to parse response");
         }
+    }
+
+    private String buildExplanationWithThinking(String text, String thoughts) {
+        if (thoughts == null || thoughts.isEmpty()) return text;
+        StringBuilder sb = new StringBuilder();
+        sb.append(text);
+        sb.append("\n\n");
+        sb.append("Thinking:\n");
+        sb.append(thoughts);
+        return sb.toString();
     }
 
     private Map<String, String> defaultGeminiHeaders() {
@@ -302,5 +327,14 @@ public class GeminiFreeApiClient implements ApiClient {
             sb.append(e.getKey()).append("=").append(e.getValue());
         }
         return sb.toString();
+    }
+
+    private static class ParsedOutput {
+        final String text;
+        final String thoughts;
+        ParsedOutput(String text, String thoughts) {
+            this.text = text;
+            this.thoughts = thoughts;
+        }
     }
 }

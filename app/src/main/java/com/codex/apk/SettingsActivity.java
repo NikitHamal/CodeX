@@ -579,6 +579,37 @@ public class SettingsActivity extends AppCompatActivity {
 		getPreferences(context).edit().putString("custom_general_prompt", prompt != null ? prompt : "").apply();
 	}
 
+	public static java.util.List<CustomAgent> getCustomAgents(Context context) {
+		String json = getPreferences(context).getString("custom_agents", "[]");
+		try {
+			java.util.List<CustomAgent> list = new java.util.ArrayList<>();
+			com.google.gson.JsonArray arr = com.google.gson.JsonParser.parseString(json).getAsJsonArray();
+			for (int i = 0; i < arr.size(); i++) {
+				com.google.gson.JsonObject o = arr.get(i).getAsJsonObject();
+				String id = o.has("id") ? o.get("id").getAsString() : java.util.UUID.randomUUID().toString();
+				String name = o.has("name") ? o.get("name").getAsString() : "Unnamed";
+				String prompt = o.has("prompt") ? o.get("prompt").getAsString() : "";
+				String modelId = o.has("modelId") ? o.get("modelId").getAsString() : "";
+				list.add(new CustomAgent(id, name, prompt, modelId));
+			}
+			return list;
+		} catch (Exception e) {
+			return new java.util.ArrayList<>();
+		}
+	}
+	public static void setCustomAgents(Context context, java.util.List<CustomAgent> agents) {
+		com.google.gson.JsonArray arr = new com.google.gson.JsonArray();
+		for (CustomAgent a : agents) {
+			com.google.gson.JsonObject o = new com.google.gson.JsonObject();
+			o.addProperty("id", a.id);
+			o.addProperty("name", a.name);
+			o.addProperty("prompt", a.prompt);
+			o.addProperty("modelId", a.modelId);
+			arr.add(o);
+		}
+		getPreferences(context).edit().putString("custom_agents", arr.toString()).apply();
+	}
+
 	// Cache helpers for __Secure-1PSIDTS keyed by the 1PSID value
 	public static String getCached1psidts(Context context, String psid) {
 		if (psid == null || psid.isEmpty()) return "";

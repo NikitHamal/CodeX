@@ -50,7 +50,6 @@ public class AIChatUIManager {
     private void initializeViews() {
         recyclerViewChatHistory = rootView.findViewById(R.id.recycler_view_chat_history);
         editTextAiPrompt = rootView.findViewById(R.id.edit_text_ai_prompt);
-        // The send button is a MaterialButton in the layout, but we can use ImageView for basic clicks
         buttonAiSend = rootView.findViewById(R.id.button_ai_send);
         layoutEmptyState = rootView.findViewById(R.id.layout_empty_state);
         textGreeting = rootView.findViewById(R.id.text_greeting);
@@ -59,6 +58,12 @@ public class AIChatUIManager {
         textSelectedModel = rootView.findViewById(R.id.text_selected_model);
         linearPromptInput = rootView.findViewById(R.id.linear_prompt_input);
         buttonAiSettings = rootView.findViewById(R.id.button_ai_settings);
+
+        // Long press on model selector to choose a custom agent
+        layoutModelSelectorCustom.setOnLongClickListener(v -> {
+            showAgentPickerDialog(fragment.getAiAssistant());
+            return true;
+        });
     }
 
     public void setupRecyclerView(ChatMessageAdapter adapter) {
@@ -142,6 +147,52 @@ public class AIChatUIManager {
         closeButton.setOnClickListener(v -> modelPickerDialog.dismiss());
 
         modelPickerDialog.show();
+    }
+
+    private void showAgentPickerDialog(AIAssistant aiAssistant) {
+        List<CustomAgent> agents = SettingsActivity.getCustomAgents(context);
+        if (agents.isEmpty()) {
+            Toast.makeText(context, "No custom agents configured in Settings.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        BottomSheetDialog dlg = new BottomSheetDialog(context);
+        View view = LayoutInflater.from(context).inflate(R.layout.bottom_sheet_ai_settings, null);
+        dlg.setContentView(view);
+        // Reuse simple list: show names as options
+        androidx.recyclerview.widget.RecyclerView rv = new androidx.recyclerview.widget.RecyclerView(context);
+        rv.setLayoutManager(new LinearLayoutManager(context));
+        rv.setAdapter(new RecyclerView.Adapter<RecyclerView.ViewHolder>() {
+            @Override public RecyclerView.ViewHolder onCreateViewHolder(android.view.ViewGroup parent, int viewType) {
+                TextView tv = new TextView(context);
+                tv.setPadding(32, 32, 32, 32);
+                tv.setTextColor(context.getColor(R.color.on_surface));
+                return new RecyclerView.ViewHolder(tv) {};
+            }
+            @Override public void onBindViewHolder(RecyclerView.ViewHolder holder, int position) {
+                TextView tv = (TextView) holder.itemView;
+                CustomAgent a = agents.get(position);
+                tv.setText(a.name + " (" + a.modelId + ")");
+                tv.setOnClickListener(v -> {
+                    AIModel model = AIModel.fromModelId(a.modelId);
+                    if (model != null) {
+                        aiAssistant.setCurrentModel(model);
+                        textSelectedModel.setText(model.getDisplayName());
+                        if (a.prompt != null && !a.prompt.isEmpty()) {
+                            // Prepend custom agent prompt to current input for next send
+                            String existing = editTextAiPrompt.getText().toString();
+                            editTextAiPrompt.setText(a.prompt + "\n\n" + existing);
+                            editTextAiPrompt.setSelection(editTextAiPrompt.getText().length());
+                        }
+                        dlg.dismiss();
+                    } else {
+                        Toast.makeText(context, "Model not found: " + a.modelId, Toast.LENGTH_SHORT).show();
+                    }
+                });
+            }
+            @Override public int getItemCount() { return agents.size(); }
+        });
+        dlg.setContentView(rv);
+        dlg.show();
     }
 
     private void setupProviderModels(RecyclerView recyclerView, AIProvider provider, AIAssistant aiAssistant) {

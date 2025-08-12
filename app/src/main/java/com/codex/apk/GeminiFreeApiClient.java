@@ -99,7 +99,15 @@ public class GeminiFreeApiClient implements ApiClient {
 
                 String modelId = model != null ? model.getModelId() : "gemini-2.5-flash";
                 Headers requestHeaders = buildGeminiHeaders(modelId);
-                RequestBody formBody = buildGenerateForm(accessToken, message, null);
+
+                // Load prior conversation metadata if any
+                String priorMeta = SettingsActivity.getFreeConversationMetadata(context, modelId);
+                String chatMeta = null;
+                if (priorMeta != null && !priorMeta.isEmpty()) {
+                    chatMeta = priorMeta; // Stored as JSON array string like [cid, rid, rcid]
+                }
+
+                RequestBody formBody = buildGenerateForm(accessToken, message, chatMeta);
                 Request req = new Request.Builder()
                         .url(GENERATE_URL)
                         .headers(requestHeaders)
@@ -119,7 +127,7 @@ public class GeminiFreeApiClient implements ApiClient {
                                     .url(GENERATE_URL)
                                     .headers(requestHeaders)
                                     .header("Cookie", buildCookieHeader(cookies))
-                                    .post(buildGenerateForm(accessToken, message, null))
+                                    .post(buildGenerateForm(accessToken, message, chatMeta))
                                     .build();
                             try (Response resp2 = httpClient.newCall(retry).execute()) {
                                 if (!resp2.isSuccessful() || resp2.body() == null) {
@@ -130,6 +138,7 @@ public class GeminiFreeApiClient implements ApiClient {
                                 }
                                 String body2 = resp2.body().string();
                                 ParsedOutput parsed2 = parseOutputFromStream(body2);
+                                persistConversationMetaIfAvailable(modelId, body2);
                                 String explanation2 = buildExplanationWithThinking(parsed2.text, parsed2.thoughts);
                                 if (actionListener != null) {
                                     actionListener.onAiActionsProcessed(body2, explanation2, new ArrayList<>(), new ArrayList<>(), model != null ? model.getDisplayName() : "Gemini (Free)");
@@ -143,6 +152,7 @@ public class GeminiFreeApiClient implements ApiClient {
                     }
                     String body = resp.body().string();
                     ParsedOutput parsed = parseOutputFromStream(body);
+                    persistConversationMetaIfAvailable(modelId, body);
                     String explanation = buildExplanationWithThinking(parsed.text, parsed.thoughts);
                     if (actionListener != null) {
                         actionListener.onAiActionsProcessed(body, explanation, new ArrayList<>(), new ArrayList<>(), model != null ? model.getDisplayName() : "Gemini (Free)");
@@ -268,7 +278,7 @@ public class GeminiFreeApiClient implements ApiClient {
         return Headers.of(headers);
     }
 
-    private RequestBody buildGenerateForm(String accessToken, String prompt, List<String> files) {
+    private RequestBody buildGenerateForm(String accessToken, String prompt, String chatMetadataJsonArray) {
         // Build f.req according to reference: [null, json.dumps([ prompt_or_files, null, chat_metadata ])]
         // We send minimal: prompt only.
         JsonArray inner = new JsonArray();
@@ -276,7 +286,15 @@ public class GeminiFreeApiClient implements ApiClient {
         promptArray.add(prompt);
         inner.add(promptArray);
         inner.add(com.google.gson.JsonNull.INSTANCE);
-        inner.add(com.google.gson.JsonNull.INSTANCE);
+        if (chatMetadataJsonArray != null && !chatMetadataJsonArray.isEmpty()) {
+            try {
+                inner.add(JsonParser.parseString(chatMetadataJsonArray).getAsJsonArray());
+            } catch (Exception e) {
+                inner.add(com.google.gson.JsonNull.INSTANCE);
+            }
+        } else {
+            inner.add(com.google.gson.JsonNull.INSTANCE);
+        }
         String jsonInner = inner.toString();
         JsonArray outer = new JsonArray();
         outer.add(com.google.gson.JsonNull.INSTANCE);
@@ -363,6 +381,27 @@ public class GeminiFreeApiClient implements ApiClient {
             sb.append(e.getKey()).append("=").append(e.getValue());
         }
         return sb.toString();
+    }
+
+    private void persistConversationMetaIfAvailable(String modelId, String rawResponse) {
+        try {
+            String[] lines = rawResponse.split("\n");
+            if (lines.length < 3) return;
+            com.google.gson.JsonArray responseJson = JsonParser.parseString(lines[2]).getAsJsonArray();
+            for (int i = 0; i < responseJson.size(); i++) {
+                try {
+                    com.google.gson.JsonArray part = JsonParser.parseString(responseJson.get(i).getAsJsonArray().get(2).getAsString()).getAsJsonArray();
+                    // body structure has metadata at [1] -> [cid, rid, rcid] possibly
+                    if (part.size() > 1 && part.get(1).isJsonArray()) {
+                        String meta = part.get(1).toString();
+                        if (meta != null && meta.length() > 2) { // simple validity check
+                            SettingsActivity.setFreeConversationMetadata(context, modelId, meta);
+                            return;
+                        }
+                    }
+                } catch (Exception ignore) {}
+            }
+        } catch (Exception ignore) {}
     }
 
     private static class ParsedOutput {

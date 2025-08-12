@@ -575,6 +575,16 @@ public class SettingsActivity extends AppCompatActivity {
 		getPreferences(context).edit().putString("cached_1psidts_" + psid, psidts).apply();
 	}
 
+	// Free provider chat metadata cache (per model id). Value is JSON array string like [cid, rid, rcid]
+	public static String getFreeConversationMetadata(Context context, String modelId) {
+		if (modelId == null) return "";
+		return getPreferences(context).getString("free_conv_meta_" + modelId, "");
+	}
+	public static void setFreeConversationMetadata(Context context, String modelId, String metadataJsonArray) {
+		if (modelId == null || metadataJsonArray == null || metadataJsonArray.isEmpty()) return;
+		getPreferences(context).edit().putString("free_conv_meta_" + modelId, metadataJsonArray).apply();
+	}
+
     public static boolean isDefaultReadOnly(android.content.Context context) {
         return getPreferences(context).getBoolean("default_read_only", false);
     }

@@ -440,7 +440,8 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                 boolean isPlan = false;
                 List<ChatMessage.PlanStep> planSteps = new ArrayList<>();
                 try {
-                    if (rawAiResponseJson != null) {
+                    boolean agentEnabled = aiAssistant != null && aiAssistant.isAgentModeEnabled();
+                    if (rawAiResponseJson != null && agentEnabled) {
                         QwenResponseParser.ParsedResponse parsed = QwenResponseParser.parseResponse(rawAiResponseJson);
                         if (parsed != null && "plan".equals(parsed.action)) {
                             isPlan = true;
@@ -490,7 +491,7 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                         new ArrayList<>(),
                         aiModelDisplayName,
                         System.currentTimeMillis(),
-                        rawAiResponseJson,
+                        (aiAssistant != null && aiAssistant.isAgentModeEnabled()) ? rawAiResponseJson : null,
                         proposedFileChanges,
                         ChatMessage.STATUS_PENDING_APPROVAL
                 );
@@ -509,10 +510,6 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                     planProgressIndex = 0;
                     executedStepSummaries.clear();
                     // Auto-execution removed, user must click "Accept"
-                    // if (aiAssistant != null && aiAssistant.isAgentModeEnabled()) {
-                    //     isExecutingPlan = true;
-                    //     sendNextPlanStepFollowUp();
-                    // }
                 } else {
                     if (aiAssistant != null && aiAssistant.isAgentModeEnabled() && proposedFileChanges != null && !proposedFileChanges.isEmpty()) {
                         onAiAcceptActions(insertedPos, aiMessage);

@@ -82,10 +82,10 @@ public class PromptManager {
     }
 
     private static String defaultGeneralPrompt() {
-        return "You are CodexAgent, an AI inside a code editor for web development (HTML/CSS/JS).\n\n" +
-               "- Use TailwindCSS when feasible; otherwise minimal custom CSS.\n" +
-               "- Focus on accessibility, responsiveness, and modern patterns.\n\n" +
-               "When building or changing a website, first output a PLAN (see format above), then file operations as separate steps per file with validation.\n" +
-               "Return strict JSON in fenced code blocks.\n";
+        return "You are an assistant inside a code editor for web development (HTML, CSS, JavaScript).\n\n" +
+               "- Answer conversationally and helpfully.\n" +
+               "- When showing code, provide minimal, clear snippets.\n" +
+               "- Do not return JSON plans or file operation schemas unless explicitly asked.\n" +
+               "- Keep responses concise and focused on the user's question.\n";
     }
 }

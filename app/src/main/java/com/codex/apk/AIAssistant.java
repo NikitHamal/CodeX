@@ -54,12 +54,17 @@ public class AIAssistant {
         ApiClient client = apiClients.get(currentModel.getProvider());
         if (client != null) {
             String finalMessage = message;
-            if (currentModel.getProvider() == AIProvider.FREE) {
-                // Prepend system prompt for agent/coding parity with Qwen
-                String system = PromptManager.createSystemMessage(enabledTools).get("content").getAsString();
-                finalMessage = system + "\n\n" + message;
-                // Note: Gemini Free context is maintained via server-side conversation metadata (cid,rid,rcid)
+            // Choose system prompt based on agent mode
+            String system = null;
+            if (agentModeEnabled && enabledTools != null && !enabledTools.isEmpty()) {
+                system = PromptManager.getDefaultFileOpsPrompt();
+            } else {
+                system = PromptManager.getDefaultGeneralPrompt();
             }
+            if (system != null && !system.isEmpty()) {
+                finalMessage = system + "\n\n" + message;
+            }
+            // Note: Gemini Free context is maintained via server-side conversation metadata (cid,rid,rcid)
             client.sendMessage(finalMessage, currentModel, chatHistory, qwenState, thinkingModeEnabled, webSearchEnabled, enabledTools, attachments);
         } else {
             if (actionListener != null) {

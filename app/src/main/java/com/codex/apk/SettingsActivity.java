@@ -3,7 +3,9 @@ package com.codex.apk;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.view.LayoutInflater;
 import android.view.MenuItem;
+import android.view.View;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -23,6 +25,7 @@ import java.util.List;
 import com.codex.apk.ai.AIModel;
 
 import com.google.android.material.appbar.MaterialToolbar;
+import com.google.android.material.button.MaterialButton;
 
 public class SettingsActivity extends AppCompatActivity {
 	
@@ -71,10 +74,14 @@ public class SettingsActivity extends AppCompatActivity {
 		com.google.android.material.textfield.TextInputEditText huggingFaceTokenEditText = findViewById(R.id.edit_text_hugging_face_token);
 		com.google.android.material.textfield.TextInputEditText cookie1psidEditText = findViewById(R.id.edit_text_secure_1psid);
 		com.google.android.material.textfield.TextInputEditText cookie1psidtsEditText = findViewById(R.id.edit_text_secure_1psidts);
+		com.google.android.material.textfield.TextInputEditText customGeneralPrompt = findViewById(R.id.edit_text_custom_general_prompt);
+		com.google.android.material.textfield.TextInputEditText customFileOpsPrompt = findViewById(R.id.edit_text_custom_fileops_prompt);
 		LinearLayout modelSelectorLayout = findViewById(R.id.layout_model_selector);
 		TextView selectedModelText = findViewById(R.id.text_selected_model);
 		LinearLayout themeSelectorLayout = findViewById(R.id.layout_theme_selector);
 		TextView selectedThemeText = findViewById(R.id.text_selected_theme);
+		MaterialButton buttonAddAgent = findViewById(R.id.button_add_agent);
+		LinearLayout containerAgents = findViewById(R.id.container_agents_list);
 		
 		// Load saved settings
 		SharedPreferences prefs = getSharedPreferences("settings", MODE_PRIVATE);
@@ -86,160 +93,124 @@ public class SettingsActivity extends AppCompatActivity {
 		String saved1psid = prefs.getString("secure_1psid", "");
 		String saved1psidts = prefs.getString("secure_1psidts", "");
 		
-		if (apiKeyEditText != null) {
-			apiKeyEditText.setText(savedApiKey);
+		if (apiKeyEditText != null) apiKeyEditText.setText(savedApiKey);
+		if (huggingFaceTokenEditText != null) huggingFaceTokenEditText.setText(savedHuggingFaceToken);
+		if (cookie1psidEditText != null) cookie1psidEditText.setText(saved1psid);
+		if (cookie1psidtsEditText != null) cookie1psidtsEditText.setText(saved1psidts);
+		if (selectedModelText != null) selectedModelText.setText(savedModel);
+		if (selectedThemeText != null) selectedThemeText.setText(getThemeDisplayName(savedTheme));
+
+		// Load custom prompts
+		if (customGeneralPrompt != null) customGeneralPrompt.setText(getCustomGeneralPrompt(this));
+		if (customFileOpsPrompt != null) customFileOpsPrompt.setText(getCustomFileOpsPrompt(this));
+
+		// Load custom agents list
+		if (containerAgents != null) {
+			renderAgentsList(containerAgents);
 		}
 
-		if (huggingFaceTokenEditText != null) {
-			huggingFaceTokenEditText.setText(savedHuggingFaceToken);
-		}
-		
-		if (cookie1psidEditText != null) {
-			cookie1psidEditText.setText(saved1psid);
-		}
-		if (cookie1psidtsEditText != null) {
-			cookie1psidtsEditText.setText(saved1psidts);
-		}
-		
-		if (selectedModelText != null) {
-			selectedModelText.setText(savedModel);
-		}
-		
-		if (selectedThemeText != null) {
-			selectedThemeText.setText(getThemeDisplayName(savedTheme));
-		}
+		// Clicks
+		if (modelSelectorLayout != null) modelSelectorLayout.setOnClickListener(v -> showModelSelector());
+		if (themeSelectorLayout != null) themeSelectorLayout.setOnClickListener(v -> showThemeSelector());
+		if (buttonAddAgent != null) buttonAddAgent.setOnClickListener(v -> showAddAgentDialog(containerAgents));
 
-		// Set up model selector click
-		if (modelSelectorLayout != null) {
-			modelSelectorLayout.setOnClickListener(v -> showModelSelector());
+		// Save handlers (keys and tokens already set up before)
+		setupDebouncedSaver(customGeneralPrompt, s -> setCustomGeneralPrompt(this, s));
+		setupDebouncedSaver(customFileOpsPrompt, s -> setCustomFileOpsPrompt(this, s));
+	}
+
+	private void setupDebouncedSaver(com.google.android.material.textfield.TextInputEditText editText, java.util.function.Consumer<String> onSave) {
+		if (editText == null) return;
+		editText.addTextChangedListener(new android.text.TextWatcher() {
+			private android.os.Handler handler = new android.os.Handler(android.os.Looper.getMainLooper());
+			private Runnable saveRunnable;
+			public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+			public void onTextChanged(CharSequence s, int start, int before, int count) {}
+			public void afterTextChanged(android.text.Editable s) {
+				if (saveRunnable != null) handler.removeCallbacks(saveRunnable);
+				saveRunnable = () -> onSave.accept(s.toString().trim());
+				handler.postDelayed(saveRunnable, 700);
+			}
+		});
+	}
+
+	private void showAddAgentDialog(LinearLayout containerAgents) {
+		View dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_new_file, null);
+		TextView title = dialogView.findViewById(R.id.text_title);
+		title.setText("Create New Agent");
+		com.google.android.material.textfield.TextInputLayout tilName = dialogView.findViewById(R.id.input_layout_name);
+		com.google.android.material.textfield.TextInputLayout tilPath = dialogView.findViewById(R.id.input_layout_path);
+		com.google.android.material.textfield.TextInputEditText etName = dialogView.findViewById(R.id.edit_text_name);
+		com.google.android.material.textfield.TextInputEditText etPrompt = dialogView.findViewById(R.id.edit_text_path);
+		tilName.setHint("Agent Name");
+		tilPath.setHint("Agent Prompt");
+		etPrompt.setMinLines(3);
+		etPrompt.setMaxLines(8);
+
+		new MaterialAlertDialogBuilder(this)
+			.setView(dialogView)
+			.setPositiveButton("Save", (d, w) -> {
+				String name = etName.getText() != null ? etName.getText().toString().trim() : "";
+				String prompt = etPrompt.getText() != null ? etPrompt.getText().toString().trim() : "";
+				if (name.isEmpty()) { Toast.makeText(this, "Name required", Toast.LENGTH_SHORT).show(); return; }
+				java.util.List<CustomAgent> agents = getCustomAgents(this);
+				String id = java.util.UUID.randomUUID().toString();
+				// default to currently selected model if available
+				String modelId = AIModel.fromDisplayName(getSharedPreferences("settings", MODE_PRIVATE).getString("selected_model", "Gemini 2.5 Flash")).getModelId();
+				agents.add(new CustomAgent(id, name, prompt, modelId));
+				setCustomAgents(this, agents);
+				renderAgentsList(containerAgents);
+			})
+			.setNegativeButton("Cancel", null)
+			.show();
+	}
+
+	private void renderAgentsList(LinearLayout container) {
+		container.removeAllViews();
+		java.util.List<CustomAgent> agents = getCustomAgents(this);
+		for (int i = 0; i < agents.size(); i++) {
+			CustomAgent a = agents.get(i);
+			View row = LayoutInflater.from(this).inflate(R.layout.item_project, container, false);
+			TextView name = row.findViewById(R.id.text_project_name);
+			TextView path = row.findViewById(R.id.text_project_path);
+			name.setText(a.name);
+			path.setText(a.modelId);
+			row.setOnClickListener(v -> showEditAgentDialog(a, container));
+			container.addView(row);
 		}
-		
-		// Set up theme selector click
-		if (themeSelectorLayout != null) {
-			themeSelectorLayout.setOnClickListener(v -> showThemeSelector());
-		}
+	}
 
-		// Set up about card click
-		com.google.android.material.card.MaterialCardView aboutCard = findViewById(R.id.about_card);
-		if (aboutCard != null) {
-			aboutCard.setOnClickListener(v -> {
-				Intent intent = new Intent(SettingsActivity.this, AboutActivity.class);
-				startActivity(intent);
-			});
-		}
+	private void showEditAgentDialog(CustomAgent agent, LinearLayout containerAgents) {
+		View dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_new_file, null);
+		TextView title = dialogView.findViewById(R.id.text_title);
+		title.setText("Edit Agent");
+		com.google.android.material.textfield.TextInputLayout tilName = dialogView.findViewById(R.id.input_layout_name);
+		com.google.android.material.textfield.TextInputLayout tilPath = dialogView.findViewById(R.id.input_layout_path);
+		com.google.android.material.textfield.TextInputEditText etName = dialogView.findViewById(R.id.edit_text_name);
+		com.google.android.material.textfield.TextInputEditText etPrompt = dialogView.findViewById(R.id.edit_text_path);
+		tilName.setHint("Agent Name");
+		tilPath.setHint("Agent Prompt");
+		etName.setText(agent.name);
+		etPrompt.setText(agent.prompt);
+		etPrompt.setMinLines(3);
+		etPrompt.setMaxLines(8);
 
-		// Set up save functionality with multiple triggers
-		if (apiKeyEditText != null) {
-			// Save on focus change
-			apiKeyEditText.setOnFocusChangeListener((v, hasFocus) -> {
-				if (!hasFocus) {
-					String apiKey = apiKeyEditText.getText().toString().trim();
-					prefs.edit().putString("gemini_api_key", apiKey).apply();
-					Toast.makeText(this, "API Key saved", Toast.LENGTH_SHORT).show();
-				}
-			});
-			
-			// Also save on text change with debouncing
-			apiKeyEditText.addTextChangedListener(new android.text.TextWatcher() {
-				private android.os.Handler handler = new android.os.Handler(android.os.Looper.getMainLooper());
-				private Runnable saveRunnable;
-				
-				@Override
-				public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-				
-				@Override
-				public void onTextChanged(CharSequence s, int start, int before, int count) {}
-				
-				@Override
-				public void afterTextChanged(android.text.Editable s) {
-					if (saveRunnable != null) {
-						handler.removeCallbacks(saveRunnable);
-					}
-					saveRunnable = () -> {
-						String apiKey = s.toString().trim();
-						prefs.edit().putString("gemini_api_key", apiKey).apply();
-					};
-					handler.postDelayed(saveRunnable, 1000); // Save after 1 second of no typing
-				}
-			});
-		}
-
-		if (huggingFaceTokenEditText != null) {
-			// Save on focus change
-			huggingFaceTokenEditText.setOnFocusChangeListener((v, hasFocus) -> {
-				if (!hasFocus) {
-					String token = huggingFaceTokenEditText.getText().toString().trim();
-					prefs.edit().putString("huggingface_token", token).apply();
-					Toast.makeText(this, "Hugging Face Token saved", Toast.LENGTH_SHORT).show();
-				}
-			});
-
-			// Also save on text change with debouncing
-			huggingFaceTokenEditText.addTextChangedListener(new android.text.TextWatcher() {
-				private android.os.Handler handler = new android.os.Handler(android.os.Looper.getMainLooper());
-				private Runnable saveRunnable;
-
-				@Override
-				public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-
-				@Override
-				public void onTextChanged(CharSequence s, int start, int before, int count) {}
-
-				@Override
-				public void afterTextChanged(android.text.Editable s) {
-					if (saveRunnable != null) {
-						handler.removeCallbacks(saveRunnable);
-					}
-					saveRunnable = () -> {
-						String token = s.toString().trim();
-						prefs.edit().putString("huggingface_token", token).apply();
-					};
-					handler.postDelayed(saveRunnable, 1000); // Save after 1 second of no typing
-				}
-			});
-		}
-
-		if (cookie1psidEditText != null) {
-			cookie1psidEditText.setOnFocusChangeListener((v, hasFocus) -> {
-				if (!hasFocus) {
-					String val = cookie1psidEditText.getText().toString().trim();
-					prefs.edit().putString("secure_1psid", val).apply();
-					Toast.makeText(this, "__Secure-1PSID saved", Toast.LENGTH_SHORT).show();
-				}
-			});
-			cookie1psidEditText.addTextChangedListener(new android.text.TextWatcher() {
-				private android.os.Handler handler = new android.os.Handler(android.os.Looper.getMainLooper());
-				private Runnable saveRunnable;
-				public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-				public void onTextChanged(CharSequence s, int start, int before, int count) {}
-				public void afterTextChanged(android.text.Editable s) {
-					if (saveRunnable != null) handler.removeCallbacks(saveRunnable);
-					saveRunnable = () -> prefs.edit().putString("secure_1psid", s.toString().trim()).apply();
-					handler.postDelayed(saveRunnable, 1000);
-				}
-			});
-		}
-
-		if (cookie1psidtsEditText != null) {
-			cookie1psidtsEditText.setOnFocusChangeListener((v, hasFocus) -> {
-				if (!hasFocus) {
-					String val = cookie1psidtsEditText.getText().toString().trim();
-					prefs.edit().putString("secure_1psidts", val).apply();
-					Toast.makeText(this, "__Secure-1PSIDTS saved", Toast.LENGTH_SHORT).show();
-				}
-			});
-			cookie1psidtsEditText.addTextChangedListener(new android.text.TextWatcher() {
-				private android.os.Handler handler = new android.os.Handler(android.os.Looper.getMainLooper());
-				private Runnable saveRunnable;
-				public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-				public void onTextChanged(CharSequence s, int start, int before, int count) {}
-				public void afterTextChanged(android.text.Editable s) {
-					if (saveRunnable != null) handler.removeCallbacks(saveRunnable);
-					saveRunnable = () -> prefs.edit().putString("secure_1psidts", s.toString().trim()).apply();
-					handler.postDelayed(saveRunnable, 1000);
-				}
-			});
-		}
+		new MaterialAlertDialogBuilder(this)
+			.setView(dialogView)
+			.setPositiveButton("Save", (d, w) -> {
+				agent.name = etName.getText() != null ? etName.getText().toString().trim() : agent.name;
+				agent.prompt = etPrompt.getText() != null ? etPrompt.getText().toString().trim() : agent.prompt;
+				setCustomAgents(this, getCustomAgents(this)); // persists current list
+				renderAgentsList(containerAgents);
+			})
+			.setNeutralButton("Delete", (d, w) -> {
+				java.util.List<CustomAgent> agents = getCustomAgents(this);
+				agents.removeIf(a -> a.id.equals(agent.id));
+				setCustomAgents(this, agents);
+				renderAgentsList(containerAgents);
+			})
+			.setNegativeButton("Cancel", null)
+			.show();
 	}
 	
 	private void showModelSelector() {

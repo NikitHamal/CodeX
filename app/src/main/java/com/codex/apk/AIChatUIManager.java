@@ -319,7 +319,7 @@ public class AIChatUIManager {
         }
         recyclerAttachedFilesPreview.setVisibility(View.VISIBLE);
         recyclerAttachedFilesPreview.setAdapter(new RecyclerView.Adapter<RecyclerView.ViewHolder>() {
-            @Override public RecyclerView.ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
+            @Override public RecyclerView.ViewHolder onCreateViewHolder(android.view.ViewGroup parent, int viewType) {
                 LinearLayout container = new LinearLayout(context);
                 container.setOrientation(LinearLayout.HORIZONTAL);
                 ImageView iv = new ImageView(context);

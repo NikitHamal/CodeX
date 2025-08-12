@@ -16,9 +16,27 @@ public class PromptManager {
         return systemMsg;
     }
 
+    public static String getDefaultFileOpsPrompt() {
+        return defaultFileOpsPrompt();
+    }
+
+    public static String getDefaultGeneralPrompt() {
+        return defaultGeneralPrompt();
+    }
+
     private static String getFileOpsSystemPrompt() {
         String custom = SettingsActivity.getCustomFileOpsPrompt(CodeXApplication.getAppContext());
         if (custom != null && !custom.isEmpty()) return custom;
+        return defaultFileOpsPrompt();
+    }
+
+    private static String getGeneralSystemPrompt() {
+        String custom = SettingsActivity.getCustomGeneralPrompt(CodeXApplication.getAppContext());
+        if (custom != null && !custom.isEmpty()) return custom;
+        return defaultGeneralPrompt();
+    }
+
+    private static String defaultFileOpsPrompt() {
         return "You are CodexAgent, an autonomous AI inside a code IDE strictly for web development (HTML, CSS, JavaScript).\n\n" +
                "ALWAYS: \n" +
                "- Use TailwindCSS when possible (import <script src=\\\"https://cdn.tailwindcss.com\\\"></script> in <head> when needed).\n" +
@@ -63,9 +81,7 @@ public class PromptManager {
                "- After receiving tool_result, continue with a single file_operation JSON focusing on minimal diffs.\n";
     }
 
-    private static String getGeneralSystemPrompt() {
-        String custom = SettingsActivity.getCustomGeneralPrompt(CodeXApplication.getAppContext());
-        if (custom != null && !custom.isEmpty()) return custom;
+    private static String defaultGeneralPrompt() {
         return "You are CodexAgent, an AI inside a code editor for web development (HTML/CSS/JS).\n\n" +
                "- Use TailwindCSS when feasible; otherwise minimal custom CSS.\n" +
                "- Focus on accessibility, responsiveness, and modern patterns.\n\n" +

@@ -101,8 +101,22 @@ public class SettingsActivity extends AppCompatActivity {
 		if (selectedThemeText != null) selectedThemeText.setText(getThemeDisplayName(savedTheme));
 
 		// Load custom prompts
-		if (customGeneralPrompt != null) customGeneralPrompt.setText(getCustomGeneralPrompt(this));
-		if (customFileOpsPrompt != null) customFileOpsPrompt.setText(getCustomFileOpsPrompt(this));
+		if (customGeneralPrompt != null) {
+			String cg = getCustomGeneralPrompt(this);
+			if (cg == null || cg.isEmpty()) {
+				cg = PromptManager.getDefaultGeneralPrompt();
+				setCustomGeneralPrompt(this, cg);
+			}
+			customGeneralPrompt.setText(cg);
+		}
+		if (customFileOpsPrompt != null) {
+			String cf = getCustomFileOpsPrompt(this);
+			if (cf == null || cf.isEmpty()) {
+				cf = PromptManager.getDefaultFileOpsPrompt();
+				setCustomFileOpsPrompt(this, cf);
+			}
+			customFileOpsPrompt.setText(cf);
+		}
 
 		// Load custom agents list
 		if (containerAgents != null) {
@@ -136,8 +150,6 @@ public class SettingsActivity extends AppCompatActivity {
 
 	private void showAddAgentDialog(LinearLayout containerAgents) {
 		View dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_new_file, null);
-		TextView title = dialogView.findViewById(R.id.text_title);
-		title.setText("Create New Agent");
 		com.google.android.material.textfield.TextInputEditText etName = dialogView.findViewById(R.id.edit_text_file_name);
 		com.google.android.material.textfield.TextInputEditText etPrompt = dialogView.findViewById(R.id.edit_text_file_extension);
 		if (etName != null) etName.setHint("Agent Name");
@@ -149,6 +161,7 @@ public class SettingsActivity extends AppCompatActivity {
 		}
 
 		new MaterialAlertDialogBuilder(this)
+			.setTitle("Create New Agent")
 			.setView(dialogView)
 			.setPositiveButton("Save", (d, w) -> {
 				String name = etName != null && etName.getText() != null ? etName.getText().toString().trim() : "";
@@ -183,8 +196,6 @@ public class SettingsActivity extends AppCompatActivity {
 
 	private void showEditAgentDialog(CustomAgent agent, LinearLayout containerAgents) {
 		View dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_new_file, null);
-		TextView title = dialogView.findViewById(R.id.text_title);
-		title.setText("Edit Agent");
 		com.google.android.material.textfield.TextInputEditText etName = dialogView.findViewById(R.id.edit_text_file_name);
 		com.google.android.material.textfield.TextInputEditText etPrompt = dialogView.findViewById(R.id.edit_text_file_extension);
 		if (etName != null) {
@@ -200,6 +211,7 @@ public class SettingsActivity extends AppCompatActivity {
 		}
 
 		new MaterialAlertDialogBuilder(this)
+			.setTitle("Edit Agent")
 			.setView(dialogView)
 			.setPositiveButton("Save", (d, w) -> {
 				if (etName != null && etName.getText() != null) agent.name = etName.getText().toString().trim();

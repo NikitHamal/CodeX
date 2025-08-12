@@ -339,7 +339,7 @@
                     <ImageView
                         android:layout_width="24dp"
                         android:layout_height="24dp"
-                        android:src="@drawable/icon_psychology_round"
+                        android:src="@drawable/ic_support_agent"
                         app:tint="@color/tertiary"
                         android:layout_marginEnd="12dp" />
 

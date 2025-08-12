@@ -166,10 +166,9 @@ public class GeminiFreeApiClient implements ApiClient {
                                 String body2 = resp2.body().string();
                                 ParsedOutput parsed2 = parseOutputFromStream(body2);
                                 persistConversationMetaIfAvailable(modelId, body2);
-                                String explanation2 = buildExplanationWithThinking(parsed2.text, parsed2.thoughts);
+                                String explanation2 = deriveHumanExplanation(parsed2.text, parsed2.thoughts);
                                 if (actionListener != null) {
-                                    String normalized2 = normalizeJsonIfPresent(parsed2.text);
-                                    actionListener.onAiActionsProcessed(normalized2, explanation2, new ArrayList<>(), new ArrayList<>(), model != null ? model.getDisplayName() : "Gemini (Free)");
+                                    actionListener.onAiActionsProcessed(body2, explanation2, new ArrayList<>(), new ArrayList<>(), model != null ? model.getDisplayName() : "Gemini (Free)");
                                 }
                                 // Cache metadata onto the last chat message raw response to help derive context later
                                 // (UI manager will receive this via onAiActionsProcessed).
@@ -214,10 +213,10 @@ public class GeminiFreeApiClient implements ApiClient {
                     String body = full.toString();
                     ParsedOutput parsed = parseOutputFromStream(body);
                     persistConversationMetaIfAvailable(modelId, body);
-                    String explanation = buildExplanationWithThinking(parsed.text, parsed.thoughts);
+                    String explanation = deriveHumanExplanation(parsed.text, parsed.thoughts);
                     if (actionListener != null) {
-                        String normalized = normalizeJsonIfPresent(parsed.text);
-                        actionListener.onAiActionsProcessed(normalized, explanation, new ArrayList<>(), new ArrayList<>(), model != null ? model.getDisplayName() : "Gemini (Free)");
+                        // Store actual raw response for long-press, but show only the derived explanation
+                        actionListener.onAiActionsProcessed(body, explanation, new ArrayList<>(), new ArrayList<>(), model != null ? model.getDisplayName() : "Gemini (Free)");
                     }
                 }
             } catch (Exception e) {
@@ -466,6 +465,29 @@ public class GeminiFreeApiClient implements ApiClient {
         sb.append("Thinking:\n");
         sb.append(thoughts);
         return sb.toString();
+    }
+
+    private String deriveHumanExplanation(String text, String thoughts) {
+        if (text == null) return buildExplanationWithThinking(text, thoughts);
+        String trimmed = text.trim();
+        boolean looksJson = com.codex.apk.QwenResponseParser.looksLikeJson(trimmed);
+        if (!looksJson) {
+            return buildExplanationWithThinking(text, thoughts);
+        }
+        try {
+            com.google.gson.JsonObject obj = com.google.gson.JsonParser.parseString(trimmed).getAsJsonObject();
+            if (obj.has("action")) {
+                String action = obj.get("action").getAsString();
+                if ("plan".equalsIgnoreCase(action)) {
+                    String goal = obj.has("goal") ? obj.get("goal").getAsString() : "Plan";
+                    return "Plan: " + goal;
+                } else if ("file_operation".equalsIgnoreCase(action)) {
+                    String expl = obj.has("explanation") ? obj.get("explanation").getAsString() : "Proposed file operations";
+                    return expl;
+                }
+            }
+        } catch (Exception ignore) {}
+        return ""; // avoid duplicating JSON in the bubble; plan/file UI will render
     }
 
     private String normalizeJsonIfPresent(String text) {

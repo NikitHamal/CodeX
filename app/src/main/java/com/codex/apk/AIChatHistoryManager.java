@@ -118,18 +118,22 @@ public class AIChatHistoryManager {
 
         String historyKey;
         String qwenStateKey;
+        String freeMetaKey;
         try {
             byte[] pathBytes = projectPath.getBytes("UTF-8");
             String encodedPath = Base64.encodeToString(pathBytes, Base64.NO_WRAP | Base64.URL_SAFE);
             historyKey = CHAT_HISTORY_KEY_PREFIX + encodedPath;
             qwenStateKey = QWEN_CONVERSATION_STATE_KEY_PREFIX + encodedPath;
+            freeMetaKey = FREE_CONV_META_KEY_PREFIX + encodedPath;
         } catch (UnsupportedEncodingException e) {
             historyKey = CHAT_HISTORY_KEY_PREFIX + projectPath.replaceAll("[^a-zA-Z0-9_]", "_");
             qwenStateKey = QWEN_CONVERSATION_STATE_KEY_PREFIX + projectPath.replaceAll("[^a-zA-Z0-9_]", "_");
+            freeMetaKey = FREE_CONV_META_KEY_PREFIX + projectPath.replaceAll("[^a-zA-Z0-9_]", "_");
         }
 
         editor.remove(historyKey);
         editor.remove(qwenStateKey);
+        editor.remove(freeMetaKey);
         editor.apply();
     }
 }

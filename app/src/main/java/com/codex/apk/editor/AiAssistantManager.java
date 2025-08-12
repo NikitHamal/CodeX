@@ -491,7 +491,7 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                         new ArrayList<>(),
                         aiModelDisplayName,
                         System.currentTimeMillis(),
-                        (aiAssistant != null && aiAssistant.isAgentModeEnabled()) ? rawAiResponseJson : null,
+                        rawAiResponseJson, // always store raw response for long-press
                         proposedFileChanges,
                         ChatMessage.STATUS_PENDING_APPROVAL
                 );

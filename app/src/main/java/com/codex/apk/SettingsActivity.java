@@ -138,20 +138,21 @@ public class SettingsActivity extends AppCompatActivity {
 		View dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_new_file, null);
 		TextView title = dialogView.findViewById(R.id.text_title);
 		title.setText("Create New Agent");
-		com.google.android.material.textfield.TextInputLayout tilName = dialogView.findViewById(R.id.input_layout_name);
-		com.google.android.material.textfield.TextInputLayout tilPath = dialogView.findViewById(R.id.input_layout_path);
-		com.google.android.material.textfield.TextInputEditText etName = dialogView.findViewById(R.id.edit_text_name);
-		com.google.android.material.textfield.TextInputEditText etPrompt = dialogView.findViewById(R.id.edit_text_path);
-		tilName.setHint("Agent Name");
-		tilPath.setHint("Agent Prompt");
-		etPrompt.setMinLines(3);
-		etPrompt.setMaxLines(8);
+		com.google.android.material.textfield.TextInputEditText etName = dialogView.findViewById(R.id.edit_text_file_name);
+		com.google.android.material.textfield.TextInputEditText etPrompt = dialogView.findViewById(R.id.edit_text_file_extension);
+		if (etName != null) etName.setHint("Agent Name");
+		if (etPrompt != null) {
+			etPrompt.setHint("Agent Prompt");
+			etPrompt.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE);
+			etPrompt.setMinLines(3);
+			etPrompt.setMaxLines(8);
+		}
 
 		new MaterialAlertDialogBuilder(this)
 			.setView(dialogView)
 			.setPositiveButton("Save", (d, w) -> {
-				String name = etName.getText() != null ? etName.getText().toString().trim() : "";
-				String prompt = etPrompt.getText() != null ? etPrompt.getText().toString().trim() : "";
+				String name = etName != null && etName.getText() != null ? etName.getText().toString().trim() : "";
+				String prompt = etPrompt != null && etPrompt.getText() != null ? etPrompt.getText().toString().trim() : "";
 				if (name.isEmpty()) { Toast.makeText(this, "Name required", Toast.LENGTH_SHORT).show(); return; }
 				java.util.List<CustomAgent> agents = getCustomAgents(this);
 				String id = java.util.UUID.randomUUID().toString();
@@ -172,9 +173,9 @@ public class SettingsActivity extends AppCompatActivity {
 			CustomAgent a = agents.get(i);
 			View row = LayoutInflater.from(this).inflate(R.layout.item_project, container, false);
 			TextView name = row.findViewById(R.id.text_project_name);
-			TextView path = row.findViewById(R.id.text_project_path);
+			TextView info = row.findViewById(R.id.text_project_date);
 			name.setText(a.name);
-			path.setText(a.modelId);
+			info.setText(a.modelId);
 			row.setOnClickListener(v -> showEditAgentDialog(a, container));
 			container.addView(row);
 		}
@@ -184,22 +185,25 @@ public class SettingsActivity extends AppCompatActivity {
 		View dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_new_file, null);
 		TextView title = dialogView.findViewById(R.id.text_title);
 		title.setText("Edit Agent");
-		com.google.android.material.textfield.TextInputLayout tilName = dialogView.findViewById(R.id.input_layout_name);
-		com.google.android.material.textfield.TextInputLayout tilPath = dialogView.findViewById(R.id.input_layout_path);
-		com.google.android.material.textfield.TextInputEditText etName = dialogView.findViewById(R.id.edit_text_name);
-		com.google.android.material.textfield.TextInputEditText etPrompt = dialogView.findViewById(R.id.edit_text_path);
-		tilName.setHint("Agent Name");
-		tilPath.setHint("Agent Prompt");
-		etName.setText(agent.name);
-		etPrompt.setText(agent.prompt);
-		etPrompt.setMinLines(3);
-		etPrompt.setMaxLines(8);
+		com.google.android.material.textfield.TextInputEditText etName = dialogView.findViewById(R.id.edit_text_file_name);
+		com.google.android.material.textfield.TextInputEditText etPrompt = dialogView.findViewById(R.id.edit_text_file_extension);
+		if (etName != null) {
+			etName.setHint("Agent Name");
+			etName.setText(agent.name);
+		}
+		if (etPrompt != null) {
+			etPrompt.setHint("Agent Prompt");
+			etPrompt.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE);
+			etPrompt.setMinLines(3);
+			etPrompt.setMaxLines(8);
+			etPrompt.setText(agent.prompt);
+		}
 
 		new MaterialAlertDialogBuilder(this)
 			.setView(dialogView)
 			.setPositiveButton("Save", (d, w) -> {
-				agent.name = etName.getText() != null ? etName.getText().toString().trim() : agent.name;
-				agent.prompt = etPrompt.getText() != null ? etPrompt.getText().toString().trim() : agent.prompt;
+				if (etName != null && etName.getText() != null) agent.name = etName.getText().toString().trim();
+				if (etPrompt != null && etPrompt.getText() != null) agent.prompt = etPrompt.getText().toString().trim();
 				setCustomAgents(this, getCustomAgents(this)); // persists current list
 				renderAgentsList(containerAgents);
 			})

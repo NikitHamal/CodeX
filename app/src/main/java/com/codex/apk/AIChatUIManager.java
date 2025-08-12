@@ -35,6 +35,7 @@ public class AIChatUIManager {
     public TextView textSelectedModel;
     public LinearLayout linearPromptInput;
     public ImageView buttonAiSettings;
+    public ImageView buttonAiAttach;
 
     private BottomSheetDialog modelPickerDialog;
     private BottomSheetDialog aiSettingsDialog;
@@ -58,6 +59,7 @@ public class AIChatUIManager {
         textSelectedModel = rootView.findViewById(R.id.text_selected_model);
         linearPromptInput = rootView.findViewById(R.id.linear_prompt_input);
         buttonAiSettings = rootView.findViewById(R.id.button_ai_settings);
+        buttonAiAttach = rootView.findViewById(R.id.button_ai_attach);
 
         // Long press on model selector to choose a custom agent
         layoutModelSelectorCustom.setOnLongClickListener(v -> {
@@ -251,12 +253,30 @@ public class AIChatUIManager {
         boolean hasSettings = capabilities.supportsThinking || capabilities.supportsWebSearch;
 
         buttonAiSettings.setEnabled(hasSettings);
+
+        // Show attach button only for FREE (Gemini reverse-engineered) models
+        if (buttonAiAttach != null) {
+            boolean showAttach = aiAssistant.getCurrentModel() != null && aiAssistant.getCurrentModel().getProvider() == AIProvider.FREE;
+            buttonAiAttach.setVisibility(showAttach ? View.VISIBLE : View.GONE);
+        }
     }
 
     public void setListeners() {
         buttonAiSend.setOnClickListener(v -> fragment.sendPrompt());
         layoutModelSelectorCustom.setOnClickListener(v -> showModelPickerDialog(fragment.getAIAssistant()));
         buttonAiSettings.setOnClickListener(v -> showAiSettingsDialog(fragment.getAIAssistant()));
+        if (buttonAiAttach != null) {
+            buttonAiAttach.setOnClickListener(v -> {
+                if (fragment.getAIAssistant() != null && fragment.getAIAssistant().getCurrentModel() != null
+                    && fragment.getAIAssistant().getCurrentModel().getProvider() == AIProvider.FREE) {
+                    if (fragment instanceof AIChatFragmentWithAttachments) {
+                        ((AIChatFragmentWithAttachments) fragment).onAttachButtonClicked();
+                    }
+                } else {
+                    Toast.makeText(context, "Attachments available only for Gemini Free models", Toast.LENGTH_SHORT).show();
+                }
+            });
+        }
         editTextAiPrompt.setOnEditorActionListener((v, actionId, event) -> {
             if (actionId == android.view.inputmethod.EditorInfo.IME_ACTION_SEND) {
                 fragment.sendPrompt();

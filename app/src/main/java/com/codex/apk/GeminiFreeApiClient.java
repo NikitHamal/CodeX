@@ -104,11 +104,22 @@ public class GeminiFreeApiClient implements ApiClient {
                 String modelId = model != null ? model.getModelId() : "gemini-2.5-flash";
                 Headers requestHeaders = buildGeminiHeaders(modelId);
 
-                // Load prior conversation metadata if any
+                // Load prior conversation metadata if any, else derive from history if present
                 String priorMeta = SettingsActivity.getFreeConversationMetadata(context, modelId);
                 String chatMeta = null;
                 if (priorMeta != null && !priorMeta.isEmpty()) {
                     chatMeta = priorMeta; // Stored as JSON array string like [cid, rid, rcid]
+                } else {
+                    // Try to derive minimal metadata from last assistant message raw response if available
+                    try {
+                        for (int i = history.size() - 1; i >= 0; i--) {
+                            ChatMessage m = history.get(i);
+                            if (m.getSender() == ChatMessage.SENDER_AI && m.getRawApiResponse() != null) {
+                                String meta = extractMetadataArrayFromRaw(m.getRawApiResponse());
+                                if (meta != null) { chatMeta = meta; break; }
+                            }
+                        }
+                    } catch (Exception ignore) {}
                 }
 
                 // Upload attachments minimally and build files array entries
@@ -152,13 +163,16 @@ public class GeminiFreeApiClient implements ApiClient {
                                     if (actionListener != null) actionListener.onAiError("Gemini request failed: " + resp2.code() + (errBody2 != null ? ": " + errBody2 : ""));
                                     return;
                                 }
-                                String body2 = resp2.body().string();
-                                ParsedOutput parsed2 = parseOutputFromStream(body2);
-                                persistConversationMetaIfAvailable(modelId, body2);
-                                String explanation2 = buildExplanationWithThinking(parsed2.text, parsed2.thoughts);
-                                if (actionListener != null) {
-                                    actionListener.onAiActionsProcessed(body2, explanation2, new ArrayList<>(), new ArrayList<>(), model != null ? model.getDisplayName() : "Gemini (Free)");
-                                }
+                                                    String body2 = resp2.body().string();
+                                 ParsedOutput parsed2 = parseOutputFromStream(body2);
+                                 persistConversationMetaIfAvailable(modelId, body2);
+                                 String explanation2 = buildExplanationWithThinking(parsed2.text, parsed2.thoughts);
+                                 if (actionListener != null) {
+                                     actionListener.onAiActionsProcessed(body2, explanation2, new ArrayList<>(), new ArrayList<>(), model != null ? model.getDisplayName() : "Gemini (Free)");
+                                 }
+                                 // Cache metadata onto the last chat message raw response to help derive context later
+                                 // (UI manager will receive this via onAiActionsProcessed).
+                                 
                                 return;
                             }
                         }
@@ -491,6 +505,25 @@ public class GeminiFreeApiClient implements ApiClient {
                 } catch (Exception ignore) {}
             }
         } catch (Exception ignore) {}
+    }
+
+    private String extractMetadataArrayFromRaw(String rawResponse) {
+        try {
+            String[] lines = rawResponse.split("\n");
+            if (lines.length < 3) return null;
+            com.google.gson.JsonArray responseJson = JsonParser.parseString(lines[2]).getAsJsonArray();
+            for (int i = 0; i < responseJson.size(); i++) {
+                try {
+                    com.google.gson.JsonArray part = JsonParser.parseString(responseJson.get(i).getAsJsonArray().get(2).getAsString()).getAsJsonArray();
+                    if (part.size() > 1 && part.get(1).isJsonArray()) {
+                        com.google.gson.JsonArray metaArr = part.get(1).getAsJsonArray();
+                        // Return JSON string of [cid, rid, rcid] (can be shorter)
+                        return metaArr.toString();
+                    }
+                } catch (Exception ignore) {}
+            }
+        } catch (Exception ignore) {}
+        return null;
     }
 
     private static class ParsedOutput {

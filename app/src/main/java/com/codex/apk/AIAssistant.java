@@ -58,6 +58,7 @@ public class AIAssistant {
                 // Prepend system prompt for agent/coding parity with Qwen
                 String system = PromptManager.createSystemMessage(enabledTools).get("content").getAsString();
                 finalMessage = system + "\n\n" + message;
+                // Note: Gemini Free context is maintained via server-side conversation metadata (cid,rid,rcid)
             }
             client.sendMessage(finalMessage, currentModel, chatHistory, qwenState, thinkingModeEnabled, webSearchEnabled, enabledTools, attachments);
         } else {

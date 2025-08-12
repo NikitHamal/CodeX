@@ -12,7 +12,7 @@ import androidx.fragment.app.Fragment;
 import java.util.ArrayList;
 import java.util.List;
 
-public class AIChatFragment extends Fragment implements ChatMessageAdapter.OnAiActionInteractionListener {
+public class AIChatFragment extends Fragment implements ChatMessageAdapter.OnAiActionInteractionListener, AIChatFragment.AIChatFragmentWithAttachments {
 
     private List<ChatMessage> chatHistory;
     private QwenConversationState qwenConversationState;
@@ -26,6 +26,8 @@ public class AIChatFragment extends Fragment implements ChatMessageAdapter.OnAiA
     private ChatMessage currentAiStatusMessage = null;
     public boolean isAiProcessing = false;
     private String projectPath;
+    private final List<java.io.File> pendingAttachments = new java.util.ArrayList<>();
+    private androidx.activity.result.ActivityResultLauncher<String[]> pickFilesLauncher;
 
     public interface AIChatFragmentListener {
         AIAssistant getAIAssistant();
@@ -37,6 +39,11 @@ public class AIChatFragment extends Fragment implements ChatMessageAdapter.OnAiA
         void onQwenConversationStateUpdated(QwenConversationState state);
         void onPlanAcceptClicked(int messagePosition, ChatMessage message);
         void onPlanDiscardClicked(int messagePosition, ChatMessage message);
+    }
+
+    // Hook used by UI manager to trigger attachment selection
+    public interface AIChatFragmentWithAttachments {
+        void onAttachButtonClicked();
     }
 
     public static AIChatFragment newInstance(String projectPath) {
@@ -55,6 +62,36 @@ public class AIChatFragment extends Fragment implements ChatMessageAdapter.OnAiA
         } else {
             throw new RuntimeException(context.toString() + " must implement AIChatFragmentListener");
         }
+        // Prepare file picker
+        pickFilesLauncher = registerForActivityResult(new androidx.activity.result.contract.ActivityResultContracts.OpenMultipleDocuments(), uris -> {
+            if (uris == null || uris.isEmpty()) return;
+            android.content.ContentResolver cr = requireContext().getContentResolver();
+            for (android.net.Uri uri : uris) {
+                try (java.io.InputStream in = cr.openInputStream(uri)) {
+                    if (in == null) continue;
+                    String name = queryDisplayName(cr, uri);
+                    if (name == null || name.isEmpty()) name = "attachment";
+                    java.io.File out = new java.io.File(requireContext().getCacheDir(), System.currentTimeMillis() + "_" + name);
+                    try (java.io.FileOutputStream fos = new java.io.FileOutputStream(out)) {
+                        byte[] buf = new byte[8192];
+                        int r;
+                        while ((r = in.read(buf)) != -1) fos.write(buf, 0, r);
+                    }
+                    pendingAttachments.add(out);
+                } catch (Exception ignore) {}
+            }
+            Toast.makeText(requireContext(), pendingAttachments.size() + " file(s) attached", Toast.LENGTH_SHORT).show();
+        });
+    }
+    private String queryDisplayName(android.content.ContentResolver cr, android.net.Uri uri) {
+        String name = null;
+        android.database.Cursor cursor = cr.query(uri, new String[]{android.provider.OpenableColumns.DISPLAY_NAME}, null, null, null);
+        if (cursor != null) {
+            try {
+                if (cursor.moveToFirst()) name = cursor.getString(0);
+            } finally { cursor.close(); }
+        }
+        return name;
     }
 
     @Override
@@ -75,6 +112,11 @@ public class AIChatFragment extends Fragment implements ChatMessageAdapter.OnAiA
         chatMessageAdapter = new ChatMessageAdapter(requireContext(), chatHistory);
         chatMessageAdapter.setOnAiActionInteractionListener(this);
         uiManager.setupRecyclerView(chatMessageAdapter);
+
+        // If model is FREE, show attach icon immediately
+        if (listener != null && listener.getAIAssistant() != null) {
+            uiManager.updateSettingsButtonState(listener.getAIAssistant());
+        }
 
         return view;
     }
@@ -124,7 +166,14 @@ public class AIChatFragment extends Fragment implements ChatMessageAdapter.OnAiA
 
         uiManager.setText("");
         if (listener != null) {
-            listener.sendAiPrompt(prompt, new ArrayList<>(chatHistory), qwenConversationState);
+            // Directly call assistant with attachments only for FREE provider
+            if (aiAssistant != null && aiAssistant.getCurrentModel() != null
+                && aiAssistant.getCurrentModel().getProvider() == com.codex.apk.ai.AIProvider.FREE) {
+                aiAssistant.sendMessage(prompt, new ArrayList<>(chatHistory), qwenConversationState, new java.util.ArrayList<>(pendingAttachments));
+            } else {
+                listener.sendAiPrompt(prompt, new ArrayList<>(chatHistory), qwenConversationState);
+            }
+            pendingAttachments.clear();
         }
     }
 
@@ -227,6 +276,14 @@ public class AIChatFragment extends Fragment implements ChatMessageAdapter.OnAiA
         if (state != null) {
             this.qwenConversationState = state;
             historyManager.saveChatState(chatHistory, qwenConversationState);
+        }
+    }
+
+    @Override
+    public void onAttachButtonClicked() {
+        // Let user select images or general files
+        if (pickFilesLauncher != null) {
+            pickFilesLauncher.launch(new String[]{"image/*", "application/pdf", "text/*", "application/octet-stream", "application/zip"});
         }
     }
 }

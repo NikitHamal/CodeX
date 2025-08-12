@@ -61,7 +61,7 @@ public class AIChatUIManager {
 
         // Long press on model selector to choose a custom agent
         layoutModelSelectorCustom.setOnLongClickListener(v -> {
-            showAgentPickerDialog(fragment.getAiAssistant());
+            showAgentPickerDialog(fragment.getAIAssistant());
             return true;
         });
     }

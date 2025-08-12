@@ -42,6 +42,7 @@ public class SimpleSoraTabAdapter extends RecyclerView.Adapter<SimpleSoraTabAdap
     private final List<TabItem> openTabs;
     private final TabActionListener tabActionListener;
     private final FileManager fileManager;
+    private final Map<Integer, ViewHolder> holders = new HashMap<>();
 
 
     // Current active tab position
@@ -89,6 +90,7 @@ public class SimpleSoraTabAdapter extends RecyclerView.Adapter<SimpleSoraTabAdap
 
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
+        holders.put(position, holder);
         if (position >= openTabs.size()) {
             Log.e(TAG, "Position " + position + " is out of bounds for openTabs size " + openTabs.size());
             return;
@@ -335,6 +337,16 @@ public class SimpleSoraTabAdapter extends RecyclerView.Adapter<SimpleSoraTabAdap
             return openTabs.get(activeTabPosition);
         }
         return null;
+    }
+
+    @Override
+    public void onViewRecycled(@NonNull ViewHolder holder) {
+        holders.remove(holder.getAdapterPosition());
+        super.onViewRecycled(holder);
+    }
+
+    public ViewHolder getHolderForPosition(int position) {
+        return holders.get(position);
     }
 
     /**

@@ -219,11 +219,31 @@ public class CodeEditorFragment extends Fragment implements SimpleSoraTabAdapter
         if (position < 0) {
             return null;
         }
-        RecyclerView.ViewHolder holder = ((RecyclerView) fileViewPager.getChildAt(0)).findViewHolderForAdapterPosition(position);
-        if (holder instanceof SimpleSoraTabAdapter.ViewHolder) {
-            return ((SimpleSoraTabAdapter.ViewHolder) holder).codeEditor;
+        SimpleSoraTabAdapter.ViewHolder holder = tabAdapter.getHolderForPosition(position);
+        if (holder != null) {
+            return holder.codeEditor;
         }
         return null;
+    }
+
+    public void applyWrapToAllEditors(boolean enable) {
+        if (tabAdapter == null) return;
+        for (int i = 0; i < tabAdapter.getItemCount(); i++) {
+            SimpleSoraTabAdapter.ViewHolder holder = tabAdapter.getHolderForPosition(i);
+            if (holder != null && holder.codeEditor != null) {
+                holder.codeEditor.setWordwrap(enable);
+            }
+        }
+    }
+
+    public void applyReadOnlyToAllEditors(boolean readOnly) {
+        if (tabAdapter == null) return;
+        for (int i = 0; i < tabAdapter.getItemCount(); i++) {
+            SimpleSoraTabAdapter.ViewHolder holder = tabAdapter.getHolderForPosition(i);
+            if (holder != null && holder.codeEditor != null) {
+                holder.codeEditor.setEditable(!readOnly);
+            }
+        }
     }
 
     @Override

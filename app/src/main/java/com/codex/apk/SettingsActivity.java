@@ -76,29 +76,35 @@ public class SettingsActivity extends AppCompatActivity {
 		com.google.android.material.textfield.TextInputEditText cookie1psidtsEditText = findViewById(R.id.edit_text_secure_1psidts);
 		com.google.android.material.textfield.TextInputEditText customGeneralPrompt = findViewById(R.id.edit_text_custom_general_prompt);
 		com.google.android.material.textfield.TextInputEditText customFileOpsPrompt = findViewById(R.id.edit_text_custom_fileops_prompt);
-		LinearLayout modelSelectorLayout = findViewById(R.id.layout_model_selector);
-		TextView selectedModelText = findViewById(R.id.text_selected_model);
 		LinearLayout themeSelectorLayout = findViewById(R.id.layout_theme_selector);
 		TextView selectedThemeText = findViewById(R.id.text_selected_theme);
-		MaterialButton buttonAddAgent = findViewById(R.id.button_add_agent);
-		LinearLayout containerAgents = findViewById(R.id.container_agents_list);
-		
+		com.google.android.material.card.MaterialCardView modelsCard = findViewById(R.id.card_models);
+		com.google.android.material.card.MaterialCardView agentsCard = findViewById(R.id.card_agents);
+		com.google.android.material.switchmaterial.SwitchMaterial wrapSwitch = findViewById(R.id.switch_wrap);
+		com.google.android.material.switchmaterial.SwitchMaterial readOnlySwitch = findViewById(R.id.switch_read_only);
+		com.google.android.material.slider.Slider fontSizeSlider = findViewById(R.id.slider_font_size);
+
 		// Load saved settings
 		SharedPreferences prefs = getSharedPreferences("settings", MODE_PRIVATE);
 		SharedPreferences defaultPrefs = getPreferences(this);
 		String savedApiKey = prefs.getString("gemini_api_key", "");
 		String savedHuggingFaceToken = prefs.getString("huggingface_token", "");
-		String savedModel = prefs.getString("selected_model", "Gemini 2.5 Flash");
 		String savedTheme = defaultPrefs.getString("app_theme", "light");
 		String saved1psid = prefs.getString("secure_1psid", "");
 		String saved1psidts = prefs.getString("secure_1psidts", "");
-		
+		boolean wrapEnabled = isDefaultWordWrap(this);
+		boolean readOnlyEnabled = isDefaultReadOnly(this);
+
 		if (apiKeyEditText != null) apiKeyEditText.setText(savedApiKey);
 		if (huggingFaceTokenEditText != null) huggingFaceTokenEditText.setText(savedHuggingFaceToken);
 		if (cookie1psidEditText != null) cookie1psidEditText.setText(saved1psid);
 		if (cookie1psidtsEditText != null) cookie1psidtsEditText.setText(saved1psidts);
-		if (selectedModelText != null) selectedModelText.setText(savedModel);
 		if (selectedThemeText != null) selectedThemeText.setText(getThemeDisplayName(savedTheme));
+		if (wrapSwitch != null) wrapSwitch.setChecked(wrapEnabled);
+		if (readOnlySwitch != null) readOnlySwitch.setChecked(readOnlyEnabled);
+		if (fontSizeSlider != null) {
+			fontSizeSlider.setValue(getFontSize(this));
+		}
 
 		// Load custom prompts
 		if (customGeneralPrompt != null) {
@@ -118,19 +124,37 @@ public class SettingsActivity extends AppCompatActivity {
 			customFileOpsPrompt.setText(cf);
 		}
 
-		// Load custom agents list
-		if (containerAgents != null) {
-			renderAgentsList(containerAgents);
+		// Clicks
+		if (themeSelectorLayout != null) themeSelectorLayout.setOnClickListener(v -> showThemeSelector());
+		if (modelsCard != null) modelsCard.setOnClickListener(v -> {
+			startActivity(new Intent(this, ModelsActivity.class));
+		});
+		if (agentsCard != null) agentsCard.setOnClickListener(v -> {
+			startActivity(new Intent(this, AgentsActivity.class));
+		});
+
+		// Switch Listeners
+		if (wrapSwitch != null) {
+			wrapSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
+				getPreferences(this).edit().putBoolean("default_word_wrap", isChecked).apply();
+			});
+		}
+		if (readOnlySwitch != null) {
+			readOnlySwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
+				getPreferences(this).edit().putBoolean("default_read_only", isChecked).apply();
+			});
 		}
 
-		// Clicks
-		if (modelSelectorLayout != null) modelSelectorLayout.setOnClickListener(v -> showModelSelector());
-		if (themeSelectorLayout != null) themeSelectorLayout.setOnClickListener(v -> showThemeSelector());
-		if (buttonAddAgent != null) buttonAddAgent.setOnClickListener(v -> showAddAgentDialog(containerAgents));
 
 		// Save handlers (keys and tokens already set up before)
 		setupDebouncedSaver(customGeneralPrompt, s -> setCustomGeneralPrompt(this, s));
 		setupDebouncedSaver(customFileOpsPrompt, s -> setCustomFileOpsPrompt(this, s));
+
+		if (fontSizeSlider != null) {
+			fontSizeSlider.addOnChangeListener((slider, value, fromUser) -> {
+				getPreferences(this).edit().putInt("font_size_int", (int) value).apply();
+			});
+		}
 	}
 
 	private void setupDebouncedSaver(com.google.android.material.textfield.TextInputEditText editText, java.util.function.Consumer<String> onSave) {
@@ -146,119 +170,6 @@ public class SettingsActivity extends AppCompatActivity {
 				handler.postDelayed(saveRunnable, 700);
 			}
 		});
-	}
-
-	private void showAddAgentDialog(LinearLayout containerAgents) {
-		View dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_agent_editor, null);
-		com.google.android.material.textfield.TextInputEditText etName = dialogView.findViewById(R.id.edit_text_agent_name);
-		com.google.android.material.textfield.TextInputEditText etPrompt = dialogView.findViewById(R.id.edit_text_agent_prompt);
-		if (etName != null) etName.setHint("Agent Name");
-		if (etPrompt != null) {
-			etPrompt.setHint("Agent Prompt");
-			etPrompt.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE);
-			etPrompt.setMinLines(3);
-			etPrompt.setMaxLines(8);
-		}
-
-		new MaterialAlertDialogBuilder(this)
-			.setTitle("Create New Agent")
-			.setView(dialogView)
-			.setPositiveButton("Save", (d, w) -> {
-				String name = etName != null && etName.getText() != null ? etName.getText().toString().trim() : "";
-				String prompt = etPrompt != null && etPrompt.getText() != null ? etPrompt.getText().toString().trim() : "";
-				if (name.isEmpty()) { Toast.makeText(this, "Name required", Toast.LENGTH_SHORT).show(); return; }
-				java.util.List<CustomAgent> agents = getCustomAgents(this);
-				String id = java.util.UUID.randomUUID().toString();
-				// default to currently selected model if available
-				String modelId = AIModel.fromDisplayName(getSharedPreferences("settings", MODE_PRIVATE).getString("selected_model", "Gemini 2.5 Flash")).getModelId();
-				agents.add(new CustomAgent(id, name, prompt, modelId));
-				setCustomAgents(this, agents);
-				renderAgentsList(containerAgents);
-			})
-			.setNegativeButton("Cancel", null)
-			.show();
-	}
-
-	private void renderAgentsList(LinearLayout container) {
-		container.removeAllViews();
-		java.util.List<CustomAgent> agents = getCustomAgents(this);
-		for (int i = 0; i < agents.size(); i++) {
-			CustomAgent a = agents.get(i);
-			View row = LayoutInflater.from(this).inflate(R.layout.item_project, container, false);
-			TextView name = row.findViewById(R.id.text_project_name);
-			TextView info = row.findViewById(R.id.text_project_date);
-			name.setText(a.name);
-			info.setText(a.modelId);
-			row.setOnClickListener(v -> showEditAgentDialog(a, container));
-			container.addView(row);
-		}
-	}
-
-	private void showEditAgentDialog(CustomAgent agent, LinearLayout containerAgents) {
-		View dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_agent_editor, null);
-		com.google.android.material.textfield.TextInputEditText etName = dialogView.findViewById(R.id.edit_text_agent_name);
-		com.google.android.material.textfield.TextInputEditText etPrompt = dialogView.findViewById(R.id.edit_text_agent_prompt);
-		if (etName != null) {
-			etName.setHint("Agent Name");
-			etName.setText(agent.name);
-		}
-		if (etPrompt != null) {
-			etPrompt.setHint("Agent Prompt");
-			etPrompt.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE);
-			etPrompt.setMinLines(3);
-			etPrompt.setMaxLines(8);
-			etPrompt.setText(agent.prompt);
-		}
-
-		new MaterialAlertDialogBuilder(this)
-			.setTitle("Edit Agent")
-			.setView(dialogView)
-			.setPositiveButton("Save", (d, w) -> {
-				if (etName != null && etName.getText() != null) agent.name = etName.getText().toString().trim();
-				if (etPrompt != null && etPrompt.getText() != null) agent.prompt = etPrompt.getText().toString().trim();
-				setCustomAgents(this, getCustomAgents(this)); // persists current list
-				renderAgentsList(containerAgents);
-			})
-			.setNeutralButton("Delete", (d, w) -> {
-				java.util.List<CustomAgent> agents = getCustomAgents(this);
-				agents.removeIf(a -> a.id.equals(agent.id));
-				setCustomAgents(this, agents);
-				renderAgentsList(containerAgents);
-			})
-			.setNegativeButton("Cancel", null)
-			.show();
-	}
-	
-	private void showModelSelector() {
-		List<String> modelNamesList = AIModel.getAllDisplayNames();
-		String[] modelNames = modelNamesList.toArray(new String[0]);
-		String currentModel = getSharedPreferences("settings", MODE_PRIVATE).getString("selected_model", "Gemini 2.5 Flash");
-		int selectedIndex = -1;
-		
-		// Find current model index
-		for (int i = 0; i < modelNames.length; i++) {
-			if (modelNames[i].equals(currentModel)) {
-				selectedIndex = i;
-				break;
-			}
-		}
-		
-		new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
-				.setTitle("Select AI Model")
-				.setSingleChoiceItems(modelNames, selectedIndex, (dialog, which) -> {
-					String selectedModelName = modelNames[which];
-					TextView selectedModelText = findViewById(R.id.text_selected_model);
-					if (selectedModelText != null) {
-						selectedModelText.setText(selectedModelName);
-					}
-					getSharedPreferences("settings", MODE_PRIVATE)
-						.edit()
-						.putString("selected_model", selectedModelName)
-						.apply();
-					dialog.dismiss();
-				})
-				.setNegativeButton("Cancel", null)
-				.show();
 	}
 
 	private void showThemeSelector() {
@@ -311,174 +222,6 @@ public class SettingsActivity extends AppCompatActivity {
 		}
 		return "Light"; // Default
 	}
-
-	public static class SettingsFragment extends PreferenceFragmentCompat {
-		@Override
-		public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
-			setPreferencesFromResource(R.xml.preferences, rootKey);
-			
-			// API Key preference
-			EditTextPreference apiKeyPreference = findPreference("gemini_api_key");
-			if (apiKeyPreference != null) {
-				apiKeyPreference.setSummaryProvider((Preference.SummaryProvider<EditTextPreference>) preference -> {
-					String value = preference.getText();
-					if (value == null || value.isEmpty()) {
-						return "Not set (using default key)";
-					} else {
-						return "API key is set";
-					}
-				});
-				
-				apiKeyPreference.setOnPreferenceChangeListener((preference, newValue) -> {
-					String apiKey = (String) newValue;
-					if (apiKey.isEmpty()) {
-						Toast.makeText(getContext(), "Using default API key", Toast.LENGTH_SHORT).show();
-					} else {
-						Toast.makeText(getContext(), "API key updated", Toast.LENGTH_SHORT).show();
-					}
-					return true;
-				});
-			}
-			
-			// Theme preference
-			ListPreference themePreference = findPreference("app_theme");
-			if (themePreference != null) {
-				themePreference.setSummaryProvider(ListPreference.SimpleSummaryProvider.getInstance());
-						themePreference.setOnPreferenceChangeListener((preference, newValue) -> {
-				String theme = (String) newValue;
-				if (getActivity() != null) {
-					ThemeManager.switchTheme(getActivity(), theme);
-				}
-				return true;
-			});
-			}
-			
-			// Font size preference
-			ListPreference fontSizePreference = findPreference("font_size");
-			if (fontSizePreference != null) {
-				fontSizePreference.setSummaryProvider(ListPreference.SimpleSummaryProvider.getInstance());
-			}
-			
-			// Font family preference
-			Preference fontFamilyPreference = findPreference("font_family");
-			if (fontFamilyPreference != null) {
-				fontFamilyPreference.setSummaryProvider(preference -> {
-					String currentFont = SettingsActivity.getFontFamily(requireContext());
-					return "Current: " + currentFont.substring(0, 1).toUpperCase() + currentFont.substring(1);
-				});
-				
-				fontFamilyPreference.setOnPreferenceClickListener(preference -> {
-					String currentFont = SettingsActivity.getFontFamily(requireContext());
-					new DialogHelper(requireContext(), null, null).showFontFamilyDialog(currentFont, selectedFont -> {
-						// Save the new selection
-						SharedPreferences.Editor editor = SettingsActivity.getPreferences(requireContext()).edit();
-						editor.putString("font_family", selectedFont);
-						editor.apply();
-						
-						// Update the preference summary
-						fontFamilyPreference.setSummary("Current: " + 
-						selectedFont.substring(0, 1).toUpperCase() + 
-						selectedFont.substring(1));
-						
-						Toast.makeText(requireContext(), 
-						"Font family will be applied when you restart the app", 
-						Toast.LENGTH_SHORT).show();
-
-						// Recreate the activity to apply changes
-						requireActivity().recreate();
-					});
-					return true;
-				});
-			}
-			
-			// Hugging Face Token preference
-			EditTextPreference hfTokenPreference = findPreference("huggingface_token");
-			if (hfTokenPreference != null) {
-				hfTokenPreference.setSummaryProvider((Preference.SummaryProvider<EditTextPreference>) preference -> {
-					String value = preference.getText();
-					if (value == null || value.isEmpty()) {
-						return "Not set (required for Deepseek R1)";
-					} else {
-						return "Token is set";
-					}
-				});
-				
-				hfTokenPreference.setOnPreferenceChangeListener((preference, newValue) -> {
-					String token = (String) newValue;
-					if (token.isEmpty()) {
-						Toast.makeText(getContext(), "Deepseek R1 will not work without token", Toast.LENGTH_SHORT).show();
-					} else {
-						Toast.makeText(getContext(), "Hugging Face token updated", Toast.LENGTH_SHORT).show();
-					}
-					return true;
-				});
-			}
-			
-			// Qwen API Token preference
-			EditTextPreference qwenTokenPreference = findPreference("qwen_api_token");
-			if (qwenTokenPreference != null) {
-				qwenTokenPreference.setSummaryProvider((Preference.SummaryProvider<EditTextPreference>) preference -> {
-					String value = preference.getText();
-					if (value == null || value.isEmpty()) {
-						return "Using default token";
-					} else {
-						return "Custom token is set";
-					}
-				});
-
-				qwenTokenPreference.setOnPreferenceChangeListener((preference, newValue) -> {
-					String token = (String) newValue;
-					if (token.isEmpty()) {
-						Toast.makeText(getContext(), "Using default Qwen token", Toast.LENGTH_SHORT).show();
-					} else {
-						Toast.makeText(getContext(), "Qwen API token updated", Toast.LENGTH_SHORT).show();
-					}
-					return true;
-				});
-			}
-
-			
-			// Default read-only preference
-			SwitchPreferenceCompat readOnlyPref = findPreference("default_read_only");
-			if (readOnlyPref != null) {
-				readOnlyPref.setOnPreferenceChangeListener((preference, newValue) -> {
-					boolean enabled = (Boolean) newValue;
-					Toast.makeText(getContext(), enabled ? "Read-only by default" : "Editable by default", Toast.LENGTH_SHORT).show();
-					return true;
-				});
-			}
-
-			// Default wrap preference
-			SwitchPreferenceCompat wrapPref = findPreference("default_word_wrap");
-			if (wrapPref != null) {
-				wrapPref.setOnPreferenceChangeListener((preference, newValue) -> {
-					boolean enabled = (Boolean) newValue;
-					Toast.makeText(getContext(), enabled ? "Word wrap enabled by default" : "Word wrap disabled by default", Toast.LENGTH_SHORT).show();
-					return true;
-				});
-			}
-			
-			// Line numbers preference
-			SwitchPreferenceCompat lineNumbersPreference = findPreference("line_numbers");
-			if (lineNumbersPreference != null) {
-				lineNumbersPreference.setOnPreferenceChangeListener((preference, newValue) -> {
-					boolean enabled = (Boolean) newValue;
-					Toast.makeText(getContext(), enabled ? "Line numbers enabled" : "Line numbers disabled", Toast.LENGTH_SHORT).show();
-					return true;
-				});
-			}
-			
-			// AI history preference
-			SwitchPreferenceCompat aiHistoryPreference = findPreference("ai_history");
-			if (aiHistoryPreference != null) {
-				aiHistoryPreference.setOnPreferenceChangeListener((preference, newValue) -> {
-					boolean enabled = (Boolean) newValue;
-					Toast.makeText(getContext(), enabled ? "AI history enabled" : "AI history disabled", Toast.LENGTH_SHORT).show();
-					return true;
-				});
-			}
-		}
-	}
 	
 	// Helper method to get preferences
 	public static SharedPreferences getPreferences(android.content.Context context) {
@@ -495,18 +238,7 @@ public class SettingsActivity extends AppCompatActivity {
 	}
 	
 	public static int getFontSize(android.content.Context context) {
-		String fontSize = getPreferences(context).getString("font_size", "medium");
-		switch (fontSize) {
-			case "small":
-			return 12;
-			case "large":
-			return 18;
-			case "xlarge":
-			return 22;
-			case "medium":
-			default:
-			return 14;
-		}
+		return getPreferences(context).getInt("font_size_int", 14);
 	}
 	
 	
@@ -617,14 +349,6 @@ public class SettingsActivity extends AppCompatActivity {
 		getPreferences(context).edit().putString("free_conv_meta_" + modelId, metadataJsonArray).apply();
 	}
 
-    public static boolean isDefaultReadOnly(android.content.Context context) {
-        return getPreferences(context).getBoolean("default_read_only", false);
-    }
-
-    public static boolean isDefaultWordWrap(android.content.Context context) {
-        return getPreferences(context).getBoolean("default_word_wrap", true);
-    }
-	
 	public static boolean isLineNumbersEnabled(android.content.Context context) {
 		return getPreferences(context).getBoolean("line_numbers", true);
 	}
@@ -632,4 +356,12 @@ public class SettingsActivity extends AppCompatActivity {
 	public static boolean isAiHistoryEnabled(android.content.Context context) {
 		return getPreferences(context).getBoolean("ai_history", true);
 	}
+
+    public static boolean isDefaultReadOnly(android.content.Context context) {
+        return getPreferences(context).getBoolean("default_read_only", false);
+    }
+
+    public static boolean isDefaultWordWrap(android.content.Context context) {
+        return getPreferences(context).getBoolean("default_word_wrap", true);
+    }
 }

@@ -136,6 +136,12 @@ public class EditorActivity extends AppCompatActivity implements
     }
 
     public void onCodeEditorFragmentReady() {
+        // Apply default settings
+        boolean wrapEnabled = SettingsActivity.isDefaultWordWrap(this);
+        boolean readOnlyEnabled = SettingsActivity.isDefaultReadOnly(this);
+        applyWrapToAllTabs(wrapEnabled);
+        applyReadOnlyToAllTabs(readOnlyEnabled);
+
         // Open index.html if no tabs are open initially
         if (viewModel.getOpenTabs().isEmpty()) {
             File indexHtml = new File(projectDir, "index.html");
@@ -221,11 +227,17 @@ public class EditorActivity extends AppCompatActivity implements
             return true;
         } else if (id == R.id.action_toggle_wrap) {
             item.setChecked(!item.isChecked());
-            applyWrapToActiveEditor(item.isChecked());
+            boolean isChecked = item.isChecked();
+            applyWrapToAllTabs(isChecked);
+            // Save the setting globally
+            SettingsActivity.getPreferences(this).edit().putBoolean("default_word_wrap", isChecked).apply();
             return true;
         } else if (id == R.id.action_toggle_read_only) {
             item.setChecked(!item.isChecked());
-            applyReadOnlyToActiveEditor(item.isChecked());
+            boolean isChecked = item.isChecked();
+            applyReadOnlyToAllTabs(isChecked);
+            // Save the setting globally
+            SettingsActivity.getPreferences(this).edit().putBoolean("default_read_only", isChecked).apply();
             return true;
         }
         return super.onOptionsItemSelected(item);
@@ -466,33 +478,25 @@ public class EditorActivity extends AppCompatActivity implements
         startActivity(previewIntent);
     }
 
-    private void applyWrapToActiveEditor(boolean enable) {
+    private void applyWrapToAllTabs(boolean enable) {
         CodeEditorFragment fragment = getCodeEditorFragment();
         if (fragment == null) return;
 
-        TabItem activeTab = tabManager.getActiveTabItem();
-        if (activeTab != null) {
-            activeTab.setWrapEnabled(enable);
+        for (TabItem tab : tabManager.getOpenTabs()) {
+            tab.setWrapEnabled(enable);
         }
 
-        io.github.rosemoe.sora.widget.CodeEditor codeEditor = fragment.getActiveCodeEditor();
-        if (codeEditor != null) {
-            codeEditor.setWordwrap(enable);
-        }
+        fragment.applyWrapToAllEditors(enable);
     }
 
-    private void applyReadOnlyToActiveEditor(boolean readOnly) {
+    private void applyReadOnlyToAllTabs(boolean readOnly) {
         CodeEditorFragment fragment = getCodeEditorFragment();
         if (fragment == null) return;
 
-        TabItem activeTab = tabManager.getActiveTabItem();
-        if (activeTab != null) {
-            activeTab.setReadOnly(readOnly);
+        for (TabItem tab : tabManager.getOpenTabs()) {
+            tab.setReadOnly(readOnly);
         }
 
-        io.github.rosemoe.sora.widget.CodeEditor codeEditor = fragment.getActiveCodeEditor();
-        if (codeEditor != null) {
-            codeEditor.setEditable(!readOnly);
-        }
+        fragment.applyReadOnlyToAllEditors(readOnly);
     }
 }

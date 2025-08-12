@@ -16,9 +16,11 @@ public class AIModel {
 
     // Store models in a thread-safe map, keyed by provider for efficient lookup.
     private static final Map<AIProvider, List<AIModel>> modelsByProvider = new ConcurrentHashMap<>();
+    private static final List<AIModel> customModels = new ArrayList<>();
 
     // Static initializer to populate the initial set of models
     static {
+        loadCustomModels();
         List<AIModel> initialModels = new ArrayList<>(Arrays.asList(
             // Google Models
             new AIModel("gemini-2.5-flash", "Gemini 2.5 Flash", AIProvider.GOOGLE, new ModelCapabilities(true, true, true, true, true, true, true, 1048576, 8192)),
@@ -92,12 +94,46 @@ public class AIModel {
     public boolean supportsVision() { return capabilities.supportsVision; }
     public boolean supportsFunctionCalling() { return true; }
 
-    public static List<AIModel> values() {
+    public static void addCustomModel(AIModel model) {
+        customModels.add(model);
+        saveCustomModels();
+    }
+
+    private static void saveCustomModels() {
+        android.content.Context context = com.codex.apk.CodeXApplication.getAppContext();
+        if (context == null) return;
+        android.content.SharedPreferences prefs = context.getSharedPreferences("custom_models", android.content.Context.MODE_PRIVATE);
+        com.google.gson.Gson gson = new com.google.gson.Gson();
+        String json = gson.toJson(customModels);
+        prefs.edit().putString("models", json).apply();
+    }
+
+    private static void loadCustomModels() {
+        android.content.Context context = com.codex.apk.CodeXApplication.getAppContext();
+        if (context == null) return;
+        android.content.SharedPreferences prefs = context.getSharedPreferences("custom_models", android.content.Context.MODE_PRIVATE);
+        String json = prefs.getString("models", null);
+        if (json != null) {
+            com.google.gson.Gson gson = new com.google.gson.Gson();
+            AIModel[] models = gson.fromJson(json, AIModel[].class);
+            if (models != null) {
+                customModels.clear();
+                customModels.addAll(java.util.Arrays.asList(models));
+            }
+        }
+    }
+
+    public static List<AIModel> getAllModels() {
         List<AIModel> allModels = new ArrayList<>();
         for (List<AIModel> modelList : modelsByProvider.values()) {
             allModels.addAll(modelList);
         }
+        allModels.addAll(customModels);
         return allModels;
+    }
+
+    public static List<AIModel> values() {
+        return getAllModels();
     }
 
     public static List<String> getAllDisplayNames() {

@@ -103,57 +103,39 @@ public class AIChatUIManager {
     public void showModelPickerDialog(AIAssistant aiAssistant) {
         if (aiAssistant == null) return;
 
-        modelPickerDialog = new BottomSheetDialog(context);
-        View dialogView = LayoutInflater.from(context).inflate(R.layout.dialog_model_picker, null);
-        modelPickerDialog.setContentView(dialogView);
+        android.content.SharedPreferences prefs = context.getSharedPreferences("model_settings", Context.MODE_PRIVATE);
+        List<String> modelNamesList = new java.util.ArrayList<>();
+        for (AIModel model : AIModel.getAllModels()) {
+            String key = "model_" + model.getModelId() + "_" + model.getProvider().name() + "_enabled";
+            if (prefs.getBoolean(key, true)) {
+                modelNamesList.add(model.getDisplayName());
+            }
+        }
+        String[] modelNames = modelNamesList.toArray(new String[0]);
+        String currentModel = aiAssistant.getCurrentModel().getDisplayName();
+        int selectedIndex = -1;
 
-        RecyclerView googleModels = dialogView.findViewById(R.id.recycler_google_models);
-        RecyclerView huggingfaceModels = dialogView.findViewById(R.id.recycler_huggingface_models);
-        RecyclerView alibabaModels = dialogView.findViewById(R.id.recycler_alibaba_models);
-        RecyclerView zModels = dialogView.findViewById(R.id.recycler_z_models);
-        RecyclerView freeModels = dialogView.findViewById(R.id.recycler_free_models);
+        for (int i = 0; i < modelNames.length; i++) {
+            if (modelNames[i].equals(currentModel)) {
+                selectedIndex = i;
+                break;
+            }
+        }
 
-        ImageView refreshAlibaba = dialogView.findViewById(R.id.button_refresh_alibaba);
-        ImageView refreshZ = dialogView.findViewById(R.id.button_refresh_z);
-        ImageView closeButton = dialogView.findViewById(R.id.button_close);
-
-        setupProviderModels(googleModels, AIProvider.GOOGLE, aiAssistant);
-        setupProviderModels(huggingfaceModels, AIProvider.HUGGINGFACE, aiAssistant);
-        setupProviderModels(alibabaModels, AIProvider.ALIBABA, aiAssistant);
-        setupProviderModels(zModels, AIProvider.Z, aiAssistant);
-        setupProviderModels(freeModels, AIProvider.FREE, aiAssistant);
-
-        refreshAlibaba.setOnClickListener(v -> {
-            aiAssistant.refreshModelsForProvider(AIProvider.ALIBABA, new AIAssistant.RefreshCallback() {
-                @Override
-                public void onRefreshComplete(boolean success, String message) {
-                    fragment.requireActivity().runOnUiThread(() -> {
-                        Toast.makeText(context, message, Toast.LENGTH_SHORT).show();
-                        if (success) {
-                            setupProviderModels(alibabaModels, AIProvider.ALIBABA, aiAssistant);
-                        }
-                    });
-                }
-            });
-        });
-
-        refreshZ.setOnClickListener(v -> {
-            aiAssistant.refreshModelsForProvider(AIProvider.Z, new AIAssistant.RefreshCallback() {
-                @Override
-                public void onRefreshComplete(boolean success, String message) {
-                    fragment.requireActivity().runOnUiThread(() -> {
-                        Toast.makeText(context, message, Toast.LENGTH_SHORT).show();
-                        if (success) {
-                            setupProviderModels(zModels, AIProvider.Z, aiAssistant);
-                        }
-                    });
-                }
-            });
-        });
-
-        closeButton.setOnClickListener(v -> modelPickerDialog.dismiss());
-
-        modelPickerDialog.show();
+        new com.google.android.material.dialog.MaterialAlertDialogBuilder(context)
+                .setTitle("Select AI Model")
+                .setSingleChoiceItems(modelNames, selectedIndex, (dialog, which) -> {
+                    String selectedModelName = modelNames[which];
+                    AIModel selectedModel = AIModel.fromDisplayName(selectedModelName);
+                    if (selectedModel != null) {
+                        aiAssistant.setCurrentModel(selectedModel);
+                        textSelectedModel.setText(selectedModelName);
+                        updateSettingsButtonState(aiAssistant);
+                    }
+                    dialog.dismiss();
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
     }
 
     private void showAgentPickerDialog(AIAssistant aiAssistant) {
@@ -202,26 +184,6 @@ public class AIChatUIManager {
         dlg.show();
     }
 
-    private void setupProviderModels(RecyclerView recyclerView, AIProvider provider, AIAssistant aiAssistant) {
-        Map<AIProvider, List<AIModel>> modelsByProvider = AIModel.getModelsByProvider();
-        List<AIModel> providerModels = modelsByProvider.get(provider);
-
-        if (providerModels != null && !providerModels.isEmpty()) {
-            ModelPickerAdapter adapter = new ModelPickerAdapter(providerModels, aiAssistant.getCurrentModel(),
-                model -> {
-                    aiAssistant.setCurrentModel(model);
-                    textSelectedModel.setText(model.getDisplayName());
-                    modelPickerDialog.dismiss();
-                    updateSettingsButtonState(aiAssistant);
-                });
-
-            recyclerView.setLayoutManager(new LinearLayoutManager(context));
-            recyclerView.setAdapter(adapter);
-            recyclerView.setVisibility(View.VISIBLE);
-        } else {
-            recyclerView.setVisibility(View.GONE);
-        }
-    }
 
     public void showAiSettingsDialog(AIAssistant aiAssistant) {
         if (aiAssistant == null) return;

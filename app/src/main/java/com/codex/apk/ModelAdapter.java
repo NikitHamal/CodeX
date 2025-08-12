@@ -1,6 +1,7 @@
 package com.codex.apk;
 
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -26,11 +27,21 @@ public class ModelAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
     private final Context context;
     private final List<Object> items = new ArrayList<>();
     private final Map<AIProvider, List<AIModel>> modelsByProvider;
+    private final Map<String, Boolean> checkedStates = new LinkedHashMap<>();
+    private final SharedPreferences prefs;
 
     public ModelAdapter(Context context, List<AIModel> models) {
         this.context = context;
+        this.prefs = context.getSharedPreferences("model_settings", Context.MODE_PRIVATE);
         this.modelsByProvider = new LinkedHashMap<>();
 
+        // Initialize checked states from SharedPreferences
+        for (AIModel model : models) {
+            String key = "model_" + model.getDisplayName() + "_enabled";
+            checkedStates.put(model.getDisplayName(), prefs.getBoolean(key, true));
+        }
+
+        // Group models by provider
         for (AIModel model : models) {
             if (!modelsByProvider.containsKey(model.getProvider())) {
                 modelsByProvider.put(model.getProvider(), new ArrayList<>());
@@ -38,6 +49,7 @@ public class ModelAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
             modelsByProvider.get(model.getProvider()).add(model);
         }
 
+        // Create a flat list for the adapter
         for (Map.Entry<AIProvider, List<AIModel>> entry : modelsByProvider.entrySet()) {
             items.add(entry.getKey());
             items.addAll(entry.getValue());
@@ -46,10 +58,7 @@ public class ModelAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
 
     @Override
     public int getItemViewType(int position) {
-        if (items.get(position) instanceof AIProvider) {
-            return TYPE_HEADER;
-        }
-        return TYPE_ITEM;
+        return items.get(position) instanceof AIProvider ? TYPE_HEADER : TYPE_ITEM;
     }
 
     @NonNull
@@ -67,10 +76,12 @@ public class ModelAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
     public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
         if (holder.getItemViewType() == TYPE_HEADER) {
             HeaderViewHolder headerViewHolder = (HeaderViewHolder) holder;
-            headerViewHolder.bind((AIProvider) items.get(position));
+            AIProvider provider = (AIProvider) items.get(position);
+            headerViewHolder.bind(provider);
         } else {
             ModelViewHolder modelViewHolder = (ModelViewHolder) holder;
-            modelViewHolder.bind((AIModel) items.get(position));
+            AIModel model = (AIModel) items.get(position);
+            modelViewHolder.bind(model);
         }
     }
 
@@ -79,16 +90,47 @@ public class ModelAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
         return items.size();
     }
 
-    static class HeaderViewHolder extends RecyclerView.ViewHolder {
+    class HeaderViewHolder extends RecyclerView.ViewHolder {
         private final TextView providerName;
+        private final CheckBox selectAllCheckbox;
 
         public HeaderViewHolder(@NonNull View itemView) {
             super(itemView);
             providerName = itemView.findViewById(R.id.text_provider_name);
+            selectAllCheckbox = itemView.findViewById(R.id.checkbox_select_all);
         }
 
         public void bind(AIProvider provider) {
             providerName.setText(provider.name());
+
+            List<AIModel> providerModels = modelsByProvider.get(provider);
+            boolean allChecked = true;
+            if (providerModels != null && !providerModels.isEmpty()) {
+                for (AIModel model : providerModels) {
+                    if (!checkedStates.getOrDefault(model.getDisplayName(), true)) {
+                        allChecked = false;
+                        break;
+                    }
+                }
+            } else {
+                allChecked = false;
+            }
+
+            selectAllCheckbox.setOnCheckedChangeListener(null);
+            selectAllCheckbox.setChecked(allChecked);
+
+            selectAllCheckbox.setOnCheckedChangeListener((buttonView, isChecked) -> {
+                if (providerModels != null) {
+                    SharedPreferences.Editor editor = prefs.edit();
+                    for (AIModel model : providerModels) {
+                        checkedStates.put(model.getDisplayName(), isChecked);
+                        String key = "model_" + model.getDisplayName() + "_enabled";
+                        editor.putBoolean(key, isChecked);
+                    }
+                    editor.apply();
+                    notifyDataSetChanged();
+                }
+            });
         }
     }
 
@@ -108,13 +150,14 @@ public class ModelAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
             modelName.setText(model.getDisplayName());
             modelId.setText(model.getModelId());
 
-            android.content.SharedPreferences prefs = context.getSharedPreferences("model_settings", Context.MODE_PRIVATE);
-            String key = "model_" + model.getDisplayName() + "_enabled";
-            boolean isEnabled = prefs.getBoolean(key, true); // Default to enabled
-            modelEnabledCheckbox.setChecked(isEnabled);
+            modelEnabledCheckbox.setOnCheckedChangeListener(null);
+            modelEnabledCheckbox.setChecked(checkedStates.getOrDefault(model.getDisplayName(), true));
 
             modelEnabledCheckbox.setOnCheckedChangeListener((buttonView, isChecked) -> {
+                checkedStates.put(model.getDisplayName(), isChecked);
+                String key = "model_" + model.getDisplayName() + "_enabled";
                 prefs.edit().putBoolean(key, isChecked).apply();
+                notifyDataSetChanged(); // To update the header checkbox
             });
         }
     }

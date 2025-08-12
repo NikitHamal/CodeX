@@ -23,16 +23,29 @@
         app:shapeAppearanceOverlay="@style/ShapeAppearance.ChatBubble.User"
         app:cardBackgroundColor="?attr/colorPrimary">
 
-        <TextView
-            android:id="@+id/text_message_content"
+        <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:paddingHorizontal="12dp"
-            android:paddingVertical="8dp"
-            android:textColor="?attr/colorOnPrimary"
-            android:textSize="14sp"
-            android:lineSpacingExtra="4dp"
-            android:text="This is a user message example."
-            android:textIsSelectable="true" />
+            android:orientation="vertical">
+            <TextView
+                android:id="@+id/text_message_content"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:paddingHorizontal="12dp"
+                android:paddingVertical="8dp"
+                android:textColor="?attr/colorOnPrimary"
+                android:textSize="14sp"
+                android:lineSpacingExtra="4dp"
+                android:text="This is a user message example."
+                android:textIsSelectable="true" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/recycler_user_attachments"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingBottom="8dp"
+                android:visibility="gone"
+                app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
+        </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 </androidx.constraintlayout.widget.ConstraintLayout>

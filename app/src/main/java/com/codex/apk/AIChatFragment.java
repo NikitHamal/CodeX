@@ -83,6 +83,7 @@ public class AIChatFragment extends Fragment implements ChatMessageAdapter.OnAiA
                 } catch (Exception ignore) {}
             }
             Toast.makeText(requireContext(), pendingAttachments.size() + " file(s) attached", Toast.LENGTH_SHORT).show();
+            if (uiManager != null) uiManager.showAttachedFilesPreview(pendingAttachments);
         });
     }
     private String queryDisplayName(android.content.ContentResolver cr, android.net.Uri uri) {
@@ -158,6 +159,11 @@ public class AIChatFragment extends Fragment implements ChatMessageAdapter.OnAiA
         uiManager.setSendButtonEnabled(false);
 
         ChatMessage userMsg = new ChatMessage(ChatMessage.SENDER_USER, prompt, System.currentTimeMillis());
+        if (!pendingAttachments.isEmpty()) {
+            List<String> names = new ArrayList<>();
+            for (java.io.File f : pendingAttachments) names.add(f.getAbsolutePath());
+            userMsg.setUserAttachmentPaths(names);
+        }
         addMessage(userMsg);
 
         ChatMessage thinkingMessage = new ChatMessage(ChatMessage.SENDER_AI, getString(R.string.ai_is_thinking), System.currentTimeMillis());
@@ -176,6 +182,7 @@ public class AIChatFragment extends Fragment implements ChatMessageAdapter.OnAiA
                 listener.sendAiPrompt(prompt, new ArrayList<>(chatHistory), qwenConversationState);
             }
             pendingAttachments.clear();
+            if (uiManager != null) uiManager.showAttachedFilesPreview(pendingAttachments);
         }
     }
 

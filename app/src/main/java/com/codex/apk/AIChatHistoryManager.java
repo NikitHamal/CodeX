@@ -17,6 +17,7 @@ public class AIChatHistoryManager {
     private static final String CHAT_HISTORY_KEY_PREFIX = "chat_history_";
     private static final String QWEN_CONVERSATION_STATE_KEY_PREFIX = "qwen_conv_state_";
     private static final String OLD_GENERIC_CHAT_HISTORY_KEY = "chat_history";
+    private static final String FREE_CONV_META_KEY_PREFIX = "free_conv_meta_";
 
     private final Context context;
     private final String projectPath;
@@ -62,6 +63,15 @@ public class AIChatHistoryManager {
             qwenState.setConversationId(loadedState.getConversationId());
             qwenState.setLastParentId(loadedState.getLastParentId());
         }
+
+        // Restore Gemini FREE conversation metadata per project if present, by copying to SettingsActivity scoping
+        try {
+            String meta = prefs.getString(getProjectSpecificKey(FREE_CONV_META_KEY_PREFIX), null);
+            if (meta != null && !meta.isEmpty()) {
+                // Use default free model id if not known here; SettingsActivity stores per model.
+                SettingsActivity.setFreeConversationMetadata(context, "gemini-2.5-flash", meta);
+            }
+        } catch (Exception ignore) {}
     }
 
     public void saveChatState(List<ChatMessage> chatHistory, QwenConversationState qwenState) {
@@ -76,6 +86,15 @@ public class AIChatHistoryManager {
         String qwenStateKey = getProjectSpecificKey(QWEN_CONVERSATION_STATE_KEY_PREFIX);
         String qwenStateJson = qwenState.toJson();
         editor.putString(qwenStateKey, qwenStateJson);
+
+        // Persist last known FREE conversation metadata for this project
+        try {
+            String modelId = "gemini-2.5-flash";
+            String meta = SettingsActivity.getFreeConversationMetadata(context, modelId);
+            if (meta != null && !meta.isEmpty()) {
+                editor.putString(getProjectSpecificKey(FREE_CONV_META_KEY_PREFIX), meta);
+            }
+        } catch (Exception ignore) {}
 
         editor.apply();
     }

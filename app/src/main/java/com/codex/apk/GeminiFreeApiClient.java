@@ -163,16 +163,17 @@ public class GeminiFreeApiClient implements ApiClient {
                                     if (actionListener != null) actionListener.onAiError("Gemini request failed: " + resp2.code() + (errBody2 != null ? ": " + errBody2 : ""));
                                     return;
                                 }
-                                                    String body2 = resp2.body().string();
-                                 ParsedOutput parsed2 = parseOutputFromStream(body2);
-                                 persistConversationMetaIfAvailable(modelId, body2);
-                                 String explanation2 = buildExplanationWithThinking(parsed2.text, parsed2.thoughts);
-                                 if (actionListener != null) {
-                                     actionListener.onAiActionsProcessed(body2, explanation2, new ArrayList<>(), new ArrayList<>(), model != null ? model.getDisplayName() : "Gemini (Free)");
-                                 }
-                                 // Cache metadata onto the last chat message raw response to help derive context later
-                                 // (UI manager will receive this via onAiActionsProcessed).
-                                 
+                                String body2 = resp2.body().string();
+                                ParsedOutput parsed2 = parseOutputFromStream(body2);
+                                persistConversationMetaIfAvailable(modelId, body2);
+                                String explanation2 = buildExplanationWithThinking(parsed2.text, parsed2.thoughts);
+                                if (actionListener != null) {
+                                    String normalized2 = normalizeJsonIfPresent(parsed2.text);
+                                    actionListener.onAiActionsProcessed(normalized2, explanation2, new ArrayList<>(), new ArrayList<>(), model != null ? model.getDisplayName() : "Gemini (Free)");
+                                }
+                                // Cache metadata onto the last chat message raw response to help derive context later
+                                // (UI manager will receive this via onAiActionsProcessed).
+                                
                                 return;
                             }
                         }
@@ -215,7 +216,8 @@ public class GeminiFreeApiClient implements ApiClient {
                     persistConversationMetaIfAvailable(modelId, body);
                     String explanation = buildExplanationWithThinking(parsed.text, parsed.thoughts);
                     if (actionListener != null) {
-                        actionListener.onAiActionsProcessed(body, explanation, new ArrayList<>(), new ArrayList<>(), model != null ? model.getDisplayName() : "Gemini (Free)");
+                        String normalized = normalizeJsonIfPresent(parsed.text);
+                        actionListener.onAiActionsProcessed(normalized, explanation, new ArrayList<>(), new ArrayList<>(), model != null ? model.getDisplayName() : "Gemini (Free)");
                     }
                 }
             } catch (Exception e) {
@@ -326,8 +328,7 @@ public class GeminiFreeApiClient implements ApiClient {
                 .build();
         Request upload = new Request.Builder()
                 .url(UPLOAD_URL)
-                .header("Push-ID", "feeds/mcudyrk2a4khkz")
-                .header("Cookie", buildCookieHeader(cookies))
+                .headers(Headers.of(new HashMap<String, String>() {{ put("Push-ID", "feeds/mcudyrk2a4khkz"); }}))
                 .post(multipart)
                 .build();
         try (Response r = httpClient.newCall(upload).execute()) {
@@ -375,9 +376,8 @@ public class GeminiFreeApiClient implements ApiClient {
                 JsonArray item = new JsonArray();
                 JsonArray idArr = new JsonArray();
                 idArr.add(ur.id);
-                JsonArray pair = new JsonArray();
-                pair.add(idArr);
-                item.add(pair);
+                // Expected shape per python client: [ [id], name ]
+                item.add(idArr);
                 item.add(ur.name);
                 filesArray.add(item);
             }
@@ -388,7 +388,9 @@ public class GeminiFreeApiClient implements ApiClient {
             promptArray.add(prompt);
             inner.add(promptArray);
         }
+        // second element must be null placeholder
         inner.add(com.google.gson.JsonNull.INSTANCE);
+        // third element: chat metadata array (e.g., [cid, rid, rcid])
         if (chatMetadataJsonArray != null && !chatMetadataJsonArray.isEmpty()) {
             try {
                 inner.add(JsonParser.parseString(chatMetadataJsonArray).getAsJsonArray());
@@ -404,9 +406,10 @@ public class GeminiFreeApiClient implements ApiClient {
         outer.add(jsonInner);
         String fReq = outer.toString();
 
+        // Gemini expects normal form encoding (not URL double-encoded JSON). Use add instead of addEncoded.
         return new FormBody.Builder()
-                .addEncoded("at", accessToken)
-                .addEncoded("f.req", fReq)
+                .add("at", accessToken)
+                .add("f.req", fReq)
                 .build();
     }
 
@@ -463,6 +466,32 @@ public class GeminiFreeApiClient implements ApiClient {
         sb.append("Thinking:\n");
         sb.append(thoughts);
         return sb.toString();
+    }
+
+    private String normalizeJsonIfPresent(String text) {
+        if (text == null) return null;
+        String t = text.trim();
+        // Strip leading code fence markers or 'json\n'
+        if (t.startsWith("```")) {
+            int firstBrace = t.indexOf('{');
+            int lastBrace = t.lastIndexOf('}');
+            if (firstBrace >= 0 && lastBrace > firstBrace) {
+                t = t.substring(firstBrace, lastBrace + 1);
+            }
+        } else if (t.startsWith("json\n")) {
+            t = t.substring(5);
+        }
+        // Extract object substring if present
+        int start = t.indexOf('{');
+        int end = t.lastIndexOf('}');
+        if (start >= 0 && end > start) {
+            String cand = t.substring(start, end + 1);
+            try {
+                com.google.gson.JsonParser.parseString(cand).getAsJsonObject();
+                return cand;
+            } catch (Exception ignore) {}
+        }
+        return text;
     }
 
     private Map<String, String> defaultGeminiHeaders() {

@@ -116,9 +116,52 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
     }
 
     static class UserMessageViewHolder extends RecyclerView.ViewHolder {
-        TextView textMessage; MaterialCardView cardMessage; private final Context context;
-        UserMessageViewHolder(View itemView, Context context) { super(itemView); this.context = context; textMessage = itemView.findViewById(R.id.text_message_content); cardMessage = itemView.findViewById(R.id.user_message_card_view); }
-        void bind(ChatMessage message) { textMessage.setText(message.getContent()); }
+        TextView textMessage; MaterialCardView cardMessage; private final Context context; RecyclerView recyclerAttachments;
+        UserMessageViewHolder(View itemView, Context context) { super(itemView); this.context = context; textMessage = itemView.findViewById(R.id.text_message_content); cardMessage = itemView.findViewById(R.id.user_message_card_view); recyclerAttachments = itemView.findViewById(R.id.recycler_user_attachments); }
+        void bind(ChatMessage message) {
+            textMessage.setText(message.getContent());
+            List<String> paths = message.getUserAttachmentPaths();
+            if (paths != null && !paths.isEmpty()) {
+                recyclerAttachments.setVisibility(View.VISIBLE);
+                recyclerAttachments.setLayoutManager(new androidx.recyclerview.widget.LinearLayoutManager(context, androidx.recyclerview.widget.LinearLayoutManager.HORIZONTAL, false));
+                recyclerAttachments.setAdapter(new RecyclerView.Adapter<RecyclerView.ViewHolder>() {
+                    @Override public RecyclerView.ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
+                        LinearLayout container = new LinearLayout(context);
+                        container.setOrientation(LinearLayout.HORIZONTAL);
+                        container.setPadding(8,8,8,8);
+                        ImageView iv = new ImageView(context);
+                        iv.setImageResource(R.drawable.icon_file_round);
+                        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(48,48);
+                        iv.setLayoutParams(lp);
+                        container.addView(iv);
+                        TextView tv = new TextView(context);
+                        tv.setTextColor(ContextCompat.getColor(context, R.color.on_primary_container));
+                        tv.setTextSize(12);
+                        tv.setPadding(8,0,8,0);
+                        container.addView(tv);
+                        return new RecyclerView.ViewHolder(container) {};
+                    }
+                    @Override public void onBindViewHolder(RecyclerView.ViewHolder holder, int position) {
+                        LinearLayout container = (LinearLayout) holder.itemView;
+                        TextView tv = (TextView) container.getChildAt(1);
+                        String p = paths.get(position);
+                        tv.setText(new java.io.File(p).getName());
+                        holder.itemView.setOnClickListener(v -> {
+                            try {
+                                Uri uri = androidx.core.content.FileProvider.getUriForFile(context, context.getPackageName() + ".fileprovider", new java.io.File(p));
+                                Intent intent = new Intent(Intent.ACTION_VIEW);
+                                intent.setData(uri);
+                                intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                                context.startActivity(intent);
+                            } catch (Exception ignored) {}
+                        });
+                    }
+                    @Override public int getItemCount() { return paths.size(); }
+                });
+            } else {
+                recyclerAttachments.setVisibility(View.GONE);
+            }
+        }
     }
 
     static class AiMessageViewHolder extends RecyclerView.ViewHolder {

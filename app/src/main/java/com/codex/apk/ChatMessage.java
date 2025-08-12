@@ -29,6 +29,7 @@ public class ChatMessage {
     private List<String> suggestions; // For AI messages, list of suggestions
     private String aiModelName; // For AI messages, the name of the AI model used
     private long timestamp; // Timestamp for ordering messages
+    private List<String> userAttachmentPaths; // For user messages, list of attached file display names/paths
 
     // New fields for AI proposed actions and their status
     private String rawAiResponseJson; // The raw JSON response from the AI model
@@ -63,6 +64,7 @@ public class ChatMessage {
         this.fid = java.util.UUID.randomUUID().toString();
         this.parentId = null;
         this.childrenIds = new ArrayList<>();
+        this.userAttachmentPaths = new ArrayList<>();
     }
 
     /**
@@ -102,6 +104,7 @@ public class ChatMessage {
     public int getStatus() { return status; }
     public String getThinkingContent() { return thinkingContent; }
     public List<WebSource> getWebSources() { return webSources; }
+    public List<String> getUserAttachmentPaths() { return userAttachmentPaths; }
 
     // Getters and setters for Qwen threading fields
     public String getFid() { return fid; }
@@ -120,6 +123,7 @@ public class ChatMessage {
     public void setThinkingContent(String thinkingContent) { this.thinkingContent = thinkingContent; }
     public void setWebSources(List<WebSource> webSources) { this.webSources = webSources; }
     public void setPlanSteps(List<PlanStep> planSteps) { this.planSteps = planSteps; }
+    public void setUserAttachmentPaths(List<String> paths) { this.userAttachmentPaths = paths != null ? new ArrayList<>(paths) : new ArrayList<>(); }
 
     /** Plan step model for UI */
     public static class PlanStep {
@@ -290,6 +294,11 @@ public class ChatMessage {
                 map.put("proposedFileChanges", null);
             }
 
+        } else {
+            // User message attachments
+            if (userAttachmentPaths != null && !userAttachmentPaths.isEmpty()) {
+                map.put("userAttachmentPaths", new ArrayList<>(userAttachmentPaths));
+            }
         }
         return map;
     }

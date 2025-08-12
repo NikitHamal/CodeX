@@ -28,6 +28,7 @@ public class AIChatUIManager {
     public RecyclerView recyclerViewChatHistory;
     public EditText editTextAiPrompt;
     public MaterialButton buttonAiSend;
+    public RecyclerView recyclerAttachedFilesPreview;
     public LinearLayout layoutEmptyState;
     public TextView textGreeting;
     public LinearLayout layoutInputSection;
@@ -60,6 +61,10 @@ public class AIChatUIManager {
         linearPromptInput = rootView.findViewById(R.id.linear_prompt_input);
         buttonAiSettings = rootView.findViewById(R.id.button_ai_settings);
         buttonAiAttach = rootView.findViewById(R.id.button_ai_attach);
+        recyclerAttachedFilesPreview = rootView.findViewById(R.id.recycler_attached_files_preview);
+        if (recyclerAttachedFilesPreview != null) {
+            recyclerAttachedFilesPreview.setLayoutManager(new LinearLayoutManager(context, LinearLayoutManager.HORIZONTAL, false));
+        }
 
         // Long press on model selector to choose a custom agent
         layoutModelSelectorCustom.setOnLongClickListener(v -> {
@@ -303,5 +308,40 @@ public class AIChatUIManager {
     public void setSendButtonEnabled(boolean isEnabled) {
         buttonAiSend.setEnabled(isEnabled);
         buttonAiSend.setAlpha(isEnabled ? 1.0f : 0.5f);
+    }
+
+    public void showAttachedFilesPreview(List<java.io.File> files) {
+        if (recyclerAttachedFilesPreview == null) return;
+        if (files == null || files.isEmpty()) {
+            recyclerAttachedFilesPreview.setVisibility(View.GONE);
+            recyclerAttachedFilesPreview.setAdapter(null);
+            return;
+        }
+        recyclerAttachedFilesPreview.setVisibility(View.VISIBLE);
+        recyclerAttachedFilesPreview.setAdapter(new RecyclerView.Adapter<RecyclerView.ViewHolder>() {
+            @Override public RecyclerView.ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
+                LinearLayout container = new LinearLayout(context);
+                container.setOrientation(LinearLayout.HORIZONTAL);
+                ImageView iv = new ImageView(context);
+                int size = (int) (32 * context.getResources().getDisplayMetrics().density / context.getResources().getDisplayMetrics().density); // dp-to-dp placeholder
+                iv.setLayoutParams(new LinearLayout.LayoutParams(80, 80));
+                iv.setImageResource(R.drawable.icon_file_round);
+                container.addView(iv);
+                TextView tv = new TextView(context);
+                tv.setTextColor(context.getColor(R.color.on_surface_variant));
+                tv.setTextSize(12);
+                container.addView(tv);
+                return new RecyclerView.ViewHolder(container) {};
+            }
+            @Override public void onBindViewHolder(RecyclerView.ViewHolder holder, int position) {
+                LinearLayout container = (LinearLayout) holder.itemView;
+                ImageView iv = (ImageView) container.getChildAt(0);
+                TextView tv = (TextView) container.getChildAt(1);
+                java.io.File f = files.get(position);
+                tv.setText(f.getName());
+                holder.itemView.setPadding(8,8,8,8);
+            }
+            @Override public int getItemCount() { return files.size(); }
+        });
     }
 }

@@ -117,6 +117,14 @@
             android:text="AI Explanation will go here."
             android:textIsSelectable="true" />
 
+        <!-- AI attachments preview (optional) -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/recycler_ai_attachments"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:visibility="gone"
+            app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
+
         <!-- Plan Checklist Section -->
         <LinearLayout
             android:id="@+id/layout_plan_steps"

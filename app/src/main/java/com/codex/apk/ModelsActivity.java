@@ -2,9 +2,14 @@ package com.codex.apk;
 
 import android.os.Bundle;
 import android.view.MenuItem;
+import android.view.View;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
+
+import com.codex.apk.ai.AIModel;
+import com.codex.apk.ai.AIProvider;
+import com.codex.apk.ai.ModelCapabilities;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 

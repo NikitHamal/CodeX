@@ -12,7 +12,7 @@ import androidx.fragment.app.Fragment;
 import java.util.ArrayList;
 import java.util.List;
 
-public class AIChatFragment extends Fragment implements ChatMessageAdapter.OnAiActionInteractionListener, AIChatFragment.AIChatFragmentWithAttachments {
+public class AIChatFragment extends Fragment implements ChatMessageAdapter.OnAiActionInteractionListener {
 
     private List<ChatMessage> chatHistory;
     private QwenConversationState qwenConversationState;
@@ -42,8 +42,10 @@ public class AIChatFragment extends Fragment implements ChatMessageAdapter.OnAiA
     }
 
     // Hook used by UI manager to trigger attachment selection
-    public interface AIChatFragmentWithAttachments {
-        void onAttachButtonClicked();
+    public void onAttachButtonClicked() {
+        if (pickFilesLauncher != null) {
+            pickFilesLauncher.launch(new String[]{"image/*", "application/pdf", "text/*", "application/octet-stream", "application/zip"});
+        }
     }
 
     public static AIChatFragment newInstance(String projectPath) {

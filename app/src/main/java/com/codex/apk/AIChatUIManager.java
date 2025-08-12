@@ -269,9 +269,7 @@ public class AIChatUIManager {
             buttonAiAttach.setOnClickListener(v -> {
                 if (fragment.getAIAssistant() != null && fragment.getAIAssistant().getCurrentModel() != null
                     && fragment.getAIAssistant().getCurrentModel().getProvider() == AIProvider.FREE) {
-                    if (fragment instanceof AIChatFragmentWithAttachments) {
-                        ((AIChatFragmentWithAttachments) fragment).onAttachButtonClicked();
-                    }
+                    fragment.onAttachButtonClicked();
                 } else {
                     Toast.makeText(context, "Attachments available only for Gemini Free models", Toast.LENGTH_SHORT).show();
                 }

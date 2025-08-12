@@ -109,7 +109,7 @@ public class ModelAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
             modelId.setText(model.getModelId());
 
             android.content.SharedPreferences prefs = context.getSharedPreferences("model_settings", Context.MODE_PRIVATE);
-            String key = "model_" + model.getModelId() + "_enabled";
+            String key = "model_" + model.getDisplayName() + "_enabled";
             boolean isEnabled = prefs.getBoolean(key, true); // Default to enabled
             modelEnabledCheckbox.setChecked(isEnabled);
 

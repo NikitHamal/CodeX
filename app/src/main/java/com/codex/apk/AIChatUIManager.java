@@ -106,7 +106,7 @@ public class AIChatUIManager {
         android.content.SharedPreferences prefs = context.getSharedPreferences("model_settings", Context.MODE_PRIVATE);
         List<String> modelNamesList = new java.util.ArrayList<>();
         for (AIModel model : AIModel.getAllModels()) {
-            String key = "model_" + model.getModelId() + "_" + model.getProvider().name() + "_enabled";
+            String key = "model_" + model.getDisplayName() + "_enabled";
             if (prefs.getBoolean(key, true)) {
                 modelNamesList.add(model.getDisplayName());
             }

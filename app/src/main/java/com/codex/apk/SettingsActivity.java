@@ -565,6 +565,16 @@ public class SettingsActivity extends AppCompatActivity {
 		return getPreferences(context).getString("secure_1psidts", "");
 	}
 
+	// Cache helpers for __Secure-1PSIDTS keyed by the 1PSID value
+	public static String getCached1psidts(Context context, String psid) {
+		if (psid == null || psid.isEmpty()) return "";
+		return getPreferences(context).getString("cached_1psidts_" + psid, "");
+	}
+	public static void setCached1psidts(Context context, String psid, String psidts) {
+		if (psid == null || psid.isEmpty() || psidts == null || psidts.isEmpty()) return;
+		getPreferences(context).edit().putString("cached_1psidts_" + psid, psidts).apply();
+	}
+
     public static boolean isDefaultReadOnly(android.content.Context context) {
         return getPreferences(context).getBoolean("default_read_only", false);
     }

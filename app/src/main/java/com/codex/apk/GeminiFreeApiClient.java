@@ -14,6 +14,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 import okhttp3.FormBody;
@@ -40,6 +42,9 @@ public class GeminiFreeApiClient implements ApiClient {
     private final AIAssistant.AIActionListener actionListener;
     private final OkHttpClient httpClient;
 
+    private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
+    private volatile boolean refreshRunning = false;
+
     public GeminiFreeApiClient(Context context, AIAssistant.AIActionListener actionListener) {
         this.context = context.getApplicationContext();
         this.actionListener = actionListener;
@@ -58,38 +63,40 @@ public class GeminiFreeApiClient implements ApiClient {
                 if (actionListener != null) actionListener.onAiRequestStarted();
                 String psid = SettingsActivity.getSecure1PSID(context);
                 String psidts = SettingsActivity.getSecure1PSIDTS(context);
+                // Load cached 1psidts if missing
+                if ((psidts == null || psidts.isEmpty()) && psid != null && !psid.isEmpty()) {
+                    String cached = SettingsActivity.getCached1psidts(context, psid);
+                    if (cached != null && !cached.isEmpty()) {
+                        psidts = cached;
+                    }
+                }
                 if (psid == null || psid.isEmpty()) {
                     if (actionListener != null) actionListener.onAiError("__Secure-1PSID cookie not set in Settings");
                     return;
                 }
-                // Step 1: warm up google.com to obtain extra cookies (NID etc.)
+
                 Map<String, String> baseCookies = new HashMap<>();
                 baseCookies.put("__Secure-1PSID", psid);
                 if (psidts != null && !psidts.isEmpty()) baseCookies.put("__Secure-1PSIDTS", psidts);
 
-                Map<String, String> cookies = new HashMap<>(baseCookies);
-                // Always include provided cookies in Cookie header for INIT/GENERATE
-                try (Response r = httpClient.newCall(new Request.Builder().url(GOOGLE_URL).get().build()).execute()) {
-                    if (r.headers("Set-Cookie") != null) {
-                        for (String c : r.headers("Set-Cookie")) {
-                            String[] parts = c.split(";", 2);
-                            String[] kv = parts[0].split("=", 2);
-                            if (kv.length == 2) cookies.put(kv[0], kv[1]);
-                        }
-                    }
-                }
+                Map<String, String> cookies = warmupAndMergeCookies(baseCookies);
 
-                // Step 2: fetch SNlM0e access token from INIT page with cookies (merge any Set-Cookie into our cookie jar)
                 String accessToken = fetchAccessToken(cookies);
                 if (accessToken == null) {
                     if (actionListener != null) actionListener.onAiError("Failed to retrieve access token from Gemini INIT page");
                     return;
                 }
 
-                // Optionally rotate 1PSIDTS to keep fresh
-                rotate1psidtsIfPossible(cookies);
+                // Start periodic refresh if not running
+                startAutoRefresh(psid, cookies);
 
-                // Step 3: POST to StreamGenerate with model header and f.req
+                // Optionally rotate 1PSIDTS immediately once
+                rotate1psidtsIfPossible(cookies);
+                // Persist refreshed __Secure-1PSIDTS if present
+                if (cookies.containsKey("__Secure-1PSIDTS")) {
+                    SettingsActivity.setCached1psidts(context, psid, cookies.get("__Secure-1PSIDTS"));
+                }
+
                 String modelId = model != null ? model.getModelId() : "gemini-2.5-flash";
                 Headers requestHeaders = buildGeminiHeaders(modelId);
                 RequestBody formBody = buildGenerateForm(accessToken, message, null);
@@ -210,6 +217,35 @@ public class GeminiFreeApiClient implements ApiClient {
                 }
             }
         } catch (Exception ignore) {}
+    }
+
+    private Map<String, String> warmupAndMergeCookies(Map<String, String> baseCookies) throws IOException {
+        Map<String, String> cookies = new HashMap<>(baseCookies);
+        try (Response r = httpClient.newCall(new Request.Builder().url(GOOGLE_URL).get().build()).execute()) {
+            if (r.headers("Set-Cookie") != null) {
+                for (String c : r.headers("Set-Cookie")) {
+                    String[] parts = c.split(";", 2);
+                    String[] kv = parts[0].split("=", 2);
+                    if (kv.length == 2) cookies.put(kv[0], kv[1]);
+                }
+            }
+        }
+        return cookies;
+    }
+
+    private void startAutoRefresh(String psid, Map<String, String> cookies) {
+        if (refreshRunning) return;
+        refreshRunning = true;
+        scheduler.scheduleAtFixedRate(() -> {
+            try {
+                rotate1psidtsIfPossible(cookies);
+                if (cookies.containsKey("__Secure-1PSIDTS")) {
+                    SettingsActivity.setCached1psidts(context, psid, cookies.get("__Secure-1PSIDTS"));
+                }
+            } catch (Exception e) {
+                Log.w(TAG, "Auto-refresh failed: " + e.getMessage());
+            }
+        }, 9, 9, TimeUnit.MINUTES); // default 540s in python
     }
 
     private Headers buildGeminiHeaders(String modelId) {

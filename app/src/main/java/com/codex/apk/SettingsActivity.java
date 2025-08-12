@@ -149,9 +149,9 @@ public class SettingsActivity extends AppCompatActivity {
 	}
 
 	private void showAddAgentDialog(LinearLayout containerAgents) {
-		View dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_new_file, null);
-		com.google.android.material.textfield.TextInputEditText etName = dialogView.findViewById(R.id.edit_text_file_name);
-		com.google.android.material.textfield.TextInputEditText etPrompt = dialogView.findViewById(R.id.edit_text_file_extension);
+		View dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_agent_editor, null);
+		com.google.android.material.textfield.TextInputEditText etName = dialogView.findViewById(R.id.edit_text_agent_name);
+		com.google.android.material.textfield.TextInputEditText etPrompt = dialogView.findViewById(R.id.edit_text_agent_prompt);
 		if (etName != null) etName.setHint("Agent Name");
 		if (etPrompt != null) {
 			etPrompt.setHint("Agent Prompt");
@@ -195,9 +195,9 @@ public class SettingsActivity extends AppCompatActivity {
 	}
 
 	private void showEditAgentDialog(CustomAgent agent, LinearLayout containerAgents) {
-		View dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_new_file, null);
-		com.google.android.material.textfield.TextInputEditText etName = dialogView.findViewById(R.id.edit_text_file_name);
-		com.google.android.material.textfield.TextInputEditText etPrompt = dialogView.findViewById(R.id.edit_text_file_extension);
+		View dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_agent_editor, null);
+		com.google.android.material.textfield.TextInputEditText etName = dialogView.findViewById(R.id.edit_text_agent_name);
+		com.google.android.material.textfield.TextInputEditText etPrompt = dialogView.findViewById(R.id.edit_text_agent_prompt);
 		if (etName != null) {
 			etName.setHint("Agent Name");
 			etName.setText(agent.name);

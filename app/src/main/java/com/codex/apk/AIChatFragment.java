@@ -230,6 +230,10 @@ public class AIChatFragment extends Fragment implements ChatMessageAdapter.OnAiA
             uiManager.scrollToBottom();
         }
         uiManager.updateUiVisibility(chatHistory.isEmpty());
+        // Persist chat history so it restores when reopening the project
+        if (historyManager != null) {
+            historyManager.saveChatState(chatHistory, qwenConversationState);
+        }
         return indexChangedOrAdded;
     }
 

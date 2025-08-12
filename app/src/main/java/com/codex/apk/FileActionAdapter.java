@@ -125,13 +125,6 @@ public class FileActionAdapter extends RecyclerView.Adapter<FileActionAdapter.Vi
                 bg.setColor(statusColor);
             }
 
-            // Strike-through when completed
-            // if ("completed".equals(status)) {
-            //     textFileName.setPaintFlags(textFileName.getPaintFlags() | Paint.STRIKE_THRU_TEXT_FLAG);
-            // } else {
-            //     textFileName.setPaintFlags(textFileName.getPaintFlags() & (~Paint.STRIKE_THRU_TEXT_FLAG));
-            // }
-
             itemView.setOnClickListener(v -> listener.onFileActionClicked(action));
         }
     }

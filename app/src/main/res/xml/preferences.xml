@@ -12,12 +12,6 @@
     </PreferenceCategory>
     <PreferenceCategory app:title="AI Assistant Settings" app:iconSpaceReserved="false">
         <EditTextPreference app:key="gemini_api_key" app:title="Gemini API Key" app:summary="Enter your Gemini API key" app:dialogTitle="Enter API Key" app:iconSpaceReserved="false"/>
-        <EditTextPreference 
-            app:key="huggingface_token" 
-            app:title="Hugging Face Token" 
-            app:summary="Enter your Hugging Face token" 
-            app:dialogTitle="Enter Hugging Face Token" 
-            app:iconSpaceReserved="false"/>
         <EditTextPreference
             app:key="qwen_api_token"
             app:title="Qwen API Token"

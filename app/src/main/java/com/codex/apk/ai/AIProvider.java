@@ -2,7 +2,6 @@ package com.codex.apk.ai;
 
 public enum AIProvider {
     GOOGLE("Google"),
-    HUGGINGFACE("Huggingface"),
     ALIBABA("Alibaba"),
     Z("Z"),
     FREE("Free");

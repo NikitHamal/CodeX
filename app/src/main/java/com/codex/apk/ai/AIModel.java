@@ -38,9 +38,6 @@ public class AIModel {
             new AIModel("gemini-1.0-pro", "Gemini 1.0 Pro", AIProvider.GOOGLE, new ModelCapabilities(false, false, false, true, false, false, false, 32768, 8192)),
             new AIModel("gemini-1.0-pro-vision", "Gemini 1.0 Pro Vision", AIProvider.GOOGLE, new ModelCapabilities(false, false, true, true, false, false, false, 16384, 8192)),
 
-            // Huggingface Models
-            new AIModel("deepseek-ai/DeepSeek-R1-Distill-Qwen-32B", "Deepseek R1", AIProvider.HUGGINGFACE, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)),
-
             // Updated Alibaba/Qwen Models (from the new JSON data)
             new AIModel("qwen3-235b-a22b", "Qwen3-235B-A22B-2507", AIProvider.ALIBABA, new ModelCapabilities(true, true, true, true, true, true, true, 131072, 81920)),
             new AIModel("qwen3-coder-plus", "Qwen3-Coder", AIProvider.ALIBABA, new ModelCapabilities(false, true, true, true, true, true, true, 1048576, 65536)),

@@ -71,15 +71,14 @@ public class SettingsActivity extends AppCompatActivity {
 	private void initializeSettings() {
 		// Initialize settings controls from the layout
 		com.google.android.material.textfield.TextInputEditText apiKeyEditText = findViewById(R.id.edit_text_api_key);
-		com.google.android.material.textfield.TextInputEditText huggingFaceTokenEditText = findViewById(R.id.edit_text_hugging_face_token);
 		com.google.android.material.textfield.TextInputEditText cookie1psidEditText = findViewById(R.id.edit_text_secure_1psid);
 		com.google.android.material.textfield.TextInputEditText cookie1psidtsEditText = findViewById(R.id.edit_text_secure_1psidts);
-		com.google.android.material.textfield.TextInputEditText customGeneralPrompt = findViewById(R.id.edit_text_custom_general_prompt);
-		com.google.android.material.textfield.TextInputEditText customFileOpsPrompt = findViewById(R.id.edit_text_custom_fileops_prompt);
 		LinearLayout themeSelectorLayout = findViewById(R.id.layout_theme_selector);
 		TextView selectedThemeText = findViewById(R.id.text_selected_theme);
 		com.google.android.material.card.MaterialCardView modelsCard = findViewById(R.id.card_models);
 		com.google.android.material.card.MaterialCardView agentsCard = findViewById(R.id.card_agents);
+		com.google.android.material.card.MaterialCardView apiCard = findViewById(R.id.card_api);
+		com.google.android.material.card.MaterialCardView promptsCard = findViewById(R.id.card_prompts);
 		com.google.android.material.switchmaterial.SwitchMaterial wrapSwitch = findViewById(R.id.switch_wrap);
 		com.google.android.material.switchmaterial.SwitchMaterial readOnlySwitch = findViewById(R.id.switch_read_only);
 		com.google.android.material.slider.Slider fontSizeSlider = findViewById(R.id.slider_font_size);
@@ -88,7 +87,6 @@ public class SettingsActivity extends AppCompatActivity {
 		SharedPreferences prefs = getSharedPreferences("settings", MODE_PRIVATE);
 		SharedPreferences defaultPrefs = getPreferences(this);
 		String savedApiKey = prefs.getString("gemini_api_key", "");
-		String savedHuggingFaceToken = prefs.getString("huggingface_token", "");
 		String savedTheme = defaultPrefs.getString("app_theme", "light");
 		String saved1psid = prefs.getString("secure_1psid", "");
 		String saved1psidts = prefs.getString("secure_1psidts", "");
@@ -96,32 +94,11 @@ public class SettingsActivity extends AppCompatActivity {
 		boolean readOnlyEnabled = isDefaultReadOnly(this);
 
 		if (apiKeyEditText != null) apiKeyEditText.setText(savedApiKey);
-		if (huggingFaceTokenEditText != null) huggingFaceTokenEditText.setText(savedHuggingFaceToken);
-		if (cookie1psidEditText != null) cookie1psidEditText.setText(saved1psid);
-		if (cookie1psidtsEditText != null) cookie1psidtsEditText.setText(saved1psidts);
 		if (selectedThemeText != null) selectedThemeText.setText(getThemeDisplayName(savedTheme));
 		if (wrapSwitch != null) wrapSwitch.setChecked(wrapEnabled);
 		if (readOnlySwitch != null) readOnlySwitch.setChecked(readOnlyEnabled);
 		if (fontSizeSlider != null) {
 			fontSizeSlider.setValue(getFontSize(this));
-		}
-
-		// Load custom prompts
-		if (customGeneralPrompt != null) {
-			String cg = getCustomGeneralPrompt(this);
-			if (cg == null || cg.isEmpty()) {
-				cg = PromptManager.getDefaultGeneralPrompt();
-				setCustomGeneralPrompt(this, cg);
-			}
-			customGeneralPrompt.setText(cg);
-		}
-		if (customFileOpsPrompt != null) {
-			String cf = getCustomFileOpsPrompt(this);
-			if (cf == null || cf.isEmpty()) {
-				cf = PromptManager.getDefaultFileOpsPrompt();
-				setCustomFileOpsPrompt(this, cf);
-			}
-			customFileOpsPrompt.setText(cf);
 		}
 
 		// Clicks
@@ -131,6 +108,12 @@ public class SettingsActivity extends AppCompatActivity {
 		});
 		if (agentsCard != null) agentsCard.setOnClickListener(v -> {
 			startActivity(new Intent(this, AgentsActivity.class));
+		});
+		if (apiCard != null) apiCard.setOnClickListener(v -> {
+			startActivity(new Intent(this, ApiActivity.class));
+		});
+		if (promptsCard != null) promptsCard.setOnClickListener(v -> {
+			startActivity(new Intent(this, PromptsActivity.class));
 		});
 
 		// Switch Listeners
@@ -145,10 +128,6 @@ public class SettingsActivity extends AppCompatActivity {
 			});
 		}
 
-
-		// Save handlers (keys and tokens already set up before)
-		setupDebouncedSaver(customGeneralPrompt, s -> setCustomGeneralPrompt(this, s));
-		setupDebouncedSaver(customFileOpsPrompt, s -> setCustomFileOpsPrompt(this, s));
 
 		if (fontSizeSlider != null) {
 			fontSizeSlider.addOnChangeListener((slider, value, fromUser) -> {
@@ -266,10 +245,6 @@ public class SettingsActivity extends AppCompatActivity {
 			default:
 			return "poppins_reg.ttf";
 		}
-	}
-	
-	public static String getHuggingFaceToken(Context context) {
-		return getPreferences(context).getString("huggingface_token", "");
 	}
 	
 	public static String getQwenApiToken(Context context) {

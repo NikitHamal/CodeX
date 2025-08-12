@@ -280,12 +280,4 @@ public class AIChatFragment extends Fragment implements ChatMessageAdapter.OnAiA
             historyManager.saveChatState(chatHistory, qwenConversationState);
         }
     }
-
-    @Override
-    public void onAttachButtonClicked() {
-        // Let user select images or general files
-        if (pickFilesLauncher != null) {
-            pickFilesLauncher.launch(new String[]{"image/*", "application/pdf", "text/*", "application/octet-stream", "application/zip"});
-        }
-    }
 }

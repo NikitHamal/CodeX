@@ -52,6 +52,7 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
     private int planStepRetryCount = 0;
     private boolean isExecutingPlan = false;
     private Deque<String> executedStepSummaries = new ArrayDeque<>();
+    private List<WebSource> lastStreamingWebSources = null;
 
     public AiAssistantManager(EditorActivity activity, File projectDir, String projectName,
                               FileManager fileManager, ExecutorService executorService) {
@@ -501,7 +502,11 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                 }
 
                 if (thinkingContent != null && !thinkingContent.trim().isEmpty()) aiMessage.setThinkingContent(thinkingContent);
-                if (webSources != null && !webSources.isEmpty()) aiMessage.setWebSources(webSources);
+                if (webSources != null && !webSources.isEmpty()) {
+                    aiMessage.setWebSources(webSources);
+                } else if (lastStreamingWebSources != null && !lastStreamingWebSources.isEmpty()) {
+                    aiMessage.setWebSources(new ArrayList<>(lastStreamingWebSources));
+                }
 
                 int insertedPos = activity.getAiChatFragment().addMessage(aiMessage);
 
@@ -544,6 +549,7 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
     @Override
     public void onAiRequestStarted() {
         activity.runOnUiThread(() -> {
+            lastStreamingWebSources = null; // reset cache for new request
             AIChatFragment chatFragment = activity.getAiChatFragment();
             if (chatFragment != null && !chatFragment.isAiProcessing) {
                 chatFragment.addMessage(new ChatMessage(
@@ -564,7 +570,25 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
         activity.runOnUiThread(() -> {
             AIChatFragment chatFragment = activity.getAiChatFragment();
             if (chatFragment != null) {
-                chatFragment.updateThinkingMessage(partialResponse);
+                if (isThinking) {
+                    chatFragment.updateStreamingThinkingContent(partialResponse);
+                } else {
+                    chatFragment.updateStreamingAnswerContent(partialResponse);
+                }
+            }
+        });
+    }
+
+    @Override
+    public void onAiWebSourcesUpdate(java.util.List<WebSource> webSources) {
+        activity.runOnUiThread(() -> {
+            AIChatFragment chatFragment = activity.getAiChatFragment();
+            if (chatFragment != null) {
+                chatFragment.updateStreamingWebSources(webSources);
+            }
+            // cache latest web sources for final message
+            if (webSources != null && !webSources.isEmpty()) {
+                lastStreamingWebSources = new ArrayList<>(webSources);
             }
         });
     }
@@ -576,6 +600,8 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
             if (chatFragment != null) {
                 chatFragment.hideThinkingMessage();
             }
+            // clear after completion
+            lastStreamingWebSources = null;
         });
     }
 

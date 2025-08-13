@@ -152,11 +152,13 @@ public class QwenApiClient implements ApiClient {
             .headers(buildQwenHeaders(qwenToken, state.getConversationId()))
             .build();
 
+        if (actionListener != null) actionListener.onAiRequestStarted();
         try (Response response = httpClient.newCall(request).execute()) {
             if (response.isSuccessful() && response.body() != null) {
                 processQwenStreamResponse(response, state, model);
             } else {
                 if (actionListener != null) actionListener.onAiError("Failed to send message");
+                if (actionListener != null) actionListener.onAiRequestCompleted();
             }
         }
     }
@@ -168,6 +170,7 @@ public class QwenApiClient implements ApiClient {
         // Tool-calling buffers
         StringBuilder jsonBuffer = new StringBuilder();
         boolean inToolLoop = false;
+        boolean notifiedCompleted = false;
 
         String line;
         while ((line = response.body().source().readUtf8Line()) != null) {
@@ -200,7 +203,13 @@ public class QwenApiClient implements ApiClient {
                                 if (actionListener != null) actionListener.onAiStreamUpdate(thinkingContent.toString(), true);
                             } else {
                                 answerContent.append(content);
+                                if (content != null && !content.isEmpty()) {
+                                    if (actionListener != null) actionListener.onAiStreamUpdate(answerContent.toString(), false);
+                                }
                             }
+
+                            // Try to stream any web sources/citations included in this delta
+                            try { maybeUpdateStreamingWebSources(delta, webSources); } catch (Exception ignored) {}
 
                             if ("finished".equals(status)) {
                                 String finalContent = answerContent.toString();
@@ -266,6 +275,8 @@ public class QwenApiClient implements ApiClient {
 
                                 // Notify listener to save the updated state
                                 if (actionListener != null) actionListener.onQwenConversationStateUpdated(state);
+                                if (actionListener != null) actionListener.onAiRequestCompleted();
+                                notifiedCompleted = true;
                                 break;
                             }
                         }
@@ -275,6 +286,9 @@ public class QwenApiClient implements ApiClient {
                 }
             }
         }
+        if (!notifiedCompleted && actionListener != null) {
+            actionListener.onAiRequestCompleted();
+        }
     }
 
     private String buildToolResultContinuation(JsonArray results) {
@@ -282,6 +296,88 @@ public class QwenApiClient implements ApiClient {
         payload.addProperty("action", "tool_result");
         payload.add("results", results);
         return payload.toString();
+    }
+
+    // Extract incremental web sources from delta chunks and notify UI
+    private void maybeUpdateStreamingWebSources(JsonObject delta, List<WebSource> accumulator) {
+        if (delta == null) return;
+        List<WebSource> newlyFound = new ArrayList<>();
+
+        // Common candidate fields that may carry citations/search results
+        // Try: citations (array), web_search.results (array), sources (array), references (array)
+        if (delta.has("citations") && delta.get("citations").isJsonArray()) {
+            extractFromArray(delta.getAsJsonArray("citations"), newlyFound);
+        }
+        if (delta.has("web_search") && delta.get("web_search").isJsonObject()) {
+            JsonObject ws = delta.getAsJsonObject("web_search");
+            if (ws.has("results") && ws.get("results").isJsonArray()) {
+                extractFromArray(ws.getAsJsonArray("results"), newlyFound);
+            }
+        }
+        if (delta.has("sources") && delta.get("sources").isJsonArray()) {
+            extractFromArray(delta.getAsJsonArray("sources"), newlyFound);
+        }
+        if (delta.has("references") && delta.get("references").isJsonArray()) {
+            extractFromArray(delta.getAsJsonArray("references"), newlyFound);
+        }
+
+        if (newlyFound.isEmpty()) return;
+
+        // Deduplicate by URL
+        Set<String> seen = new HashSet<>();
+        for (WebSource ws : accumulator) {
+            if (ws != null && ws.getUrl() != null) seen.add(ws.getUrl());
+        }
+        boolean changed = false;
+        for (WebSource ws : newlyFound) {
+            if (ws != null && ws.getUrl() != null && !seen.contains(ws.getUrl())) {
+                accumulator.add(ws);
+                seen.add(ws.getUrl());
+                changed = true;
+            }
+        }
+        if (changed && actionListener != null) {
+            // Emit a copy to avoid accidental external mutation
+            actionListener.onAiWebSourcesUpdate(new ArrayList<>(accumulator));
+        }
+    }
+
+    private void extractFromArray(JsonArray arr, List<WebSource> out) {
+        if (arr == null) return;
+        for (int i = 0; i < arr.size(); i++) {
+            try {
+                if (!arr.get(i).isJsonObject()) continue;
+                JsonObject obj = arr.get(i).getAsJsonObject();
+                WebSource ws = jsonToWebSource(obj);
+                if (ws != null) out.add(ws);
+            } catch (Exception ignored) {}
+        }
+    }
+
+    private WebSource jsonToWebSource(JsonObject obj) {
+        if (obj == null) return null;
+        String url = getStringAny(obj, "url", "link", "source_url", "href");
+        if (url == null || url.trim().isEmpty()) return null;
+        String title = getStringAny(obj, "title", "name", "headline");
+        String snippet = getStringAny(obj, "snippet", "summary", "description");
+        String favicon = getStringAny(obj, "favicon", "icon");
+        // Some providers nest metadata
+        if ((title == null || snippet == null) && obj.has("metadata") && obj.get("metadata").isJsonObject()) {
+            JsonObject meta = obj.getAsJsonObject("metadata");
+            if (title == null) title = getStringAny(meta, "title", "name");
+            if (snippet == null) snippet = getStringAny(meta, "snippet", "summary", "description");
+            if (favicon == null) favicon = getStringAny(meta, "favicon", "icon");
+        }
+        return new WebSource(url, title != null ? title : url, snippet != null ? snippet : "", favicon != null ? favicon : "");
+    }
+
+    private String getStringAny(JsonObject obj, String... keys) {
+        for (String k : keys) {
+            if (obj.has(k) && obj.get(k).isJsonPrimitive()) {
+                try { return obj.get(k).getAsString(); } catch (Exception ignored) {}
+            }
+        }
+        return null;
     }
 
     private void performContinuation(QwenConversationState state, AIModel model, String toolResultJson) throws IOException {

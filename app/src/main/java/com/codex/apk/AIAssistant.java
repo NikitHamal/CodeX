@@ -97,15 +97,9 @@ public class AIAssistant {
     public interface AIActionListener {
         void onAiActionsProcessed(String rawAiResponseJson, String explanation, List<String> suggestions,
                                  List<ChatMessage.FileActionDetail> proposedFileChanges, String aiModelDisplayName);
-        // Extended variant that can carry thinking content and web sources metadata
-        void onAiActionsProcessedWithMeta(String rawAiResponseJson, String explanation, List<String> suggestions,
-                                 List<ChatMessage.FileActionDetail> proposedFileChanges, String aiModelDisplayName,
-                                 String thinkingContent, List<com.codex.apk.ai.WebSource> webSources);
         void onAiError(String errorMessage);
         void onAiRequestStarted();
         void onAiStreamUpdate(String partialResponse, boolean isThinking);
-        // New: incremental updates for web sources during streaming
-        void onAiWebSourcesUpdate(java.util.List<com.codex.apk.ai.WebSource> webSources);
         void onAiRequestCompleted();
         void onQwenConversationStateUpdated(QwenConversationState state);
     }

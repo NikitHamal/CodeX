@@ -11,7 +11,6 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import java.util.ArrayList;
 import java.util.List;
-import com.codex.apk.ai.WebSource;
 
 public class AIChatFragment extends Fragment implements ChatMessageAdapter.OnAiActionInteractionListener {
 
@@ -257,36 +256,6 @@ public class AIChatFragment extends Fragment implements ChatMessageAdapter.OnAiA
         isAiProcessing = false;
         currentAiStatusMessage = null;
         uiManager.setSendButtonEnabled(true);
-    }
-
-    // Incremental update for web sources during streaming
-    public void updateStreamingWebSources(List<WebSource> sources) {
-        if (!isAiProcessing || currentAiStatusMessage == null || sources == null) return;
-        currentAiStatusMessage.setWebSources(sources);
-        int idx = chatHistory.indexOf(currentAiStatusMessage);
-        if (idx != -1) {
-            chatMessageAdapter.notifyItemChanged(idx);
-        }
-    }
-
-    // Incremental update for thinking content during streaming
-    public void updateStreamingThinkingContent(String newThinking) {
-        if (!isAiProcessing || currentAiStatusMessage == null) return;
-        currentAiStatusMessage.setThinkingContent(newThinking);
-        int idx = chatHistory.indexOf(currentAiStatusMessage);
-        if (idx != -1) {
-            chatMessageAdapter.notifyItemChanged(idx);
-        }
-    }
-
-    // Incremental update for answer content during streaming
-    public void updateStreamingAnswerContent(String newContent) {
-        if (!isAiProcessing || currentAiStatusMessage == null) return;
-        currentAiStatusMessage.setContent(newContent);
-        int idx = chatHistory.indexOf(currentAiStatusMessage);
-        if (idx != -1) {
-            chatMessageAdapter.notifyItemChanged(idx);
-        }
     }
 
     public void updateMessage(int position, ChatMessage updatedMessage) {

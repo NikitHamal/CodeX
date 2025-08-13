@@ -147,7 +147,9 @@ public class ModelAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
         }
 
         public void bind(AIModel model) {
-            modelName.setText(model.getDisplayName());
+            String defaultModel = prefs.getString("default_model", null);
+            boolean isDefault = defaultModel != null && defaultModel.equals(model.getDisplayName());
+            modelName.setText(isDefault ? model.getDisplayName() + "  (Default)" : model.getDisplayName());
             modelId.setText(model.getModelId());
 
             modelEnabledCheckbox.setOnCheckedChangeListener(null);

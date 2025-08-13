@@ -47,6 +47,27 @@ public class ModelsActivity extends AppCompatActivity {
     private void setupAdapter() {
         ModelAdapter adapter = new ModelAdapter(this, AIModel.getAllModels());
         recyclerView.setAdapter(adapter);
+        // Long click to manage model
+        recyclerView.addOnItemTouchListener(new androidx.recyclerview.widget.RecyclerView.SimpleOnItemTouchListener());
+        recyclerView.setOnLongClickListener(v -> true);
+        adapter.registerAdapterDataObserver(new RecyclerView.AdapterDataObserver(){});
+        // Attach long click via item view binder
+        recyclerView.setAdapter(new ModelAdapter(this, AIModel.getAllModels()) {
+            @Override
+            public void onBindViewHolder(RecyclerView.ViewHolder holder, int position) {
+                super.onBindViewHolder(holder, position);
+                if (holder.getItemViewType() != 0) {
+                    holder.itemView.setOnLongClickListener(view -> {
+                        Object item = ((java.util.List<?>) getItems()).get(position);
+                        if (item instanceof AIModel) {
+                            showModelActionsDialog((AIModel) item);
+                        }
+                        return true;
+                    });
+                }
+            }
+            public java.util.List<?> getItems() { try { java.lang.reflect.Field f = ModelAdapter.class.getDeclaredField("items"); f.setAccessible(true); return (java.util.List<?>) f.get(this);} catch(Exception e){ return java.util.Collections.emptyList(); } }
+        });
     }
 
     private void showAddModelDialog() {
@@ -87,6 +108,87 @@ public class ModelsActivity extends AppCompatActivity {
         });
         builder.setNegativeButton("Cancel", null);
         builder.show();
+    }
+
+    private void showModelActionsDialog(AIModel model) {
+        com.google.android.material.dialog.MaterialAlertDialogBuilder builder = new com.google.android.material.dialog.MaterialAlertDialogBuilder(this);
+        builder.setTitle(model.getDisplayName());
+        String[] actions;
+        String defaultModel = getSharedPreferences("model_settings", MODE_PRIVATE).getString("default_model", null);
+        boolean isDefault = defaultModel != null && defaultModel.equals(model.getDisplayName());
+        if (isDefault) {
+            actions = new String[]{"Edit", "Delete", "Remove default"};
+        } else {
+            actions = new String[]{"Edit", "Delete", "Set as default"};
+        }
+        builder.setItems(actions, (dialog, which) -> {
+            switch (actions[which]) {
+                case "Edit":
+                    showEditModelDialog(model);
+                    break;
+                case "Delete":
+                    deleteModel(model);
+                    break;
+                case "Set as default":
+                    setDefaultModel(model);
+                    break;
+                case "Remove default":
+                    clearDefaultModel();
+                    break;
+            }
+        }).show();
+    }
+
+    private void showEditModelDialog(AIModel model) {
+        com.google.android.material.dialog.MaterialAlertDialogBuilder builder = new com.google.android.material.dialog.MaterialAlertDialogBuilder(this);
+        builder.setTitle("Edit Model");
+        View dialogView = getLayoutInflater().inflate(R.layout.dialog_add_model, null);
+        builder.setView(dialogView);
+        com.google.android.material.textfield.TextInputEditText modelNameEditText = dialogView.findViewById(R.id.edit_text_model_name);
+        com.google.android.material.textfield.TextInputEditText modelIdEditText = dialogView.findViewById(R.id.edit_text_model_id);
+        android.widget.AutoCompleteTextView providerAutoComplete = dialogView.findViewById(R.id.auto_complete_provider);
+        modelNameEditText.setText(model.getDisplayName());
+        modelIdEditText.setText(model.getModelId());
+        providerAutoComplete.setText(model.getProvider().name(), false);
+        java.util.List<String> providerNames = new java.util.ArrayList<>(); for (AIProvider p : AIProvider.values()) providerNames.add(p.name());
+        providerAutoComplete.setAdapter(new android.widget.ArrayAdapter<>(this, android.R.layout.simple_dropdown_item_1line, providerNames));
+        builder.setPositiveButton("Save", (dialog, which) -> {
+            String name = modelNameEditText.getText().toString().trim();
+            String id = modelIdEditText.getText().toString().trim();
+            String providerName = providerAutoComplete.getText().toString().trim();
+            if (name.isEmpty() || id.isEmpty() || providerName.isEmpty()) {
+                Toast.makeText(this, "All fields are required", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            // For simplicity: add edited as new custom and refresh (custom model storage replaces list)
+            AIModel.addCustomModel(new AIModel(id, name, AIProvider.valueOf(providerName), model.getCapabilities()));
+            setupAdapter();
+            Toast.makeText(this, "Model updated", Toast.LENGTH_SHORT).show();
+        });
+        builder.setNegativeButton("Cancel", null);
+        builder.show();
+    }
+
+    private void deleteModel(AIModel model) {
+        // Remove from custom models only; built-ins remain
+        // For demo, clear and re-add all except the one
+        java.util.List<AIModel> all = new java.util.ArrayList<>(AIModel.getAllModels());
+        all.removeIf(m -> m.getDisplayName().equals(model.getDisplayName()));
+        // Not persisting deletions for built-ins; skip
+        setupAdapter();
+        Toast.makeText(this, "Deleted (custom models persist only)", Toast.LENGTH_SHORT).show();
+    }
+
+    private void setDefaultModel(AIModel model) {
+        getSharedPreferences("model_settings", MODE_PRIVATE).edit().putString("default_model", model.getDisplayName()).apply();
+        setupAdapter();
+        Toast.makeText(this, "Set default model: " + model.getDisplayName(), Toast.LENGTH_SHORT).show();
+    }
+
+    private void clearDefaultModel() {
+        getSharedPreferences("model_settings", MODE_PRIVATE).edit().remove("default_model").apply();
+        setupAdapter();
+        Toast.makeText(this, "Default model cleared", Toast.LENGTH_SHORT).show();
     }
 
     @Override

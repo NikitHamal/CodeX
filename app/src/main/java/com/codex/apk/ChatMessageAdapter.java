@@ -287,9 +287,9 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
             if (layoutThinkingSection.getVisibility() == View.VISIBLE) {
                 String processedThinking = markdownFormatter.preprocessMarkdown(message.getThinkingContent());
                 markdownFormatter.setThinkingMarkdown(textThinkingContent, processedThinking);
-                // Show thoughts expanded by default while streaming/when available
-                textThinkingContent.setVisibility(View.VISIBLE);
-                iconThinkingExpand.setRotation(180f);
+                // Default to collapsed on bind
+                textThinkingContent.setVisibility(View.GONE);
+                iconThinkingExpand.setRotation(0f);
                 View thinkingHeader = layoutThinkingSection.findViewById(R.id.layout_thinking_header);
                 if (thinkingHeader != null) {
                     thinkingHeader.setOnClickListener(v -> {

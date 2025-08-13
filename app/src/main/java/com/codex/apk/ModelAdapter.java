@@ -137,29 +137,22 @@ public class ModelAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
     class ModelViewHolder extends RecyclerView.ViewHolder {
         private final TextView modelName;
         private final TextView modelId;
+        private final TextView defaultBadge;
         private final CheckBox modelEnabledCheckbox;
 
         public ModelViewHolder(@NonNull View itemView) {
             super(itemView);
             modelName = itemView.findViewById(R.id.text_model_name);
             modelId = itemView.findViewById(R.id.text_model_id);
+            defaultBadge = itemView.findViewById(R.id.text_default_badge);
             modelEnabledCheckbox = itemView.findViewById(R.id.checkbox_model_enabled);
         }
 
         public void bind(AIModel model) {
             String defaultModel = prefs.getString("default_model", null);
             boolean isDefault = defaultModel != null && defaultModel.equals(model.getDisplayName());
-            if (isDefault) {
-                // Append a chip-like label
-                modelName.setText(model.getDisplayName() + "  ");
-                modelName.setCompoundDrawablesWithIntrinsicBounds(0, 0, 0, 0);
-                // Use a styled background span substitute by setting a small label view-like text via compound drawable workaround is complex; simple suffix text with style:
-                modelName.setText(model.getDisplayName() + "  Default");
-                modelName.setTextAppearance(context, com.google.android.material.R.style.TextAppearance_Material3_BodyMedium);
-                modelName.setTextColor(context.getColor(R.color.on_surface));
-            } else {
-                modelName.setText(model.getDisplayName());
-            }
+            modelName.setText(model.getDisplayName());
+            defaultBadge.setVisibility(isDefault ? View.VISIBLE : View.GONE);
             modelId.setText(model.getModelId());
 
             modelEnabledCheckbox.setOnCheckedChangeListener(null);

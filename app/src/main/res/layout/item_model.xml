@@ -17,13 +17,33 @@
         android:layout_weight="1"
         android:orientation="vertical">
 
-        <TextView
-            android:id="@+id/text_model_name"
+        <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textAppearance="@style/TextAppearance.Material3.BodyLarge"
-            android:textColor="@color/on_surface"
-            tools:text="Gemini Pro" />
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:id="@+id/text_model_name"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textAppearance="@style/TextAppearance.Material3.BodyLarge"
+                android:textColor="@color/on_surface"
+                tools:text="Gemini Pro" />
+
+            <TextView
+                android:id="@+id/text_default_badge"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:paddingHorizontal="8dp"
+                android:paddingVertical="2dp"
+                android:text="Default"
+                android:textSize="10sp"
+                android:textColor="@color/on_primary"
+                android:background="@drawable/bg_default_chip"
+                android:visibility="gone" />
+        </LinearLayout>
 
         <TextView
             android:id="@+id/text_model_id"

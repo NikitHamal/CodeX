@@ -431,6 +431,15 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
     public void onAiActionsProcessed(String rawAiResponseJson, String explanation, List<String> suggestions, List<ChatMessage.FileActionDetail> proposedFileChanges, String aiModelDisplayName) {
         onAiActionsProcessed(rawAiResponseJson, explanation, suggestions, proposedFileChanges, aiModelDisplayName, null, null);
     }
+
+    // Implement required extended variant from AIActionListener
+    @Override
+    public void onAiActionsProcessedWithMeta(String rawAiResponseJson, String explanation,
+                                             List<String> suggestions,
+                                             List<ChatMessage.FileActionDetail> proposedFileChanges, String aiModelDisplayName,
+                                             String thinkingContent, List<WebSource> webSources) {
+        onAiActionsProcessed(rawAiResponseJson, explanation, suggestions, proposedFileChanges, aiModelDisplayName, thinkingContent, webSources);
+    }
     
     public void onAiActionsProcessed(String rawAiResponseJson, String explanation,
                                    List<String> suggestions,

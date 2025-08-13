@@ -68,6 +68,7 @@ public class QwenApiClient implements ApiClient {
     public void sendMessage(String message, AIModel model, List<ChatMessage> history, QwenConversationState state, boolean thinkingModeEnabled, boolean webSearchEnabled, List<ToolSpec> enabledTools, List<File> attachments) {
         new Thread(() -> {
             try {
+                if (actionListener != null) actionListener.onAiRequestStarted();
                 String conversationId = startOrContinueConversation(state, model, webSearchEnabled);
                 if (conversationId == null) {
                     if (actionListener != null) actionListener.onAiError("Failed to create conversation");
@@ -135,7 +136,10 @@ public class QwenApiClient implements ApiClient {
         }
 
         // Add the current user message
-        messages.add(createUserMessage(userMessage, model, thinkingModeEnabled, webSearchEnabled));
+        JsonObject userMsg = createUserMessage(userMessage, model, thinkingModeEnabled, webSearchEnabled);
+        // Optional parity: set per-message parentId to match top-level
+        userMsg.addProperty("parentId", state.getLastParentId());
+        messages.add(userMsg);
 
         requestBody.add("messages", messages);
 
@@ -166,9 +170,6 @@ public class QwenApiClient implements ApiClient {
         StringBuilder thinkingContent = new StringBuilder();
         StringBuilder answerContent = new StringBuilder();
         List<WebSource> webSources = new ArrayList<>();
-        // Tool-calling buffers
-        StringBuilder jsonBuffer = new StringBuilder();
-        boolean inToolLoop = false;
 
         String line;
         while ((line = response.body().source().readUtf8Line()) != null) {
@@ -184,6 +185,8 @@ public class QwenApiClient implements ApiClient {
                         JsonObject created = data.getAsJsonObject("response.created");
                         if (created.has("chat_id")) state.setConversationId(created.get("chat_id").getAsString());
                         if (created.has("response_id")) state.setLastParentId(created.get("response_id").getAsString());
+                        // Persist state ASAP
+                        if (actionListener != null) actionListener.onQwenConversationStateUpdated(state);
                         continue; // This line doesn't contain choices, so we skip to the next
                     }
 
@@ -195,7 +198,6 @@ public class QwenApiClient implements ApiClient {
                             String status = delta.has("status") ? delta.get("status").getAsString() : "";
                             String content = delta.has("content") ? delta.get("content").getAsString() : "";
                             String phase = delta.has("phase") ? delta.get("phase").getAsString() : "";
-                            String role = delta.has("role") ? delta.get("role").getAsString() : "";
 
                             // Accumulate per-phase content and signals
                             if ("think".equals(phase)) {
@@ -203,6 +205,8 @@ public class QwenApiClient implements ApiClient {
                                 if (actionListener != null) actionListener.onAiStreamUpdate(thinkingContent.toString(), true);
                             } else if ("answer".equals(phase)) {
                                 answerContent.append(content);
+                                // Stream answer tokens too
+                                if (actionListener != null) actionListener.onAiStreamUpdate(answerContent.toString(), false);
                             } else if ("web_search".equals(phase)) {
                                 // Harvest web search sources from function delta extras when available
                                 if (delta.has("extra") && delta.get("extra").isJsonObject()) {
@@ -281,7 +285,7 @@ public class QwenApiClient implements ApiClient {
                                     if (actionListener != null) notifyAiActionsProcessed(null, finalContent, new ArrayList<>(), new ArrayList<>(), model.getDisplayName(), thinkingContent.toString(), webSources);
                                 }
 
-                                // Notify listener to save the updated state
+                                // Notify listener to save the updated state (final)
                                 if (actionListener != null) actionListener.onQwenConversationStateUpdated(state);
                                 break;
                             }
@@ -328,7 +332,8 @@ public class QwenApiClient implements ApiClient {
         featureConfig.addProperty("output_schema", "phase");
         msg.add("feature_config", featureConfig);
         msg.addProperty("fid", java.util.UUID.randomUUID().toString());
-        msg.add("parentId", null);
+        // Optional parity: set per-message parentId too
+        msg.addProperty("parentId", state.getLastParentId());
         msg.add("childrenIds", new JsonArray());
         messages.add(msg);
         requestBody.add("messages", messages);

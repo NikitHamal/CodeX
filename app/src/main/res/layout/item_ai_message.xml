@@ -26,33 +26,25 @@
             android:paddingVertical="6dp"
             android:layout_marginBottom="8dp" />
 
-        <!-- AI Typing Indicator (legacy) -->
+        <!-- AI Typing Indicator (minimal) -->
         <LinearLayout
             android:id="@+id/layout_typing_indicator"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:gravity="center_vertical"
-            android:paddingHorizontal="12dp"
-            android:paddingVertical="10dp"
-            android:background="@drawable/rounded_container_background"
+            android:paddingHorizontal="0dp"
+            android:paddingVertical="0dp"
             android:layout_marginBottom="8dp"
             android:visibility="gone">
-
-            <ProgressBar
-                android:id="@+id/typing_progress_bar"
-                style="?android:attr/progressBarStyleSmall"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginEnd="8dp" />
 
             <TextView
                 android:id="@+id/text_typing_indicator"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="AI is typing..."
-                android:textColor="?attr/colorOnSurfaceVariant"
-                android:textSize="14sp" />
+                android:text="AI is thinking..."
+                android:textColor="@color/on_surface_variant"
+                android:textSize="12sp" />
         </LinearLayout>
 
         <!-- Thinking Section (Collapsible) -->
@@ -66,7 +58,7 @@
 
             <LinearLayout
                 android:id="@+id/layout_thinking_header"
-                android:layout_width="match_parent"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
@@ -76,9 +68,8 @@
                 android:paddingVertical="8dp">
 
                 <TextView
-                    android:layout_width="0dp"
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1"
                     android:text="Thoughts"
                     android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
                     android:textColor="@color/on_surface"
@@ -88,6 +79,7 @@
                     android:id="@+id/icon_thinking_expand"
                     android:layout_width="16dp"
                     android:layout_height="16dp"
+                    android:layout_marginStart="6dp"
                     android:src="@drawable/icon_expand_more_round"
                     app:tint="@color/on_surface_variant" />
 
@@ -249,8 +241,6 @@
             android:textSize="12sp"
             android:paddingTop="8dp"
             android:visibility="gone" />
-
-        <!-- Action buttons removed for agent auto-apply -->
 
     </LinearLayout>
 </LinearLayout>

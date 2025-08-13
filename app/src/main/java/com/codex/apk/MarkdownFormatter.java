@@ -88,6 +88,9 @@ public class MarkdownFormatter {
         // Handle numbered lists
         markdown = markdown.replaceAll("(?<!\\n)\\n(\\d+\\.\\s)", "\n\n$1");
         
+        // Normalize citations spacing: [[n]] -> [[n]] with surrounding spaces ensured by renderer
+        markdown = markdown.replaceAll("\\[\\[(\\d+)\\]\\]", "[[$1]]");
+        
         return markdown;
     }
     

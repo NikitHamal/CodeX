@@ -37,7 +37,7 @@ public class WebSourcesAdapter extends RecyclerView.Adapter<WebSourcesAdapter.We
     
     @Override
     public int getItemCount() {
-        return webSources.size();
+        return webSources != null ? webSources.size() : 0;
     }
     
     class WebSourceViewHolder extends RecyclerView.ViewHolder {

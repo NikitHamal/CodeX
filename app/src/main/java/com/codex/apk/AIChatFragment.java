@@ -135,6 +135,8 @@ public class AIChatFragment extends Fragment implements ChatMessageAdapter.OnAiA
             uiManager.textSelectedModel.setText(aiAssistant.getCurrentModel().getDisplayName());
             uiManager.updateSettingsButtonState(aiAssistant);
         }
+        // Scroll to last message when chat opens
+        uiManager.scrollToBottom();
     }
 
     public AIAssistant getAIAssistant() {
@@ -166,11 +168,6 @@ public class AIChatFragment extends Fragment implements ChatMessageAdapter.OnAiA
         }
         addMessage(userMsg);
 
-        ChatMessage thinkingMessage = new ChatMessage(ChatMessage.SENDER_AI, getString(R.string.ai_is_thinking), System.currentTimeMillis());
-        if (aiAssistant != null && aiAssistant.getCurrentModel() != null) {
-            thinkingMessage.setAiModelName(aiAssistant.getCurrentModel().getDisplayName());
-        }
-        addMessage(thinkingMessage);
 
         uiManager.setText("");
         if (listener != null) {
@@ -262,6 +259,7 @@ public class AIChatFragment extends Fragment implements ChatMessageAdapter.OnAiA
         if (position >= 0 && position < chatHistory.size()) {
             chatHistory.set(position, updatedMessage);
             chatMessageAdapter.notifyItemChanged(position);
+            if (uiManager != null) uiManager.scrollToBottom();
             historyManager.saveChatState(chatHistory, qwenConversationState);
         }
     }

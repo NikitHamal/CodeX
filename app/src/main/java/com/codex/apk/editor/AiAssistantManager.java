@@ -53,6 +53,9 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
     private boolean isExecutingPlan = false;
     private Deque<String> executedStepSummaries = new ArrayDeque<>();
 
+    // Track current streaming AI message position
+    private Integer currentStreamingMessagePosition = null;
+
     public AiAssistantManager(EditorActivity activity, File projectDir, String projectName,
                               FileManager fileManager, ExecutorService executorService) {
         this.activity = activity;
@@ -503,15 +506,26 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                 if (thinkingContent != null && !thinkingContent.trim().isEmpty()) aiMessage.setThinkingContent(thinkingContent);
                 if (webSources != null && !webSources.isEmpty()) aiMessage.setWebSources(webSources);
 
-                int insertedPos = activity.getAiChatFragment().addMessage(aiMessage);
-
-                if (isPlan) {
-                    lastPlanMessagePosition = insertedPos;
-                    planProgressIndex = 0;
-                    executedStepSummaries.clear();
-                    // Auto-execution removed, user must click "Accept"
+                AIChatFragment frag = activity.getAiChatFragment();
+                if (currentStreamingMessagePosition != null) {
+                    // Replace the streaming placeholder with the final message
+                    frag.hideThinkingMessage();
+                    int insertedPos = frag.addMessage(aiMessage);
+                    currentStreamingMessagePosition = null;
+                    if (isPlan) {
+                        lastPlanMessagePosition = insertedPos;
+                        planProgressIndex = 0;
+                        executedStepSummaries.clear();
+                    } else if (aiAssistant != null && aiAssistant.isAgentModeEnabled() && proposedFileChanges != null && !proposedFileChanges.isEmpty()) {
+                        onAiAcceptActions(insertedPos, aiMessage);
+                    }
                 } else {
-                    if (aiAssistant != null && aiAssistant.isAgentModeEnabled() && proposedFileChanges != null && !proposedFileChanges.isEmpty()) {
+                    int insertedPos = frag.addMessage(aiMessage);
+                    if (isPlan) {
+                        lastPlanMessagePosition = insertedPos;
+                        planProgressIndex = 0;
+                        executedStepSummaries.clear();
+                    } else if (aiAssistant != null && aiAssistant.isAgentModeEnabled() && proposedFileChanges != null && !proposedFileChanges.isEmpty()) {
                         onAiAcceptActions(insertedPos, aiMessage);
                     }
                 }
@@ -545,16 +559,18 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
     public void onAiRequestStarted() {
         activity.runOnUiThread(() -> {
             AIChatFragment chatFragment = activity.getAiChatFragment();
-            if (chatFragment != null && !chatFragment.isAiProcessing) {
-                chatFragment.addMessage(new ChatMessage(
+            if (chatFragment != null) {
+                // Start a streaming AI message that will be updated with thoughts/answer
+                ChatMessage aiMsg = new ChatMessage(
                         ChatMessage.SENDER_AI,
-                        "AI is thinking...",
+                        activity.getString(com.codex.apk.R.string.ai_is_thinking),
                         null, null,
                         aiAssistant.getCurrentModel().getDisplayName(),
                         System.currentTimeMillis(),
                         null, null,
                         ChatMessage.STATUS_NONE
-                ));
+                );
+                currentStreamingMessagePosition = chatFragment.addMessage(aiMsg);
             }
         });
     }
@@ -563,20 +579,26 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
     public void onAiStreamUpdate(String partialResponse, boolean isThinking) {
         activity.runOnUiThread(() -> {
             AIChatFragment chatFragment = activity.getAiChatFragment();
-            if (chatFragment != null) {
-                chatFragment.updateThinkingMessage(partialResponse);
+            if (chatFragment == null || currentStreamingMessagePosition == null) return;
+            ChatMessage msg = chatFragment.getMessageAt(currentStreamingMessagePosition);
+            if (msg == null) return;
+            if (isThinking) {
+                // Move content from typing indicator to Thoughts section as soon as we have text
+                if (partialResponse != null && !partialResponse.isEmpty()) {
+                    msg.setContent(""); // disable typing indicator view
+                    msg.setThinkingContent(partialResponse);
+                }
+            } else {
+                // Stream main answer tokens into content
+                msg.setContent(partialResponse != null ? partialResponse : "");
             }
+            chatFragment.updateMessage(currentStreamingMessagePosition, msg);
         });
     }
 
     @Override
     public void onAiRequestCompleted() {
-        activity.runOnUiThread(() -> {
-            AIChatFragment chatFragment = activity.getAiChatFragment();
-            if (chatFragment != null) {
-                chatFragment.hideThinkingMessage();
-            }
-        });
+        // No-op: we finalize/replace the streaming message in onAiActionsProcessed
     }
 
     @Override

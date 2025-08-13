@@ -9,12 +9,12 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
-import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.view.animation.AlphaAnimation;
 import androidx.annotation.NonNull;
 import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.recyclerview.widget.LinearLayoutManager;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.card.MaterialCardView;
 import androidx.appcompat.app.AlertDialog;
@@ -23,6 +23,13 @@ import com.google.android.material.bottomsheet.BottomSheetDialog;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Pattern;
+import java.util.regex.Matcher;
+import android.text.SpannableStringBuilder;
+import android.text.Spannable;
+import android.text.method.LinkMovementMethod;
+import android.text.style.ClickableSpan;
+import android.view.ViewTreeObserver;
 
 public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
@@ -191,11 +198,22 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
         }
         
         private void showWebSourcesDialog(List<WebSource> webSources) {
+            showWebSourcesDialogAt(webSources, -1);
+        }
+
+        private void showWebSourcesDialogAt(List<WebSource> webSources, int initialIndex) {
             View dialogView = LayoutInflater.from(context).inflate(R.layout.bottom_sheet_web_sources, null);
             RecyclerView recyclerView = dialogView.findViewById(R.id.recycler_web_sources);
             WebSourcesAdapter adapter = new WebSourcesAdapter(webSources);
             recyclerView.setAdapter(adapter);
-            BottomSheetDialog dialog = new BottomSheetDialog(context); dialog.setContentView(dialogView); dialog.show();
+            BottomSheetDialog dialog = new BottomSheetDialog(context);
+            dialog.setContentView(dialogView);
+            dialog.setOnShowListener(d -> {
+                if (initialIndex >= 0 && initialIndex < webSources.size()) {
+                    recyclerView.post(() -> recyclerView.scrollToPosition(initialIndex));
+                }
+            });
+            dialog.show();
         }
         
         private void showRawApiResponseDialog(ChatMessage message) {
@@ -207,12 +225,37 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
             buttonClose.setOnClickListener(v -> dialog.dismiss()); dialog.show();
         }
 
+        private void applyCitationSpans(TextView tv, List<WebSource> sources) {
+            if (tv == null || sources == null || sources.isEmpty()) return;
+            CharSequence text = tv.getText();
+            if (text == null) return;
+            SpannableStringBuilder ssb = new SpannableStringBuilder(text);
+            Pattern p = Pattern.compile("\\[\\[(\\d+)\\]\\]");
+            Matcher m = p.matcher(text);
+            while (m.find()) {
+                int start = m.start();
+                int end = m.end();
+                String numStr = m.group(1);
+                int idx;
+                try { idx = Integer.parseInt(numStr); } catch (Exception e) { continue; }
+                final int targetIndex = Math.max(0, Math.min(sources.size() - 1, idx - 1));
+                ssb.setSpan(new ClickableSpan() {
+                    @Override public void onClick(@NonNull View widget) {
+                        showWebSourcesDialogAt(sources, targetIndex);
+                    }
+                }, start, end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+            }
+            tv.setText(ssb);
+            tv.setMovementMethod(LinkMovementMethod.getInstance());
+        }
+
         void bind(ChatMessage message, int messagePosition) {
             boolean isTyping = message.getContent() != null && message.getContent().equals(context.getString(R.string.ai_is_thinking));
             itemView.setOnLongClickListener(v -> { showRawApiResponseDialog(message); return true; });
 
             layoutTypingIndicator.setVisibility(isTyping ? View.VISIBLE : View.GONE);
             if (isTyping) {
+                // Minimal indicator: keep subtle fade animation
                 AlphaAnimation anim = new AlphaAnimation(0.2f, 1.0f);
                 anim.setDuration(800);
                 anim.setRepeatMode(AlphaAnimation.REVERSE);
@@ -240,8 +283,9 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
             if (layoutThinkingSection.getVisibility() == View.VISIBLE) {
                 String processedThinking = markdownFormatter.preprocessMarkdown(message.getThinkingContent());
                 markdownFormatter.setThinkingMarkdown(textThinkingContent, processedThinking);
-                textThinkingContent.setVisibility(View.GONE);
-                iconThinkingExpand.setRotation(0f);
+                // Show thoughts expanded by default while streaming/when available
+                textThinkingContent.setVisibility(View.VISIBLE);
+                iconThinkingExpand.setRotation(180f);
                 View thinkingHeader = layoutThinkingSection.findViewById(R.id.layout_thinking_header);
                 if (thinkingHeader != null) {
                     thinkingHeader.setOnClickListener(v -> {
@@ -259,6 +303,8 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
             if (layoutWebSources.getVisibility() == View.VISIBLE) {
                 buttonWebSources.setText("Web sources (" + message.getWebSources().size() + ")");
                 buttonWebSources.setOnClickListener(v -> showWebSourcesDialog(message.getWebSources()));
+                // Link [[n]] citations in the main message to sources
+                applyCitationSpans(textMessage, message.getWebSources());
             }
 
             boolean hasFileChanges = itemView.findViewById(R.id.layout_proposed_file_changes).getVisibility() == View.VISIBLE;

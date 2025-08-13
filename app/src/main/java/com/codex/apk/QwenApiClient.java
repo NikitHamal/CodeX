@@ -32,6 +32,8 @@ import com.codex.apk.editor.AiAssistantManager;
 import java.util.Collections;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.util.HashSet;
+import java.util.Set;
 
 
 public class QwenApiClient implements ApiClient {
@@ -170,6 +172,7 @@ public class QwenApiClient implements ApiClient {
         StringBuilder thinkingContent = new StringBuilder();
         StringBuilder answerContent = new StringBuilder();
         List<WebSource> webSources = new ArrayList<>();
+        Set<String> seenWebUrls = new HashSet<>();
 
         String line;
         while ((line = response.body().source().readUtf8Line()) != null) {
@@ -217,10 +220,12 @@ public class QwenApiClient implements ApiClient {
                                             try {
                                                 JsonObject info = infos.get(i).getAsJsonObject();
                                                 String url = info.has("url") ? info.get("url").getAsString() : "";
+                                                if (url == null || url.isEmpty() || seenWebUrls.contains(url)) continue;
                                                 String title = info.has("title") ? info.get("title").getAsString() : url;
                                                 String snippet = info.has("snippet") ? info.get("snippet").getAsString() : "";
                                                 String favicon = info.has("hostlogo") ? info.get("hostlogo").getAsString() : null;
                                                 webSources.add(new WebSource(url, title, snippet, favicon));
+                                                seenWebUrls.add(url);
                                             } catch (Exception ignored) {}
                                         }
                                     }

@@ -205,6 +205,7 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
             View dialogView = LayoutInflater.from(context).inflate(R.layout.bottom_sheet_web_sources, null);
             RecyclerView recyclerView = dialogView.findViewById(R.id.recycler_web_sources);
             WebSourcesAdapter adapter = new WebSourcesAdapter(webSources);
+            recyclerView.setLayoutManager(new LinearLayoutManager(context));
             recyclerView.setAdapter(adapter);
             BottomSheetDialog dialog = new BottomSheetDialog(context);
             dialog.setContentView(dialogView);
@@ -229,9 +230,12 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
             if (tv == null || sources == null || sources.isEmpty()) return;
             CharSequence text = tv.getText();
             if (text == null) return;
-            SpannableStringBuilder ssb = new SpannableStringBuilder(text);
-            Pattern p = Pattern.compile("\\[\\[(\\d+)\\]\\]");
-            Matcher m = p.matcher(text);
+            // Replace visible [[n]] with (n)
+            String visible = text.toString().replaceAll("\\[\\[(\\d+)\\]\\]", "($1)");
+            SpannableStringBuilder ssb = new SpannableStringBuilder(visible);
+            // Find (n) again to attach spans
+            Pattern p = Pattern.compile("\\((\\d+)\\)");
+            Matcher m = p.matcher(visible);
             while (m.find()) {
                 int start = m.start();
                 int end = m.end();
@@ -303,7 +307,7 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
             if (layoutWebSources.getVisibility() == View.VISIBLE) {
                 buttonWebSources.setText("Web sources (" + message.getWebSources().size() + ")");
                 buttonWebSources.setOnClickListener(v -> showWebSourcesDialog(message.getWebSources()));
-                // Link [[n]] citations in the main message to sources
+                // Link (n) citations in the main message to sources
                 applyCitationSpans(textMessage, message.getWebSources());
             }
 

@@ -74,7 +74,10 @@ public class AIChatUIManager {
     }
 
     public void setupRecyclerView(ChatMessageAdapter adapter) {
-        recyclerViewChatHistory.setLayoutManager(new LinearLayoutManager(context));
+        LinearLayoutManager llm = new LinearLayoutManager(context);
+        llm.setStackFromEnd(true);
+        recyclerViewChatHistory.setLayoutManager(llm);
+        recyclerViewChatHistory.setItemAnimator(null); // Prevent overlapping glitches during rapid streaming updates
         recyclerViewChatHistory.setAdapter(adapter);
     }
 
@@ -131,6 +134,9 @@ public class AIChatUIManager {
                         aiAssistant.setCurrentModel(selectedModel);
                         textSelectedModel.setText(selectedModelName);
                         updateSettingsButtonState(aiAssistant);
+                        // Persist last used model per project
+                        android.content.SharedPreferences sp = context.getSharedPreferences("settings", Context.MODE_PRIVATE);
+                        sp.edit().putString("selected_model", selectedModelName).apply();
                     }
                     dialog.dismiss();
                 })
@@ -166,6 +172,9 @@ public class AIChatUIManager {
                     if (model != null) {
                         aiAssistant.setCurrentModel(model);
                         textSelectedModel.setText(model.getDisplayName());
+                        // Persist last used model per project
+                        android.content.SharedPreferences sp = context.getSharedPreferences("settings", Context.MODE_PRIVATE);
+                        sp.edit().putString("selected_model", model.getDisplayName()).apply();
                         if (a.prompt != null && !a.prompt.isEmpty()) {
                             // Prepend custom agent prompt to current input for next send
                             String existing = editTextAiPrompt.getText().toString();
@@ -254,7 +263,8 @@ public class AIChatUIManager {
     public void scrollToBottom() {
         if (recyclerViewChatHistory.getAdapter() != null && recyclerViewChatHistory.getAdapter().getItemCount() > 0) {
             recyclerViewChatHistory.post(() -> {
-                recyclerViewChatHistory.scrollToPosition(recyclerViewChatHistory.getAdapter().getItemCount() - 1);
+                int last = recyclerViewChatHistory.getAdapter().getItemCount() - 1;
+                recyclerViewChatHistory.smoothScrollToPosition(last);
             });
         }
     }

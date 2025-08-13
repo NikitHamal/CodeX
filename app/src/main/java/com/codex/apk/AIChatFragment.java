@@ -56,6 +56,8 @@ public class AIChatFragment extends Fragment implements ChatMessageAdapter.OnAiA
         return fragment;
     }
 
+    public String getProjectPath() { return projectPath; }
+
     @Override
     public void onAttach(@NonNull Context context) {
         super.onAttach(context);

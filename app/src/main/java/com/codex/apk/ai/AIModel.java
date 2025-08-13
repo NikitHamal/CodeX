@@ -75,6 +75,7 @@ public class AIModel {
         for (AIModel model : initialModels) {
             modelsByProvider.computeIfAbsent(model.getProvider(), k -> new ArrayList<>()).add(model);
         }
+        applyPersistentDeletionsAndOverrides();
     }
 
     public AIModel(String modelId, String displayName, AIProvider provider, ModelCapabilities capabilities) {
@@ -118,6 +119,111 @@ public class AIModel {
                 customModels.addAll(java.util.Arrays.asList(models));
             }
         }
+    }
+
+    private static void applyPersistentDeletionsAndOverrides() {
+        android.content.Context context = com.codex.apk.CodeXApplication.getAppContext();
+        if (context == null) return;
+        android.content.SharedPreferences prefs = context.getSharedPreferences("model_settings", android.content.Context.MODE_PRIVATE);
+        com.google.gson.Gson gson = new com.google.gson.Gson();
+        // Deletions
+        String deletedJson = prefs.getString("deleted_models", null);
+        java.util.Set<String> deleted = new java.util.HashSet<>();
+        if (deletedJson != null) {
+            try {
+                String[] arr = gson.fromJson(deletedJson, String[].class);
+                if (arr != null) deleted.addAll(java.util.Arrays.asList(arr));
+            } catch (Exception ignored) {}
+        }
+        // Remove deleted from map
+        if (!deleted.isEmpty()) {
+            for (Map.Entry<AIProvider, List<AIModel>> e : modelsByProvider.entrySet()) {
+                e.getValue().removeIf(m -> deleted.contains(m.getDisplayName()));
+            }
+        }
+        // Overrides
+        String overridesJson = prefs.getString("model_overrides", null);
+        if (overridesJson != null) {
+            try {
+                SimpleModel[] overrides = gson.fromJson(overridesJson, SimpleModel[].class);
+                if (overrides != null) {
+                    for (SimpleModel sm : overrides) {
+                        AIModel existing = findByDisplayName(sm.displayName);
+                        ModelCapabilities caps = existing != null ? existing.getCapabilities() : new ModelCapabilities(false, false, false, true, false, false, false, 0, 0);
+                        AIModel updated = new AIModel(sm.modelId, sm.displayName, AIProvider.valueOf(sm.provider), caps);
+                        upsertModel(updated);
+                    }
+                }
+            } catch (Exception ignored) {}
+        }
+        // Add custom models into map (they are separate storage)
+        for (AIModel cm : customModels) {
+            upsertModel(cm);
+        }
+    }
+
+    private static AIModel findByDisplayName(String displayName) {
+        for (Map.Entry<AIProvider, List<AIModel>> e : modelsByProvider.entrySet()) {
+            for (AIModel m : e.getValue()) {
+                if (m.getDisplayName().equals(displayName)) return m;
+            }
+        }
+        return null;
+    }
+
+    private static void upsertModel(AIModel model) {
+        // Remove any existing entry with same display name across providers
+        for (Map.Entry<AIProvider, List<AIModel>> e : modelsByProvider.entrySet()) {
+            e.getValue().removeIf(m -> m.getDisplayName().equals(model.getDisplayName()));
+        }
+        modelsByProvider.computeIfAbsent(model.getProvider(), k -> new ArrayList<>()).add(model);
+    }
+
+    public static void removeModelByDisplayName(String displayName) {
+        // Record deletion
+        android.content.Context context = com.codex.apk.CodeXApplication.getAppContext();
+        if (context == null) return;
+        android.content.SharedPreferences prefs = context.getSharedPreferences("model_settings", android.content.Context.MODE_PRIVATE);
+        com.google.gson.Gson gson = new com.google.gson.Gson();
+        String deletedJson = prefs.getString("deleted_models", null);
+        java.util.Set<String> deleted = new java.util.HashSet<>();
+        if (deletedJson != null) {
+            try { String[] arr = gson.fromJson(deletedJson, String[].class); if (arr != null) deleted.addAll(java.util.Arrays.asList(arr)); } catch (Exception ignored) {}
+        }
+        deleted.add(displayName);
+        prefs.edit().putString("deleted_models", gson.toJson(deleted.toArray(new String[0]))).apply();
+        // Apply in-memory removal
+        for (Map.Entry<AIProvider, List<AIModel>> e : modelsByProvider.entrySet()) {
+            e.getValue().removeIf(m -> m.getDisplayName().equals(displayName));
+        }
+    }
+
+    public static void updateModel(String oldDisplayName, String newDisplayName, String newModelId, AIProvider provider) {
+        android.content.Context context = com.codex.apk.CodeXApplication.getAppContext();
+        if (context == null) return;
+        AIModel existing = findByDisplayName(oldDisplayName);
+        ModelCapabilities caps = existing != null ? existing.getCapabilities() : new ModelCapabilities(false, false, false, true, false, false, false, 0, 0);
+        AIModel updated = new AIModel(newModelId, newDisplayName, provider, caps);
+        // Persist override
+        android.content.SharedPreferences prefs = context.getSharedPreferences("model_settings", android.content.Context.MODE_PRIVATE);
+        com.google.gson.Gson gson = new com.google.gson.Gson();
+        String overridesJson = prefs.getString("model_overrides", null);
+        java.util.List<SimpleModel> overrides = new java.util.ArrayList<>();
+        if (overridesJson != null) {
+            try { SimpleModel[] arr = gson.fromJson(overridesJson, SimpleModel[].class); if (arr != null) overrides.addAll(java.util.Arrays.asList(arr)); } catch (Exception ignored) {}
+        }
+        // Remove old if exists
+        overrides.removeIf(sm -> sm.displayName.equals(oldDisplayName));
+        overrides.add(new SimpleModel(updated.getModelId(), updated.getDisplayName(), updated.getProvider().name()));
+        prefs.edit().putString("model_overrides", gson.toJson(overrides)).apply();
+        // Apply in-memory
+        upsertModel(updated);
+    }
+
+    private static class SimpleModel {
+        String modelId; String displayName; String provider;
+        SimpleModel() {}
+        SimpleModel(String id, String name, String provider) { this.modelId = id; this.displayName = name; this.provider = provider; }
     }
 
     public static List<AIModel> getAllModels() {

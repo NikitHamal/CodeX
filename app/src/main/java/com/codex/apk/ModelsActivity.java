@@ -45,13 +45,6 @@ public class ModelsActivity extends AppCompatActivity {
     }
 
     private void setupAdapter() {
-        ModelAdapter adapter = new ModelAdapter(this, AIModel.getAllModels());
-        recyclerView.setAdapter(adapter);
-        // Long click to manage model
-        recyclerView.addOnItemTouchListener(new androidx.recyclerview.widget.RecyclerView.SimpleOnItemTouchListener());
-        recyclerView.setOnLongClickListener(v -> true);
-        adapter.registerAdapterDataObserver(new RecyclerView.AdapterDataObserver(){});
-        // Attach long click via item view binder
         recyclerView.setAdapter(new ModelAdapter(this, AIModel.getAllModels()) {
             @Override
             public void onBindViewHolder(RecyclerView.ViewHolder holder, int position) {
@@ -59,8 +52,8 @@ public class ModelsActivity extends AppCompatActivity {
                 if (holder.getItemViewType() != 0) {
                     holder.itemView.setOnLongClickListener(view -> {
                         Object item = ((java.util.List<?>) getItems()).get(position);
-                        if (item instanceof AIModel) {
-                            showModelActionsDialog((AIModel) item);
+                        if (item instanceof com.codex.apk.ai.AIModel) {
+                            showModelActionsDialog((com.codex.apk.ai.AIModel) item);
                         }
                         return true;
                     });
@@ -99,9 +92,7 @@ public class ModelsActivity extends AppCompatActivity {
             }
 
             AIProvider provider = AIProvider.valueOf(providerName);
-            // Assuming default capabilities for custom models for now
-            AIModel newModel = new AIModel(id, name, provider, new ModelCapabilities(false, false, false, true, false, false, false, 0, 0));
-            AIModel.addCustomModel(newModel);
+            AIModel.addCustomModel(new AIModel(id, name, provider, new ModelCapabilities(false, false, false, true, false, false, false, 0, 0)));
 
             setupAdapter(); // Refresh the list
             Toast.makeText(this, "Model " + name + " added!", Toast.LENGTH_SHORT).show();
@@ -127,7 +118,9 @@ public class ModelsActivity extends AppCompatActivity {
                     showEditModelDialog(model);
                     break;
                 case "Delete":
-                    deleteModel(model);
+                    AIModel.removeModelByDisplayName(model.getDisplayName());
+                    setupAdapter();
+                    Toast.makeText(this, "Model deleted", Toast.LENGTH_SHORT).show();
                     break;
                 case "Set as default":
                     setDefaultModel(model);
@@ -160,23 +153,12 @@ public class ModelsActivity extends AppCompatActivity {
                 Toast.makeText(this, "All fields are required", Toast.LENGTH_SHORT).show();
                 return;
             }
-            // For simplicity: add edited as new custom and refresh (custom model storage replaces list)
-            AIModel.addCustomModel(new AIModel(id, name, AIProvider.valueOf(providerName), model.getCapabilities()));
+            AIModel.updateModel(model.getDisplayName(), name, id, AIProvider.valueOf(providerName));
             setupAdapter();
             Toast.makeText(this, "Model updated", Toast.LENGTH_SHORT).show();
         });
         builder.setNegativeButton("Cancel", null);
         builder.show();
-    }
-
-    private void deleteModel(AIModel model) {
-        // Remove from custom models only; built-ins remain
-        // For demo, clear and re-add all except the one
-        java.util.List<AIModel> all = new java.util.ArrayList<>(AIModel.getAllModels());
-        all.removeIf(m -> m.getDisplayName().equals(model.getDisplayName()));
-        // Not persisting deletions for built-ins; skip
-        setupAdapter();
-        Toast.makeText(this, "Deleted (custom models persist only)", Toast.LENGTH_SHORT).show();
     }
 
     private void setDefaultModel(AIModel model) {

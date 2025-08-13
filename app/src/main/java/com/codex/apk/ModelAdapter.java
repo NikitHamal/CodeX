@@ -149,7 +149,17 @@ public class ModelAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
         public void bind(AIModel model) {
             String defaultModel = prefs.getString("default_model", null);
             boolean isDefault = defaultModel != null && defaultModel.equals(model.getDisplayName());
-            modelName.setText(isDefault ? model.getDisplayName() + "  (Default)" : model.getDisplayName());
+            if (isDefault) {
+                // Append a chip-like label
+                modelName.setText(model.getDisplayName() + "  ");
+                modelName.setCompoundDrawablesWithIntrinsicBounds(0, 0, 0, 0);
+                // Use a styled background span substitute by setting a small label view-like text via compound drawable workaround is complex; simple suffix text with style:
+                modelName.setText(model.getDisplayName() + "  Default");
+                modelName.setTextAppearance(context, com.google.android.material.R.style.TextAppearance_Material3_BodyMedium);
+                modelName.setTextColor(context.getColor(R.color.on_surface));
+            } else {
+                modelName.setText(model.getDisplayName());
+            }
             modelId.setText(model.getModelId());
 
             modelEnabledCheckbox.setOnCheckedChangeListener(null);

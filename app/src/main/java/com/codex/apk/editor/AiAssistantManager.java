@@ -67,11 +67,16 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
         this.aiAssistant = new AIAssistant(activity, apiKey, projectDir, projectName, executorService, this);
         this.aiAssistant.setEnabledTools(com.codex.apk.ToolSpec.defaultFileTools());
 
+        // Model selection: prefer per-project last-used, else global default, else fallback
         SharedPreferences settingsPrefs = activity.getSharedPreferences("settings", Context.MODE_PRIVATE);
-        String defaultModelName = settingsPrefs.getString("selected_model", AIModel.fromModelId("qwen3-coder-plus").getDisplayName());
-        AIModel defaultModel = AIModel.fromDisplayName(defaultModelName);
-        if (defaultModel != null) {
-            this.aiAssistant.setCurrentModel(defaultModel);
+        SharedPreferences modelPrefs = activity.getSharedPreferences("model_settings", Context.MODE_PRIVATE);
+        String projectKey = "project_" + (projectName != null ? projectName : "default") + "_last_model";
+        String lastUsed = settingsPrefs.getString(projectKey, null);
+        String defaultModelName = modelPrefs.getString("default_model", null);
+        String initialName = lastUsed != null ? lastUsed : (defaultModelName != null ? defaultModelName : AIModel.fromModelId("qwen3-coder-plus").getDisplayName());
+        AIModel initialModel = AIModel.fromDisplayName(initialName);
+        if (initialModel != null) {
+            this.aiAssistant.setCurrentModel(initialModel);
         }
     }
 
@@ -112,6 +117,12 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
 
         try {
             aiAssistant.sendPrompt(userPrompt, chatHistory, qwenState, currentFileName, currentFileContent);
+            // Persist per-project last used model
+            String projectKey = "project_" + (activity.getProjectName() != null ? activity.getProjectName() : "default") + "_last_model";
+            activity.getSharedPreferences("settings", Context.MODE_PRIVATE)
+                    .edit()
+                    .putString(projectKey, aiAssistant.getCurrentModel().getDisplayName())
+                    .apply();
         } catch (Exception e) {
             activity.showToast("AI Error: " + e.getMessage());
             Log.e(TAG, "AI processing error", e);

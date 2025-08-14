@@ -14,4 +14,13 @@
         android:overScrollMode="never"
         android:elevation="2dp" />
 
+    <!-- Inline Diff RecyclerView (hidden by default) -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/diff_recycler"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone"
+        android:overScrollMode="never"
+        android:background="@color/surface_container_low"/>
+
 </LinearLayout>

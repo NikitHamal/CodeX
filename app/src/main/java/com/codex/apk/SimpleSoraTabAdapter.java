@@ -10,6 +10,7 @@ import android.view.ViewGroup;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.recyclerview.widget.LinearLayoutManager;
 
 import io.github.rosemoe.sora.widget.CodeEditor;
 import io.github.rosemoe.sora.lang.EmptyLanguage;
@@ -27,6 +28,7 @@ import java.io.File;
 import java.util.List;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.LinkedHashMap;
 
 /**
  * Simplified TabAdapter using Sora Editor for high-performance code editing.
@@ -43,6 +45,20 @@ public class SimpleSoraTabAdapter extends RecyclerView.Adapter<SimpleSoraTabAdap
     private final TabActionListener tabActionListener;
     private final FileManager fileManager;
     private final Map<Integer, ViewHolder> holders = new HashMap<>();
+    // LRU cache for parsed diffs per tabId with content hash to avoid re-parsing
+    private static final int MAX_DIFF_CACHE = 16;
+
+    private static class DiffCacheEntry {
+        java.util.List<DiffUtils.DiffLine> lines;
+        int hash;
+    }
+
+    private final LinkedHashMap<String, DiffCacheEntry> diffCache = new LinkedHashMap<String, DiffCacheEntry>(16, 0.75f, true) {
+        @Override
+        protected boolean removeEldestEntry(Map.Entry<String, DiffCacheEntry> eldest) {
+            return size() > MAX_DIFF_CACHE;
+        }
+    };
 
 
     // Current active tab position
@@ -63,10 +79,13 @@ public class SimpleSoraTabAdapter extends RecyclerView.Adapter<SimpleSoraTabAdap
         public CodeEditor codeEditor;
         public boolean isListenerAttached = false;
         public String currentTabId = null;
+        public androidx.recyclerview.widget.RecyclerView diffRecycler;
+        public InlineDiffAdapter diffAdapter;
 
         public ViewHolder(@NonNull View itemView) {
             super(itemView);
             codeEditor = itemView.findViewById(R.id.code_editor);
+            diffRecycler = itemView.findViewById(R.id.diff_recycler);
         }
     }
 
@@ -99,19 +118,25 @@ public class SimpleSoraTabAdapter extends RecyclerView.Adapter<SimpleSoraTabAdap
         TabItem tabItem = openTabs.get(position);
         String tabId = tabItem.getFile().getAbsolutePath();
         CodeEditor codeEditor = holder.codeEditor;
+        boolean isDiffTab = tabItem.getFile().getName().startsWith("DIFF_");
 
         // Only reconfigure if this is a different tab
         if (!tabId.equals(holder.currentTabId)) {
             holder.currentTabId = tabId;
 
-            // Configure the editor only for new tabs
-            configureEditor(codeEditor, tabItem);
-
-            // Set content without triggering change events
-            codeEditor.setText(tabItem.getContent());
-            // Apply persistent flags
-            codeEditor.setWordwrap(tabItem.isWrapEnabled());
-            codeEditor.setEditable(!tabItem.isReadOnly());
+            // Configure the editor only for new tabs (skip heavy setup for DIFF_ tabs)
+            if (!isDiffTab) {
+                configureEditor(codeEditor, tabItem);
+                // Set content without triggering change events
+                codeEditor.setText(tabItem.getContent());
+                // Apply persistent flags
+                codeEditor.setWordwrap(tabItem.isWrapEnabled());
+                codeEditor.setEditable(!tabItem.isReadOnly());
+            } else {
+                // For diff tabs, keep editor lightweight & disabled
+                codeEditor.setText("");
+                codeEditor.setEditable(false);
+            }
 
             // Set up content change listener only once per tab
             if (!holder.isListenerAttached) {
@@ -134,6 +159,49 @@ public class SimpleSoraTabAdapter extends RecyclerView.Adapter<SimpleSoraTabAdap
                     }
                 });
                 holder.isListenerAttached = true;
+            }
+        }
+
+        // Toggle between editor and diff view every bind to reflect latest state/content
+        if (isDiffTab) {
+            // Show diff view
+            codeEditor.setVisibility(View.GONE);
+            if (holder.diffRecycler != null) {
+                holder.diffRecycler.setVisibility(View.VISIBLE);
+                if (holder.diffRecycler.getLayoutManager() == null) {
+                    holder.diffRecycler.setLayoutManager(new LinearLayoutManager(context));
+                    holder.diffRecycler.setHasFixedSize(true);
+                    holder.diffRecycler.setItemViewCacheSize(64);
+                }
+                // Parse and bind diff lines with LRU caching
+                String key = tabId;
+                String content = tabItem.getContent();
+                int h = content != null ? content.hashCode() : 0;
+                java.util.List<DiffUtils.DiffLine> lines;
+                DiffCacheEntry entry = diffCache.get(key);
+                if (entry == null || entry.hash != h) {
+                    lines = DiffUtils.parseUnifiedDiff(content);
+                    DiffCacheEntry newEntry = new DiffCacheEntry();
+                    newEntry.lines = lines;
+                    newEntry.hash = h;
+                    diffCache.put(key, newEntry);
+                } else {
+                    lines = entry.lines;
+                }
+                if (holder.diffAdapter == null) {
+                    holder.diffAdapter = new InlineDiffAdapter(context, lines);
+                    holder.diffRecycler.setAdapter(holder.diffAdapter);
+                } else {
+                    holder.diffAdapter.updateLines(lines);
+                }
+            }
+        } else {
+            // Show normal editor
+            codeEditor.setVisibility(View.VISIBLE);
+            if (holder.diffRecycler != null) {
+                holder.diffRecycler.setVisibility(View.GONE);
+                holder.diffRecycler.setAdapter(null);
+                holder.diffAdapter = null;
             }
         }
 
@@ -342,6 +410,11 @@ public class SimpleSoraTabAdapter extends RecyclerView.Adapter<SimpleSoraTabAdap
     @Override
     public void onViewRecycled(@NonNull ViewHolder holder) {
         holders.remove(holder.getAdapterPosition());
+        // Detach diff adapter to help GC
+        if (holder.diffRecycler != null) {
+            holder.diffRecycler.setAdapter(null);
+        }
+        holder.diffAdapter = null;
         super.onViewRecycled(holder);
     }
 
@@ -350,9 +423,35 @@ public class SimpleSoraTabAdapter extends RecyclerView.Adapter<SimpleSoraTabAdap
     }
 
     /**
+     * Purge any cached parsed diff for a specific file/tab.
+     */
+    public void purgeDiffCacheForFile(File file) {
+        if (file == null) return;
+        String key = file.getAbsolutePath();
+        diffCache.remove(key);
+    }
+
+    /**
+     * Clear all diff caches.
+     */
+    public void clearDiffCaches() {
+        diffCache.clear();
+    }
+
+    /**
      * Clean up resources
      */
     public void cleanup() {
-        // No-op
+        // Detach adapters and clear holder references
+        for (ViewHolder vh : holders.values()) {
+            if (vh != null && vh.diffRecycler != null) {
+                vh.diffRecycler.setAdapter(null);
+            }
+            if (vh != null) {
+                vh.diffAdapter = null;
+            }
+        }
+        holders.clear();
+        clearDiffCaches();
     }
 }

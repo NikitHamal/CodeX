@@ -137,7 +137,7 @@ public class FileActionAdapter extends RecyclerView.Adapter<FileActionAdapter.Vi
                 added = (action.insertLines != null) ? action.insertLines.size() : 0;
                 removed = Math.max(0, action.deleteCount);
             } else if (action.diffPatch != null && !action.diffPatch.isEmpty()) {
-                int[] counts = parseUnifiedDiffCounts(action.diffPatch);
+                int[] counts = DiffUtils.countAddRemove(action.diffPatch);
                 added = counts[0];
                 removed = counts[1];
             }
@@ -169,27 +169,6 @@ public class FileActionAdapter extends RecyclerView.Adapter<FileActionAdapter.Vi
             itemView.setOnClickListener(v -> listener.onFileActionClicked(action));
         }
 
-        // Simple unified diff parser to count added/removed lines
-        private int[] parseUnifiedDiffCounts(String patch) {
-            int adds = 0;
-            int rems = 0;
-            try {
-                String[] lines = patch.split("\n");
-                for (String line : lines) {
-                    if (line.isEmpty()) continue;
-                    char c = line.charAt(0);
-                    // Skip diff metadata
-                    if (line.startsWith("+++") || line.startsWith("---") || line.startsWith("@@")) {
-                        continue;
-                    }
-                    if (c == '+') {
-                        adds++;
-                    } else if (c == '-') {
-                        rems++;
-                    }
-                }
-            } catch (Exception ignored) {}
-            return new int[]{adds, rems};
-        }
+        // Removed duplicate unified diff parser; using DiffUtils.countAddRemove
     }
 }

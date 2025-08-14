@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:minHeight="28dp"
+    android:paddingVertical="4dp"
+    android:paddingEnd="4dp">
+
+    <!-- Gutter color strip -->
+    <View
+        android:id="@+id/view_gutter"
+        android:layout_width="4dp"
+        android:layout_height="match_parent"
+        android:background="@color/outline_variant" />
+
+    <!-- Old line number -->
+    <TextView
+        android:id="@+id/tv_old_line"
+        android:layout_width="52dp"
+        android:layout_height="wrap_content"
+        android:gravity="end"
+        android:paddingEnd="6dp"
+        android:textColor="@color/on_surface_variant"
+        android:textSize="12sp"
+        android:fontFamily="monospace" />
+
+    <!-- New line number -->
+    <TextView
+        android:id="@+id/tv_new_line"
+        android:layout_width="52dp"
+        android:layout_height="wrap_content"
+        android:gravity="end"
+        android:paddingEnd="6dp"
+        android:textColor="@color/on_surface_variant"
+        android:textSize="12sp"
+        android:fontFamily="monospace" />
+
+    <!-- Line content -->
+    <TextView
+        android:id="@+id/tv_content"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:paddingStart="8dp"
+        android:paddingEnd="4dp"
+        android:textColor="@color/on_surface"
+        android:textSize="13sp"
+        android:fontFamily="monospace" />
+
+</LinearLayout>

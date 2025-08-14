@@ -251,6 +251,14 @@ public class TabManager {
      */
     private void removeTabAtPosition(int position) {
         if (position >= 0 && position < openTabs.size()) {
+            // Purge diff cache for the tab being removed
+            TabItem removed = openTabs.get(position);
+            if (activity.getCodeEditorFragment() != null) {
+                SimpleSoraTabAdapter adapter = activity.getCodeEditorFragment().getFileTabAdapter();
+                if (adapter != null && removed != null) {
+                    adapter.purgeDiffCacheForFile(removed.getFile());
+                }
+            }
             openTabs.remove(position);
             activity.getCodeEditorFragment().removeFileTab(position);
             activity.getCodeEditorFragment().refreshFileTabLayout();
@@ -301,6 +309,10 @@ public class TabManager {
         if (keepPosition < 0 || keepPosition >= openTabs.size()) return;
 
         TabItem tabToKeep = openTabs.get(keepPosition);
+        // Clear diff caches as many tabs are being closed at once
+        if (activity.getCodeEditorFragment() != null && activity.getCodeEditorFragment().getFileTabAdapter() != null) {
+            activity.getCodeEditorFragment().getFileTabAdapter().clearDiffCaches();
+        }
         openTabs.clear();
         openTabs.add(tabToKeep);
 
@@ -347,6 +359,10 @@ public class TabManager {
      * Performs the actual closing of all open tabs.
      */
     private void performCloseAllTabs() {
+        // Clear diff caches as all tabs are being closed
+        if (activity.getCodeEditorFragment() != null && activity.getCodeEditorFragment().getFileTabAdapter() != null) {
+            activity.getCodeEditorFragment().getFileTabAdapter().clearDiffCaches();
+        }
         openTabs.clear();
         activity.getCodeEditorFragment().refreshAllFileTabs();
         activity.getCodeEditorFragment().refreshFileTabLayout();

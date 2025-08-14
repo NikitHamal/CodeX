@@ -274,7 +274,14 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
             layoutPlanSteps.setVisibility(isTyping ? View.GONE : (message.getPlanSteps() != null && !message.getPlanSteps().isEmpty() ? View.VISIBLE : View.GONE));
             itemView.findViewById(R.id.layout_proposed_file_changes).setVisibility(isTyping ? View.GONE : (message.getProposedFileChanges() != null && !message.getProposedFileChanges().isEmpty() ? View.VISIBLE : View.GONE));
 
-            textAiModelName.setText(message.getAiModelName());
+            // Model name chip: show only when available
+            String modelName = message.getAiModelName();
+            if (modelName != null && !modelName.trim().isEmpty()) {
+                textAiModelName.setText(modelName);
+                textAiModelName.setVisibility(View.VISIBLE);
+            } else {
+                textAiModelName.setVisibility(View.GONE);
+            }
 
             String content = message.getContent();
             if (content != null && !content.isEmpty()) {

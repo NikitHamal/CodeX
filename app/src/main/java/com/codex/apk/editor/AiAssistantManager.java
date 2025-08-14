@@ -476,12 +476,40 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                 currentStreamingMessagePosition = null;
             }
 
-            ChatMessage aiMessage = new ChatMessage(ChatMessage.SENDER_AI,
+            // Build AI message with full constructor to retain model name and raw response
+            int initialStatus = ChatMessage.STATUS_NONE;
+            boolean hasFileChanges = (proposedFileChanges != null && !proposedFileChanges.isEmpty());
+            if (!agentEnabled && !isPlan && hasFileChanges) {
+                // Non-agent: show Accept/Discard for file changes
+                initialStatus = ChatMessage.STATUS_PENDING_APPROVAL;
+            }
+
+            ChatMessage aiMessage = new ChatMessage(
+                    ChatMessage.SENDER_AI,
                     explanation != null ? explanation : "",
-                    System.currentTimeMillis());
+                    new java.util.ArrayList<>(),
+                    suggestions != null ? suggestions : new java.util.ArrayList<>(),
+                    aiModelDisplayName,
+                    System.currentTimeMillis(),
+                    rawAiResponseJson,
+                    hasFileChanges ? proposedFileChanges : null,
+                    initialStatus
+            );
+
+            // Attach optional thinking and web sources for UI
+            if (thinkingContent != null && !thinkingContent.trim().isEmpty()) {
+                aiMessage.setThinkingContent(thinkingContent);
+            }
+            if (webSources != null && !webSources.isEmpty()) {
+                aiMessage.setWebSources(webSources);
+            }
 
             if (isPlan) {
                 aiMessage.setPlanSteps(planSteps);
+                if (!agentEnabled) {
+                    // Non-agent: require user approval for plan
+                    aiMessage.setStatus(ChatMessage.STATUS_PENDING_APPROVAL);
+                }
                 lastPlanMessagePosition = frag.addMessage(aiMessage);
                 planProgressIndex = 0;
                 executedStepSummaries.clear();
@@ -490,6 +518,9 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
 
             if (proposedFileChanges != null && !proposedFileChanges.isEmpty()) {
                 aiMessage.setProposedFileChanges(proposedFileChanges);
+                if (!agentEnabled) {
+                    aiMessage.setStatus(ChatMessage.STATUS_PENDING_APPROVAL);
+                }
             }
 
             int pos;

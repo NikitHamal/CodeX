@@ -133,6 +133,15 @@ public class AIChatUIManager {
                     if (selectedModel != null) {
                         aiAssistant.setCurrentModel(selectedModel);
                         textSelectedModel.setText(selectedModelName);
+                        // Ensure selector width recalculates after text change
+                        if (layoutModelSelectorCustom != null) {
+                            layoutModelSelectorCustom.requestLayout();
+                        }
+                        if (textSelectedModel != null) {
+                            textSelectedModel.post(() -> {
+                                if (layoutModelSelectorCustom != null) layoutModelSelectorCustom.requestLayout();
+                            });
+                        }
                         updateSettingsButtonState(aiAssistant);
                         // Persist last used model per project
                         android.content.SharedPreferences sp = context.getSharedPreferences("settings", Context.MODE_PRIVATE);
@@ -172,6 +181,8 @@ public class AIChatUIManager {
                     if (model != null) {
                         aiAssistant.setCurrentModel(model);
                         textSelectedModel.setText(model.getDisplayName());
+                        if (layoutModelSelectorCustom != null) layoutModelSelectorCustom.requestLayout();
+                        textSelectedModel.post(() -> { if (layoutModelSelectorCustom != null) layoutModelSelectorCustom.requestLayout(); });
                         // Persist last used model per project
                         android.content.SharedPreferences sp = context.getSharedPreferences("settings", Context.MODE_PRIVATE);
                         sp.edit().putString("selected_model", model.getDisplayName()).apply();
@@ -292,28 +303,115 @@ public class AIChatUIManager {
         recyclerAttachedFilesPreview.setVisibility(View.VISIBLE);
         recyclerAttachedFilesPreview.setAdapter(new RecyclerView.Adapter<RecyclerView.ViewHolder>() {
             @Override public RecyclerView.ViewHolder onCreateViewHolder(android.view.ViewGroup parent, int viewType) {
-                LinearLayout container = new LinearLayout(context);
-                container.setOrientation(LinearLayout.HORIZONTAL);
-                ImageView iv = new ImageView(context);
-                int size = (int) (32 * context.getResources().getDisplayMetrics().density / context.getResources().getDisplayMetrics().density); // dp-to-dp placeholder
-                iv.setLayoutParams(new LinearLayout.LayoutParams(80, 80));
-                iv.setImageResource(R.drawable.icon_file_round);
-                container.addView(iv);
-                TextView tv = new TextView(context);
-                tv.setTextColor(context.getColor(R.color.on_surface_variant));
-                tv.setTextSize(12);
-                container.addView(tv);
-                return new RecyclerView.ViewHolder(container) {};
+                // Vertical item: thumbnail/icon in a rounded card with a clear button overlay, filename below
+                LinearLayout root = new LinearLayout(context);
+                root.setOrientation(LinearLayout.VERTICAL);
+                root.setPadding(dp(4), dp(4), dp(4), dp(4));
+
+                android.widget.FrameLayout frame = new android.widget.FrameLayout(context);
+                LinearLayout.LayoutParams frameLp = new LinearLayout.LayoutParams(dp(64), dp(64));
+                frame.setLayoutParams(frameLp);
+
+                com.google.android.material.card.MaterialCardView card = new com.google.android.material.card.MaterialCardView(context);
+                android.widget.FrameLayout.LayoutParams cardLp = new android.widget.FrameLayout.LayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT, android.view.ViewGroup.LayoutParams.MATCH_PARENT);
+                card.setLayoutParams(cardLp);
+                card.setRadius(dp(8));
+                card.setCardElevation(0f);
+                card.setStrokeWidth(0);
+
+                ImageView thumb = new ImageView(context);
+                thumb.setScaleType(ImageView.ScaleType.CENTER_CROP);
+                card.addView(thumb);
+
+                ImageView clear = new ImageView(context);
+                android.widget.FrameLayout.LayoutParams clearLp = new android.widget.FrameLayout.LayoutParams(dp(18), dp(18));
+                clearLp.gravity = android.view.Gravity.END | android.view.Gravity.TOP;
+                clear.setLayoutParams(clearLp);
+                clear.setImageResource(R.drawable.icon_close_round);
+                clear.setColorFilter(context.getColor(R.color.on_surface));
+                clear.setBackgroundResource(R.drawable.rounded_edittext_background);
+                clear.setPadding(dp(2), dp(2), dp(2), dp(2));
+
+                frame.addView(card);
+                frame.addView(clear);
+
+                TextView name = new TextView(context);
+                name.setTextColor(context.getColor(R.color.on_surface_variant));
+                name.setTextSize(12);
+                name.setMaxLines(1);
+                name.setEllipsize(android.text.TextUtils.TruncateAt.END);
+                LinearLayout.LayoutParams nameLp = new LinearLayout.LayoutParams(dp(72), android.view.ViewGroup.LayoutParams.WRAP_CONTENT);
+                nameLp.topMargin = dp(4);
+                name.setLayoutParams(nameLp);
+
+                root.addView(frame);
+                root.addView(name);
+
+                return new RecyclerView.ViewHolder(root) {};
             }
             @Override public void onBindViewHolder(RecyclerView.ViewHolder holder, int position) {
-                LinearLayout container = (LinearLayout) holder.itemView;
-                ImageView iv = (ImageView) container.getChildAt(0);
-                TextView tv = (TextView) container.getChildAt(1);
+                LinearLayout root = (LinearLayout) holder.itemView;
+                android.widget.FrameLayout frame = (android.widget.FrameLayout) root.getChildAt(0);
+                com.google.android.material.card.MaterialCardView card = (com.google.android.material.card.MaterialCardView) frame.getChildAt(0);
+                ImageView thumb = (ImageView) card.getChildAt(0);
+                ImageView clear = (ImageView) frame.getChildAt(1);
+                TextView name = (TextView) root.getChildAt(1);
+
                 java.io.File f = files.get(position);
-                tv.setText(f.getName());
-                holder.itemView.setPadding(8,8,8,8);
+                name.setText(f.getName());
+
+                if (isImageFile(f)) {
+                    android.graphics.Bitmap bmp = decodeSampledBitmapFromFile(f.getAbsolutePath(), dp(64), dp(64));
+                    if (bmp != null) thumb.setImageBitmap(bmp); else thumb.setImageResource(R.drawable.icon_file_round);
+                } else {
+                    thumb.setScaleType(ImageView.ScaleType.CENTER);
+                    thumb.setImageResource(R.drawable.icon_file_round);
+                }
+
+                clear.setOnClickListener(v -> {
+                    // Ask fragment to remove
+                    fragment.removePendingAttachmentAt(position);
+                });
+
+                // Tap to preview using an implicit intent
+                holder.itemView.setOnClickListener(v -> {
+                    try {
+                        android.net.Uri uri = androidx.core.content.FileProvider.getUriForFile(context, context.getPackageName() + ".fileprovider", f);
+                        android.content.Intent intent = new android.content.Intent(android.content.Intent.ACTION_VIEW);
+                        intent.setData(uri);
+                        intent.addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                        context.startActivity(intent);
+                    } catch (Exception ignored) {}
+                });
             }
             @Override public int getItemCount() { return files.size(); }
+
+            private int dp(int v) { return (int) (v * context.getResources().getDisplayMetrics().density); }
+            private boolean isImageFile(java.io.File f) {
+                String n = f.getName().toLowerCase();
+                return n.endsWith(".png") || n.endsWith(".jpg") || n.endsWith(".jpeg") || n.endsWith(".gif") || n.endsWith(".webp") || n.endsWith(".heic") || n.endsWith(".heif");
+            }
+            private android.graphics.Bitmap decodeSampledBitmapFromFile(String path, int reqWidth, int reqHeight) {
+                android.graphics.BitmapFactory.Options options = new android.graphics.BitmapFactory.Options();
+                options.inJustDecodeBounds = true;
+                android.graphics.BitmapFactory.decodeFile(path, options);
+                options.inSampleSize = calculateInSampleSize(options, reqWidth, reqHeight);
+                options.inJustDecodeBounds = false;
+                try { return android.graphics.BitmapFactory.decodeFile(path, options); } catch (Exception e) { return null; }
+            }
+            private int calculateInSampleSize(android.graphics.BitmapFactory.Options options, int reqWidth, int reqHeight) {
+                int height = options.outHeight;
+                int width = options.outWidth;
+                int inSampleSize = 1;
+                if (height > reqHeight || width > reqWidth) {
+                    final int halfHeight = height / 2;
+                    final int halfWidth = width / 2;
+                    while ((halfHeight / inSampleSize) >= reqHeight && (halfWidth / inSampleSize) >= reqWidth) {
+                        inSampleSize *= 2;
+                    }
+                }
+                return inSampleSize;
+            }
         });
     }
 }

@@ -264,31 +264,40 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
         }
     }
 
+    // Centralized cleanup to avoid lingering running states and UI placeholders
+    private void finalizePlanExecution(String toastMessage, boolean sanitizeDanglingRunning) {
+        AIChatFragment frag = activity.getAiChatFragment();
+        if (sanitizeDanglingRunning && frag != null && lastPlanMessagePosition != null) {
+            ChatMessage pm = frag.getMessageAt(lastPlanMessagePosition);
+            if (pm != null && pm.getPlanSteps() != null) {
+                boolean changed = false;
+                for (ChatMessage.PlanStep ps : pm.getPlanSteps()) {
+                    if (ps != null && "running".equals(ps.status)) { ps.status = "failed"; changed = true; }
+                }
+                if (changed) { frag.updateMessage(lastPlanMessagePosition, pm); }
+            }
+        }
+        isExecutingPlan = false;
+        if (frag != null) { frag.hideThinkingMessage(); }
+        currentStreamingMessagePosition = null;
+        lastPlanMessagePosition = null;
+        planProgressIndex = 0;
+        planStepRetryCount = 0;
+        executedStepSummaries.clear();
+        if (toastMessage != null) activity.showToast(toastMessage);
+        Log.i(TAG, "Plan execution finalized. sanitizeDanglingRunning=" + sanitizeDanglingRunning);
+    }
+
     // Orchestrate detailed autonomous follow-ups per plan step with rich context
     private void sendNextPlanStepFollowUp() {
         AIChatFragment frag = activity.getAiChatFragment();
         if (frag == null || lastPlanMessagePosition == null) {
-            isExecutingPlan = false;
-            AIChatFragment f = activity.getAiChatFragment();
-            if (f != null) f.hideThinkingMessage();
-            currentStreamingMessagePosition = null;
-            // Reset plan tracking state
-            lastPlanMessagePosition = null;
-            planProgressIndex = 0;
-            planStepRetryCount = 0;
-            activity.showToast("Plan completed");
+            finalizePlanExecution("Plan completed", true);
             return;
         }
         ChatMessage planMsg = frag.getMessageAt(lastPlanMessagePosition);
         if (planMsg == null || planMsg.getPlanSteps() == null || planMsg.getPlanSteps().isEmpty()) {
-            isExecutingPlan = false;
-            frag.hideThinkingMessage();
-            currentStreamingMessagePosition = null;
-            // Reset plan tracking state
-            lastPlanMessagePosition = null;
-            planProgressIndex = 0;
-            planStepRetryCount = 0;
-            activity.showToast("Plan completed");
+            finalizePlanExecution("Plan completed", true);
             return;
         }
         List<ChatMessage.PlanStep> steps = planMsg.getPlanSteps();
@@ -305,14 +314,7 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
         }
         if (idx >= steps.size()) {
             // All steps done
-            isExecutingPlan = false;
-            frag.hideThinkingMessage();
-            currentStreamingMessagePosition = null;
-            // Reset plan tracking state
-            lastPlanMessagePosition = null;
-            planProgressIndex = 0;
-            planStepRetryCount = 0;
-            activity.showToast("Plan completed");
+            finalizePlanExecution("Plan completed", false);
             return;
         }
 
@@ -427,20 +429,13 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
 
     public void discardPlan(int messagePosition, ChatMessage message) {
         Log.d(TAG, "User discarded plan for message at position: " + messagePosition);
-        isExecutingPlan = false;
         message.setStatus(ChatMessage.STATUS_DISCARDED);
         AIChatFragment aiChatFragment = activity.getAiChatFragment();
         if (aiChatFragment != null) {
             aiChatFragment.updateMessage(messagePosition, message);
-            aiChatFragment.hideThinkingMessage();
         }
-        // Fully reset plan tracking state on discard
-        currentStreamingMessagePosition = null;
-        lastPlanMessagePosition = null;
-        planProgressIndex = 0;
-        planStepRetryCount = 0;
-        executedStepSummaries.clear();
-        activity.showToast("Plan discarded.");
+        // Centralized cleanup (also sanitizes any dangling running steps to failed)
+        finalizePlanExecution("Plan discarded.", true);
     }
 
     public void onAiFileChangeClicked(ChatMessage.FileActionDetail fileActionDetail) {

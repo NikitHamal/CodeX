@@ -133,29 +133,62 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
                 recyclerAttachments.setLayoutManager(new androidx.recyclerview.widget.LinearLayoutManager(context, androidx.recyclerview.widget.LinearLayoutManager.HORIZONTAL, false));
                 recyclerAttachments.setAdapter(new RecyclerView.Adapter<RecyclerView.ViewHolder>() {
                     @Override public RecyclerView.ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
-                        LinearLayout container = new LinearLayout(context);
-                        container.setOrientation(LinearLayout.HORIZONTAL);
-                        container.setPadding(8,8,8,8);
+                        // Vertical: thumbnail/card (64dp) + filename below
+                        LinearLayout root = new LinearLayout(context);
+                        root.setOrientation(LinearLayout.VERTICAL);
+                        root.setPadding(dp(4), dp(4), dp(4), dp(4));
+
+                        com.google.android.material.card.MaterialCardView card = new com.google.android.material.card.MaterialCardView(context);
+                        LinearLayout.LayoutParams cardLp = new LinearLayout.LayoutParams(dp(64), dp(64));
+                        card.setLayoutParams(cardLp);
+                        card.setRadius(dp(8));
+                        card.setCardElevation(0f);
+                        card.setStrokeWidth(0);
+
                         ImageView iv = new ImageView(context);
-                        iv.setImageResource(R.drawable.icon_file_round);
-                        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(48,48);
-                        iv.setLayoutParams(lp);
-                        container.addView(iv);
+                        iv.setScaleType(ImageView.ScaleType.CENTER_CROP);
+                        card.addView(iv);
+
                         TextView tv = new TextView(context);
                         tv.setTextColor(ContextCompat.getColor(context, R.color.on_primary_container));
                         tv.setTextSize(12);
-                        tv.setPadding(8,0,8,0);
-                        container.addView(tv);
-                        return new RecyclerView.ViewHolder(container) {};
+                        tv.setMaxLines(1);
+                        tv.setEllipsize(android.text.TextUtils.TruncateAt.END);
+                        LinearLayout.LayoutParams tvLp = new LinearLayout.LayoutParams(dp(72), ViewGroup.LayoutParams.WRAP_CONTENT);
+                        tvLp.topMargin = dp(4);
+                        tv.setLayoutParams(tvLp);
+
+                        root.addView(card);
+                        root.addView(tv);
+
+                        return new RecyclerView.ViewHolder(root) {};
                     }
                     @Override public void onBindViewHolder(RecyclerView.ViewHolder holder, int position) {
-                        LinearLayout container = (LinearLayout) holder.itemView;
-                        TextView tv = (TextView) container.getChildAt(1);
+                        LinearLayout root = (LinearLayout) holder.itemView;
+                        com.google.android.material.card.MaterialCardView card = (com.google.android.material.card.MaterialCardView) root.getChildAt(0);
+                        ImageView iv = (ImageView) card.getChildAt(0);
+                        TextView tv = (TextView) root.getChildAt(1);
                         String p = paths.get(position);
-                        tv.setText(new java.io.File(p).getName());
+                        java.io.File f = new java.io.File(p);
+                        tv.setText(f.getName());
+
+                        if (isImageFile(f)) {
+                            android.graphics.Bitmap bmp = decodeSampledBitmapFromFile(f.getAbsolutePath(), dp(64), dp(64));
+                            if (bmp != null) {
+                                iv.setScaleType(ImageView.ScaleType.CENTER_CROP);
+                                iv.setImageBitmap(bmp);
+                            } else {
+                                iv.setScaleType(ImageView.ScaleType.CENTER);
+                                iv.setImageResource(R.drawable.icon_file_round);
+                            }
+                        } else {
+                            iv.setScaleType(ImageView.ScaleType.CENTER);
+                            iv.setImageResource(R.drawable.icon_file_round);
+                        }
+
                         holder.itemView.setOnClickListener(v -> {
                             try {
-                                Uri uri = androidx.core.content.FileProvider.getUriForFile(context, context.getPackageName() + ".fileprovider", new java.io.File(p));
+                                Uri uri = androidx.core.content.FileProvider.getUriForFile(context, context.getPackageName() + ".fileprovider", f);
                                 Intent intent = new Intent(Intent.ACTION_VIEW);
                                 intent.setData(uri);
                                 intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
@@ -164,6 +197,33 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
                         });
                     }
                     @Override public int getItemCount() { return paths.size(); }
+
+                    private int dp(int v) { return (int) (v * context.getResources().getDisplayMetrics().density); }
+                    private boolean isImageFile(java.io.File f) {
+                        String n = f.getName().toLowerCase();
+                        return n.endsWith(".png") || n.endsWith(".jpg") || n.endsWith(".jpeg") || n.endsWith(".gif") || n.endsWith(".webp") || n.endsWith(".heic") || n.endsWith(".heif");
+                    }
+                    private android.graphics.Bitmap decodeSampledBitmapFromFile(String path, int reqWidth, int reqHeight) {
+                        android.graphics.BitmapFactory.Options options = new android.graphics.BitmapFactory.Options();
+                        options.inJustDecodeBounds = true;
+                        android.graphics.BitmapFactory.decodeFile(path, options);
+                        options.inSampleSize = calculateInSampleSize(options, reqWidth, reqHeight);
+                        options.inJustDecodeBounds = false;
+                        try { return android.graphics.BitmapFactory.decodeFile(path, options); } catch (Exception e) { return null; }
+                    }
+                    private int calculateInSampleSize(android.graphics.BitmapFactory.Options options, int reqWidth, int reqHeight) {
+                        int height = options.outHeight;
+                        int width = options.outWidth;
+                        int inSampleSize = 1;
+                        if (height > reqHeight || width > reqWidth) {
+                            final int halfHeight = height / 2;
+                            final int halfWidth = width / 2;
+                            while ((halfHeight / inSampleSize) >= reqHeight && (halfWidth / inSampleSize) >= reqWidth) {
+                                inSampleSize *= 2;
+                            }
+                        }
+                        return inSampleSize;
+                    }
                 });
             } else {
                 recyclerAttachments.setVisibility(View.GONE);

@@ -48,6 +48,14 @@ public class AIChatFragment extends Fragment implements ChatMessageAdapter.OnAiA
         }
     }
 
+    // Called by UI to remove an attachment from the pending list
+    public void removePendingAttachmentAt(int index) {
+        if (index >= 0 && index < pendingAttachments.size()) {
+            pendingAttachments.remove(index);
+            if (uiManager != null) uiManager.showAttachedFilesPreview(pendingAttachments);
+        }
+    }
+
     public static AIChatFragment newInstance(String projectPath) {
         AIChatFragment fragment = new AIChatFragment();
         Bundle args = new Bundle();

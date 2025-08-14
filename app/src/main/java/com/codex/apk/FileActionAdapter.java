@@ -92,6 +92,14 @@ public class FileActionAdapter extends RecyclerView.Adapter<FileActionAdapter.Vi
             textFileName.setText(path);
 
             Context context = itemView.getContext();
+            // Cap card width to 70% of device width
+            int screenWidth = itemView.getResources().getDisplayMetrics().widthPixels;
+            int targetWidth = (int) (0.7f * screenWidth);
+            ViewGroup.LayoutParams lp = cardView.getLayoutParams();
+            if (lp != null && lp.width != targetWidth) {
+                lp.width = targetWidth;
+                cardView.setLayoutParams(lp);
+            }
             int changeColor;
             int changeTextColor;
             String changeLabel;
@@ -141,14 +149,20 @@ public class FileActionAdapter extends RecyclerView.Adapter<FileActionAdapter.Vi
             if ("modifyLines".equals(action.type)) {
                 added = (action.insertLines != null) ? action.insertLines.size() : 0;
                 removed = Math.max(0, action.deleteCount);
-            } else if ("createFile".equals(action.type) && action.newContent != null) {
-                added = countLines(action.newContent);
-            } else if ("deleteFile".equals(action.type) && action.oldContent != null) {
-                removed = countLines(action.oldContent);
             } else if (action.diffPatch != null && !action.diffPatch.isEmpty()) {
                 int[] counts = DiffUtils.countAddRemove(action.diffPatch);
                 added = counts[0];
                 removed = counts[1];
+            } else if ("createFile".equals(action.type) && action.newContent != null) {
+                added = countLines(action.newContent);
+            } else if ("deleteFile".equals(action.type) && action.oldContent != null) {
+                removed = countLines(action.oldContent);
+            } else if ("updateFile".equals(action.type) || "smartUpdate".equals(action.type) || "patchFile".equals(action.type)) {
+                if (action.oldContent != null || action.newContent != null) {
+                    int[] counts = DiffUtils.countAddRemoveFromContents(action.oldContent, action.newContent);
+                    added = counts[0];
+                    removed = counts[1];
+                }
             }
 
             // Configure + badge

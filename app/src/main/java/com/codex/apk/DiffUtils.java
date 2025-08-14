@@ -105,4 +105,28 @@ public final class DiffUtils {
         } catch (Throwable ignore) {}
         return new int[]{adds, rems};
     }
+
+    /**
+     * Compute added and removed line counts between old and new contents.
+     * Returns int[]{added, removed}
+     */
+    public static int[] countAddRemoveFromContents(String oldContent, String newContent) {
+        if (oldContent == null) oldContent = "";
+        if (newContent == null) newContent = "";
+        String[] a = oldContent.split("\n", -1);
+        String[] b = newContent.split("\n", -1);
+        int n = a.length, m = b.length;
+        // LCS DP
+        int[][] dp = new int[n + 1][m + 1];
+        for (int i = 1; i <= n; i++) {
+            for (int j = 1; j <= m; j++) {
+                if (a[i - 1].equals(b[j - 1])) dp[i][j] = dp[i - 1][j - 1] + 1;
+                else dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
+            }
+        }
+        int lcs = dp[n][m];
+        int removed = n - lcs;
+        int added = m - lcs;
+        return new int[]{added, removed};
+    }
 }

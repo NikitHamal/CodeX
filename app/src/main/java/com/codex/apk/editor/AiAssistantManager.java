@@ -446,19 +446,33 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
             fileNameToOpen = fileActionDetail.newPath; // Use newPath for renamed files
         }
 
-        String diffContent = "";
         String oldFileContent = fileActionDetail.oldContent != null ? fileActionDetail.oldContent : "";
         String newFileContent = fileActionDetail.newContent != null ? fileActionDetail.newContent : "";
 
-        if (fileActionDetail.type.equals("createFile")) {
-            diffContent = DiffGenerator.generateDiff("", newFileContent, "unified", "/dev/null", "b/" + fileNameToOpen);
-        } else if (fileActionDetail.type.equals("deleteFile")) {
-            diffContent = DiffGenerator.generateDiff(oldFileContent, "", "unified", "a/" + fileNameToOpen, "/dev/null");
-        } else if (fileActionDetail.type.equals("renameFile")) {
-            diffContent = DiffGenerator.generateDiff(oldFileContent, newFileContent, "unified", "a/" + fileActionDetail.oldPath, "b/" + fileActionDetail.newPath);
+        // Prefer provided diffPatch if it looks like a valid unified diff; otherwise, generate fallback
+        String providedPatch = fileActionDetail.diffPatch != null ? fileActionDetail.diffPatch.trim() : "";
+        boolean looksUnified = false;
+        if (!providedPatch.isEmpty()) {
+            // Heuristics: presence of @@ hunk headers or ---/+++ file markers
+            looksUnified = providedPatch.contains("@@ ") || (providedPatch.startsWith("--- ") && providedPatch.contains("\n+++ "));
         }
-        else { // updateFile or modifyLines
-            diffContent = DiffGenerator.generateDiff(oldFileContent, newFileContent, "unified", "a/" + fileNameToOpen, "b/" + fileNameToOpen);
+
+        String diffContent;
+        if (!providedPatch.isEmpty() && looksUnified) {
+            diffContent = providedPatch;
+        } else {
+            // Fallback: generate unified diff from contents with appropriate file marker paths
+            if ("createFile".equals(fileActionDetail.type)) {
+                diffContent = DiffGenerator.generateDiff("", newFileContent, "unified", "/dev/null", "b/" + fileNameToOpen);
+            } else if ("deleteFile".equals(fileActionDetail.type)) {
+                diffContent = DiffGenerator.generateDiff(oldFileContent, "", "unified", "a/" + fileNameToOpen, "/dev/null");
+            } else if ("renameFile".equals(fileActionDetail.type)) {
+                String oldPath = fileActionDetail.oldPath != null ? fileActionDetail.oldPath : fileNameToOpen;
+                String newPath = fileActionDetail.newPath != null ? fileActionDetail.newPath : fileNameToOpen;
+                diffContent = DiffGenerator.generateDiff(oldFileContent, newFileContent, "unified", "a/" + oldPath, "b/" + newPath);
+            } else { // updateFile, smartUpdate, patchFile, modifyLines, etc.
+                diffContent = DiffGenerator.generateDiff(oldFileContent, newFileContent, "unified", "a/" + fileNameToOpen, "b/" + fileNameToOpen);
+            }
         }
 
         activity.tabManager.openDiffTab(fileNameToOpen, diffContent);

@@ -50,6 +50,8 @@ public class FileActionAdapter extends RecyclerView.Adapter<FileActionAdapter.Vi
         private final TextView textFileName;
         private final TextView textChangeLabel;
         private final TextView textStatusLabel;
+        private final TextView textAddedBadge;
+        private final TextView textRemovedBadge;
 
         ViewHolder(View itemView) {
             super(itemView);
@@ -57,6 +59,8 @@ public class FileActionAdapter extends RecyclerView.Adapter<FileActionAdapter.Vi
             textFileName = itemView.findViewById(R.id.text_file_name);
             textChangeLabel = itemView.findViewById(R.id.text_change_label);
             textStatusLabel = itemView.findViewById(R.id.text_status_label);
+            textAddedBadge = itemView.findViewById(R.id.text_added_badge);
+            textRemovedBadge = itemView.findViewById(R.id.text_removed_badge);
         }
 
         void bind(final ChatMessage.FileActionDetail action, final OnFileActionClickListener listener) {
@@ -125,7 +129,67 @@ public class FileActionAdapter extends RecyclerView.Adapter<FileActionAdapter.Vi
                 bg.setColor(statusColor);
             }
 
+            // Diff badges (+ added / - removed lines)
+            int added = 0;
+            int removed = 0;
+
+            if ("modifyLines".equals(action.type)) {
+                added = (action.insertLines != null) ? action.insertLines.size() : 0;
+                removed = Math.max(0, action.deleteCount);
+            } else if (action.diffPatch != null && !action.diffPatch.isEmpty()) {
+                int[] counts = parseUnifiedDiffCounts(action.diffPatch);
+                added = counts[0];
+                removed = counts[1];
+            }
+
+            // Configure + badge
+            if (added > 0) {
+                textAddedBadge.setVisibility(View.VISIBLE);
+                textAddedBadge.setText("+" + added);
+                if (textAddedBadge.getBackground() instanceof GradientDrawable) {
+                    GradientDrawable bgAdd = (GradientDrawable) textAddedBadge.getBackground().mutate();
+                    bgAdd.setColor(ContextCompat.getColor(context, R.color.success_container));
+                }
+            } else {
+                textAddedBadge.setVisibility(View.GONE);
+            }
+
+            // Configure - badge
+            if (removed > 0) {
+                textRemovedBadge.setVisibility(View.VISIBLE);
+                textRemovedBadge.setText("-" + removed);
+                if (textRemovedBadge.getBackground() instanceof GradientDrawable) {
+                    GradientDrawable bgRm = (GradientDrawable) textRemovedBadge.getBackground().mutate();
+                    bgRm.setColor(ContextCompat.getColor(context, R.color.error_container));
+                }
+            } else {
+                textRemovedBadge.setVisibility(View.GONE);
+            }
+
             itemView.setOnClickListener(v -> listener.onFileActionClicked(action));
+        }
+
+        // Simple unified diff parser to count added/removed lines
+        private int[] parseUnifiedDiffCounts(String patch) {
+            int adds = 0;
+            int rems = 0;
+            try {
+                String[] lines = patch.split("\n");
+                for (String line : lines) {
+                    if (line.isEmpty()) continue;
+                    char c = line.charAt(0);
+                    // Skip diff metadata
+                    if (line.startsWith("+++") || line.startsWith("---") || line.startsWith("@@")) {
+                        continue;
+                    }
+                    if (c == '+') {
+                        adds++;
+                    } else if (c == '-') {
+                        rems++;
+                    }
+                }
+            } catch (Exception ignored) {}
+            return new int[]{adds, rems};
         }
     }
 }

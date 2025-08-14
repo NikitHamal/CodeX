@@ -308,6 +308,9 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
         prompt.append("You are executing step ").append(steps.get(idx).id).append(": ").append(steps.get(idx).title).append(".\n");
         prompt.append("Return a single strict JSON object with action=\"file_operation\" in a ```json fenced code block.\n");
         prompt.append("Constraints: produce separate operations per individual file (HTML/CSS/JS). No natural language outside JSON.\n\n");
+        if (planStepRetryCount > 0) {
+            prompt.append("IMPORTANT: Previous attempt produced no actionable file_operation. You must return exactly one JSON object with action=\"file_operation\" and valid operations. Do not include any natural language or plans.\n\n");
+        }
         prompt.append("Context summary:\n");
         prompt.append("- Plan: ").append(safeTruncate(planToJson(planMsg), 2000)).append("\n");
         if (!executedStepSummaries.isEmpty()) {
@@ -601,11 +604,34 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                         activity.tabManager.refreshOpenTabsAfterAi();
                         activity.loadFileTree();
                         activity.showToast(vr.ok ? "Agent step applied" : "Applied with issues; continuing.");
+                        // Successful application: reset retry counter
+                        planStepRetryCount = 0;
                         if (isExecutingPlan) {
                             sendNextPlanStepFollowUp();
                         }
                     });
                 });
+            }
+            // If in agent autonomous execution but no actionable file ops were returned, retry or skip the step
+            if (agentEnabled && isExecutingPlan && (proposedFileChanges == null || proposedFileChanges.isEmpty())) {
+                int maxRetries = 2;
+                planStepRetryCount++;
+                if (planStepRetryCount <= maxRetries) {
+                    activity.showToast("No file operations returned. Retrying step (" + planStepRetryCount + "/" + maxRetries + ")...");
+                    // Re-prompt the same step with stronger instruction (sendNextPlanStepFollowUp reads retry count)
+                    sendNextPlanStepFollowUp();
+                } else {
+                    // Mark current step as failed and advance
+                    planStepRetryCount = 0;
+                    setCurrentRunningPlanStepStatus("failed");
+                    AIChatFragment f = activity.getAiChatFragment();
+                    if (f != null && lastPlanMessagePosition != null) {
+                        ChatMessage planMsg = f.getMessageAt(lastPlanMessagePosition);
+                        if (planMsg != null) f.updateMessage(lastPlanMessagePosition, planMsg);
+                    }
+                    activity.showToast("Step produced no actionable changes; skipping to next step.");
+                    sendNextPlanStepFollowUp();
+                }
             }
         });
     }

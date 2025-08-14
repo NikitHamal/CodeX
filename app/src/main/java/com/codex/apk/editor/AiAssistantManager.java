@@ -504,6 +504,9 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                 currentStreamingMessagePosition = null;
             }
 
+            // Use a mutable local copy for file actions to satisfy lambda finality rules
+            List<ChatMessage.FileActionDetail> effectiveProposedFileChanges = proposedFileChanges;
+
             boolean isPlan = false;
             List<ChatMessage.PlanStep> planSteps = new ArrayList<>();
             try {
@@ -515,8 +518,8 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                     } else if (parsed != null && ("file_operation".equals(parsed.action) || QwenResponseParser.looksLikeJson(parsed.explanation))) {
                         // If model returned file ops JSON but fileActions list is empty, convert and set
                         List<ChatMessage.FileActionDetail> ops = QwenResponseParser.toFileActionDetails(parsed);
-                        if (proposedFileChanges == null || proposedFileChanges.isEmpty()) {
-                            proposedFileChanges = ops;
+                        if (effectiveProposedFileChanges == null || effectiveProposedFileChanges.isEmpty()) {
+                            effectiveProposedFileChanges = ops;
                         }
                     }
                 }
@@ -526,14 +529,14 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
 
             // If this is a file_operation response during an executing plan, update the existing plan message
             if (!isPlan && isExecutingPlan && lastPlanMessagePosition != null) {
-                if (proposedFileChanges != null && !proposedFileChanges.isEmpty()) {
+                if (effectiveProposedFileChanges != null && !effectiveProposedFileChanges.isEmpty()) {
                     planStepRetryCount = 0; // Reset retry count on successful action
                     AIChatFragment frag = activity.getAiChatFragment();
                     ChatMessage planMsg = frag.getMessageAt(lastPlanMessagePosition);
                     if (planMsg != null) {
                         // Merge proposed file changes for this step
                         List<ChatMessage.FileActionDetail> merged = planMsg.getProposedFileChanges() != null ? planMsg.getProposedFileChanges() : new ArrayList<>();
-                        merged.addAll(proposedFileChanges);
+                        merged.addAll(effectiveProposedFileChanges);
                         planMsg.setProposedFileChanges(merged);
                         // Update the single message and auto-apply
                         frag.updateMessage(lastPlanMessagePosition, planMsg);
@@ -565,7 +568,7 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                     aiModelDisplayName,
                     System.currentTimeMillis(),
                     rawAiResponseJson, // always store raw response for long-press
-                    proposedFileChanges,
+                    effectiveProposedFileChanges,
                     ChatMessage.STATUS_PENDING_APPROVAL
             );
             if (thinkingContent != null && !thinkingContent.isEmpty()) {
@@ -602,7 +605,7 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                     planProgressIndex = 0;
                     executedStepSummaries.clear();
                 } else if (aiAssistant != null && aiAssistant.isAgentModeEnabled()
-                           && proposedFileChanges != null && !proposedFileChanges.isEmpty()) {
+                           && effectiveProposedFileChanges != null && !effectiveProposedFileChanges.isEmpty()) {
                     onAiAcceptActions(insertedPos, aiMessage);
                 }
             } else {

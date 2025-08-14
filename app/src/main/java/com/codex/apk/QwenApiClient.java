@@ -763,22 +763,22 @@ public class QwenApiClient implements ApiClient {
                         break;
                     }
                     case "updateFile": {
-                        String old = readFileSafe(new File(projectDir, d.path));
+                        String old = com.codex.apk.util.FileOps.readFileSafe(new File(projectDir, d.path));
                         d.oldContent = old;
                         if (d.newContent == null || d.newContent.isEmpty()) d.newContent = d.newContent != null ? d.newContent : d.replaceWith != null ? d.replaceWith : d.newContent;
                         if (d.newContent == null) d.newContent = d.oldContent; // no change fallback
                         break;
                     }
                     case "searchAndReplace": {
-                        String old = readFileSafe(new File(projectDir, d.path));
+                        String old = com.codex.apk.util.FileOps.readFileSafe(new File(projectDir, d.path));
                         d.oldContent = old;
                         String pattern = d.searchPattern != null ? d.searchPattern : d.search;
                         String repl = d.replaceWith != null ? d.replaceWith : d.replace;
-                        d.newContent = applySearchReplace(old, pattern, repl);
+                        d.newContent = com.codex.apk.util.FileOps.applySearchReplace(old, pattern, repl);
                         break;
                     }
                     case "smartUpdate": {
-                        String old = readFileSafe(new File(projectDir, d.path));
+                        String old = com.codex.apk.util.FileOps.readFileSafe(new File(projectDir, d.path));
                         d.oldContent = old;
                         String mode = d.updateType != null ? d.updateType : "full";
                         if ("append".equals(mode)) {
@@ -788,7 +788,7 @@ public class QwenApiClient implements ApiClient {
                         } else if ("replace".equals(mode)) {
                             String pattern = d.searchPattern != null ? d.searchPattern : d.search;
                             String repl = d.replaceWith != null ? d.replaceWith : d.replace;
-                            d.newContent = applySearchReplace(old, pattern, repl);
+                            d.newContent = com.codex.apk.util.FileOps.applySearchReplace(old, pattern, repl);
                         } else {
                             // full or unknown
                             if (d.newContent == null || d.newContent.isEmpty()) d.newContent = d.replaceWith != null ? d.replaceWith : "";
@@ -796,25 +796,25 @@ public class QwenApiClient implements ApiClient {
                         break;
                     }
                     case "deleteFile": {
-                        String old = readFileSafe(new File(projectDir, d.path));
+                        String old = com.codex.apk.util.FileOps.readFileSafe(new File(projectDir, d.path));
                         d.oldContent = old;
                         d.newContent = "";
                         break;
                     }
                     case "renameFile": {
-                        String old = readFileSafe(new File(projectDir, d.oldPath));
+                        String old = com.codex.apk.util.FileOps.readFileSafe(new File(projectDir, d.oldPath));
                         d.oldContent = old;
-                        d.newContent = readFileSafe(new File(projectDir, d.newPath));
+                        d.newContent = com.codex.apk.util.FileOps.readFileSafe(new File(projectDir, d.newPath));
                         break;
                     }
                     case "modifyLines": {
-                        String old = readFileSafe(new File(projectDir, d.path));
+                        String old = com.codex.apk.util.FileOps.readFileSafe(new File(projectDir, d.path));
                         d.oldContent = old;
-                        d.newContent = applyModifyLines(old, d.startLine, d.deleteCount, d.insertLines);
+                        d.newContent = com.codex.apk.util.FileOps.applyModifyLines(old, d.startLine, d.deleteCount, d.insertLines);
                         break;
                     }
                     case "patchFile": {
-                        String old = readFileSafe(new File(projectDir, d.path));
+                        String old = com.codex.apk.util.FileOps.readFileSafe(new File(projectDir, d.path));
                         d.oldContent = old;
                         // Applying a unified diff is non-trivial; leave newContent empty to rely on diffPatch
                         break;
@@ -828,42 +828,5 @@ public class QwenApiClient implements ApiClient {
                 Log.w(TAG, "Failed to enrich action detail for path " + d.path + ": " + e.getMessage());
             }
         }
-    }
-
-    private String readFileSafe(File f) {
-        try {
-            if (f != null && f.exists()) {
-                return new String(Files.readAllBytes(f.toPath()), StandardCharsets.UTF_8);
-            }
-        } catch (Exception ignored) {}
-        return "";
-    }
-
-    private String applySearchReplace(String input, String pattern, String replacement) {
-        if (input == null) return "";
-        if (pattern == null || pattern.isEmpty()) return input;
-        String repl = replacement != null ? replacement : "";
-        try {
-            return input.replaceAll(pattern, repl);
-        } catch (Exception e) {
-            // Fallback to plain replace if regex fails
-            return input.replace(pattern, repl);
-        }
-    }
-
-    private String applyModifyLines(String content, int startLine, int deleteCount, List<String> insertLines) {
-        if (content == null) return "";
-        String[] lines = content.split("\n", -1);
-        List<String> out = new ArrayList<>();
-        for (String l : lines) out.add(l);
-        int idx = Math.max(0, Math.min(out.size(), startLine > 0 ? startLine - 1 : 0));
-        int toDelete = Math.max(0, Math.min(deleteCount, out.size() - idx));
-        for (int i = 0; i < toDelete; i++) {
-            out.remove(idx);
-        }
-        if (insertLines != null && !insertLines.isEmpty()) {
-            out.addAll(idx, insertLines);
-        }
-        return String.join("\n", out);
     }
 }

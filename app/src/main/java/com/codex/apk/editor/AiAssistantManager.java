@@ -507,16 +507,21 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
             boolean isPlan = false;
             List<ChatMessage.PlanStep> planSteps = new ArrayList<>();
             try {
-                boolean agentEnabled = aiAssistant != null && aiAssistant.isAgentModeEnabled();
-                if (rawAiResponseJson != null && agentEnabled) {
+                if (rawAiResponseJson != null) {
                     QwenResponseParser.ParsedResponse parsed = QwenResponseParser.parseResponse(rawAiResponseJson);
                     if (parsed != null && "plan".equals(parsed.action)) {
                         isPlan = true;
                         planSteps = QwenResponseParser.toPlanSteps(parsed);
+                    } else if (parsed != null && ("file_operation".equals(parsed.action) || QwenResponseParser.looksLikeJson(parsed.explanation))) {
+                        // If model returned file ops JSON but fileActions list is empty, convert and set
+                        List<ChatMessage.FileActionDetail> ops = QwenResponseParser.toFileActionDetails(parsed);
+                        if (proposedFileChanges == null || proposedFileChanges.isEmpty()) {
+                            proposedFileChanges = ops;
+                        }
                     }
                 }
             } catch (Exception e) {
-                Log.w(TAG, "Plan parse failed", e);
+                Log.w(TAG, "Plan/file parse failed", e);
             }
 
             // If this is a file_operation response during an executing plan, update the existing plan message
@@ -568,6 +573,23 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
             }
             if (webSources != null && !webSources.isEmpty()) {
                 aiMessage.setWebSources(webSources);
+            } else if (rawAiResponseJson != null && rawAiResponseJson.contains("web_sources")) {
+                try {
+                    com.google.gson.JsonObject obj = com.google.gson.JsonParser.parseString(rawAiResponseJson).getAsJsonObject();
+                    if (obj.has("web_sources") && obj.get("web_sources").isJsonArray()) {
+                        java.util.List<WebSource> parsedSources = new java.util.ArrayList<>();
+                        com.google.gson.JsonArray arr = obj.getAsJsonArray("web_sources");
+                        for (int i = 0; i < arr.size(); i++) {
+                            com.google.gson.JsonObject s = arr.get(i).getAsJsonObject();
+                            String url = s.has("url") ? s.get("url").getAsString() : "";
+                            String title = s.has("title") ? s.get("title").getAsString() : url;
+                            String snippet = s.has("snippet") ? s.get("snippet").getAsString() : "";
+                            String favicon = s.has("favicon") ? s.get("favicon").getAsString() : "";
+                            parsedSources.add(new WebSource(url, title, snippet, favicon));
+                        }
+                        if (!parsedSources.isEmpty()) aiMessage.setWebSources(parsedSources);
+                    }
+                } catch (Exception ignore) {}
             }
 
             AIChatFragment frag = activity.getAiChatFragment();

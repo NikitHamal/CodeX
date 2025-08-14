@@ -362,6 +362,7 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
 
             if (layoutPlanSteps.getVisibility() == View.VISIBLE) {
                 recyclerPlanSteps.setAdapter(new PlanStepsAdapter(message.getPlanSteps()));
+                recyclerPlanSteps.setLayoutManager(new LinearLayoutManager(itemView.getContext()));
             }
 
             if (layoutWebSources.getVisibility() == View.VISIBLE) {

@@ -168,9 +168,20 @@ public class GeminiFreeApiClient implements ApiClient {
                                 ParsedOutput parsed2 = parseOutputFromStream(body2);
                                 persistConversationMetaIfAvailable(modelId, body2);
                                 String explanation2 = deriveHumanExplanation(parsed2.text, parsed2.thoughts);
-                                if (actionListener != null) {
-                                    actionListener.onAiActionsProcessed(body2, explanation2, new ArrayList<>(), new ArrayList<>(), model != null ? model.getDisplayName() : "Gemini (Free)");
-                                }
+                                // Normalize JSON (plan/file ops) for model-agnostic handlers
+                                String normalized2 = normalizeJsonIfPresent(parsed2.text);
+                                List<String> suggestions2 = new ArrayList<>();
+                                List<ChatMessage.FileActionDetail> files2 = new ArrayList<>();
+                                // Route via richer callback so thinking is separate
+                                notifyAiActionsProcessed(
+                                        com.codex.apk.QwenResponseParser.looksLikeJson(normalized2) ? normalized2 : null,
+                                        explanation2,
+                                        suggestions2,
+                                        files2,
+                                        model != null ? model.getDisplayName() : "Gemini (Free)",
+                                        parsed2.thoughts,
+                                        new ArrayList<>()
+                                );
                                 // Cache metadata onto the last chat message raw response to help derive context later
                                 // (UI manager will receive this via onAiActionsProcessed).
                                 
@@ -217,7 +228,17 @@ public class GeminiFreeApiClient implements ApiClient {
                     String explanation = deriveHumanExplanation(parsed.text, parsed.thoughts);
                     if (actionListener != null) {
                         // Store actual raw response for long-press, but show only the derived explanation
-                        actionListener.onAiActionsProcessed(body, explanation, new ArrayList<>(), new ArrayList<>(), model != null ? model.getDisplayName() : "Gemini (Free)");
+                        // Normalize JSON for model-agnostic downstream parsing (plan/file ops)
+                        String normalized = normalizeJsonIfPresent(parsed.text);
+                        notifyAiActionsProcessed(
+                                com.codex.apk.QwenResponseParser.looksLikeJson(normalized) ? normalized : null,
+                                explanation,
+                                new ArrayList<>(),
+                                new ArrayList<>(),
+                                model != null ? model.getDisplayName() : "Gemini (Free)",
+                                parsed.thoughts,
+                                new ArrayList<>()
+                        );
                     }
                 }
             } catch (Exception e) {
@@ -486,7 +507,7 @@ public class GeminiFreeApiClient implements ApiClient {
         if (text == null) return null;
         String t = text.trim();
         // Strip leading code fence markers or 'json\n'
-        if (t.startsWith("```")) {
+        if (t.startsWith("```") ) {
             int firstBrace = t.indexOf('{');
             int lastBrace = t.lastIndexOf('}');
             if (firstBrace >= 0 && lastBrace > firstBrace) {
@@ -567,6 +588,21 @@ public class GeminiFreeApiClient implements ApiClient {
             }
         } catch (Exception ignore) {}
         return null;
+    }
+
+    private void notifyAiActionsProcessed(String rawAiResponseJson,
+                                          String explanation,
+                                          List<String> suggestions,
+                                          List<ChatMessage.FileActionDetail> fileActions,
+                                          String modelDisplayName,
+                                          String thinking,
+                                          List<com.codex.apk.ai.WebSource> sources) {
+        if (actionListener instanceof com.codex.apk.editor.AiAssistantManager) {
+            ((com.codex.apk.editor.AiAssistantManager) actionListener).onAiActionsProcessed(rawAiResponseJson, explanation, suggestions, fileActions, modelDisplayName, thinking, sources);
+        } else {
+            String fallback = ResponseUtils.buildExplanationWithThinking(explanation, thinking);
+            actionListener.onAiActionsProcessed(rawAiResponseJson, fallback, suggestions, fileActions, modelDisplayName);
+        }
     }
 
     private static class ParsedOutput {

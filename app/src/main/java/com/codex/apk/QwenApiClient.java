@@ -30,6 +30,7 @@ import com.codex.apk.ai.AIProvider;
 import com.codex.apk.ai.WebSource;
 import com.codex.apk.editor.AiAssistantManager;
 import com.codex.apk.util.ResponseUtils;
+import com.codex.apk.util.FileOps;
 import java.util.Collections;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -431,7 +432,7 @@ public class QwenApiClient implements ApiClient {
                     String path = args.has("path") ? args.get("path").getAsString() : ".";
                     int depth = args.has("depth") ? Math.max(0, Math.min(5, args.get("depth").getAsInt())) : 2;
                     int maxEntries = args.has("maxEntries") ? Math.max(10, Math.min(2000, args.get("maxEntries").getAsInt())) : 500;
-                    String tree = buildFileTree(new java.io.File(projectDir, path), depth, maxEntries);
+                    String tree = FileOps.buildFileTree(new java.io.File(projectDir, path), depth, maxEntries);
                     result.addProperty("ok", true);
                     result.addProperty("tree", tree);
                     break;
@@ -440,7 +441,7 @@ public class QwenApiClient implements ApiClient {
                     String query = args.get("query").getAsString();
                     int maxResults = args.has("maxResults") ? Math.max(1, Math.min(2000, args.get("maxResults").getAsInt())) : 100;
                     boolean regex = args.has("regex") && args.get("regex").getAsBoolean();
-                    JsonArray matches = searchInProject(projectDir, query, maxResults, regex);
+                    JsonArray matches = FileOps.searchInProject(projectDir, query, maxResults, regex);
                     result.addProperty("ok", true);
                     result.add("matches", matches);
                     break;
@@ -448,9 +449,7 @@ public class QwenApiClient implements ApiClient {
                 case "createFile": {
                     String path = args.get("path").getAsString();
                     String content = args.get("content").getAsString();
-                    java.io.File file = new java.io.File(projectDir, path);
-                    file.getParentFile().mkdirs();
-                    java.nio.file.Files.write(file.toPath(), content.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                    FileOps.createFile(projectDir, path, content);
                     result.addProperty("ok", true);
                     result.addProperty("message", "File created: " + path);
                     break;
@@ -458,16 +457,14 @@ public class QwenApiClient implements ApiClient {
                 case "updateFile": {
                     String path = args.get("path").getAsString();
                     String content = args.get("content").getAsString();
-                    java.io.File file = new java.io.File(projectDir, path);
-                    java.nio.file.Files.write(file.toPath(), content.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                    FileOps.updateFile(projectDir, path, content);
                     result.addProperty("ok", true);
                     result.addProperty("message", "File updated: " + path);
                     break;
                 }
                 case "deleteFile": {
                     String path = args.get("path").getAsString();
-                    java.io.File file = new java.io.File(projectDir, path);
-                    boolean deleted = deleteRecursively(file);
+                    boolean deleted = FileOps.deleteRecursively(new java.io.File(projectDir, path));
                     result.addProperty("ok", deleted);
                     result.addProperty("message", "Deleted: " + path);
                     break;
@@ -475,10 +472,7 @@ public class QwenApiClient implements ApiClient {
                 case "renameFile": {
                     String oldPath = args.get("oldPath").getAsString();
                     String newPath = args.get("newPath").getAsString();
-                    java.io.File oldFile = new java.io.File(projectDir, oldPath);
-                    java.io.File newFile = new java.io.File(projectDir, newPath);
-                    newFile.getParentFile().mkdirs();
-                    boolean ok = oldFile.renameTo(newFile);
+                    boolean ok = FileOps.renameFile(projectDir, oldPath, newPath);
                     result.addProperty("ok", ok);
                     result.addProperty("message", "Renamed to: " + newPath);
                     break;
@@ -486,28 +480,24 @@ public class QwenApiClient implements ApiClient {
                 case "fixLint": {
                     String path = args.get("path").getAsString();
                     boolean aggressive = args.has("aggressive") && args.get("aggressive").getAsBoolean();
-                    java.io.File file = new java.io.File(projectDir, path);
-                    if (!file.exists()) {
+                    String fixed = FileOps.autoFix(projectDir, path, aggressive);
+                    if (fixed == null) {
                         result.addProperty("ok", false);
                         result.addProperty("error", "File not found");
                         break;
                     }
-                    String content = new String(java.nio.file.Files.readAllBytes(file.toPath()), java.nio.charset.StandardCharsets.UTF_8);
-                    String fixed = autoFix(path, content, aggressive);
-                    java.nio.file.Files.write(file.toPath(), fixed.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                    FileOps.updateFile(projectDir, path, fixed);
                     result.addProperty("ok", true);
                     result.addProperty("message", "Applied basic lint fixes");
                     break;
                 }
                 case "readFile": {
                     String path = args.get("path").getAsString();
-                    java.io.File file = new java.io.File(projectDir, path);
-                    if (!file.exists()) {
+                    String content = FileOps.readFile(projectDir, path);
+                    if (content == null) {
                         result.addProperty("ok", false);
                         result.addProperty("error", "File not found: " + path);
                     } else {
-                        String content = new String(java.nio.file.Files.readAllBytes(file.toPath()),
-                                java.nio.charset.StandardCharsets.UTF_8);
                         result.addProperty("ok", true);
                         result.addProperty("content", content);
                         result.addProperty("message", "File read: " + path);
@@ -548,114 +538,7 @@ public class QwenApiClient implements ApiClient {
         }
         return result.toString();
     }
-
-    private boolean deleteRecursively(java.io.File f) {
-        if (f.isDirectory()) {
-            for (java.io.File c : java.util.Objects.requireNonNull(f.listFiles())) {
-                deleteRecursively(c);
-            }
-        }
-        return f.delete();
-    }
-
-    private String autoFix(String path, String content, boolean aggressive) {
-        String lower = path.toLowerCase();
-        if (lower.endsWith(".html") || lower.endsWith(".htm")) {
-            String out = content;
-            if (!out.toLowerCase().contains("<!doctype")) out = "<!DOCTYPE html>\n" + out;
-            if (out.toLowerCase().contains("<img ") && !out.toLowerCase().contains(" alt=")) {
-                out = out.replaceAll("<img ", "<img alt=\"\" ");
-            }
-            return out;
-        }
-        if (lower.endsWith(".css")) {
-            // Attempt to balance braces by appending missing closes (very conservative)
-            int open = 0; for (int i=0;i<content.length();i++){ char c=content.charAt(i); if (c=='{') open++; else if (c=='}') open--; }
-            StringBuilder out = new StringBuilder(content);
-            while (open>0) { out.append("}\n"); open--; }
-            return out.toString();
-        }
-        if (lower.endsWith(".js")) {
-            // Balance brackets conservatively by appending closes
-            int par=0, brc=0, brk=0; for (int i=0;i<content.length();i++){ char c=content.charAt(i); if (c=='(') par++; else if(c==')') par--; if (c=='{') brc++; else if(c=='}') brc--; if (c=='[') brk++; else if(c==']') brk--; }
-            StringBuilder out = new StringBuilder(content);
-            while (par>0){ out.append(')'); par--; }
-            while (brc>0){ out.append('}'); brc--; }
-            while (brk>0){ out.append(']'); brk--; }
-            return out.toString();
-        }
-        return content;
-    }
-
-    private String buildFileTree(java.io.File root, int maxDepth, int maxEntries) {
-        StringBuilder sb = new StringBuilder();
-        explore(root, 0, maxDepth, sb, new int[]{0}, maxEntries);
-        return sb.toString();
-    }
-    private void explore(java.io.File dir, int depth, int maxDepth, StringBuilder sb, int[] count, int maxEntries) {
-        if (dir == null || !dir.exists() || count[0] >= maxEntries || depth > maxDepth) return;
-        java.io.File[] files = dir.listFiles();
-        if (files == null) return;
-        java.util.Arrays.sort(files, (a,b) -> a.getName().compareToIgnoreCase(b.getName()));
-        for (java.io.File f : files) {
-            if (count[0]++ >= maxEntries) return;
-            for (int i = 0; i < depth; i++) sb.append("  ");
-            sb.append(f.isDirectory() ? "[d] " : "[f] ").append(f.getName()).append("\n");
-            if (f.isDirectory()) explore(f, depth + 1, maxDepth, sb, count, maxEntries);
-        }
-    }
-
-    private JsonArray searchInProject(java.io.File root, String query, int maxResults, boolean regex) {
-        JsonArray out = new JsonArray();
-        java.util.regex.Pattern pattern = null;
-        if (regex) {
-            try { pattern = java.util.regex.Pattern.compile(query, java.util.regex.Pattern.MULTILINE); }
-            catch (Exception e) { pattern = null; }
-        }
-        java.util.Deque<java.io.File> dq = new java.util.ArrayDeque<>();
-        dq.add(root);
-        while (!dq.isEmpty() && out.size() < maxResults) {
-            java.io.File cur = dq.pollFirst();
-            java.io.File[] files = cur.listFiles();
-            if (files == null) continue;
-            for (java.io.File f : files) {
-                if (f.isDirectory()) { dq.addLast(f); continue; }
-                // Only scan text-like files (quick heuristic)
-                String name = f.getName().toLowerCase();
-                if (!(name.endsWith(".html") || name.endsWith(".htm") || name.endsWith(".css") || name.endsWith(".js") || name.endsWith(".json") || name.endsWith(".md")))
-                    continue;
-                try {
-                    String content = new String(java.nio.file.Files.readAllBytes(f.toPath()), java.nio.charset.StandardCharsets.UTF_8);
-                    if (regex) {
-                        if (pattern == null) continue;
-                        java.util.regex.Matcher m = pattern.matcher(content);
-                        int hits = 0;
-                        while (m.find() && out.size() < maxResults) {
-                            JsonObject mobj = new JsonObject();
-                            mobj.addProperty("path", root.toPath().relativize(f.toPath()).toString());
-                            mobj.addProperty("start", m.start());
-                            mobj.addProperty("end", m.end());
-                            mobj.addProperty("snippet", content.substring(Math.max(0, m.start()-80), Math.min(content.length(), m.end()+80)));
-                            out.add(mobj);
-                            if (++hits > 10) break; // throttle per-file
-                        }
-                    } else {
-                        int idx = content.indexOf(query);
-                        if (idx >= 0) {
-                            JsonObject mobj = new JsonObject();
-                            mobj.addProperty("path", root.toPath().relativize(f.toPath()).toString());
-                            mobj.addProperty("start", idx);
-                            mobj.addProperty("end", idx + query.length());
-                            mobj.addProperty("snippet", content.substring(Math.max(0, idx-80), Math.min(content.length(), idx+80)));
-                            out.add(mobj);
-                        }
-                    }
-                } catch (Exception ignored) {}
-                if (out.size() >= maxResults) break;
-            }
-        }
-        return out;
-    }
+    
 
     private String extractJsonFromCodeBlock(String content) {
         if (content == null || content.trim().isEmpty()) {

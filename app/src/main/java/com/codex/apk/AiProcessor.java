@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.ArrayList;
 
 import com.google.gson.Gson;
+import com.codex.apk.util.FileOps;
 
 public class AiProcessor {
     private static final String TAG = "AiProcessor";
@@ -93,17 +94,8 @@ public class AiProcessor {
         }
 
         String content = advancedFileManager.readFileContent(fileToUpdate);
-        String newContent;
-
-        if (searchPattern != null && !searchPattern.isEmpty()) {
-            try {
-                newContent = content.replaceAll(searchPattern, replace);
-            } catch (Exception e) {
-                throw new IllegalArgumentException("Invalid regex pattern: " + searchPattern);
-            }
-        } else {
-            newContent = content.replace(search, replace);
-        }
+        String pattern = (searchPattern != null && !searchPattern.isEmpty()) ? searchPattern : search;
+        String newContent = FileOps.applySearchReplace(content, pattern, replace);
 
         AdvancedFileManager.FileOperationResult result = advancedFileManager.smartUpdateFile(
             fileToUpdate, newContent, "replace", true, detail.contentType, "strict"
@@ -128,16 +120,7 @@ public class AiProcessor {
         int startLine = Math.max(1, detail.startLine);
         int deleteCount = Math.max(0, detail.deleteCount);
         java.util.List<String> insertLines = detail.insertLines != null ? detail.insertLines : new java.util.ArrayList<>();
-
-        String[] lines = content.split("\n", -1);
-        java.util.List<String> out = new java.util.ArrayList<>();
-        for (String l : lines) out.add(l);
-        int idx = Math.max(0, Math.min(out.size(), startLine - 1));
-        int toDelete = Math.max(0, Math.min(deleteCount, out.size() - idx));
-        for (int i = 0; i < toDelete; i++) out.remove(idx);
-        if (!insertLines.isEmpty()) out.addAll(idx, insertLines);
-
-        String newContent = String.join("\n", out);
+        String newContent = FileOps.applyModifyLines(content, startLine, deleteCount, insertLines);
 
         AdvancedFileManager.FileOperationResult result = advancedFileManager.smartUpdateFile(
             fileToUpdate, newContent, "replace",
@@ -206,12 +189,8 @@ public class AiProcessor {
         if (!fileToDelete.exists()) {
             throw new IOException("File not found for deletion: " + path);
         }
-
-        if (fileToDelete.isDirectory()) {
-            deleteDirectoryRecursive(fileToDelete);
-        } else {
-            fileToDelete.delete();
-        }
+        // Use centralized delete logic that supports files and directories
+        FileOps.deleteRecursively(fileToDelete);
         
         return "Deleted file/directory: " + path;
     }
@@ -229,29 +208,12 @@ public class AiProcessor {
         if (newFile.exists()) {
             throw new IOException("Target file/directory already exists for rename: " + newPath);
         }
-
-        File newParentDir = newFile.getParentFile();
-        if (newParentDir != null && !newParentDir.exists()) {
-            newParentDir.mkdirs();
-        }
-
-        boolean success = oldFile.renameTo(newFile);
+        // Delegate to FileOps (creates parent dirs as needed)
+        boolean success = FileOps.renameFile(projectDir, oldPath, newPath);
         if (!success) {
             throw new IOException("Failed to rename file from " + oldPath + " to " + newPath);
         }
         
         return "Renamed " + oldPath + " to " + newPath;
-    }
-
-    private boolean deleteDirectoryRecursive(File dir) {
-        if (dir.isDirectory()) {
-            File[] children = dir.listFiles();
-            if (children != null) {
-                for (File child : children) {
-                    deleteDirectoryRecursive(child);
-                }
-            }
-        }
-        return dir.delete();
     }
 }

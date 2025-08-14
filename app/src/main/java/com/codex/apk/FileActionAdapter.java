@@ -11,6 +11,8 @@ import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.RecyclerView;
 import com.google.android.material.card.MaterialCardView;
 import java.util.List;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 
 public class FileActionAdapter extends RecyclerView.Adapter<FileActionAdapter.ViewHolder> {
 
@@ -35,13 +37,38 @@ public class FileActionAdapter extends RecyclerView.Adapter<FileActionAdapter.Vi
 
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
-        ChatMessage.FileActionDetail action = fileActions.get(position);
+        List<ChatMessage.FileActionDetail> displayActions = getDisplayActions();
+        ChatMessage.FileActionDetail action = displayActions.get(position);
         holder.bind(action, listener);
     }
 
     @Override
     public int getItemCount() {
-        return fileActions.size();
+        return getDisplayActions().size();
+    }
+
+    private List<ChatMessage.FileActionDetail> getDisplayActions() {
+        List<ChatMessage.FileActionDetail> input = this.fileActions;
+        if (input == null || input.isEmpty()) return new ArrayList<>();
+        // Iterate from end to keep the latest action for each effective path
+        LinkedHashMap<String, ChatMessage.FileActionDetail> map = new LinkedHashMap<>();
+        for (int i = input.size() - 1; i >= 0; i--) {
+            ChatMessage.FileActionDetail a = input.get(i);
+            String key;
+            if ("renameFile".equals(a.type)) {
+                key = a.newPath != null ? a.newPath : a.path;
+            } else {
+                key = a.path;
+            }
+            if (key == null) key = "";
+            if (!map.containsKey(key)) {
+                map.put(key, a);
+            }
+        }
+        // map preserves insertion order (from end); reverse to retain overall chronological order
+        ArrayList<ChatMessage.FileActionDetail> out = new ArrayList<>(map.values());
+        java.util.Collections.reverse(out);
+        return out;
     }
 
     static class ViewHolder extends RecyclerView.ViewHolder {
@@ -114,6 +141,10 @@ public class FileActionAdapter extends RecyclerView.Adapter<FileActionAdapter.Vi
             if ("modifyLines".equals(action.type)) {
                 added = (action.insertLines != null) ? action.insertLines.size() : 0;
                 removed = Math.max(0, action.deleteCount);
+            } else if ("createFile".equals(action.type) && action.newContent != null) {
+                added = countLines(action.newContent);
+            } else if ("deleteFile".equals(action.type) && action.oldContent != null) {
+                removed = countLines(action.oldContent);
             } else if (action.diffPatch != null && !action.diffPatch.isEmpty()) {
                 int[] counts = DiffUtils.countAddRemove(action.diffPatch);
                 added = counts[0];
@@ -139,6 +170,15 @@ public class FileActionAdapter extends RecyclerView.Adapter<FileActionAdapter.Vi
             }
 
             itemView.setOnClickListener(v -> listener.onFileActionClicked(action));
+        }
+
+        private int countLines(String s) {
+            if (s == null || s.isEmpty()) return 0;
+            int lines = 1;
+            for (int i = 0; i < s.length(); i++) {
+                if (s.charAt(i) == '\n') lines++;
+            }
+            return lines;
         }
 
         // Removed duplicate unified diff parser; using DiffUtils.countAddRemove

@@ -274,14 +274,7 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
             layoutPlanSteps.setVisibility(isTyping ? View.GONE : (message.getPlanSteps() != null && !message.getPlanSteps().isEmpty() ? View.VISIBLE : View.GONE));
             itemView.findViewById(R.id.layout_proposed_file_changes).setVisibility(isTyping ? View.GONE : (message.getProposedFileChanges() != null && !message.getProposedFileChanges().isEmpty() ? View.VISIBLE : View.GONE));
 
-            // Model name chip: show only when available
-            String modelName = message.getAiModelName();
-            if (modelName != null && !modelName.trim().isEmpty()) {
-                textAiModelName.setText(modelName);
-                textAiModelName.setVisibility(View.VISIBLE);
-            } else {
-                textAiModelName.setVisibility(View.GONE);
-            }
+            textAiModelName.setText(message.getAiModelName());
 
             String content = message.getContent();
             if (content != null && !content.isEmpty()) {
@@ -352,7 +345,7 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
             }
 
             boolean isPlan = message.getPlanSteps() != null && !message.getPlanSteps().isEmpty();
-            if (isPlan && message.getStatus() == ChatMessage.STATUS_PENDING_APPROVAL && !isAgent) {
+            if (isPlan && message.getStatus() == ChatMessage.STATUS_PENDING_APPROVAL) {
                 layoutPlanActions.setVisibility(View.VISIBLE);
                 buttonAcceptPlan.setOnClickListener(v -> {
                     if (listener != null) {

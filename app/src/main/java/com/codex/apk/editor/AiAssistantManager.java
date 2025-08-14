@@ -19,7 +19,7 @@ import com.codex.apk.TabItem;
 import com.codex.apk.DiffGenerator;
 import com.codex.apk.ProjectVerifier;
 import android.content.SharedPreferences;
-import com.codex.apk.R;
+
 
 import java.io.File;
 import java.io.IOException;
@@ -308,9 +308,6 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
         prompt.append("You are executing step ").append(steps.get(idx).id).append(": ").append(steps.get(idx).title).append(".\n");
         prompt.append("Return a single strict JSON object with action=\"file_operation\" in a ```json fenced code block.\n");
         prompt.append("Constraints: produce separate operations per individual file (HTML/CSS/JS). No natural language outside JSON.\n\n");
-        if (planStepRetryCount > 0) {
-            prompt.append("IMPORTANT: Previous attempt produced no actionable file_operation. You must return exactly one JSON object with action=\"file_operation\" and valid operations. Do not include any natural language or plans.\n\n");
-        }
         prompt.append("Context summary:\n");
         prompt.append("- Plan: ").append(safeTruncate(planToJson(planMsg), 2000)).append("\n");
         if (!executedStepSummaries.isEmpty()) {
@@ -444,235 +441,107 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
 
     // --- Implement AIAssistant.AIActionListener methods ---
     @Override
-    public void onAiActionsProcessed(String rawAiResponseJson, String explanation,
-                                   List<String> suggestions,
-                                   List<ChatMessage.FileActionDetail> proposedFileChanges, String aiModelDisplayName) {
+    public void onAiActionsProcessed(String rawAiResponseJson, String explanation, List<String> suggestions, List<ChatMessage.FileActionDetail> proposedFileChanges, String aiModelDisplayName) {
         onAiActionsProcessed(rawAiResponseJson, explanation, suggestions, proposedFileChanges, aiModelDisplayName, null, null);
     }
-
+    
     public void onAiActionsProcessed(String rawAiResponseJson, String explanation,
                                    List<String> suggestions,
                                    List<ChatMessage.FileActionDetail> proposedFileChanges, String aiModelDisplayName,
                                    String thinkingContent, List<WebSource> webSources) {
         activity.runOnUiThread(() -> {
-            AIChatFragment frag = activity.getAiChatFragment();
-            if (frag == null) return;
-
-            boolean agentEnabled = aiAssistant != null && aiAssistant.isAgentModeEnabled();
-            boolean isPlan = false;
-            List<ChatMessage.PlanStep> planSteps = new ArrayList<>();
-            try {
-                if (rawAiResponseJson != null && agentEnabled) {
-                    QwenResponseParser.ParsedResponse parsed = QwenResponseParser.parseResponse(rawAiResponseJson);
-                    if (parsed != null && "plan".equals(parsed.action)) {
-                        isPlan = true;
-                        planSteps = QwenResponseParser.toPlanSteps(parsed);
+            if (activity.getAiChatFragment() != null) {
+                boolean isPlan = false;
+                List<ChatMessage.PlanStep> planSteps = new ArrayList<>();
+                try {
+                    boolean agentEnabled = aiAssistant != null && aiAssistant.isAgentModeEnabled();
+                    if (rawAiResponseJson != null && agentEnabled) {
+                        QwenResponseParser.ParsedResponse parsed = QwenResponseParser.parseResponse(rawAiResponseJson);
+                        if (parsed != null && "plan".equals(parsed.action)) {
+                            isPlan = true;
+                            planSteps = QwenResponseParser.toPlanSteps(parsed);
+                        }
                     }
+                } catch (Exception e) {
+                    Log.w(TAG, "Plan parse failed", e);
                 }
-            } catch (Exception e) {
-                Log.w(TAG, "Plan parse failed", e);
-            }
 
-            // During autonomous plan execution, suppress any dangling thinking message
-            if (agentEnabled && isExecutingPlan) {
-                frag.hideThinkingMessage();
-                currentStreamingMessagePosition = null;
-            }
-
-            // Build AI message with full constructor to retain model name and raw response
-            int initialStatus = ChatMessage.STATUS_NONE;
-            boolean hasFileChanges = (proposedFileChanges != null && !proposedFileChanges.isEmpty());
-            if (!agentEnabled && !isPlan && hasFileChanges) {
-                // Non-agent: show Accept/Discard for file changes
-                initialStatus = ChatMessage.STATUS_PENDING_APPROVAL;
-            }
-
-            ChatMessage aiMessage = new ChatMessage(
-                    ChatMessage.SENDER_AI,
-                    explanation != null ? explanation : "",
-                    new java.util.ArrayList<>(),
-                    suggestions != null ? suggestions : new java.util.ArrayList<>(),
-                    aiModelDisplayName,
-                    System.currentTimeMillis(),
-                    rawAiResponseJson,
-                    hasFileChanges ? proposedFileChanges : null,
-                    initialStatus
-            );
-
-            // Attach optional thinking and web sources for UI
-            if (thinkingContent != null && !thinkingContent.trim().isEmpty()) {
-                aiMessage.setThinkingContent(thinkingContent);
-            }
-            if (webSources != null && !webSources.isEmpty()) {
-                aiMessage.setWebSources(webSources);
-            }
-
-            if (isPlan) {
-                aiMessage.setPlanSteps(planSteps);
-                if (agentEnabled) {
-                    // Agent mode: auto-accept and immediately execute the plan
-                    aiMessage.setStatus(ChatMessage.STATUS_ACCEPTED);
-                    lastPlanMessagePosition = frag.addMessage(aiMessage);
-                    planProgressIndex = 0;
-                    executedStepSummaries.clear();
-                    isExecutingPlan = true;
-                    // Kick off autonomous execution of the first eligible step
-                    sendNextPlanStepFollowUp();
-                    return;
-                } else {
-                    // Non-agent: require user approval for plan
-                    aiMessage.setStatus(ChatMessage.STATUS_PENDING_APPROVAL);
-                    lastPlanMessagePosition = frag.addMessage(aiMessage);
-                    planProgressIndex = 0;
-                    executedStepSummaries.clear();
-                    return;
-                }
-            }
-
-            if (proposedFileChanges != null && !proposedFileChanges.isEmpty()) {
-                aiMessage.setProposedFileChanges(proposedFileChanges);
-                if (!agentEnabled) {
-                    aiMessage.setStatus(ChatMessage.STATUS_PENDING_APPROVAL);
-                }
-            }
-
-            int pos;
-            if (currentStreamingMessagePosition != null) {
-                pos = currentStreamingMessagePosition;
-                frag.updateMessage(pos, aiMessage);
-            } else {
-                pos = frag.addMessage(aiMessage);
-            }
-            currentStreamingMessagePosition = null;
-
-            // If we are in agent autonomous run and received file ops, auto-apply and advance
-            if (agentEnabled && isExecutingPlan && proposedFileChanges != null && !proposedFileChanges.isEmpty()) {
-                final int messagePosition = pos;
-                executorService.execute(() -> {
-                    List<String> appliedSummaries = new ArrayList<>();
-                    List<ChatMessage.FileActionDetail> steps = proposedFileChanges;
-
-                    for (int i = 0; i < steps.size(); i++) {
-                        ChatMessage.FileActionDetail step = steps.get(i);
-
-                        setNextPlanStepStatus("running");
-                        activity.runOnUiThread(() -> {
-                            AIChatFragment f = activity.getAiChatFragment();
-                            if (f != null) {
-                                if (lastPlanMessagePosition != null) {
-                                    ChatMessage planMsg = f.getMessageAt(lastPlanMessagePosition);
-                                    if (planMsg != null) f.updateMessage(lastPlanMessagePosition, planMsg);
-                                }
-                                f.updateMessage(messagePosition, aiMessage);
-                            }
-                        });
-
-                        try {
-                            String summary = aiProcessor.applyFileAction(step);
-                            appliedSummaries.add(summary);
-                            executedStepSummaries.add(summary);
-                            step.stepStatus = "completed";
-                            step.stepMessage = "Completed";
-                            setCurrentRunningPlanStepStatus("completed");
-                        } catch (Exception ex) {
-                            Log.e(TAG, "Agent step failed: " + step.getSummary(), ex);
-                            step.stepStatus = "failed";
-                            step.stepMessage = ex.getMessage();
-                            executedStepSummaries.add("FAILED: " + step.getSummary() + " - " + ex.getMessage());
+                // If this is a file_operation response during an executing plan, update the existing plan message
+                if (!isPlan && isExecutingPlan && lastPlanMessagePosition != null) {
+                    if (proposedFileChanges != null && !proposedFileChanges.isEmpty()) {
+                        planStepRetryCount = 0; // Reset retry count on successful action
+                        AIChatFragment frag = activity.getAiChatFragment();
+                        ChatMessage planMsg = frag.getMessageAt(lastPlanMessagePosition);
+                        if (planMsg != null) {
+                            // Merge proposed file changes for this step
+                            List<ChatMessage.FileActionDetail> merged = planMsg.getProposedFileChanges() != null ? planMsg.getProposedFileChanges() : new ArrayList<>();
+                            merged.addAll(proposedFileChanges);
+                            planMsg.setProposedFileChanges(merged);
+                            // Update the single message and auto-apply
+                            frag.updateMessage(lastPlanMessagePosition, planMsg);
+                            onAiAcceptActions(lastPlanMessagePosition, planMsg);
+                            return;
+                        }
+                    } else {
+                        // AI returned no file ops, retry the step
+                        planStepRetryCount++;
+                        if (planStepRetryCount > 2) {
+                            Log.e(TAG, "AI failed to produce file ops for step after 3 retries. Marking as failed.");
                             setCurrentRunningPlanStepStatus("failed");
+                            planStepRetryCount = 0; // Reset for next step
+                            sendNextPlanStepFollowUp(); // Move to next step
+                        } else {
+                            Log.w(TAG, "AI did not return file operations. Retrying step (attempt " + planStepRetryCount + ")");
+                            sendNextPlanStepFollowUp(); // Re-prompt for the same step
                         }
-
-                        activity.runOnUiThread(() -> {
-                            AIChatFragment f = activity.getAiChatFragment();
-                            if (f != null) {
-                                f.updateMessage(messagePosition, aiMessage);
-                                if (lastPlanMessagePosition != null) {
-                                    ChatMessage planMsg = f.getMessageAt(lastPlanMessagePosition);
-                                    if (planMsg != null) f.updateMessage(lastPlanMessagePosition, planMsg);
-                                }
-                            }
-                        });
+                        return;
                     }
+                }
 
-                    ProjectVerifier verifier = new ProjectVerifier();
-                    ProjectVerifier.VerificationResult vr = verifier.verify(steps, activity.getProjectDirectory());
+                ChatMessage aiMessage = new ChatMessage(
+                        ChatMessage.SENDER_AI,
+                        explanation,
+                        null,
+                        new ArrayList<>(),
+                        aiModelDisplayName,
+                        System.currentTimeMillis(),
+                        rawAiResponseJson, // always store raw response for long-press
+                        proposedFileChanges,
+                        ChatMessage.STATUS_PENDING_APPROVAL
+                );
 
-                    activity.runOnUiThread(() -> {
-                        aiMessage.setStatus(ChatMessage.STATUS_ACCEPTED);
-                        AIChatFragment f = activity.getAiChatFragment();
-                        if (f != null) f.updateMessage(messagePosition, aiMessage);
-                        activity.tabManager.refreshOpenTabsAfterAi();
-                        activity.loadFileTree();
-                        activity.showToast(vr.ok ? "Agent step applied" : "Applied with issues; continuing.");
-                        // Successful application: reset retry counter
-                        planStepRetryCount = 0;
-                        if (isExecutingPlan) {
-                            sendNextPlanStepFollowUp();
-                        }
-                    });
-                });
-            }
-            // If in agent autonomous execution but no actionable file ops were returned, retry or skip the step
-            if (agentEnabled && isExecutingPlan && (proposedFileChanges == null || proposedFileChanges.isEmpty())) {
-                int maxRetries = 2;
-                planStepRetryCount++;
-                if (planStepRetryCount <= maxRetries) {
-                    activity.showToast("No file operations returned. Retrying step (" + planStepRetryCount + "/" + maxRetries + ")...");
-                    // Re-prompt the same step with stronger instruction (sendNextPlanStepFollowUp reads retry count)
-                    sendNextPlanStepFollowUp();
+                if (isPlan && planSteps != null && !planSteps.isEmpty()) {
+                    aiMessage.setPlanSteps(planSteps);
+                }
+
+                if (thinkingContent != null && !thinkingContent.trim().isEmpty()) aiMessage.setThinkingContent(thinkingContent);
+                if (webSources != null && !webSources.isEmpty()) aiMessage.setWebSources(webSources);
+
+                AIChatFragment frag = activity.getAiChatFragment();
+                if (currentStreamingMessagePosition != null) {
+                    // Replace the streaming placeholder with the final message
+                    frag.hideThinkingMessage();
+                    int insertedPos = frag.addMessage(aiMessage);
+                    currentStreamingMessagePosition = null;
+                    if (isPlan) {
+                        lastPlanMessagePosition = insertedPos;
+                        planProgressIndex = 0;
+                        executedStepSummaries.clear();
+                    } else if (aiAssistant != null && aiAssistant.isAgentModeEnabled() && proposedFileChanges != null && !proposedFileChanges.isEmpty()) {
+                        onAiAcceptActions(insertedPos, aiMessage);
+                    }
                 } else {
-                    // Mark current step as failed and advance
-                    planStepRetryCount = 0;
-                    setCurrentRunningPlanStepStatus("failed");
-                    AIChatFragment f = activity.getAiChatFragment();
-                    if (f != null && lastPlanMessagePosition != null) {
-                        ChatMessage planMsg = f.getMessageAt(lastPlanMessagePosition);
-                        if (planMsg != null) f.updateMessage(lastPlanMessagePosition, planMsg);
+                    int insertedPos = frag.addMessage(aiMessage);
+                    if (isPlan) {
+                        lastPlanMessagePosition = insertedPos;
+                        planProgressIndex = 0;
+                        executedStepSummaries.clear();
+                    } else if (aiAssistant != null && aiAssistant.isAgentModeEnabled() && proposedFileChanges != null && !proposedFileChanges.isEmpty()) {
+                        onAiAcceptActions(insertedPos, aiMessage);
                     }
-                    activity.showToast("Step produced no actionable changes; skipping to next step.");
-                    sendNextPlanStepFollowUp();
                 }
-            }
-        });
-    }
-
-    @Override
-    public void onAiRequestStarted() {
-        activity.runOnUiThread(() -> {
-            AIChatFragment frag = activity.getAiChatFragment();
-            if (frag == null) return;
-            boolean agentEnabled = aiAssistant != null && aiAssistant.isAgentModeEnabled();
-            if (agentEnabled && isExecutingPlan) {
-                // Suppress streaming placeholder during autonomous plan execution
-                currentStreamingMessagePosition = null;
-                return;
-            }
-            ChatMessage thinking = new ChatMessage(ChatMessage.SENDER_AI,
-                    activity.getString(R.string.ai_is_thinking),
-                    System.currentTimeMillis());
-            currentStreamingMessagePosition = frag.addMessage(thinking);
-        });
-    }
-
-    @Override
-    public void onAiStreamUpdate(String partialResponse, boolean isThinking) {
-        activity.runOnUiThread(() -> {
-            AIChatFragment frag = activity.getAiChatFragment();
-            if (frag == null) return;
-            boolean agentEnabled = aiAssistant != null && aiAssistant.isAgentModeEnabled();
-            if (agentEnabled && isExecutingPlan) {
-                // Suppress stream updates during autonomous plan execution
-                return;
-            }
-            if (currentStreamingMessagePosition == null) return;
-            if (isThinking) {
-                frag.updateThinkingMessage(partialResponse != null ? partialResponse : "");
             } else {
-                ChatMessage msg = frag.getMessageAt(currentStreamingMessagePosition);
-                if (msg != null) {
-                    msg.setContent(partialResponse != null ? partialResponse : "");
-                    frag.updateMessage(currentStreamingMessagePosition, msg);
-                }
+                Log.w(TAG, "AiChatFragment is null! Cannot add message to UI.");
             }
         });
     }
@@ -680,10 +549,61 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
     @Override
     public void onAiError(String errorMessage) {
         activity.runOnUiThread(() -> {
-            AIChatFragment frag = activity.getAiChatFragment();
-            if (frag != null) frag.hideThinkingMessage();
-            currentStreamingMessagePosition = null;
-            activity.showToast(errorMessage != null ? errorMessage : "AI Error");
+            activity.showToast("AI Error: " + errorMessage);
+            AIChatFragment aiChatFragment = activity.getAiChatFragment();
+            if (aiChatFragment != null) {
+                ChatMessage aiErrorMessage = new ChatMessage(
+                        ChatMessage.SENDER_AI,
+                        "Error: " + errorMessage,
+                        null, null,
+                        aiAssistant.getCurrentModel().getDisplayName(),
+                        System.currentTimeMillis(),
+                        null, null,
+                        ChatMessage.STATUS_NONE
+                );
+                aiChatFragment.addMessage(aiErrorMessage);
+            }
+        });
+    }
+
+    @Override
+    public void onAiRequestStarted() {
+        activity.runOnUiThread(() -> {
+            AIChatFragment chatFragment = activity.getAiChatFragment();
+            if (chatFragment != null) {
+                // Start a streaming AI message that will be updated with thoughts/answer
+                ChatMessage aiMsg = new ChatMessage(
+                        ChatMessage.SENDER_AI,
+                        activity.getString(com.codex.apk.R.string.ai_is_thinking),
+                        null, null,
+                        aiAssistant.getCurrentModel().getDisplayName(),
+                        System.currentTimeMillis(),
+                        null, null,
+                        ChatMessage.STATUS_NONE
+                );
+                currentStreamingMessagePosition = chatFragment.addMessage(aiMsg);
+            }
+        });
+    }
+
+    @Override
+    public void onAiStreamUpdate(String partialResponse, boolean isThinking) {
+        activity.runOnUiThread(() -> {
+            AIChatFragment chatFragment = activity.getAiChatFragment();
+            if (chatFragment == null || currentStreamingMessagePosition == null) return;
+            ChatMessage msg = chatFragment.getMessageAt(currentStreamingMessagePosition);
+            if (msg == null) return;
+            if (isThinking) {
+                // Move content from typing indicator to Thoughts section as soon as we have text
+                if (partialResponse != null && !partialResponse.isEmpty()) {
+                    msg.setContent(""); // disable typing indicator view
+                    msg.setThinkingContent(partialResponse);
+                }
+            } else {
+                // Stream main answer tokens into content
+                msg.setContent(partialResponse != null ? partialResponse : "");
+            }
+            chatFragment.updateMessage(currentStreamingMessagePosition, msg);
         });
     }
 
@@ -691,7 +611,7 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
     public void onAiRequestCompleted() {
         // No-op: we finalize/replace the streaming message in onAiActionsProcessed
     }
-    
+
     @Override
     public void onQwenConversationStateUpdated(com.codex.apk.QwenConversationState state) {
         activity.runOnUiThread(() -> {

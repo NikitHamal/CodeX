@@ -246,11 +246,13 @@ public class AIChatFragment extends Fragment implements ChatMessageAdapter.OnAiA
     }
 
     public void hideThinkingMessage() {
-        if (!isAiProcessing || currentAiStatusMessage == null) return;
-        int index = chatHistory.indexOf(currentAiStatusMessage);
-        if (index != -1) {
-            chatHistory.remove(index);
-            chatMessageAdapter.notifyItemRemoved(index);
+        // Always clear the processing state even if the current status message reference is lost
+        if (isAiProcessing && currentAiStatusMessage != null) {
+            int index = chatHistory.indexOf(currentAiStatusMessage);
+            if (index != -1) {
+                chatHistory.remove(index);
+                chatMessageAdapter.notifyItemRemoved(index);
+            }
         }
         isAiProcessing = false;
         currentAiStatusMessage = null;

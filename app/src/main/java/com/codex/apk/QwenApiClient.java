@@ -29,12 +29,12 @@ import com.codex.apk.ai.ModelCapabilities;
 import com.codex.apk.ai.AIProvider;
 import com.codex.apk.ai.WebSource;
 import com.codex.apk.editor.AiAssistantManager;
+import com.codex.apk.util.ResponseUtils;
 import java.util.Collections;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.HashSet;
 import java.util.Set;
-
 
 public class QwenApiClient implements ApiClient {
     private static final String TAG = "QwenApiClient";
@@ -708,49 +708,6 @@ public class QwenApiClient implements ApiClient {
         }
     }
 
-    private void processFileOperationsFromJson(JsonObject jsonObj) {
-        try {
-            String explanation = jsonObj.has("explanation") ? jsonObj.get("explanation").getAsString() : "";
-            List<String> suggestions = new ArrayList<>();
-            if (jsonObj.has("suggestions")) {
-                JsonArray suggestionsArray = jsonObj.getAsJsonArray("suggestions");
-                for (int i = 0; i < suggestionsArray.size(); i++) {
-                    suggestions.add(suggestionsArray.get(i).getAsString());
-                }
-            }
-            List<ChatMessage.FileActionDetail> fileActions = new ArrayList<>();
-            if (jsonObj.has("operations")) {
-                JsonArray operations = jsonObj.getAsJsonArray("operations");
-                for (int i = 0; i < operations.size(); i++) {
-                    JsonObject operation = operations.get(i).getAsJsonObject();
-                    String type = operation.has("type") ? operation.get("type").getAsString() : "";
-                    String path = operation.has("path") ? operation.get("path").getAsString() : "";
-                    String content = operation.has("content") ? operation.get("content").getAsString() : "";
-                    String oldPath = operation.has("oldPath") ? operation.get("oldPath").getAsString() : "";
-                    String newPath = operation.has("newPath") ? operation.get("newPath").getAsString() : "";
-                    ChatMessage.FileActionDetail actionDetail = new ChatMessage.FileActionDetail(
-                            type, path, oldPath, newPath, "", content, 0, 0, null, null, null
-                    );
-                    fileActions.add(actionDetail);
-                }
-            }
-            // Enrich with previews
-            enrichFileActionDetails(fileActions);
-            // If there are no operations but the JSON is valid, still notify the UI with explanation/suggestions
-            if (actionListener != null) {
-                actionListener.onAiActionsProcessed(
-                        jsonObj.toString(),
-                        explanation,
-                        suggestions,
-                        fileActions,
-                        "Qwen"
-                );
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "Failed to process file operations from JSON", e);
-        }
-    }
-
     private void executeFileOperation(ChatMessage.FileActionDetail actionDetail) throws Exception {
         if (projectDir == null) {
             throw new IllegalStateException("Project directory not set");
@@ -891,16 +848,7 @@ public class QwenApiClient implements ApiClient {
         }
     }
 
-    // Build final explanation including thinking content if available
-    private String buildExplanationWithThinking(String baseExplanation, String thinking) {
-        if (thinking == null || thinking.trim().isEmpty()) return baseExplanation != null ? baseExplanation : "";
-        StringBuilder sb = new StringBuilder();
-        if (baseExplanation != null && !baseExplanation.trim().isEmpty()) {
-            sb.append(baseExplanation.trim()).append("\n\n");
-        }
-        sb.append("[Thinking]\n").append(thinking.trim());
-        return sb.toString();
-    }
+    
 
     private void notifyAiActionsProcessed(String rawAiResponseJson,
                                           String explanation,
@@ -914,7 +862,7 @@ public class QwenApiClient implements ApiClient {
             ((AiAssistantManager) actionListener).onAiActionsProcessed(rawAiResponseJson, explanation, suggestions, fileActions, modelDisplayName, thinking, sources);
         } else {
             // Fallback to legacy interface without separate thinking/sources
-            String fallback = buildExplanationWithThinking(explanation, thinking);
+            String fallback = ResponseUtils.buildExplanationWithThinking(explanation, thinking);
             actionListener.onAiActionsProcessed(rawAiResponseJson, fallback, suggestions, fileActions, modelDisplayName);
         }
     }

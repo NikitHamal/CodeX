@@ -5,6 +5,7 @@ import android.util.Log;
 
 import com.codex.apk.ai.AIModel;
 import com.codex.apk.ai.AIProvider;
+import com.codex.apk.util.ResponseUtils;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -457,23 +458,14 @@ public class GeminiFreeApiClient implements ApiClient {
         }
     }
 
-    private String buildExplanationWithThinking(String text, String thoughts) {
-        if (thoughts == null || thoughts.isEmpty()) return text;
-        StringBuilder sb = new StringBuilder();
-        sb.append(text);
-        sb.append("\n\n");
-        sb.append("Thinking:\n");
-        sb.append(thoughts);
-        return sb.toString();
-    }
-
     private String deriveHumanExplanation(String text, String thoughts) {
-        if (text == null) return buildExplanationWithThinking(text, thoughts);
+        if (text == null) return ResponseUtils.buildExplanationWithThinking(text, thoughts);
         String trimmed = text.trim();
         boolean looksJson = com.codex.apk.QwenResponseParser.looksLikeJson(trimmed);
         if (!looksJson) {
-            return buildExplanationWithThinking(text, thoughts);
+            return ResponseUtils.buildExplanationWithThinking(text, thoughts);
         }
+
         try {
             com.google.gson.JsonObject obj = com.google.gson.JsonParser.parseString(trimmed).getAsJsonObject();
             if (obj.has("action")) {

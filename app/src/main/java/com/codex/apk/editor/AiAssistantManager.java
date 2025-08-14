@@ -506,14 +506,24 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
 
             if (isPlan) {
                 aiMessage.setPlanSteps(planSteps);
-                if (!agentEnabled) {
+                if (agentEnabled) {
+                    // Agent mode: auto-accept and immediately execute the plan
+                    aiMessage.setStatus(ChatMessage.STATUS_ACCEPTED);
+                    lastPlanMessagePosition = frag.addMessage(aiMessage);
+                    planProgressIndex = 0;
+                    executedStepSummaries.clear();
+                    isExecutingPlan = true;
+                    // Kick off autonomous execution of the first eligible step
+                    sendNextPlanStepFollowUp();
+                    return;
+                } else {
                     // Non-agent: require user approval for plan
                     aiMessage.setStatus(ChatMessage.STATUS_PENDING_APPROVAL);
+                    lastPlanMessagePosition = frag.addMessage(aiMessage);
+                    planProgressIndex = 0;
+                    executedStepSummaries.clear();
+                    return;
                 }
-                lastPlanMessagePosition = frag.addMessage(aiMessage);
-                planProgressIndex = 0;
-                executedStepSummaries.clear();
-                return;
             }
 
             if (proposedFileChanges != null && !proposedFileChanges.isEmpty()) {

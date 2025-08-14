@@ -352,7 +352,7 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
             }
 
             boolean isPlan = message.getPlanSteps() != null && !message.getPlanSteps().isEmpty();
-            if (isPlan && message.getStatus() == ChatMessage.STATUS_PENDING_APPROVAL) {
+            if (isPlan && message.getStatus() == ChatMessage.STATUS_PENDING_APPROVAL && !isAgent) {
                 layoutPlanActions.setVisibility(View.VISIBLE);
                 buttonAcceptPlan.setOnClickListener(v -> {
                     if (listener != null) {

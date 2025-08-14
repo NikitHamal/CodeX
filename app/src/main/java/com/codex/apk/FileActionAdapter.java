@@ -94,7 +94,7 @@ public class FileActionAdapter extends RecyclerView.Adapter<FileActionAdapter.Vi
             Context context = itemView.getContext();
             // Cap card width to 70% of device width
             int screenWidth = itemView.getResources().getDisplayMetrics().widthPixels;
-            int targetWidth = (int) (0.7f * screenWidth);
+            int targetWidth = (int) (0.85f * screenWidth);
             ViewGroup.LayoutParams lp = cardView.getLayoutParams();
             if (lp != null && lp.width != targetWidth) {
                 lp.width = targetWidth;

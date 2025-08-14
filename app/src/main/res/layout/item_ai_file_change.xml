@@ -25,6 +25,14 @@
             android:orientation="horizontal"
             android:gravity="center_vertical">
 
+            <ImageView
+                android:id="@+id/icon_file"
+                android:layout_width="18dp"
+                android:layout_height="18dp"
+                android:layout_marginEnd="8dp"
+                android:src="@drawable/ic_file"
+                android:tint="@color/on_surface_variant" />
+
             <TextView
                 android:id="@+id/text_file_name"
                 android:layout_width="0dp"
@@ -55,34 +63,16 @@
                 android:textStyle="bold" />
 
             <TextView
-                android:id="@+id/text_status_label"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
-                android:paddingStart="8dp"
-                android:paddingEnd="8dp"
-                android:paddingTop="4dp"
-                android:paddingBottom="4dp"
-                android:background="@drawable/rounded_label_background"
-                android:text="Pending"
-                android:textColor="@color/on_secondary_container"
-                android:textSize="10sp"
-                android:minWidth="60dp"
-                android:gravity="center"
-                android:textStyle="bold" />
-
-            <TextView
                 android:id="@+id/text_added_badge"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="8dp"
-                android:paddingStart="8dp"
-                android:paddingEnd="8dp"
-                android:paddingTop="4dp"
-                android:paddingBottom="4dp"
-                android:background="@drawable/rounded_label_background"
+                android:paddingStart="0dp"
+                android:paddingEnd="0dp"
+                android:paddingTop="0dp"
+                android:paddingBottom="0dp"
                 android:text="+0"
-                android:textColor="@color/on_secondary_container"
+                android:textColor="@color/color_border_diff_added"
                 android:textSize="10sp"
                 android:minWidth="36dp"
                 android:gravity="center"
@@ -93,13 +83,12 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="6dp"
-                android:paddingStart="8dp"
-                android:paddingEnd="8dp"
-                android:paddingTop="4dp"
-                android:paddingBottom="4dp"
-                android:background="@drawable/rounded_label_background"
+                android:paddingStart="0dp"
+                android:paddingEnd="0dp"
+                android:paddingTop="0dp"
+                android:paddingBottom="0dp"
                 android:text="-0"
-                android:textColor="@color/on_secondary_container"
+                android:textColor="@color/color_border_diff_deleted"
                 android:textSize="10sp"
                 android:minWidth="36dp"
                 android:gravity="center"

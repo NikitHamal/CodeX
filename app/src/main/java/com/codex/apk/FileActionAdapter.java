@@ -1,7 +1,6 @@
 package com.codex.apk;
 
 import android.content.Context;
-import android.graphics.Paint;
 import android.graphics.drawable.GradientDrawable;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -49,7 +48,6 @@ public class FileActionAdapter extends RecyclerView.Adapter<FileActionAdapter.Vi
         private final MaterialCardView cardView;
         private final TextView textFileName;
         private final TextView textChangeLabel;
-        private final TextView textStatusLabel;
         private final TextView textAddedBadge;
         private final TextView textRemovedBadge;
 
@@ -58,7 +56,6 @@ public class FileActionAdapter extends RecyclerView.Adapter<FileActionAdapter.Vi
             cardView = (MaterialCardView) itemView;
             textFileName = itemView.findViewById(R.id.text_file_name);
             textChangeLabel = itemView.findViewById(R.id.text_change_label);
-            textStatusLabel = itemView.findViewById(R.id.text_status_label);
             textAddedBadge = itemView.findViewById(R.id.text_added_badge);
             textRemovedBadge = itemView.findViewById(R.id.text_removed_badge);
         }
@@ -69,29 +66,35 @@ public class FileActionAdapter extends RecyclerView.Adapter<FileActionAdapter.Vi
 
             Context context = itemView.getContext();
             int changeColor;
+            int changeTextColor;
             String changeLabel;
 
             switch (action.type) {
                 case "createFile":
-                    changeLabel = "New";
+                    changeLabel = "new";
                     changeColor = ContextCompat.getColor(context, R.color.success_container);
+                    changeTextColor = ContextCompat.getColor(context, R.color.on_success_container);
                     break;
                 case "updateFile":
                 case "modifyLines":
-                    changeLabel = "Updated";
+                    changeLabel = "updated";
                     changeColor = ContextCompat.getColor(context, R.color.primary_container);
+                    changeTextColor = ContextCompat.getColor(context, R.color.on_primary_container);
                     break;
                 case "deleteFile":
-                    changeLabel = "Deleted";
+                    changeLabel = "deleted";
                     changeColor = ContextCompat.getColor(context, R.color.error_container);
+                    changeTextColor = ContextCompat.getColor(context, R.color.on_error_container);
                     break;
                 case "renameFile":
-                    changeLabel = "Renamed";
+                    changeLabel = "renamed";
                     changeColor = ContextCompat.getColor(context, R.color.warning_container);
+                    changeTextColor = ContextCompat.getColor(context, R.color.on_warning_container);
                     break;
                 default:
-                    changeLabel = "Modified";
+                    changeLabel = "modified";
                     changeColor = ContextCompat.getColor(context, R.color.surface_container);
+                    changeTextColor = ContextCompat.getColor(context, R.color.on_surface);
                     break;
             }
 
@@ -100,34 +103,9 @@ public class FileActionAdapter extends RecyclerView.Adapter<FileActionAdapter.Vi
                 GradientDrawable background = (GradientDrawable) textChangeLabel.getBackground().mutate();
                 background.setColor(changeColor);
             }
+            textChangeLabel.setTextColor(changeTextColor);
 
-            // Status
-            String status = action.stepStatus != null ? action.stepStatus : "pending";
-            int statusColor;
-            String statusText;
-            switch (status) {
-                case "running":
-                    statusText = "Running";
-                    statusColor = ContextCompat.getColor(context, R.color.warning_container);
-                    break;
-                case "completed":
-                    statusText = "Completed";
-                    statusColor = ContextCompat.getColor(context, R.color.success_container);
-                    break;
-                case "failed":
-                    statusText = "Failed";
-                    statusColor = ContextCompat.getColor(context, R.color.error_container);
-                    break;
-                default:
-                    statusText = "Pending";
-                    statusColor = ContextCompat.getColor(context, R.color.surface_container);
-                    break;
-            }
-            textStatusLabel.setText(statusText);
-            if (textStatusLabel.getBackground() instanceof GradientDrawable) {
-                GradientDrawable bg = (GradientDrawable) textStatusLabel.getBackground().mutate();
-                bg.setColor(statusColor);
-            }
+            // No status label in the new UI
 
             // Diff badges (+ added / - removed lines)
             int added = 0;
@@ -146,10 +124,7 @@ public class FileActionAdapter extends RecyclerView.Adapter<FileActionAdapter.Vi
             if (added > 0) {
                 textAddedBadge.setVisibility(View.VISIBLE);
                 textAddedBadge.setText("+" + added);
-                if (textAddedBadge.getBackground() instanceof GradientDrawable) {
-                    GradientDrawable bgAdd = (GradientDrawable) textAddedBadge.getBackground().mutate();
-                    bgAdd.setColor(ContextCompat.getColor(context, R.color.success_container));
-                }
+                // Plain colored text; no pill background
             } else {
                 textAddedBadge.setVisibility(View.GONE);
             }
@@ -158,10 +133,7 @@ public class FileActionAdapter extends RecyclerView.Adapter<FileActionAdapter.Vi
             if (removed > 0) {
                 textRemovedBadge.setVisibility(View.VISIBLE);
                 textRemovedBadge.setText("-" + removed);
-                if (textRemovedBadge.getBackground() instanceof GradientDrawable) {
-                    GradientDrawable bgRm = (GradientDrawable) textRemovedBadge.getBackground().mutate();
-                    bgRm.setColor(ContextCompat.getColor(context, R.color.error_container));
-                }
+                // Plain colored text; no pill background
             } else {
                 textRemovedBadge.setVisibility(View.GONE);
             }

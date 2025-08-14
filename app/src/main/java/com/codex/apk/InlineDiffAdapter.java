@@ -23,13 +23,13 @@ public class InlineDiffAdapter extends RecyclerView.Adapter<InlineDiffAdapter.Di
 
     public InlineDiffAdapter(Context context, List<DiffUtils.DiffLine> items) {
         this.context = context;
-        if (items != null) this.lines.addAll(items);
+        if (items != null) this.lines.addAll(filterDisplayable(items));
         setHasStableIds(false);
     }
 
     public void updateLines(List<DiffUtils.DiffLine> newLines) {
         this.lines.clear();
-        if (newLines != null) this.lines.addAll(newLines);
+        if (newLines != null) this.lines.addAll(filterDisplayable(newLines));
         notifyDataSetChanged();
     }
 
@@ -45,6 +45,13 @@ public class InlineDiffAdapter extends RecyclerView.Adapter<InlineDiffAdapter.Di
         DiffUtils.DiffLine line = lines.get(position);
 
         // Reset defaults
+        holder.itemView.setVisibility(View.VISIBLE);
+        RecyclerView.LayoutParams lp = (RecyclerView.LayoutParams) holder.itemView.getLayoutParams();
+        if (lp != null) {
+            lp.width = ViewGroup.LayoutParams.MATCH_PARENT;
+            lp.height = ViewGroup.LayoutParams.WRAP_CONTENT;
+            holder.itemView.setLayoutParams(lp);
+        }
         holder.tvOld.setText("");
         holder.tvNew.setText("");
         holder.tvContent.setTypeface(Typeface.MONOSPACE, Typeface.NORMAL);
@@ -52,11 +59,10 @@ public class InlineDiffAdapter extends RecyclerView.Adapter<InlineDiffAdapter.Di
 
         switch (line.type) {
             case HEADER:
-                holder.viewGutter.setBackgroundColor(context.getColor(R.color.outline_variant));
-                holder.itemView.setBackgroundColor(context.getColor(R.color.info_container));
-                holder.tvContent.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
-                holder.tvContent.setTextColor(context.getColor(R.color.info));
-                holder.tvContent.setText(line.text);
+                // Headers (e.g., @@ -a,+b @@ or ---/+++) are excluded via filterDisplayable();
+                // This branch should rarely be hit, but render as invisible safety net.
+                holder.itemView.setLayoutParams(new RecyclerView.LayoutParams(0, 0));
+                holder.itemView.setVisibility(View.GONE);
                 break;
             case ADDED:
                 holder.viewGutter.setBackgroundColor(context.getColor(R.color.color_border_diff_added));
@@ -100,5 +106,17 @@ public class InlineDiffAdapter extends RecyclerView.Adapter<InlineDiffAdapter.Di
             tvNew = itemView.findViewById(R.id.tv_new_line);
             tvContent = itemView.findViewById(R.id.tv_content);
         }
+    }
+
+    // Remove header lines like @@ hunk headers and ---/+++ file markers from display
+    private static List<DiffUtils.DiffLine> filterDisplayable(List<DiffUtils.DiffLine> src) {
+        List<DiffUtils.DiffLine> out = new ArrayList<>();
+        if (src == null) return out;
+        for (DiffUtils.DiffLine d : src) {
+            if (d == null) continue;
+            if (d.type == DiffUtils.LineType.HEADER) continue; // hide
+            out.add(d);
+        }
+        return out;
     }
 }

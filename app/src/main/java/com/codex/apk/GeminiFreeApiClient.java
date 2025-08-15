@@ -480,27 +480,28 @@ public class GeminiFreeApiClient implements ApiClient {
     }
 
     private String deriveHumanExplanation(String text, String thoughts) {
-        if (text == null) return ResponseUtils.buildExplanationWithThinking(text, thoughts);
-        String trimmed = text.trim();
-        boolean looksJson = com.codex.apk.QwenResponseParser.looksLikeJson(trimmed);
-        if (!looksJson) {
-            return ResponseUtils.buildExplanationWithThinking(text, thoughts);
-        }
-
-        try {
-            com.google.gson.JsonObject obj = com.google.gson.JsonParser.parseString(trimmed).getAsJsonObject();
-            if (obj.has("action")) {
-                String action = obj.get("action").getAsString();
-                if ("plan".equalsIgnoreCase(action)) {
-                    String goal = obj.has("goal") ? obj.get("goal").getAsString() : "Plan";
-                    return "Plan: " + goal;
-                } else if ("file_operation".equalsIgnoreCase(action)) {
-                    String expl = obj.has("explanation") ? obj.get("explanation").getAsString() : "Proposed file operations";
-                    return expl;
+        if (text == null) return "";
+        String normalized = normalizeJsonIfPresent(text);
+        boolean looksJson = com.codex.apk.QwenResponseParser.looksLikeJson(normalized != null ? normalized.trim() : "");
+        if (looksJson) {
+            try {
+                com.google.gson.JsonObject obj = com.google.gson.JsonParser.parseString(normalized).getAsJsonObject();
+                if (obj.has("action")) {
+                    String action = obj.get("action").getAsString();
+                    if ("plan".equalsIgnoreCase(action)) {
+                        String goal = obj.has("goal") ? obj.get("goal").getAsString() : "Plan";
+                        return "Plan: " + goal;
+                    } else if ("file_operation".equalsIgnoreCase(action)) {
+                        String expl = obj.has("explanation") ? obj.get("explanation").getAsString() : "Proposed file operations";
+                        return expl;
+                    }
                 }
-            }
-        } catch (Exception ignore) {}
-        return ""; // avoid duplicating JSON in the bubble; plan/file UI will render
+            } catch (Exception ignore) {}
+            // Unknown JSON: do not echo raw JSON in the bubble
+            return "";
+        }
+        // Non-JSON text: return as-is (thinking is shown separately by UI)
+        return text.trim();
     }
 
     private String normalizeJsonIfPresent(String text) {

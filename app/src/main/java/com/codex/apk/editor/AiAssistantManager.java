@@ -560,9 +560,22 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
             }
 
             // Build final AI message for normal flow (not plan-merge)
+            String finalExplanation = explanation != null ? explanation.trim() : "";
+            if (rawAiResponseJson != null && !rawAiResponseJson.isEmpty()) {
+                try {
+                    com.google.gson.JsonObject obj = com.google.gson.JsonParser.parseString(rawAiResponseJson).getAsJsonObject();
+                    if (obj.has("action") && ("plan".equalsIgnoreCase(obj.get("action").getAsString()) || "file_operation".equalsIgnoreCase(obj.get("action").getAsString()))) {
+                        // Suppress echoing structured JSON in the bubble; rely on dedicated UI sections
+                        if (!finalExplanation.startsWith("Plan:")) {
+                            // keep concise title if available, else empty
+                            finalExplanation = finalExplanation;
+                        }
+                    }
+                } catch (Exception ignore) {}
+            }
             ChatMessage aiMessage = new ChatMessage(
                     ChatMessage.SENDER_AI,
-                    explanation,
+                    finalExplanation,
                     null,
                     suggestions != null ? new ArrayList<>(suggestions) : new ArrayList<>(),
                     aiModelDisplayName,

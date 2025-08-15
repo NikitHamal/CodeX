@@ -337,8 +337,34 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
             textAiModelName.setText(message.getAiModelName());
 
             String content = message.getContent();
-            if (content != null && !content.isEmpty()) {
-                String processedContent = markdownFormatter.preprocessMarkdown(content);
+            String displayContent = content;
+            if (message.getPlanSteps() != null && !message.getPlanSteps().isEmpty()) {
+                String planTitle = null;
+                String raw = message.getRawApiResponse();
+                if (raw != null && !raw.trim().isEmpty()) {
+                    try {
+                        com.google.gson.JsonObject obj = com.google.gson.JsonParser.parseString(raw).getAsJsonObject();
+                        if (obj.has("action") && "plan".equalsIgnoreCase(obj.get("action").getAsString())) {
+                            String goal = obj.has("goal") ? obj.get("goal").getAsString() : "Plan";
+                            planTitle = "Plan: " + goal;
+                        }
+                    } catch (Exception ignore) {}
+                }
+                if (planTitle != null) {
+                    displayContent = planTitle;
+                } else if (content != null && content.trim().startsWith("{")) {
+                    // Suppress raw JSON echo when plan UI is present
+                    displayContent = "";
+                }
+            }
+            if (message.getThinkingContent() != null && !message.getThinkingContent().trim().isEmpty() && displayContent != null) {
+                int idx = displayContent.indexOf("[Thinking]");
+                if (idx >= 0) {
+                    displayContent = displayContent.substring(0, idx).trim();
+                }
+            }
+            if (displayContent != null && !displayContent.isEmpty()) {
+                String processedContent = markdownFormatter.preprocessMarkdown(displayContent);
                 markdownFormatter.setMarkdown(textMessage, processedContent);
             } else {
                 textMessage.setText("");

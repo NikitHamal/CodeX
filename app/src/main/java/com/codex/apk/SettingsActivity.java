@@ -324,29 +324,6 @@ public class SettingsActivity extends AppCompatActivity {
 		getPreferences(context).edit().putString("free_conv_meta_" + modelId, metadataJsonArray).apply();
 	}
 
-	// Free provider chat metadata cache (per project + per model id). Value is JSON array string like [cid, rid, rcid]
-	public static String getFreeConversationMetadataForProject(Context context, java.io.File projectDir, String modelId) {
-		if (modelId == null || projectDir == null) return "";
-		String projectKey = sanitizeProjectKey(projectDir);
-		return getPreferences(context).getString("free_conv_meta_" + projectKey + "_" + modelId, "");
-	}
-	public static void setFreeConversationMetadataForProject(Context context, java.io.File projectDir, String modelId, String metadataJsonArray) {
-		if (modelId == null || metadataJsonArray == null || metadataJsonArray.isEmpty() || projectDir == null) return;
-		String projectKey = sanitizeProjectKey(projectDir);
-		getPreferences(context).edit().putString("free_conv_meta_" + projectKey + "_" + modelId, metadataJsonArray).apply();
-	}
-	private static String sanitizeProjectKey(java.io.File projectDir) {
-		try {
-			String key = projectDir.getAbsolutePath();
-			// Normalize separators and keep it compact for preferences key
-			key = key.replace('\\', '/');
-			// Avoid characters that might be unsupported in SharedPreferences keys
-			return key.replace('/', '_');
-		} catch (Exception e) {
-			return "unknown_project";
-		}
-	}
-
 	public static boolean isLineNumbersEnabled(android.content.Context context) {
 		return getPreferences(context).getBoolean("line_numbers", true);
 	}

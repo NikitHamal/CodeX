@@ -46,19 +46,13 @@ public class GeminiFreeApiClient implements ApiClient {
     private final Context context;
     private final AIAssistant.AIActionListener actionListener;
     private final OkHttpClient httpClient;
-    private final java.io.File projectDir; // Optional: used to scope conversation per project
 
     private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
     private volatile boolean refreshRunning = false;
 
     public GeminiFreeApiClient(Context context, AIAssistant.AIActionListener actionListener) {
-        this(context, actionListener, null);
-    }
-
-    public GeminiFreeApiClient(Context context, AIAssistant.AIActionListener actionListener, java.io.File projectDir) {
         this.context = context.getApplicationContext();
         this.actionListener = actionListener;
-        this.projectDir = projectDir;
         this.httpClient = new OkHttpClient.Builder()
                 .followRedirects(true)
                 .connectTimeout(60, TimeUnit.SECONDS)
@@ -112,11 +106,7 @@ public class GeminiFreeApiClient implements ApiClient {
                 Headers requestHeaders = buildGeminiHeaders(modelId);
 
                 // Load prior conversation metadata if any, else derive from history if present
-                // Prefer per-project metadata when projectDir is available; fallback to global
-                String priorMeta = (projectDir != null)
-                        ? SettingsActivity.getFreeConversationMetadataForProject(context, projectDir, modelId)
-                        : SettingsActivity.getFreeConversationMetadata(context, modelId);
-
+                String priorMeta = SettingsActivity.getFreeConversationMetadata(context, modelId);
                 String chatMeta = null;
                 if (priorMeta != null && !priorMeta.isEmpty()) {
                     chatMeta = priorMeta; // Stored as JSON array string like [cid, rid, rcid]
@@ -194,7 +184,7 @@ public class GeminiFreeApiClient implements ApiClient {
                                 );
                                 // Cache metadata onto the last chat message raw response to help derive context later
                                 // (UI manager will receive this via onAiActionsProcessed).
-
+                                
                                 return;
                             }
                         }
@@ -206,8 +196,6 @@ public class GeminiFreeApiClient implements ApiClient {
                     // Stream parse lines for partial updates
                     BufferedSource source = resp.body().source();
                     StringBuilder full = new StringBuilder();
-                    StringBuilder answerAccum = new StringBuilder();
-                    String lastEmitted = "";
                     while (!source.exhausted()) {
                         String line = source.readUtf8Line();
                         if (line == null) break;
@@ -225,21 +213,7 @@ public class GeminiFreeApiClient implements ApiClient {
                                             com.google.gson.JsonArray candidates = part.get(4).getAsJsonArray();
                                             if (candidates.size() > 0) {
                                                 String partial = candidates.get(0).getAsJsonArray().get(1).getAsJsonArray().get(0).getAsString();
-                                                // Accumulate and emit only when content grows to reduce flicker
-                                                if (partial != null) {
-                                                    if (partial.length() >= answerAccum.length()) {
-                                                        answerAccum.setLength(0);
-                                                        answerAccum.append(partial);
-                                                    } else {
-                                                        // Some streams may provide only delta; append
-                                                        answerAccum.append(partial);
-                                                    }
-                                                    String toEmit = answerAccum.toString();
-                                                    if (actionListener != null && toEmit.length() > lastEmitted.length()) {
-                                                        lastEmitted = toEmit;
-                                                        actionListener.onAiStreamUpdate(toEmit, false);
-                                                    }
-                                                }
+                                                if (actionListener != null) actionListener.onAiStreamUpdate(partial, false);
                                             }
                                         }
                                     } catch (Exception ignore) {}
@@ -256,7 +230,6 @@ public class GeminiFreeApiClient implements ApiClient {
                         // Store actual raw response for long-press, but show only the derived explanation
                         // Normalize JSON for model-agnostic downstream parsing (plan/file ops)
                         String normalized = normalizeJsonIfPresent(parsed.text);
-
                         notifyAiActionsProcessed(
                                 com.codex.apk.QwenResponseParser.looksLikeJson(normalized) ? normalized : null,
                                 explanation,
@@ -376,9 +349,7 @@ public class GeminiFreeApiClient implements ApiClient {
                 .build();
         Request upload = new Request.Builder()
                 .url(UPLOAD_URL)
-                .headers(Headers.of(new HashMap<String, String>() {{
-                    put("Push-ID", "feeds/mcudyrk2a4khkz");
-                }}))
+                .headers(Headers.of(new HashMap<String, String>() {{ put("Push-ID", "feeds/mcudyrk2a4khkz"); }}))
                 .post(multipart)
                 .build();
         try (Response r = httpClient.newCall(upload).execute()) {
@@ -390,11 +361,7 @@ public class GeminiFreeApiClient implements ApiClient {
     private static class UploadedRef {
         final String id;
         final String name;
-
-        UploadedRef(String id, String name) {
-            this.id = id;
-            this.name = name;
-        }
+        UploadedRef(String id, String name) { this.id = id; this.name = name; }
     }
 
     private Headers buildGeminiHeaders(String modelId) {
@@ -541,7 +508,7 @@ public class GeminiFreeApiClient implements ApiClient {
         if (text == null) return null;
         String t = text.trim();
         // Strip leading code fence markers or 'json\n'
-        if (t.startsWith("```")) {
+        if (t.startsWith("```") ) {
             int firstBrace = t.indexOf('{');
             int lastBrace = t.lastIndexOf('}');
             if (firstBrace >= 0 && lastBrace > firstBrace) {
@@ -596,11 +563,7 @@ public class GeminiFreeApiClient implements ApiClient {
                     if (part.size() > 1 && part.get(1).isJsonArray()) {
                         String meta = part.get(1).toString();
                         if (meta != null && meta.length() > 2) { // simple validity check
-                            if (projectDir != null) {
-                                SettingsActivity.setFreeConversationMetadataForProject(context, projectDir, modelId, meta);
-                            } else {
-                                SettingsActivity.setFreeConversationMetadata(context, modelId, meta);
-                            }
+                            SettingsActivity.setFreeConversationMetadata(context, modelId, meta);
                             return;
                         }
                     }

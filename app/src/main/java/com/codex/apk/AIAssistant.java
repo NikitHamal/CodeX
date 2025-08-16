@@ -14,6 +14,7 @@ public class AIAssistant {
 
     private Map<AIProvider, ApiClient> apiClients = new HashMap<>();
     private AIModel currentModel;
+    private final Context appContext;
     private boolean thinkingModeEnabled = false;
     private boolean webSearchEnabled = false;
     private boolean agentModeEnabled = false; // New agent mode flag
@@ -22,16 +23,17 @@ public class AIAssistant {
     private File projectDir; // Track project directory for tool operations
 
     public AIAssistant(Context context, ExecutorService executorService, AIActionListener actionListener) {
+        this.appContext = context.getApplicationContext();
         this.actionListener = actionListener;
         // Default to an Alibaba/Qwen model since we have a working client for it
         this.currentModel = AIModel.fromModelId("qwen3-coder-plus");
 
         // Initialize API clients for each provider
-        apiClients.put(AIProvider.ALIBABA, new QwenApiClient(context, actionListener, null)); // projectDir can be set later
+        apiClients.put(AIProvider.ALIBABA, new QwenApiClient(this.appContext, actionListener, null)); // projectDir can be set later
         // Register GLM client for Z provider
         apiClients.put(AIProvider.Z, new GLMApiClient(actionListener));
         // Register Free Gemini client for FREE provider
-        apiClients.put(AIProvider.FREE, new GeminiFreeApiClient(context, actionListener));
+        apiClients.put(AIProvider.FREE, new GeminiFreeApiClient(this.appContext, actionListener, null));
     }
 
     // Legacy constructor for compatibility
@@ -40,8 +42,10 @@ public class AIAssistant {
         this(context, executorService, actionListener);
         // Wire the provided projectDir into Qwen client so file tools work
         this.projectDir = projectDir;
-        ApiClient qwen = new QwenApiClient(context, this.actionListener, projectDir);
+        ApiClient qwen = new QwenApiClient(this.appContext, this.actionListener, projectDir);
         apiClients.put(AIProvider.ALIBABA, qwen);
+        // Also wire projectDir into Gemini so conversation is per-project
+        apiClients.put(AIProvider.FREE, new GeminiFreeApiClient(this.appContext, this.actionListener, projectDir));
     }
 
     public void sendPrompt(String userPrompt, List<ChatMessage> chatHistory, QwenConversationState qwenState, String fileName, String fileContent) {
@@ -118,4 +122,12 @@ public class AIAssistant {
     public String getApiKey() { return ""; }
     public void setApiKey(String apiKey) {}
     public void shutdown() {}
+
+    // Allow setting or changing the project directory after construction
+    public void setProjectDir(File projectDir) {
+        this.projectDir = projectDir;
+        // Rebuild clients that need project context
+        apiClients.put(AIProvider.ALIBABA, new QwenApiClient(this.appContext, this.actionListener, projectDir));
+        apiClients.put(AIProvider.FREE, new GeminiFreeApiClient(this.appContext, this.actionListener, projectDir));
+    }
 }

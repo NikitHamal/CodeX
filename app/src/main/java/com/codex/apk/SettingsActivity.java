@@ -21,6 +21,7 @@ import androidx.preference.SwitchPreferenceCompat;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import android.content.Context;
 import android.util.AttributeSet;
+import java.io.File;
 import java.util.List;
 import com.codex.apk.ai.AIModel;
 
@@ -323,6 +324,22 @@ public class SettingsActivity extends AppCompatActivity {
 		if (modelId == null || metadataJsonArray == null || metadataJsonArray.isEmpty()) return;
 		getPreferences(context).edit().putString("free_conv_meta_" + modelId, metadataJsonArray).apply();
 	}
+
+    // Per-project variant: key by modelId + projectDir path hash
+    public static String getFreeConversationMetadata(Context context, String modelId, File projectDir) {
+        if (modelId == null || projectDir == null) return getFreeConversationMetadata(context, modelId);
+        String key = "free_conv_meta_" + modelId + "_" + Integer.toHexString(projectDir.getAbsolutePath().hashCode());
+        return getPreferences(context).getString(key, "");
+    }
+    public static void setFreeConversationMetadata(Context context, String modelId, File projectDir, String metadataJsonArray) {
+        if (modelId == null || projectDir == null || metadataJsonArray == null || metadataJsonArray.isEmpty()) {
+            // fall back to per-model if projectDir missing
+            setFreeConversationMetadata(context, modelId, metadataJsonArray);
+            return;
+        }
+        String key = "free_conv_meta_" + modelId + "_" + Integer.toHexString(projectDir.getAbsolutePath().hashCode());
+        getPreferences(context).edit().putString(key, metadataJsonArray).apply();
+    }
 
 	public static boolean isLineNumbersEnabled(android.content.Context context) {
 		return getPreferences(context).getBoolean("line_numbers", true);

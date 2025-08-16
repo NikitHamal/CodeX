@@ -193,27 +193,41 @@ public class GeminiFreeApiClient implements ApiClient {
                         return;
                     }
 
-                    // Stream parse lines for partial updates
+                    // Stream parse lines for partial updates (answer and thinking)
                     BufferedSource source = resp.body().source();
                     StringBuilder full = new StringBuilder();
+                    String lastAnswer = null;
+                    String lastThinking = null;
                     while (!source.exhausted()) {
                         String line = source.readUtf8Line();
                         if (line == null) break;
                         full.append(line).append("\n");
-                        // emit incremental thinking/text when possible
+                        // Emit incremental updates when structure is parseable
                         try {
                             String[] parts = full.toString().split("\n");
                             if (parts.length >= 3) {
                                 com.google.gson.JsonArray responseJson = JsonParser.parseString(parts[2]).getAsJsonArray();
-                                // naive partial: look at last part for candidate delta
                                 for (int i = 0; i < responseJson.size(); i++) {
                                     try {
                                         com.google.gson.JsonArray part = JsonParser.parseString(responseJson.get(i).getAsJsonArray().get(2).getAsString()).getAsJsonArray();
                                         if (part.size() > 4 && !part.get(4).isJsonNull()) {
                                             com.google.gson.JsonArray candidates = part.get(4).getAsJsonArray();
                                             if (candidates.size() > 0) {
-                                                String partial = candidates.get(0).getAsJsonArray().get(1).getAsJsonArray().get(0).getAsString();
-                                                if (actionListener != null) actionListener.onAiStreamUpdate(partial, false);
+                                                com.google.gson.JsonArray cand = candidates.get(0).getAsJsonArray();
+                                                // Answer text
+                                                String answer = null;
+                                                try { answer = cand.get(1).getAsJsonArray().get(0).getAsString(); } catch (Exception ignored) {}
+                                                if (answer != null && !answer.equals(lastAnswer)) {
+                                                    lastAnswer = answer;
+                                                    if (actionListener != null) actionListener.onAiStreamUpdate(answer, false);
+                                                }
+                                                // Thinking text (if present, index 37 as in final parser)
+                                                String thinking = null;
+                                                try { thinking = cand.get(37).getAsJsonArray().get(0).getAsJsonArray().get(0).getAsString(); } catch (Exception ignored) {}
+                                                if (thinking != null && !thinking.equals(lastThinking)) {
+                                                    lastThinking = thinking;
+                                                    if (actionListener != null) actionListener.onAiStreamUpdate(thinking, true);
+                                                }
                                             }
                                         }
                                     } catch (Exception ignore) {}

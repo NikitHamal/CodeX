@@ -17,7 +17,7 @@ public class AIChatHistoryManager {
     private static final String CHAT_HISTORY_KEY_PREFIX = "chat_history_";
     private static final String QWEN_CONVERSATION_STATE_KEY_PREFIX = "qwen_conv_state_";
     private static final String OLD_GENERIC_CHAT_HISTORY_KEY = "chat_history";
-    private static final String FREE_CONV_META_KEY_PREFIX = "free_conv_meta_";
+    private static final String FREE_CONV_META_KEY_PREFIX = "free_conv_meta_"; // value is JSON map: { modelId: metadataArrayJson }
 
     private final Context context;
     private final String projectPath;
@@ -66,10 +66,26 @@ public class AIChatHistoryManager {
 
         // Restore Gemini FREE conversation metadata per project if present, by copying to SettingsActivity scoping
         try {
-            String meta = prefs.getString(getProjectSpecificKey(FREE_CONV_META_KEY_PREFIX), null);
-            if (meta != null && !meta.isEmpty()) {
-                // Use default free model id if not known here; SettingsActivity stores per model.
-                SettingsActivity.setFreeConversationMetadata(context, "gemini-2.5-flash", meta);
+            String stored = prefs.getString(getProjectSpecificKey(FREE_CONV_META_KEY_PREFIX), null);
+            if (stored != null && !stored.isEmpty()) {
+                // Backward compatibility: previously we stored a raw array string like [cid,rid,rcid]
+                String trimmed = stored.trim();
+                if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
+                    // Assume default model id to hydrate legacy value
+                    SettingsActivity.setFreeConversationMetadata(context, "gemini-2.5-flash", trimmed);
+                } else {
+                    // New format: JSON object mapping modelId -> metadata array string
+                    com.google.gson.JsonObject obj = com.google.gson.JsonParser.parseString(stored).getAsJsonObject();
+                    for (java.util.Map.Entry<String, com.google.gson.JsonElement> e : obj.entrySet()) {
+                        try {
+                            String modelId = e.getKey();
+                            String meta = e.getValue().getAsString();
+                            if (modelId != null && !modelId.isEmpty() && meta != null && !meta.isEmpty()) {
+                                SettingsActivity.setFreeConversationMetadata(context, modelId, meta);
+                            }
+                        } catch (Exception ignored) {}
+                    }
+                }
             }
         } catch (Exception ignore) {}
     }
@@ -87,12 +103,24 @@ public class AIChatHistoryManager {
         String qwenStateJson = qwenState.toJson();
         editor.putString(qwenStateKey, qwenStateJson);
 
-        // Persist last known FREE conversation metadata for this project
+        // Persist last known FREE conversation metadata for this project (per model id)
         try {
-            String modelId = "gemini-2.5-flash";
-            String meta = SettingsActivity.getFreeConversationMetadata(context, modelId);
-            if (meta != null && !meta.isEmpty()) {
-                editor.putString(getProjectSpecificKey(FREE_CONV_META_KEY_PREFIX), meta);
+            com.google.gson.JsonObject obj = new com.google.gson.JsonObject();
+            // Track common FREE models; extendable if more are added
+            String[] modelIds = new String[] { "gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.0-flash" };
+            for (String mid : modelIds) {
+                try {
+                    String meta = SettingsActivity.getFreeConversationMetadata(context, mid);
+                    if (meta != null && !meta.isEmpty()) {
+                        obj.addProperty(mid, meta);
+                    }
+                } catch (Exception ignored) {}
+            }
+            if (obj.size() > 0) {
+                editor.putString(getProjectSpecificKey(FREE_CONV_META_KEY_PREFIX), obj.toString());
+            } else {
+                // To avoid keeping stale legacy array-only values, clear the key when empty
+                editor.remove(getProjectSpecificKey(FREE_CONV_META_KEY_PREFIX));
             }
         } catch (Exception ignore) {}
 

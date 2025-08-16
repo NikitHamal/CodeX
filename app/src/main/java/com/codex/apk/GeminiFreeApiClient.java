@@ -46,8 +46,7 @@ public class GeminiFreeApiClient implements ApiClient {
     private final Context context;
     private final AIAssistant.AIActionListener actionListener;
     private final OkHttpClient httpClient;
-    // Optional: project directory to scope conversation per project
-    private final java.io.File projectDir;
+    private final java.io.File projectDir; // Optional: used to scope conversation per project
 
     private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
     private volatile boolean refreshRunning = false;
@@ -112,15 +111,12 @@ public class GeminiFreeApiClient implements ApiClient {
                 String modelId = model != null ? model.getModelId() : "gemini-2.5-flash";
                 Headers requestHeaders = buildGeminiHeaders(modelId);
 
-                // Load prior conversation metadata (per-project if available), else derive from history if present
-                String priorMeta = null;
-                try {
-                    if (projectDir != null) {
-                        priorMeta = SettingsActivity.getFreeConversationMetadata(context, modelId, projectDir);
-                    } else {
-                        priorMeta = SettingsActivity.getFreeConversationMetadata(context, modelId);
-                    }
-                } catch (Exception ignore) {}
+                // Load prior conversation metadata if any, else derive from history if present
+                // Prefer per-project metadata when projectDir is available; fallback to global
+                String priorMeta = (projectDir != null)
+                        ? SettingsActivity.getFreeConversationMetadataForProject(context, projectDir, modelId)
+                        : SettingsActivity.getFreeConversationMetadata(context, modelId);
+
                 String chatMeta = null;
                 if (priorMeta != null && !priorMeta.isEmpty()) {
                     chatMeta = priorMeta; // Stored as JSON array string like [cid, rid, rcid]
@@ -181,27 +177,6 @@ public class GeminiFreeApiClient implements ApiClient {
                                 String body2 = resp2.body().string();
                                 ParsedOutput parsed2 = parseOutputFromStream(body2);
                                 persistConversationMetaIfAvailable(modelId, body2);
-                                // Persist per-project if applicable
-                                try {
-                                    if (projectDir != null) {
-                                        String[] lines = body2.split("\n");
-                                        if (lines.length >= 3) {
-                                            com.google.gson.JsonArray responseJson = JsonParser.parseString(lines[2]).getAsJsonArray();
-                                            for (int i = 0; i < responseJson.size(); i++) {
-                                                try {
-                                                    com.google.gson.JsonArray part = JsonParser.parseString(responseJson.get(i).getAsJsonArray().get(2).getAsString()).getAsJsonArray();
-                                                    if (part.size() > 1 && part.get(1).isJsonArray()) {
-                                                        String meta = part.get(1).toString();
-                                                        if (meta != null && meta.length() > 2) {
-                                                            SettingsActivity.setFreeConversationMetadata(context, modelId, projectDir, meta);
-                                                            break;
-                                                        }
-                                                    }
-                                                } catch (Exception ignore) {}
-                                            }
-                                        }
-                                    }
-                                } catch (Exception ignore) {}
                                 String explanation2 = deriveHumanExplanation(parsed2.text, parsed2.thoughts);
                                 // Normalize JSON (plan/file ops) for model-agnostic handlers
                                 String normalized2 = normalizeJsonIfPresent(parsed2.text);
@@ -219,6 +194,7 @@ public class GeminiFreeApiClient implements ApiClient {
                                 );
                                 // Cache metadata onto the last chat message raw response to help derive context later
                                 // (UI manager will receive this via onAiActionsProcessed).
+
                                 return;
                             }
                         }
@@ -230,8 +206,8 @@ public class GeminiFreeApiClient implements ApiClient {
                     // Stream parse lines for partial updates
                     BufferedSource source = resp.body().source();
                     StringBuilder full = new StringBuilder();
-                    // Accumulate answer text like Qwen streaming
-                    StringBuilder answerSoFar = new StringBuilder();
+                    StringBuilder answerAccum = new StringBuilder();
+                    String lastEmitted = "";
                     while (!source.exhausted()) {
                         String line = source.readUtf8Line();
                         if (line == null) break;
@@ -249,18 +225,20 @@ public class GeminiFreeApiClient implements ApiClient {
                                             com.google.gson.JsonArray candidates = part.get(4).getAsJsonArray();
                                             if (candidates.size() > 0) {
                                                 String partial = candidates.get(0).getAsJsonArray().get(1).getAsJsonArray().get(0).getAsString();
-                                                // Emit cumulative like Qwen: append only the new delta
+                                                // Accumulate and emit only when content grows to reduce flicker
                                                 if (partial != null) {
-                                                    String current = partial;
-                                                    if (current.startsWith(answerSoFar.toString())) {
-                                                        String delta = current.substring(answerSoFar.length());
-                                                        answerSoFar.append(delta);
+                                                    if (partial.length() >= answerAccum.length()) {
+                                                        answerAccum.setLength(0);
+                                                        answerAccum.append(partial);
                                                     } else {
-                                                        // Fallback: reset to current if shapes changed
-                                                        answerSoFar.setLength(0);
-                                                        answerSoFar.append(current);
+                                                        // Some streams may provide only delta; append
+                                                        answerAccum.append(partial);
                                                     }
-                                                    if (actionListener != null) actionListener.onAiStreamUpdate(answerSoFar.toString(), false);
+                                                    String toEmit = answerAccum.toString();
+                                                    if (actionListener != null && toEmit.length() > lastEmitted.length()) {
+                                                        lastEmitted = toEmit;
+                                                        actionListener.onAiStreamUpdate(toEmit, false);
+                                                    }
                                                 }
                                             }
                                         }
@@ -273,32 +251,12 @@ public class GeminiFreeApiClient implements ApiClient {
                     String body = full.toString();
                     ParsedOutput parsed = parseOutputFromStream(body);
                     persistConversationMetaIfAvailable(modelId, body);
-                    // Persist per-project if applicable
-                    try {
-                        if (projectDir != null) {
-                            String[] lines = body.split("\n");
-                            if (lines.length >= 3) {
-                                com.google.gson.JsonArray responseJson = JsonParser.parseString(lines[2]).getAsJsonArray();
-                                for (int i = 0; i < responseJson.size(); i++) {
-                                    try {
-                                        com.google.gson.JsonArray part = JsonParser.parseString(responseJson.get(i).getAsJsonArray().get(2).getAsString()).getAsJsonArray();
-                                        if (part.size() > 1 && part.get(1).isJsonArray()) {
-                                            String meta = part.get(1).toString();
-                                            if (meta != null && meta.length() > 2) {
-                                                SettingsActivity.setFreeConversationMetadata(context, modelId, projectDir, meta);
-                                                break;
-                                            }
-                                        }
-                                    } catch (Exception ignore) {}
-                                }
-                            }
-                        }
-                    } catch (Exception ignore) {}
                     String explanation = deriveHumanExplanation(parsed.text, parsed.thoughts);
                     if (actionListener != null) {
                         // Store actual raw response for long-press, but show only the derived explanation
                         // Normalize JSON for model-agnostic downstream parsing (plan/file ops)
                         String normalized = normalizeJsonIfPresent(parsed.text);
+
                         notifyAiActionsProcessed(
                                 com.codex.apk.QwenResponseParser.looksLikeJson(normalized) ? normalized : null,
                                 explanation,
@@ -418,7 +376,9 @@ public class GeminiFreeApiClient implements ApiClient {
                 .build();
         Request upload = new Request.Builder()
                 .url(UPLOAD_URL)
-                .headers(Headers.of(new HashMap<String, String>() {{ put("Push-ID", "feeds/mcudyrk2a4khkz"); }}))
+                .headers(Headers.of(new HashMap<String, String>() {{
+                    put("Push-ID", "feeds/mcudyrk2a4khkz");
+                }}))
                 .post(multipart)
                 .build();
         try (Response r = httpClient.newCall(upload).execute()) {
@@ -430,7 +390,11 @@ public class GeminiFreeApiClient implements ApiClient {
     private static class UploadedRef {
         final String id;
         final String name;
-        UploadedRef(String id, String name) { this.id = id; this.name = name; }
+
+        UploadedRef(String id, String name) {
+            this.id = id;
+            this.name = name;
+        }
     }
 
     private Headers buildGeminiHeaders(String modelId) {
@@ -577,7 +541,7 @@ public class GeminiFreeApiClient implements ApiClient {
         if (text == null) return null;
         String t = text.trim();
         // Strip leading code fence markers or 'json\n'
-        if (t.startsWith("```") ) {
+        if (t.startsWith("```")) {
             int firstBrace = t.indexOf('{');
             int lastBrace = t.lastIndexOf('}');
             if (firstBrace >= 0 && lastBrace > firstBrace) {
@@ -632,7 +596,11 @@ public class GeminiFreeApiClient implements ApiClient {
                     if (part.size() > 1 && part.get(1).isJsonArray()) {
                         String meta = part.get(1).toString();
                         if (meta != null && meta.length() > 2) { // simple validity check
-                            SettingsActivity.setFreeConversationMetadata(context, modelId, meta);
+                            if (projectDir != null) {
+                                SettingsActivity.setFreeConversationMetadataForProject(context, projectDir, modelId, meta);
+                            } else {
+                                SettingsActivity.setFreeConversationMetadata(context, modelId, meta);
+                            }
                             return;
                         }
                     }

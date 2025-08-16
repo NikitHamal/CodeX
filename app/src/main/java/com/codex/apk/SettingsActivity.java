@@ -21,7 +21,6 @@ import androidx.preference.SwitchPreferenceCompat;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import android.content.Context;
 import android.util.AttributeSet;
-import java.io.File;
 import java.util.List;
 import com.codex.apk.ai.AIModel;
 
@@ -325,21 +324,28 @@ public class SettingsActivity extends AppCompatActivity {
 		getPreferences(context).edit().putString("free_conv_meta_" + modelId, metadataJsonArray).apply();
 	}
 
-    // Per-project variant: key by modelId + projectDir path hash
-    public static String getFreeConversationMetadata(Context context, String modelId, File projectDir) {
-        if (modelId == null || projectDir == null) return getFreeConversationMetadata(context, modelId);
-        String key = "free_conv_meta_" + modelId + "_" + Integer.toHexString(projectDir.getAbsolutePath().hashCode());
-        return getPreferences(context).getString(key, "");
-    }
-    public static void setFreeConversationMetadata(Context context, String modelId, File projectDir, String metadataJsonArray) {
-        if (modelId == null || projectDir == null || metadataJsonArray == null || metadataJsonArray.isEmpty()) {
-            // fall back to per-model if projectDir missing
-            setFreeConversationMetadata(context, modelId, metadataJsonArray);
-            return;
-        }
-        String key = "free_conv_meta_" + modelId + "_" + Integer.toHexString(projectDir.getAbsolutePath().hashCode());
-        getPreferences(context).edit().putString(key, metadataJsonArray).apply();
-    }
+	// Free provider chat metadata cache (per project + per model id). Value is JSON array string like [cid, rid, rcid]
+	public static String getFreeConversationMetadataForProject(Context context, java.io.File projectDir, String modelId) {
+		if (modelId == null || projectDir == null) return "";
+		String projectKey = sanitizeProjectKey(projectDir);
+		return getPreferences(context).getString("free_conv_meta_" + projectKey + "_" + modelId, "");
+	}
+	public static void setFreeConversationMetadataForProject(Context context, java.io.File projectDir, String modelId, String metadataJsonArray) {
+		if (modelId == null || metadataJsonArray == null || metadataJsonArray.isEmpty() || projectDir == null) return;
+		String projectKey = sanitizeProjectKey(projectDir);
+		getPreferences(context).edit().putString("free_conv_meta_" + projectKey + "_" + modelId, metadataJsonArray).apply();
+	}
+	private static String sanitizeProjectKey(java.io.File projectDir) {
+		try {
+			String key = projectDir.getAbsolutePath();
+			// Normalize separators and keep it compact for preferences key
+			key = key.replace('\\', '/');
+			// Avoid characters that might be unsupported in SharedPreferences keys
+			return key.replace('/', '_');
+		} catch (Exception e) {
+			return "unknown_project";
+		}
+	}
 
 	public static boolean isLineNumbersEnabled(android.content.Context context) {
 		return getPreferences(context).getBoolean("line_numbers", true);

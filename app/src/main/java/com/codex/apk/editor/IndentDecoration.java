@@ -37,20 +37,32 @@ public class IndentDecoration extends RecyclerView.ItemDecoration {
         final int childCount = parent.getChildCount();
         if (childCount == 0) return;
 
-        // Determine max level visible to draw columns continuously
-        int maxLevel = 0;
         for (int i = 0; i < childCount; i++) {
             View child = parent.getChildAt(i);
-            int level = levelFromPadding(child.getPaddingLeft());
-            if (level > maxLevel) maxLevel = level;
-        }
+            Object tag = child.getTag(R.id.tag_tree_node);
+            if (!(tag instanceof FileTreeManager.TreeNode)) continue;
+            FileTreeManager.TreeNode node = (FileTreeManager.TreeNode) tag;
 
-        // Draw columns for each level from top to bottom of the list to avoid line breaks
-        final int top = parent.getPaddingTop();
-        final int bottom = parent.getHeight() - parent.getPaddingBottom();
-        for (int level = 1; level <= maxLevel; level++) {
-            float x = basePx + (float) stepPx * (level - 1);
-            c.drawLine(x, top, x, bottom, paint);
+            int level = Math.max(0, node.level);
+            if (level == 0) continue; // no indentation columns for roots
+
+            float top = child.getTop();
+            float bottom = child.getBottom();
+
+            // Draw ancestor continuation columns: draw a vertical line for any ancestor that is not last
+            for (int l = 1; l <= level - 1; l++) {
+                FileTreeManager.TreeNode anc = getAncestorAtLevel(node, l);
+                if (anc != null && !anc.isLast) {
+                    float x = basePx + (float) stepPx * (l - 1);
+                    c.drawLine(x, top, x, bottom, paint);
+                }
+            }
+
+            // Draw current level column only if this node is not the last among its siblings
+            if (!node.isLast) {
+                float x = basePx + (float) stepPx * (level - 1);
+                c.drawLine(x, top, x, bottom, paint);
+            }
         }
     }
 
@@ -68,5 +80,13 @@ public class IndentDecoration extends RecyclerView.ItemDecoration {
     private int levelFromPadding(int paddingLeft) {
         int pl = Math.max(0, paddingLeft - basePx);
         return Math.max(0, Math.round((float) pl / (float) stepPx));
+    }
+
+    private FileTreeManager.TreeNode getAncestorAtLevel(FileTreeManager.TreeNode node, int targetLevel) {
+        FileTreeManager.TreeNode cur = node;
+        while (cur != null && cur.level > targetLevel) {
+            cur = cur.parent;
+        }
+        return (cur != null && cur.level == targetLevel) ? cur : null;
     }
 }

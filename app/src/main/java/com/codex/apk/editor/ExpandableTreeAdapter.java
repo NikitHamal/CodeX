@@ -61,6 +61,8 @@ public class ExpandableTreeAdapter extends RecyclerView.Adapter<ExpandableTreeAd
     public void onBindViewHolder(@NonNull NodeViewHolder holder, int position) {
         FileTreeManager.TreeNode node = visibleNodes.get(position);
         File f = node.file;
+        // Tag the itemView so ItemDecoration can read structure info
+        holder.itemView.setTag(R.id.tag_tree_node, node);
 
         float density = holder.itemView.getResources().getDisplayMetrics().density;
         int base = (int) (12 * density);
@@ -77,7 +79,8 @@ public class ExpandableTreeAdapter extends RecyclerView.Adapter<ExpandableTreeAd
         // Set icon per state
         if (f.isDirectory()) {
             holder.imageFileIcon.setImageResource(node.expanded ? R.drawable.ic_folder_open_outline : R.drawable.ic_folder_outline);
-            holder.imageExpandIcon.setVisibility(View.VISIBLE);
+            // Hide chevron if folder has no children
+            holder.imageExpandIcon.setVisibility(node.hasVisibleChildren() ? View.VISIBLE : View.INVISIBLE);
             holder.imageExpandIcon.setImageResource(node.expanded ? R.drawable.icon_expand_less_round : R.drawable.icon_expand_more_round);
         } else {
             holder.imageFileIcon.setImageResource(getFileIconRes(f.getName()));

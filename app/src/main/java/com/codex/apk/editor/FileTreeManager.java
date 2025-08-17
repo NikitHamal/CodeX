@@ -64,16 +64,21 @@ public class FileTreeManager {
 
     public void loadFileTree() {
         File root = activity.getProjectDirectory();
-        List<TreeNode> nodes = new ArrayList<>();
+        List<TreeNode> roots = new ArrayList<>();
         if (root != null && root.exists()) {
-            TreeNode rootNode = buildTree(root, 0);
-            nodes.add(rootNode);
+            TreeNode rootNode = buildTree(root, 0, null);
+            // Do not show the top-level project folder; use its children as roots
+            if (!rootNode.children.isEmpty()) {
+                roots.addAll(rootNode.children);
+                rebaseAsRoots(roots);
+            }
         }
         if (!currentSearchQuery.isEmpty()) {
-            nodes = filterNodes(nodes, currentSearchQuery);
+            roots = filterNodes(roots, currentSearchQuery);
+            rebaseAsRoots(roots);
         }
-        adapter.setNodes(nodes);
-        updateEmptyState(nodes);
+        adapter.setNodes(roots);
+        updateEmptyState(roots);
     }
 
     private void updateEmptyState(List<TreeNode> nodes) {
@@ -88,8 +93,9 @@ public class FileTreeManager {
         }
     }
 
-    private TreeNode buildTree(File file, int level) {
+    private TreeNode buildTree(File file, int level, TreeNode parent) {
         TreeNode node = new TreeNode(file, level);
+        node.parent = parent;
         if (file.isDirectory()) {
             File[] list = file.listFiles();
             if (list != null) {
@@ -100,8 +106,11 @@ public class FileTreeManager {
                         return f1.getName().compareToIgnoreCase(f2.getName());
                     }
                 });
-                for (File child : list) {
-                    node.children.add(buildTree(child, level + 1));
+                for (int i = 0; i < list.length; i++) {
+                    File child = list[i];
+                    TreeNode childNode = buildTree(child, level + 1, node);
+                    childNode.isLast = (i == list.length - 1);
+                    node.children.add(childNode);
                 }
             }
         }
@@ -111,10 +120,34 @@ public class FileTreeManager {
     private List<TreeNode> filterNodes(List<TreeNode> nodes, String query) {
         List<TreeNode> result = new ArrayList<>();
         for (TreeNode n : nodes) {
-            TreeNode copy = n.copyPruned(query);
+            TreeNode copy = n.copyPruned(query, null);
             if (copy != null) result.add(copy);
         }
+        // Fix isLast flags post-filter
+        for (TreeNode r : result) fixSiblingsFlagsRecursive(r);
         return result;
+    }
+
+    private void rebaseAsRoots(List<TreeNode> roots) {
+        for (TreeNode r : roots) {
+            rebaseLevelsRecursive(r, 0, null);
+        }
+        // Reset isLast correctly at each level
+        for (TreeNode r : roots) fixSiblingsFlagsRecursive(r);
+    }
+
+    private void rebaseLevelsRecursive(TreeNode node, int newLevel, TreeNode newParent) {
+        node.level = newLevel;
+        node.parent = newParent;
+        for (TreeNode c : node.children) rebaseLevelsRecursive(c, newLevel + 1, node);
+    }
+
+    private void fixSiblingsFlagsRecursive(TreeNode node) {
+        for (int i = 0; i < node.children.size(); i++) {
+            TreeNode c = node.children.get(i);
+            c.isLast = (i == node.children.size() - 1);
+            fixSiblingsFlagsRecursive(c);
+        }
     }
 
     public void showNewFileDialog(File parentDirectory) {
@@ -224,18 +257,27 @@ public class FileTreeManager {
     // TreeNode model
     static class TreeNode {
         final File file;
-        final int level;
+        int level;
         boolean expanded = true;
         final List<TreeNode> children = new ArrayList<>();
+        TreeNode parent = null;
+        boolean isLast = false;
 
         TreeNode(File file, int level) { this.file = file; this.level = level; }
 
-        TreeNode copyPruned(String query) {
+        boolean hasVisibleChildren() { return !children.isEmpty(); }
+
+        TreeNode copyPruned(String query, TreeNode newParent) {
             boolean matches = file.getName().toLowerCase().contains(query);
             TreeNode copy = new TreeNode(file, level);
+            copy.parent = newParent;
             for (TreeNode c : children) {
-                TreeNode pruned = c.copyPruned(query);
+                TreeNode pruned = c.copyPruned(query, copy);
                 if (pruned != null) copy.children.add(pruned);
+            }
+            // Set isLast for children
+            for (int i = 0; i < copy.children.size(); i++) {
+                copy.children.get(i).isLast = (i == copy.children.size() - 1);
             }
             if (matches || !copy.children.isEmpty()) return copy;
             return null;

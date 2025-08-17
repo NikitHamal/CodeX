@@ -36,9 +36,9 @@ public class FileTreeManager {
         recyclerView.setLayoutManager(new LinearLayoutManager(activity));
         adapter = new ExpandableTreeAdapter(activity, new ArrayList<>());
         recyclerView.setAdapter(adapter);
-        // Add indentation decoration once to draw continuous lines across items
-        if (recyclerView.getItemDecorationCount() == 0) {
-            recyclerView.addItemDecoration(new IndentDecoration(activity));
+        // Ensure no item decorations are present (no indent lines)
+        for (int i = recyclerView.getItemDecorationCount() - 1; i >= 0; i--) {
+            recyclerView.removeItemDecorationAt(i);
         }
 
         if (searchEditText != null) {

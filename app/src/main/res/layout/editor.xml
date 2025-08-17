@@ -178,17 +178,18 @@
                 android:id="@+id/search_edit_text"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:background="@drawable/search_edittext_background"
+                android:background="@drawable/search_field_bg"
                 android:hint="Search files..."
                 android:inputType="text"
                 android:maxLines="1"
                 android:singleLine="true"
-                android:textSize="14sp"
-                android:padding="12dp"
+                android:textSize="12sp"
+                android:padding="10dp"
                 android:drawableStart="@drawable/icon_search_round"
                 android:drawablePadding="8dp"
-                android:textColor="@color/on_surface"
-                android:textColorHint="@color/on_surface_variant"/>
+                android:textColor="@color/file_tree_text_color"
+                android:textColorHint="@color/file_tree_text_color"
+                android:drawableTint="@color/file_tree_icon_color"/>
 
         </LinearLayout>
 

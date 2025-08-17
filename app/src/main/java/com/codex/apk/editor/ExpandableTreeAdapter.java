@@ -61,8 +61,6 @@ public class ExpandableTreeAdapter extends RecyclerView.Adapter<ExpandableTreeAd
     public void onBindViewHolder(@NonNull NodeViewHolder holder, int position) {
         FileTreeManager.TreeNode node = visibleNodes.get(position);
         File f = node.file;
-        // Tag the itemView so ItemDecoration can read structure info
-        holder.itemView.setTag(R.id.tag_tree_node, node);
 
         float density = holder.itemView.getResources().getDisplayMetrics().density;
         int base = (int) (12 * density);

@@ -76,6 +76,7 @@ public class PreviewActivity extends AppCompatActivity {
     private LocalServerManager localServerManager;
     private boolean isLocalServerRunning = false;
     private View loadingOverlay;
+    private boolean autoLoadOnServerStart = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -144,7 +145,7 @@ public class PreviewActivity extends AppCompatActivity {
         if (getSupportActionBar() != null) {
             getSupportActionBar().setDisplayHomeAsUpEnabled(true);
             getSupportActionBar().setDisplayShowHomeEnabled(true);
-            getSupportActionBar().setTitle(projectName + " - Preview");
+            getSupportActionBar().setTitle("Loading...");
         }
     }
 
@@ -193,7 +194,7 @@ public class PreviewActivity extends AppCompatActivity {
         // Setup WebViewClient with local file serving
         webViewPreview.setWebViewClient(new OptimizedWebViewClient());
 
-        // Setup WebChromeClient for console output and progress
+        // Setup WebChromeClient for console output, progress, and title updates
         webViewPreview.setWebChromeClient(new OptimizedWebChromeClient());
 
         // Enable hardware acceleration for better performance
@@ -233,8 +234,9 @@ public class PreviewActivity extends AppCompatActivity {
     private void initializeEnvironmentAndLoad() {
         String projectType = detectProjectType();
         addConsoleMessage("Detected project type: " + projectType);
-        // Always load content directly from file://
-        loadContent();
+        // Start local server by default and load from it when available
+        autoLoadOnServerStart = true;
+        startLocalServerWithUi(projectType);
     }
 
     private File findBestIndexForProjectType(String projectType) {
@@ -269,6 +271,10 @@ public class PreviewActivity extends AppCompatActivity {
                     isLocalServerRunning = true;
                     addConsoleMessage("Local server started at http://127.0.0.1:" + startedPort + "/");
                     invalidateOptionsMenu();
+                    if (autoLoadOnServerStart && webViewPreview != null) {
+                        String url = "http://127.0.0.1:" + startedPort + "/";
+                        webViewPreview.loadUrl(url);
+                    }
                 });
             }
 
@@ -461,7 +467,8 @@ public class PreviewActivity extends AppCompatActivity {
         int id = item.getItemId();
 
         if (id == android.R.id.home) {
-            onBackPressed();
+            // Toolbar back should exit the activity
+            finish();
             return true;
         } else if (id == R.id.action_refresh) {
             refreshPreview();
@@ -514,12 +521,39 @@ public class PreviewActivity extends AppCompatActivity {
                 String serverUrl = localServerManager.getServerUrl();
                 if (serverUrl != null) {
                     Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(serverUrl));
+                    intent.addCategory(Intent.CATEGORY_BROWSABLE);
                     if (intent.resolveActivity(getPackageManager()) != null) {
                         startActivity(intent);
                         Toast.makeText(this, "Opening server in browser...", Toast.LENGTH_SHORT).show();
                         return;
                     }
                 }
+            }
+
+            // If server isn't running, start it and open once ready
+            if (localServerManager != null && projectDir != null && !localServerManager.isServerRunning()) {
+                addConsoleMessage("Starting local server for external browser...");
+                localServerManager.startServer(projectDir.getAbsolutePath(), detectProjectType(), 8080,
+                    new LocalServerManager.ServerCallback() {
+                        @Override public void onServerStarted(int startedPort) {
+                            runOnUiThread(() -> {
+                                String serverUrl = "http://127.0.0.1:" + startedPort + "/";
+                                Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(serverUrl));
+                                intent.addCategory(Intent.CATEGORY_BROWSABLE);
+                                if (intent.resolveActivity(getPackageManager()) != null) {
+                                    startActivity(intent);
+                                    Toast.makeText(PreviewActivity.this, "Opening server in browser...", Toast.LENGTH_SHORT).show();
+                                } else {
+                                    Toast.makeText(PreviewActivity.this, "No browser app found", Toast.LENGTH_SHORT).show();
+                                }
+                            });
+                        }
+                        @Override public void onServerStopped() { }
+                        @Override public void onError(String error) {
+                            runOnUiThread(() -> Toast.makeText(PreviewActivity.this, "Failed to start server: " + error, Toast.LENGTH_SHORT).show());
+                        }
+                    });
+                return;
             }
 
             // Fallback to file URL
@@ -541,6 +575,7 @@ public class PreviewActivity extends AppCompatActivity {
                 Intent intent = new Intent(Intent.ACTION_VIEW);
                 intent.setDataAndType(fileUri, "text/html");
                 intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                intent.addCategory(Intent.CATEGORY_BROWSABLE);
                 if (intent.resolveActivity(getPackageManager()) != null) {
                     startActivity(intent);
                     Toast.makeText(this, "Opening in browser...", Toast.LENGTH_SHORT).show();
@@ -733,6 +768,14 @@ public class PreviewActivity extends AppCompatActivity {
         public void onProgressChanged(WebView view, int newProgress) {
             super.onProgressChanged(view, newProgress);
             progressBar.setProgress(newProgress);
+        }
+
+        @Override
+        public void onReceivedTitle(WebView view, String title) {
+            super.onReceivedTitle(view, title);
+            if (getSupportActionBar() != null) {
+                getSupportActionBar().setTitle(title != null && !title.isEmpty() ? title : projectName);
+            }
         }
 
         // Enable file upload capability

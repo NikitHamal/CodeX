@@ -92,14 +92,7 @@ public class FileActionAdapter extends RecyclerView.Adapter<FileActionAdapter.Vi
             textFileName.setText(path);
 
             Context context = itemView.getContext();
-            // Cap card width to 70% of device width
-            int screenWidth = itemView.getResources().getDisplayMetrics().widthPixels;
-            int targetWidth = (int) (0.85f * screenWidth);
-            ViewGroup.LayoutParams lp = cardView.getLayoutParams();
-            if (lp != null && lp.width != targetWidth) {
-                lp.width = targetWidth;
-                cardView.setLayoutParams(lp);
-            }
+            // Use full width as provided by RecyclerView layout
             int changeColor;
             int changeTextColor;
             String changeLabel;

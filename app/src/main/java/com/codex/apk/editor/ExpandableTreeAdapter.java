@@ -53,7 +53,7 @@ public class ExpandableTreeAdapter extends RecyclerView.Adapter<ExpandableTreeAd
     @NonNull
     @Override
     public NodeViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        View v = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_file_tree_enhanced, parent, false);
+        View v = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_file_tree, parent, false);
         return new NodeViewHolder(v);
     }
 
@@ -88,7 +88,7 @@ public class ExpandableTreeAdapter extends RecyclerView.Adapter<ExpandableTreeAd
         // Apply consistent tints from color tokens
         int iconColor = ContextCompat.getColor(holder.itemView.getContext(), R.color.file_tree_icon_color);
         int textColor = ContextCompat.getColor(holder.itemView.getContext(), R.color.file_tree_text_color);
-        int selectedBg = ContextCompat.getColor(holder.itemView.getContext(), R.color.file_tree_selected_background);
+        int normalBg = ContextCompat.getColor(holder.itemView.getContext(), R.color.file_tree_background);
         int selectedIcon = ContextCompat.getColor(holder.itemView.getContext(), R.color.file_tree_selected_icon_color);
 
         // Determine selection based on active tab
@@ -99,7 +99,11 @@ public class ExpandableTreeAdapter extends RecyclerView.Adapter<ExpandableTreeAd
         holder.imageFileIcon.setImageTintList(ColorStateList.valueOf(isSelected ? selectedIcon : iconColor));
         holder.imageMoreVert.setImageTintList(ColorStateList.valueOf(isSelected ? selectedIcon : iconColor));
         holder.imageExpandIcon.setImageTintList(ColorStateList.valueOf(isSelected ? selectedIcon : iconColor));
-        holder.itemView.setBackgroundColor(isSelected ? selectedBg : ContextCompat.getColor(holder.itemView.getContext(), android.R.color.transparent));
+        if (isSelected) {
+            holder.itemView.setBackgroundResource(R.drawable.file_tree_item_selected_bg);
+        } else {
+            holder.itemView.setBackgroundColor(normalBg);
+        }
 
         holder.itemView.setOnClickListener(v -> {
             if (f.isDirectory()) {

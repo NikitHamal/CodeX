@@ -9,6 +9,7 @@ import android.view.View;
 import android.view.ViewGroup;
 
 import androidx.annotation.NonNull;
+import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.recyclerview.widget.LinearLayoutManager;
 
@@ -246,6 +247,16 @@ public class SimpleSoraTabAdapter extends RecyclerView.Adapter<SimpleSoraTabAdap
             codeEditor.setEditorLanguage(new EmptyLanguage());
             codeEditor.setColorScheme(new EditorColorScheme());
         }
+
+        // Configure indentation (block) guide colors to ensure they are visible
+        // Uses app palette: file tree indent color for normal guides and primary_light for current block
+        EditorColorScheme scheme = codeEditor.getColorScheme();
+        int indentColor = ContextCompat.getColor(codeEditor.getContext(), R.color.file_tree_indent_color);
+        int currentIndentColor = ContextCompat.getColor(codeEditor.getContext(), R.color.primary_light);
+        scheme.setColor(EditorColorScheme.BLOCK_LINE, indentColor);
+        scheme.setColor(EditorColorScheme.SIDE_BLOCK_LINE, indentColor);
+        scheme.setColor(EditorColorScheme.BLOCK_LINE_CURRENT, currentIndentColor);
+        codeEditor.invalidate();
 
         // Configure editor appearance & ergonomics using Settings defaults and tab state
         float textSizeSp = SettingsActivity.getFontSize(codeEditor.getContext());

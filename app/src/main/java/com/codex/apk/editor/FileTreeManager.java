@@ -84,7 +84,9 @@ public class FileTreeManager {
     private void updateEmptyState(List<TreeNode> nodes) {
         View emptyStateView = activity.findViewById(R.id.empty_state_view);
         if (emptyStateView != null) {
-            boolean hasAny = !nodes.isEmpty() && !nodes.get(0).children.isEmpty();
+            // Show empty only when there are truly no root nodes to display
+            // After filtering/rebasing, any non-empty roots means we have results
+            boolean hasAny = !nodes.isEmpty();
             emptyStateView.setVisibility(hasAny ? View.GONE : View.VISIBLE);
             TextView emptyStateText = activity.findViewById(R.id.empty_state_text);
             if (emptyStateText != null) {

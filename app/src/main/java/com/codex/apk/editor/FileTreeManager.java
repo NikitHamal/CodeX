@@ -36,6 +36,10 @@ public class FileTreeManager {
         recyclerView.setLayoutManager(new LinearLayoutManager(activity));
         adapter = new ExpandableTreeAdapter(activity, new ArrayList<>());
         recyclerView.setAdapter(adapter);
+        // Add indentation decoration once to draw continuous lines across items
+        if (recyclerView.getItemDecorationCount() == 0) {
+            recyclerView.addItemDecoration(new IndentDecoration(activity));
+        }
 
         if (searchEditText != null) {
             searchEditText.addTextChangedListener(new android.text.TextWatcher() {
@@ -208,6 +212,14 @@ public class FileTreeManager {
     }
 
     public void rebuildFileTree() { loadFileTree(); }
+
+    public void refreshSelection() {
+        if (recyclerView != null) {
+            recyclerView.post(() -> {
+                if (adapter != null) adapter.notifyDataSetChanged();
+            });
+        }
+    }
 
     // TreeNode model
     static class TreeNode {

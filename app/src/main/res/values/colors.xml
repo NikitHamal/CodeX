@@ -81,6 +81,20 @@
     <color name="info_container">#ADD8E6</color>
     <color name="info">#00008B</color>
     
+    <!-- File tree colors -->
+    <color name="file_tree_background">#ffffff</color>
+    <color name="file_tree_text_color">#64748b</color> <!-- muted-foreground -->
+    <color name="file_tree_icon_color">#64748b</color> <!-- muted-foreground -->
+    <color name="file_tree_indent_color">#e2e8f0</color> <!-- border -->
+    <color name="file_tree_folder_color">#64748b</color>
+    <color name="file_tree_folder_open_color">#0f172a</color> <!-- foreground for emphasis if opened -->
+    <color name="file_tree_file_color">#64748b</color>
+    <color name="file_tree_selected_background">#f1f5f9</color> <!-- secondary -->
+    <color name="file_tree_selected_icon_color">#0f172a</color> <!-- foreground -->
+    <color name="file_tree_selected_folder_color">#0f172a</color>
+    <color name="file_tree_selected_folder_open_color">#0f172a</color>
+    <color name="file_tree_selected_file_color">#0f172a</color>
+    
     <!-- Chip colors for file tree filters -->
     <color name="chip_background_selected">#007FAC</color>
     <color name="chip_text_selected">#FFFFFF</color>

@@ -336,6 +336,9 @@ public class EditorActivity extends AppCompatActivity implements
     @Override
     public void onActiveTabChanged(File newFile) {
         uiManager.onActiveTabChanged(newFile); // Delegate to UiManager for preview update
+        if (fileTreeManager != null) {
+            fileTreeManager.refreshSelection();
+        }
     }
 
     // --- AIChatFragmentListener methods implementation (delegating to AiAssistantManager) ---

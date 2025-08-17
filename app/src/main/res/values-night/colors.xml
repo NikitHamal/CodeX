@@ -68,4 +68,17 @@
 <color name="color_status_updated">#2196F3</color>
 <color name="color_status_deleted">#F44336</color>
 <color name="color_status_renamed">#FFC107</color>
+    <!-- File tree colors (dark) from design palette -->
+    <color name="file_tree_background">#020817</color> <!-- background -->
+    <color name="file_tree_text_color">#94a3b8</color> <!-- muted-foreground -->
+    <color name="file_tree_icon_color">#94a3b8</color> <!-- muted-foreground -->
+    <color name="file_tree_indent_color">#1e293b</color> <!-- border -->
+    <color name="file_tree_folder_color">#94a3b8</color>
+    <color name="file_tree_folder_open_color">#f8fafc</color> <!-- foreground -->
+    <color name="file_tree_file_color">#94a3b8</color>
+    <color name="file_tree_selected_background">#1e293b</color> <!-- secondary -->
+    <color name="file_tree_selected_icon_color">#f8fafc</color> <!-- foreground -->
+    <color name="file_tree_selected_folder_color">#f8fafc</color>
+    <color name="file_tree_selected_folder_open_color">#f8fafc</color>
+    <color name="file_tree_selected_file_color">#f8fafc</color>
 </resources>

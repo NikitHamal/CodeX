@@ -97,13 +97,13 @@
             android:gravity="center_vertical"
             android:padding="16dp"
             android:background="@color/surface"
-            android:visibility="gone">
+            android:visibility="visible">
 
             <ImageView
                 android:layout_width="24dp"
                 android:layout_height="24dp"
                 android:src="@drawable/icon_folder_round"
-                app:tint="@color/primary"
+                app:tint="@color/file_tree_icon_color"
                 android:layout_marginEnd="12dp" />
 
             <TextView
@@ -123,6 +123,7 @@
                 android:layout_width="24dp"
                 android:layout_height="24dp"
                 android:src="@drawable/icon_add_round"
+                app:tint="@color/file_tree_icon_color"
                 android:contentDescription="New File"
                 android:layout_marginStart="8dp"
                 android:focusable="true"
@@ -133,6 +134,7 @@
                 android:layout_width="24dp"
                 android:layout_height="24dp"
                 android:src="@drawable/icon_folder_open_round"
+                app:tint="@color/file_tree_icon_color"
                 android:contentDescription="New Folder"
                 android:layout_marginStart="8dp"
                 android:focusable="true"
@@ -143,6 +145,7 @@
                 android:layout_width="24dp"
                 android:layout_height="24dp"
                 android:src="@drawable/icon_upload_round"
+                app:tint="@color/file_tree_icon_color"
                 android:contentDescription="Open from Device"
                 android:layout_marginStart="8dp"
                 android:focusable="true"
@@ -154,6 +157,7 @@
                 android:layout_width="24dp"
                 android:layout_height="24dp"
                 android:src="@drawable/icon_refresh_round"
+                app:tint="@color/file_tree_icon_color"
                 android:contentDescription="Refresh File Tree"
                 android:layout_marginStart="8dp"
                 android:focusable="true"
@@ -168,7 +172,7 @@
             android:orientation="vertical"
             android:padding="16dp"
             android:background="@color/surface"
-            android:visibility="gone">
+            android:visibility="visible">
 
             <EditText
                 android:id="@+id/search_edit_text"

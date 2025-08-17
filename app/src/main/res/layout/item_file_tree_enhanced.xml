@@ -9,7 +9,7 @@
     android:paddingVertical="8dp"
     android:gravity="center_vertical"
     android:minHeight="40dp"
-    android:background="@color/surface"
+    android:background="@color/file_tree_background"
     android:clickable="true"
     android:focusable="true"
     android:foreground="?attr/selectableItemBackground">
@@ -19,7 +19,7 @@
         android:id="@+id/indent_guide"
         android:layout_width="1dp"
         android:layout_height="match_parent"
-        android:background="@color/outline"
+        android:background="@color/file_tree_indent_color"
         android:visibility="gone" />
 
     <ImageView
@@ -29,7 +29,7 @@
         android:layout_marginStart="8dp"
         android:src="@drawable/icon_file_round"
         android:contentDescription="File or folder icon"
-        app:tint="@color/on_surface_variant" />
+        app:tint="@color/file_tree_icon_color" />
 
     <com.google.android.material.textview.MaterialTextView
         android:id="@+id/text_file_name"
@@ -38,7 +38,7 @@
         android:layout_weight="1"
         android:layout_marginStart="12dp"
         android:text="File name"
-        android:textColor="@color/on_surface"
+        android:textColor="@color/file_tree_text_color"
         android:maxLines="1"
         android:ellipsize="end"
         android:textAppearance="@style/TextAppearance.Material3.BodyMedium" />
@@ -52,7 +52,7 @@
         android:src="@drawable/icon_expand_more_round"
         android:contentDescription="Expand icon"
         android:visibility="gone"
-        app:tint="@color/on_surface_variant" />
+        app:tint="@color/file_tree_icon_color" />
 
     <!-- Context menu -->
     <ImageView
@@ -65,6 +65,6 @@
         android:visibility="visible"
         android:focusable="true"
         android:clickable="true"
-        app:tint="@color/on_surface_variant" />
+        app:tint="@color/file_tree_icon_color" />
 
 </LinearLayout>

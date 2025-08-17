@@ -65,9 +65,18 @@ public class ExpandableTreeAdapter extends RecyclerView.Adapter<ExpandableTreeAd
         int indent = base + (int) (14 * density) * Math.max(0, node.level);
         holder.itemView.setPadding(indent, (int) (4 * density), holder.itemView.getPaddingRight(), (int) (4 * density));
 
+        // Indentation guide
+        if (holder.indentGuide != null) {
+            ViewGroup.MarginLayoutParams lp = (ViewGroup.MarginLayoutParams) holder.indentGuide.getLayoutParams();
+            int guideOffset = base + (int) (14 * density) * Math.max(0, node.level - 1);
+            lp.setMarginStart(guideOffset);
+            holder.indentGuide.setLayoutParams(lp);
+            holder.indentGuide.setVisibility(node.level > 0 ? View.VISIBLE : View.GONE);
+        }
+
         holder.textFileName.setText(f.getName());
         if (f.isDirectory()) {
-            holder.imageFileIcon.setImageResource(R.drawable.icon_folder_round);
+            holder.imageFileIcon.setImageResource(node.expanded ? R.drawable.icon_folder_open_round : R.drawable.icon_folder_round);
             holder.imageExpandIcon.setVisibility(View.VISIBLE);
             holder.imageExpandIcon.setImageResource(node.expanded ? R.drawable.icon_expand_less_round : R.drawable.icon_expand_more_round);
         } else {
@@ -140,10 +149,12 @@ public class ExpandableTreeAdapter extends RecyclerView.Adapter<ExpandableTreeAd
     }
 
     static class NodeViewHolder extends RecyclerView.ViewHolder {
+        View indentGuide;
         ImageView imageFileIcon, imageExpandIcon, imageMoreVert;
         TextView textFileName;
         NodeViewHolder(@NonNull View itemView) {
             super(itemView);
+            indentGuide = itemView.findViewById(R.id.indent_guide);
             imageFileIcon = itemView.findViewById(R.id.image_file_icon);
             imageExpandIcon = itemView.findViewById(R.id.image_expand_icon);
             imageMoreVert = itemView.findViewById(R.id.image_more_vert);

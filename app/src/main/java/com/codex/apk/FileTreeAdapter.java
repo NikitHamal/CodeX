@@ -2,32 +2,26 @@ package com.codex.apk;
 
 import android.animation.ObjectAnimator;
 import android.content.Context;
-import android.graphics.Color;
 import android.util.Log;
 import android.view.LayoutInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.AccelerateDecelerateInterpolator;
 import android.widget.ImageView;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
-import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.widget.PopupMenu;
 import androidx.core.content.ContextCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.recyclerview.widget.RecyclerView;
 
-import android.view.MenuItem;
-
-import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textview.MaterialTextView;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
@@ -70,6 +64,15 @@ public class FileTreeAdapter extends RecyclerView.Adapter<FileTreeAdapter.ViewHo
                 holder.itemView.getPaddingRight(),
                 (int) (4 * density));
 
+        // Indentation guide (vertical thin line), offset one level back so it looks like sidebar
+        if (holder.indentGuide != null) {
+            ViewGroup.MarginLayoutParams lp = (ViewGroup.MarginLayoutParams) holder.indentGuide.getLayoutParams();
+            int guideOffset = base + (int) (14 * density) * Math.max(0, item.getLevel() - 1);
+            lp.setMarginStart(guideOffset);
+            holder.indentGuide.setLayoutParams(lp);
+            holder.indentGuide.setVisibility(item.getLevel() > 0 ? View.VISIBLE : View.GONE);
+        }
+
         // Set file name with enhanced typography
         holder.textFileName.setText(item.getName());
         
@@ -81,20 +84,13 @@ public class FileTreeAdapter extends RecyclerView.Adapter<FileTreeAdapter.ViewHo
             holder.imageFileIcon.setImageResource(item.isExpanded() ? R.drawable.icon_folder_open_round : R.drawable.icon_folder_round);
             holder.imageExpandIcon.setVisibility(View.VISIBLE);
             holder.imageExpandIcon.setImageResource(item.isExpanded() ? R.drawable.icon_expand_less_round : R.drawable.icon_expand_more_round);
-            
-            // Animate expand icon rotation
+
+            // Animate expand icon rotation preset
             float rotation = item.isExpanded() ? 180f : 0f;
             holder.imageExpandIcon.setRotation(rotation);
-            
-            // Enhanced directory styling
-            holder.cardContainer.setStrokeColor(ContextCompat.getColor(context, R.color.primary));
-            holder.cardContainer.setStrokeWidth(item.isExpanded() ? 2 : 0);
         } else {
             holder.imageFileIcon.setImageResource(getFileIconResource(item.getName()));
             holder.imageExpandIcon.setVisibility(View.GONE);
-            
-            // File styling
-            holder.cardContainer.setStrokeWidth(0);
         }
 
         // Enhanced click handling with animations
@@ -153,12 +149,9 @@ public class FileTreeAdapter extends RecyclerView.Adapter<FileTreeAdapter.ViewHo
 
     private void updateSelectionState(ViewHolder holder, int position) {
         if (position == selectedPosition && isSelectionMode) {
-            holder.cardContainer.setStrokeColor(ContextCompat.getColor(context, R.color.primary));
-            holder.cardContainer.setStrokeWidth(3);
-            holder.cardContainer.setCardBackgroundColor(ContextCompat.getColor(context, R.color.primary_container));
+            holder.itemView.setBackgroundColor(ContextCompat.getColor(context, R.color.primary_container));
         } else {
-            holder.cardContainer.setStrokeWidth(0);
-            holder.cardContainer.setCardBackgroundColor(ContextCompat.getColor(context, R.color.surface));
+            holder.itemView.setBackgroundColor(ContextCompat.getColor(context, R.color.surface));
         }
     }
 
@@ -294,13 +287,13 @@ public class FileTreeAdapter extends RecyclerView.Adapter<FileTreeAdapter.ViewHo
     }
 
     static class ViewHolder extends RecyclerView.ViewHolder {
-        MaterialCardView cardContainer;
+        View indentGuide;
         ImageView imageFileIcon, imageExpandIcon, imageMoreVert;
         MaterialTextView textFileName;
 
         ViewHolder(View itemView) {
             super(itemView);
-            cardContainer = itemView.findViewById(R.id.card_container);
+            indentGuide = itemView.findViewById(R.id.indent_guide);
             imageFileIcon = itemView.findViewById(R.id.image_file_icon);
             imageExpandIcon = itemView.findViewById(R.id.image_expand_icon);
             imageMoreVert = itemView.findViewById(R.id.image_more_vert);

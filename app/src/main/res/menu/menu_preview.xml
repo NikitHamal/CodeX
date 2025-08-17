@@ -16,7 +16,7 @@
 
     <item
         android:id="@+id/action_clear_console"
-        android:icon="@drawable/icon_clear_all_round"
+        android:icon="@drawable/icon_close_round"
         android:title="Clear Console"
         app:showAsAction="never" />
 
@@ -35,14 +35,16 @@
 
     <item
         android:id="@+id/action_start_local_server"
-        android:icon="@drawable/ic_server"
-        android:title="Start Local Server"
-        app:showAsAction="never" />
+        android:icon="@drawable/icon_play_arrow_round"
+        android:title="Start Server"
+        app:showAsAction="never"
+        android:visible="false" />
 
     <item
         android:id="@+id/action_stop_local_server"
         android:icon="@drawable/ic_stop"
-        android:title="Stop Local Server"
-        app:showAsAction="never" />
+        android:title="Stop Server"
+        app:showAsAction="never"
+        android:visible="false" />
 
 </menu>

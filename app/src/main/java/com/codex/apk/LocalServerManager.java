@@ -227,42 +227,14 @@ public class LocalServerManager {
         // Determine serve root and fallback index based on project type and common build outputs
         serveRootDir = determineServeRootDir(projectDir, projectType);
         fallbackIndexFile = determineFallbackIndexFile(serveRootDir, projectDir, projectType);
-
-        Log.i(TAG, "Configured server type=" + projectType + ", serveRoot=" + serveRootDir + ", fallbackIndex=" + fallbackIndexFile);
     }
 
     private File determineServeRootDir(File projectDir, String projectType) {
-        // Prefer built assets first
+        // Prefer built assets for Tailwind if present; otherwise serve project root
         switch (projectType) {
-            case "nextjs":
-                // Next.js export directory
-                if (new File(projectDir, "out").exists()) return new File(projectDir, "out");
-                if (new File(projectDir, ".next/static").exists()) return new File(projectDir, ".next");
-                if (new File(projectDir, "public").exists()) return new File(projectDir, "public");
-                return projectDir;
-            case "react":
-            case "material_ui":
-                if (new File(projectDir, "build").exists()) return new File(projectDir, "build");
-                if (new File(projectDir, "dist").exists()) return new File(projectDir, "dist");
-                if (new File(projectDir, "public").exists()) return new File(projectDir, "public");
-                return projectDir;
-            case "vue":
-                if (new File(projectDir, "dist").exists()) return new File(projectDir, "dist");
-                if (new File(projectDir, "public").exists()) return new File(projectDir, "public");
-                return projectDir;
-            case "angular":
-                File dist = new File(projectDir, "dist");
-                if (dist.exists() && dist.isDirectory()) {
-                    // If dist contains a single subdir, serve that
-                    File[] children = dist.listFiles(File::isDirectory);
-                    if (children != null && children.length == 1) return children[0];
-                    return dist;
-                }
-                return projectDir;
             case "tailwind":
                 if (new File(projectDir, "dist").exists()) return new File(projectDir, "dist");
                 return projectDir;
-            case "bootstrap":
             case "html":
             default:
                 return projectDir;
@@ -270,33 +242,11 @@ public class LocalServerManager {
     }
 
     private File determineFallbackIndexFile(File serveRoot, File projectDir, String projectType) {
-        // Find the most likely index.html to serve for SPA fallback
-        File candidate;
-        switch (projectType) {
-            case "react":
-            case "material_ui":
-                candidate = new File(serveRoot, "index.html");
-                if (candidate.exists()) return candidate;
-                candidate = new File(projectDir, "public/index.html");
-                if (candidate.exists()) return candidate;
-                break;
-            case "nextjs":
-                candidate = new File(serveRoot, "index.html");
-                if (candidate.exists()) return candidate;
-                candidate = new File(projectDir, "out/index.html");
-                if (candidate.exists()) return candidate;
-                break;
-            case "vue":
-            case "angular":
-            case "tailwind":
-            case "bootstrap":
-            case "html":
-            default:
-                candidate = new File(serveRoot, "index.html");
-                if (candidate.exists()) return candidate;
-                candidate = new File(projectDir, "index.html");
-                if (candidate.exists()) return candidate;
-        }
+        // Find the most likely index.html to serve for basic static projects
+        File candidate = new File(serveRoot, "index.html");
+        if (candidate.exists()) return candidate;
+        candidate = new File(projectDir, "index.html");
+        if (candidate.exists()) return candidate;
         return null;
     }
 

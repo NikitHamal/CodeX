@@ -233,144 +233,41 @@ public class PreviewActivity extends AppCompatActivity {
     private void initializeEnvironmentAndLoad() {
         String projectType = detectProjectType();
         addConsoleMessage("Detected project type: " + projectType);
-
-        // For HTML/CSS/JS, Tailwind CDN-only, Bootstrap: load file:// directly
-        if ("html".equals(projectType) || "bootstrap".equals(projectType)) {
-            loadContent();
-            return;
-        }
-
-        // For Tailwind configured builds, React, Next.js, Vue, Angular, Material UI: start local server
-        if ("tailwind".equals(projectType) || "react".equals(projectType) ||
-                "nextjs".equals(projectType) || "vue".equals(projectType) ||
-                "angular".equals(projectType) || "material_ui".equals(projectType) ||
-                "node".equals(projectType)) {
-
-            // Preflight guidance for build-based frameworks
-            try {
-                if ("react".equals(projectType) || "material_ui".equals(projectType)) {
-                    boolean hasBuild = new File(projectDir, "build/index.html").exists();
-                    boolean hasPublic = new File(projectDir, "public/index.html").exists();
-                    if (!hasBuild && !hasPublic) {
-                        addConsoleMessage("No build or public assets found. For best results, build on your desktop (npm run build) and copy the 'build' folder here.");
-                    }
-                } else if ("nextjs".equals(projectType)) {
-                    boolean hasOut = new File(projectDir, "out/index.html").exists();
-                    if (!hasOut) {
-                        addConsoleMessage("Next.js static export not found. On desktop, run 'next build && next export' to generate '/out', then copy it to this project.");
-                    }
-                } else if ("vue".equals(projectType)) {
-                    boolean hasDist = new File(projectDir, "dist/index.html").exists();
-                    if (!hasDist) {
-                        addConsoleMessage("Vue build output not found. On desktop, run 'npm run build' to generate '/dist', then copy it to this project.");
-                    }
-                } else if ("angular".equals(projectType)) {
-                    File distDir = new File(projectDir, "dist");
-                    boolean hasDist = distDir.exists() && distDir.isDirectory();
-                    if (!hasDist) {
-                        addConsoleMessage("Angular build output not found. On desktop, run 'ng build' to generate '/dist', then copy it to this project.");
-                    }
-                } else if ("tailwind".equals(projectType)) {
-                    boolean hasCss = new File(projectDir, "dist/output.css").exists();
-                    if (!hasCss) {
-                        addConsoleMessage("Tailwind compiled CSS not found. On desktop, run 'npm run build' to generate '/dist/output.css', or include the Tailwind CDN in your HTML.");
-                    }
-                }
-            } catch (Exception ignored) {}
-
-            if (loadingOverlay != null) {
-                loadingOverlay.setVisibility(View.VISIBLE);
-                setLoadingOverlayText("Initializing environment for " + projectType + "...");
-            }
-
-            // If there is a built static index.html we can load that immediately while server starts
-            File possibleIndex = findBestIndexForProjectType(projectType);
-            if (possibleIndex != null) {
-                webViewPreview.loadUrl("file://" + possibleIndex.getAbsolutePath());
-            }
-
-            startLocalServerWithUi(projectType);
-            return;
-        }
-
-        // Default fallback
+        // Always load content directly from file://
         loadContent();
     }
 
     private File findBestIndexForProjectType(String projectType) {
         if (projectDir == null) return null;
-        try {
-            switch (projectType) {
-                case "nextjs":
-                    File out = new File(projectDir, "out/index.html");
-                    if (out.exists()) return out;
-                    break;
-                case "react":
-                case "material_ui":
-                    File build = new File(projectDir, "build/index.html");
-                    if (build.exists()) return build;
-                    File publicDir = new File(projectDir, "public/index.html");
-                    if (publicDir.exists()) return publicDir;
-                    break;
-                case "vue":
-                    File dist = new File(projectDir, "dist/index.html");
-                    if (dist.exists()) return dist;
-                    break;
-                case "angular":
-                    File distDir = new File(projectDir, "dist");
-                    if (distDir.exists()) {
-                        File[] children = distDir.listFiles();
-                        if (children != null) {
-                            for (File c : children) {
-                                File idx = new File(c, "index.html");
-                                if (idx.exists()) return idx;
-                            }
-                        }
-                    }
-                    break;
-                case "tailwind":
-                    File rootIdx = new File(projectDir, "index.html");
-                    if (rootIdx.exists()) return rootIdx;
-                    break;
-                default:
-                    break;
-            }
-        } catch (Exception ignored) {}
-        return null;
+        File rootIdx = new File(projectDir, "index.html");
+        return rootIdx.exists() ? rootIdx : null;
     }
 
     private void setLoadingOverlayText(String text) {
-        if (loadingOverlay == null) return;
-        // Update the dedicated text view if present
-        TextView tv = loadingOverlay.findViewById(R.id.loading_text);
-        if (tv != null) {
-            tv.setText(text);
-        }
+        // Optionally update a loading overlay message if present
+        // Keeping no-op for now as UI may not include a text view
     }
 
     private void startLocalServerWithUi(String projectType) {
-        if (isLocalServerRunning) {
-            String serverUrl = localServerManager.getServerUrl();
-            if (serverUrl != null) webViewPreview.loadUrl(serverUrl);
-            if (loadingOverlay != null) loadingOverlay.setVisibility(View.GONE);
+        if (localServerManager == null || projectDir == null) return;
+        if (localServerManager.isServerRunning()) {
+            addConsoleMessage("Server already running at " + localServerManager.getServerUrl());
+            invalidateOptionsMenu();
             return;
         }
-
-        setLoadingOverlayText("Starting local server...");
+        addConsoleMessage("Starting local server...");
         startLocalServerInternal(projectType);
     }
 
     private void startLocalServerInternal(String projectType) {
-        String rootPath = projectDir != null ? projectDir.getAbsolutePath() : "";
-            localServerManager.startServer(rootPath, projectType, 8080, new LocalServerManager.ServerCallback() {
+        if (localServerManager == null || projectDir == null) return;
+        int port = 8080; // default
+        localServerManager.startServer(projectDir.getAbsolutePath(), projectType, port, new LocalServerManager.ServerCallback() {
             @Override
-            public void onServerStarted(int port) {
+            public void onServerStarted(int startedPort) {
                 runOnUiThread(() -> {
                     isLocalServerRunning = true;
-                        String serverUrl = localServerManager.getServerUrl();
-                        addConsoleMessage("Local server started at: " + serverUrl);
-                        if (serverUrl != null) webViewPreview.loadUrl(serverUrl);
-                    if (loadingOverlay != null) loadingOverlay.setVisibility(View.GONE);
+                    addConsoleMessage("Local server started at http://127.0.0.1:" + startedPort + "/");
                     invalidateOptionsMenu();
                 });
             }
@@ -379,19 +276,14 @@ public class PreviewActivity extends AppCompatActivity {
             public void onServerStopped() {
                 runOnUiThread(() -> {
                     isLocalServerRunning = false;
+                    addConsoleMessage("Local server stopped.");
                     invalidateOptionsMenu();
                 });
             }
 
             @Override
             public void onError(String error) {
-                runOnUiThread(() -> {
-                    addConsoleMessage("Server error: " + error);
-                    Toast.makeText(PreviewActivity.this, "Error starting local server: " + error, Toast.LENGTH_LONG).show();
-                    if (loadingOverlay != null) loadingOverlay.setVisibility(View.GONE);
-                    // Fallback to direct file loading
-                    loadContent();
-                });
+                runOnUiThread(() -> addConsoleMessage("Server error: " + error));
             }
         });
     }
@@ -548,19 +440,12 @@ public class PreviewActivity extends AppCompatActivity {
         if (desktopModeMenuItem != null) {
             desktopModeMenuItem.setChecked(isDesktopModeEnabled);
         }
-        
-        // Update local server menu items
-        MenuItem startServerMenuItem = menu.findItem(R.id.action_start_local_server);
-        MenuItem stopServerMenuItem = menu.findItem(R.id.action_stop_local_server);
-        
-        if (startServerMenuItem != null) {
-            startServerMenuItem.setEnabled(!isLocalServerRunning);
-        }
-        
-        if (stopServerMenuItem != null) {
-            stopServerMenuItem.setEnabled(isLocalServerRunning);
-        }
-        
+        // Toggle local server actions visibility
+        MenuItem startServer = menu.findItem(R.id.action_start_local_server);
+        MenuItem stopServer = menu.findItem(R.id.action_stop_local_server);
+        boolean running = localServerManager != null && localServerManager.isServerRunning();
+        if (startServer != null) startServer.setVisible(!running);
+        if (stopServer != null) stopServer.setVisible(running);
         return super.onPrepareOptionsMenu(menu);
     }
 
@@ -596,10 +481,26 @@ public class PreviewActivity extends AppCompatActivity {
             openInBrowser();
             return true;
         } else if (id == R.id.action_start_local_server) {
-            startLocalServer();
+            String projectType = detectProjectType();
+            startLocalServerWithUi(projectType);
             return true;
         } else if (id == R.id.action_stop_local_server) {
-            stopLocalServer();
+            if (localServerManager != null && localServerManager.isServerRunning()) {
+                addConsoleMessage("Stopping local server...");
+                localServerManager.stopServer(new LocalServerManager.ServerCallback() {
+                    @Override public void onServerStarted(int port) {}
+                    @Override public void onServerStopped() {
+                        runOnUiThread(() -> {
+                            isLocalServerRunning = false;
+                            addConsoleMessage("Local server stopped.");
+                            invalidateOptionsMenu();
+                        });
+                    }
+                    @Override public void onError(String error) {
+                        runOnUiThread(() -> addConsoleMessage("Error stopping server: " + error));
+                    }
+                });
+            }
             return true;
         }
 
@@ -608,34 +509,38 @@ public class PreviewActivity extends AppCompatActivity {
 
     private void openInBrowser() {
         try {
-            // Get the current file path
+            // Prefer local server URL if running
+            if (localServerManager != null && localServerManager.isServerRunning()) {
+                String serverUrl = localServerManager.getServerUrl();
+                if (serverUrl != null) {
+                    Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(serverUrl));
+                    if (intent.resolveActivity(getPackageManager()) != null) {
+                        startActivity(intent);
+                        Toast.makeText(this, "Opening server in browser...", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                }
+            }
+
+            // Fallback to file URL
             String filePath = null;
             if (htmlContent != null && !htmlContent.trim().isEmpty()) {
-                // If we have HTML content, save it to a temporary file first
                 File tempFile = new File(projectDir, "temp_preview.html");
                 java.io.FileWriter writer = new java.io.FileWriter(tempFile);
                 writer.write(htmlContent);
                 writer.close();
                 filePath = tempFile.getAbsolutePath();
             } else if (projectDir != null) {
-                // Try to find the main HTML file
                 File htmlFile = new File(projectDir, fileName);
-                if (!htmlFile.exists()) {
-                    htmlFile = new File(projectDir, "index.html");
-                }
-                if (htmlFile.exists()) {
-                    filePath = htmlFile.getAbsolutePath();
-                }
+                if (!htmlFile.exists()) htmlFile = new File(projectDir, "index.html");
+                if (htmlFile.exists()) filePath = htmlFile.getAbsolutePath();
             }
 
             if (filePath != null) {
-                // Create a file URI and open in browser
                 Uri fileUri = Uri.fromFile(new File(filePath));
                 Intent intent = new Intent(Intent.ACTION_VIEW);
                 intent.setDataAndType(fileUri, "text/html");
                 intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                
-                // Try to open in browser
                 if (intent.resolveActivity(getPackageManager()) != null) {
                     startActivity(intent);
                     Toast.makeText(this, "Opening in browser...", Toast.LENGTH_SHORT).show();
@@ -651,158 +556,26 @@ public class PreviewActivity extends AppCompatActivity {
         }
     }
 
-    private void startLocalServer() {
-        if (isLocalServerRunning) {
-            Toast.makeText(this, "Local server is already running", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        try {
-            // Get project path and type
-            String projectPath = projectDir != null ? projectDir.getAbsolutePath() : "";
-            String projectType = detectProjectType();
-            
-            // Start the server with callback
-            localServerManager.startServer(projectPath, projectType, 8080, new LocalServerManager.ServerCallback() {
-                @Override
-                public void onServerStarted(int port) {
-                    runOnUiThread(() -> {
-                        isLocalServerRunning = true;
-                        String serverUrl = localServerManager.getServerUrl();
-                        addConsoleMessage("Local server started at: " + serverUrl);
-                        Toast.makeText(PreviewActivity.this, "Local server started at " + serverUrl, Toast.LENGTH_LONG).show();
-                        invalidateOptionsMenu();
-                    });
-                }
-
-                @Override
-                public void onServerStopped() {
-                    runOnUiThread(() -> {
-                        isLocalServerRunning = false;
-                        invalidateOptionsMenu();
-                    });
-                }
-
-                @Override
-                public void onError(String error) {
-                    runOnUiThread(() -> {
-                        Toast.makeText(PreviewActivity.this, "Error starting local server: " + error, Toast.LENGTH_LONG).show();
-                        Log.e(TAG, "Local server error: " + error);
-                    });
-                }
-            });
-            
-        } catch (Exception e) {
-            Log.e(TAG, "Error starting local server", e);
-            Toast.makeText(this, "Error starting local server: " + e.getMessage(), Toast.LENGTH_LONG).show();
-        }
-    }
-
-    private void stopLocalServer() {
-        if (!isLocalServerRunning) {
-            Toast.makeText(this, "Local server is not running", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        try {
-            localServerManager.stopServer(new LocalServerManager.ServerCallback() {
-                @Override
-                public void onServerStarted(int port) {
-                    // Not used for stop operation
-                }
-
-                @Override
-                public void onServerStopped() {
-                    runOnUiThread(() -> {
-                        isLocalServerRunning = false;
-                        addConsoleMessage("Local server stopped");
-                        Toast.makeText(PreviewActivity.this, "Local server stopped", Toast.LENGTH_SHORT).show();
-                        invalidateOptionsMenu();
-                    });
-                }
-
-                @Override
-                public void onError(String error) {
-                    runOnUiThread(() -> {
-                        Toast.makeText(PreviewActivity.this, "Error stopping local server: " + error, Toast.LENGTH_LONG).show();
-                        Log.e(TAG, "Local server stop error: " + error);
-                    });
-                }
-            });
-            
-            } catch (Exception e) {
-            Log.e(TAG, "Error stopping local server", e);
-            Toast.makeText(this, "Error stopping local server: " + e.getMessage(), Toast.LENGTH_LONG).show();
-        }
-    }
-
     private String detectProjectType() {
         if (projectDir == null) return "html";
-        
-        // Check for package.json (Node.js/React/Next.js)
-        if (new File(projectDir, "package.json").exists()) {
-            try {
-                // Read package.json to determine exact type
-                java.io.BufferedReader reader = new java.io.BufferedReader(
-                    new java.io.FileReader(new File(projectDir, "package.json")));
-                StringBuilder content = new StringBuilder();
+        // Tailwind detection via CDN in index.html
+        try {
+            File idx = new File(projectDir, "index.html");
+            if (idx.exists()) {
+                java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.FileReader(idx));
+                StringBuilder sb = new StringBuilder();
                 String line;
-                while ((line = reader.readLine()) != null) {
-                    content.append(line);
-                }
+                while ((line = reader.readLine()) != null) sb.append(line.toLowerCase(Locale.ROOT));
                 reader.close();
-                
-                String packageContent = content.toString().toLowerCase();
-                if (packageContent.contains("@mui/material")) {
-                    return "material_ui";
-                } else if (packageContent.contains("react") && packageContent.contains("next")) {
-                    return "nextjs";
-                } else if (packageContent.contains("react")) {
-                    return "react";
-                } else if (packageContent.contains("vue")) {
-                    return "vue";
-                } else if (packageContent.contains("angular")) {
-                    return "angular";
-                } else {
-                    return "node";
-                }
-            } catch (Exception e) {
-                Log.e(TAG, "Error reading package.json", e);
-                return "node";
+                if (sb.toString().contains("cdn.tailwindcss.com")) return "tailwind";
             }
-        }
-        
-        // Check for Python files
-        if (new File(projectDir, "requirements.txt").exists() || 
-            new File(projectDir, "app.py").exists() || 
-            new File(projectDir, "main.py").exists()) {
-            return "python";
-        }
-        
-        // Check for PHP files
-        if (new File(projectDir, "composer.json").exists() || 
-            new File(projectDir, "index.php").exists()) {
-            return "php";
-        }
-        
-        // Check for Tailwind CSS
-        if (new File(projectDir, "tailwind.config.js").exists() || 
-            new File(projectDir, "tailwind.config.cjs").exists()) {
-            return "tailwind";
-        }
-        
-        // Check for Bootstrap
-        if (new File(projectDir, "bootstrap.min.css").exists() || 
-            new File(projectDir, "bootstrap.css").exists()) {
-            return "bootstrap";
-        }
-        
-        // Check for Material-UI
-        if (new File(projectDir, "material-ui").exists() || 
-            new File(projectDir, "mui").exists()) {
-            return "material_ui";
-        }
-        
+        } catch (Exception ignore) {}
+        // If htmlContent is provided, inspect it too
+        try {
+            if (htmlContent != null && htmlContent.toLowerCase(Locale.ROOT).contains("cdn.tailwindcss.com")) {
+                return "tailwind";
+            }
+        } catch (Exception ignore) {}
         // Default to HTML/CSS/JS
         return "html";
     }

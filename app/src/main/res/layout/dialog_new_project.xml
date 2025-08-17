@@ -64,73 +64,10 @@
                 style="@style/Widget.App.Chip.Choice" />
 
             <com.google.android.material.chip.Chip
-                android:id="@+id/chip_react"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="React App"
-                style="@style/Widget.App.Chip.Choice" />
-
-            <com.google.android.material.chip.Chip
-                android:id="@+id/chip_nextjs"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Next.js App"
-                style="@style/Widget.App.Chip.Choice" />
-
-            <com.google.android.material.chip.Chip
-                android:id="@+id/chip_vue"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Vue.js App"
-                style="@style/Widget.App.Chip.Choice" />
-
-            <com.google.android.material.chip.Chip
-                android:id="@+id/chip_angular"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Angular App"
-                style="@style/Widget.App.Chip.Choice" />
-
-            <com.google.android.material.chip.Chip
-                android:id="@+id/chip_node"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Node.js Backend"
-                style="@style/Widget.App.Chip.Choice" />
-
-            <com.google.android.material.chip.Chip
-                android:id="@+id/chip_python"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Python Backend"
-                style="@style/Widget.App.Chip.Choice" />
-
-            <com.google.android.material.chip.Chip
-                android:id="@+id/chip_php"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="PHP Backend"
-                style="@style/Widget.App.Chip.Choice" />
-
-            <com.google.android.material.chip.Chip
                 android:id="@+id/chip_tailwind"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Tailwind CSS"
-                style="@style/Widget.App.Chip.Choice" />
-
-            <com.google.android.material.chip.Chip
-                android:id="@+id/chip_bootstrap"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Bootstrap"
-                style="@style/Widget.App.Chip.Choice" />
-
-            <com.google.android.material.chip.Chip
-                android:id="@+id/chip_material_ui"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Material-UI"
                 style="@style/Widget.App.Chip.Choice" />
 
         </com.google.android.material.chip.ChipGroup>

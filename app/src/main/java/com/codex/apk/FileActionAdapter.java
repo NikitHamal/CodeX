@@ -106,28 +106,30 @@ public class FileActionAdapter extends RecyclerView.Adapter<FileActionAdapter.Vi
 
             switch (action.type) {
                 case "createFile":
-                    changeLabel = "new";
+                    changeLabel = "New";
                     changeColor = ContextCompat.getColor(context, R.color.success_container);
                     changeTextColor = ContextCompat.getColor(context, R.color.on_success_container);
                     break;
                 case "updateFile":
                 case "modifyLines":
-                    changeLabel = "updated";
+                case "smartUpdate":
+                case "patchFile":
+                    changeLabel = "Modified";
                     changeColor = ContextCompat.getColor(context, R.color.primary_container);
                     changeTextColor = ContextCompat.getColor(context, R.color.on_primary_container);
                     break;
                 case "deleteFile":
-                    changeLabel = "deleted";
+                    changeLabel = "Deleted";
                     changeColor = ContextCompat.getColor(context, R.color.error_container);
                     changeTextColor = ContextCompat.getColor(context, R.color.on_error_container);
                     break;
                 case "renameFile":
-                    changeLabel = "renamed";
+                    changeLabel = "Renamed";
                     changeColor = ContextCompat.getColor(context, R.color.warning_container);
                     changeTextColor = ContextCompat.getColor(context, R.color.on_warning_container);
                     break;
                 default:
-                    changeLabel = "modified";
+                    changeLabel = "Modified";
                     changeColor = ContextCompat.getColor(context, R.color.surface_container);
                     changeTextColor = ContextCompat.getColor(context, R.color.on_surface);
                     break;
@@ -157,12 +159,10 @@ public class FileActionAdapter extends RecyclerView.Adapter<FileActionAdapter.Vi
                 added = countLines(action.newContent);
             } else if ("deleteFile".equals(action.type) && action.oldContent != null) {
                 removed = countLines(action.oldContent);
-            } else if ("updateFile".equals(action.type) || "smartUpdate".equals(action.type) || "patchFile".equals(action.type)) {
-                if (action.oldContent != null || action.newContent != null) {
-                    int[] counts = DiffUtils.countAddRemoveFromContents(action.oldContent, action.newContent);
-                    added = counts[0];
-                    removed = counts[1];
-                }
+            } else if (action.oldContent != null || action.newContent != null) { // fallback for any modified-like action
+                int[] counts = DiffUtils.countAddRemoveFromContents(action.oldContent, action.newContent);
+                added = counts[0];
+                removed = counts[1];
             }
 
             // Configure + badge

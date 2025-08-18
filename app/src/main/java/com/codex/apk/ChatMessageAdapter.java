@@ -370,8 +370,6 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
                 textMessage.setText("");
             }
 
-            // Preview button removed per requirements; no-op
-
             if (layoutThinkingSection.getVisibility() == View.VISIBLE) {
                 String processedThinking = markdownFormatter.preprocessMarkdown(message.getThinkingContent());
                 markdownFormatter.setThinkingMarkdown(textThinkingContent, processedThinking);

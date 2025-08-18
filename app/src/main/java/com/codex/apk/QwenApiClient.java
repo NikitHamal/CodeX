@@ -122,32 +122,6 @@ public class QwenApiClient implements ApiClient {
         return null;
     }
 
-    private String normalizeJsonIfPresent(String text) {
-        if (text == null) return null;
-        String t = text.trim();
-        // Strip leading code fence markers or 'json\n'
-        if (t.startsWith("```") ) {
-            int firstBrace = t.indexOf('{');
-            int lastBrace = t.lastIndexOf('}');
-            if (firstBrace >= 0 && lastBrace > firstBrace) {
-                t = t.substring(firstBrace, lastBrace + 1);
-            }
-        } else if (t.toLowerCase().startsWith("json\n")) {
-            t = t.substring(5);
-        }
-        // Extract object substring if present
-        int start = t.indexOf('{');
-        int end = t.lastIndexOf('}');
-        if (start >= 0 && end > start) {
-            String cand = t.substring(start, end + 1);
-            try {
-                com.google.gson.JsonParser.parseString(cand).getAsJsonObject();
-                return cand;
-            } catch (Exception ignore) {}
-        }
-        return null;
-    }
-
     private void performCompletion(QwenConversationState state, List<ChatMessage> history, AIModel model, boolean thinkingModeEnabled, boolean webSearchEnabled, List<ToolSpec> enabledTools, String userMessage) throws IOException {
         JsonObject requestBody = new JsonObject();
         requestBody.addProperty("stream", true);
@@ -263,14 +237,8 @@ public class QwenApiClient implements ApiClient {
                             if ("finished".equals(status) && "answer".equals(phase)) {
                                 String finalContent = answerContent.toString();
                                 String jsonToParse = extractJsonFromCodeBlock(finalContent);
-                                if (jsonToParse == null) {
-                                    // Fallback: try to normalize by extracting the first JSON object substring
-                                    String normalized = normalizeJsonIfPresent(finalContent);
-                                    if (normalized != null && QwenResponseParser.looksLikeJson(normalized)) {
-                                        jsonToParse = normalized;
-                                    } else if (QwenResponseParser.looksLikeJson(finalContent)) {
-                                        jsonToParse = finalContent;
-                                    }
+                                if (jsonToParse == null && QwenResponseParser.looksLikeJson(finalContent)) {
+                                    jsonToParse = finalContent;
                                 }
 
                                 if (jsonToParse != null) {
@@ -303,24 +271,24 @@ public class QwenApiClient implements ApiClient {
                                         if (parsed != null && parsed.isValid) {
                                             if ("plan".equals(parsed.action)) {
                                                 if (actionListener != null) {
-                                                    notifyAiActionsProcessed(finalContent, parsed.explanation, new ArrayList<>(), new ArrayList<>(), model.getDisplayName(), thinkingContent.toString(), webSources);
+                                                    notifyAiActionsProcessed(jsonToParse, parsed.explanation, new ArrayList<>(), new ArrayList<>(), model.getDisplayName(), thinkingContent.toString(), webSources);
                                                 }
                                             } else if (parsed.action != null && parsed.action.contains("file")) {
                                                 List<ChatMessage.FileActionDetail> details = QwenResponseParser.toFileActionDetails(parsed);
                                                 enrichFileActionDetails(details);
-                                                if (actionListener != null) notifyAiActionsProcessed(finalContent, parsed.explanation, new ArrayList<>(), details, model.getDisplayName(), thinkingContent.toString(), webSources);
+                                                if (actionListener != null) notifyAiActionsProcessed(jsonToParse, parsed.explanation, new ArrayList<>(), details, model.getDisplayName(), thinkingContent.toString(), webSources);
                                             } else {
-                                                if (actionListener != null) notifyAiActionsProcessed(finalContent, parsed.explanation, new ArrayList<>(), new ArrayList<>(), model.getDisplayName(), thinkingContent.toString(), webSources);
+                                                if (actionListener != null) notifyAiActionsProcessed(jsonToParse, parsed.explanation, new ArrayList<>(), new ArrayList<>(), model.getDisplayName(), thinkingContent.toString(), webSources);
                                             }
                                         } else {
-                                            if (actionListener != null) notifyAiActionsProcessed(finalContent, finalContent, new ArrayList<>(), new ArrayList<>(), model.getDisplayName(), thinkingContent.toString(), webSources);
+                                            if (actionListener != null) notifyAiActionsProcessed(null, finalContent, new ArrayList<>(), new ArrayList<>(), model.getDisplayName(), thinkingContent.toString(), webSources);
                                         }
                                     } catch (Exception e) {
                                         Log.e(TAG, "Failed to parse extracted JSON, treating as text.", e);
-                                        if (actionListener != null) notifyAiActionsProcessed(finalContent, finalContent, new ArrayList<>(), new ArrayList<>(), model.getDisplayName(), thinkingContent.toString(), webSources);
+                                        if (actionListener != null) notifyAiActionsProcessed(null, finalContent, new ArrayList<>(), new ArrayList<>(), model.getDisplayName(), thinkingContent.toString(), webSources);
                                     }
                                 } else {
-                                    if (actionListener != null) notifyAiActionsProcessed(finalContent, finalContent, new ArrayList<>(), new ArrayList<>(), model.getDisplayName(), thinkingContent.toString(), webSources);
+                                    if (actionListener != null) notifyAiActionsProcessed(null, finalContent, new ArrayList<>(), new ArrayList<>(), model.getDisplayName(), thinkingContent.toString(), webSources);
                                 }
 
                                 // Notify listener to save the updated state (final)

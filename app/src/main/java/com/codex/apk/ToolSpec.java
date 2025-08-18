@@ -171,38 +171,51 @@ public class ToolSpec {
     }
 
     /**
-     * Optional, non-breaking extended tools for enhanced workflows. These are not
-     * included in defaultFileTools() and can be enabled explicitly by the host app.
+     * Optional: returns the default file tools plus network/content and grep utilities.
+     * This is opt-in so existing behavior remains unchanged unless callers choose it.
      */
-    public static java.util.List<ToolSpec> extendedTools() {
-        java.util.List<ToolSpec> tools = new java.util.ArrayList<>();
+    public static java.util.List<ToolSpec> defaultFileToolsPlusSearchNet() {
+        java.util.List<ToolSpec> tools = defaultFileTools();
+        tools.add(specReadUrlContent());
+        tools.add(specGrepSearch());
+        return tools;
+    }
 
-        // readUrlContent
-        tools.add(new ToolSpec(
+    /**
+     * Helper spec: readUrlContent
+     * Fetch static HTTP(S) content for reference (HTML/JSON/text). Avoids executing scripts.
+     */
+    public static ToolSpec specReadUrlContent() {
+        return new ToolSpec(
                 "readUrlContent",
-                "Fetch static content from an HTTP(S) URL for reference (no execution).",
+                "Fetch static content from an HTTP(S) URL for reference (HTML/JSON/text).",
                 buildSchema(
                         new String[]{"url"},
                         new String[]{"string"},
-                        new String[]{"HTTP or HTTPS URL to read"}
-                )));
+                        new String[]{"Absolute HTTP(S) URL to read"}
+                )
+        );
+    }
 
-        // grepSearch
-        tools.add(new ToolSpec(
+    /**
+     * Helper spec: grepSearch
+     * A powerful search across project files with optional regex and case-insensitive matching.
+     */
+    public static ToolSpec specGrepSearch() {
+        return new ToolSpec(
                 "grepSearch",
-                "Search within files in a path. Supports regex and case-insensitive flags.",
+                "Search files with a powerful grep. Supports regex and case-insensitive modes.",
                 buildSchema(
                         new String[]{"query", "path", "isRegex", "caseInsensitive"},
                         new String[]{"string", "string", "boolean", "boolean"},
                         new String[]{
                                 "Search term or regex pattern",
-                                "Directory or file path to search ('.' for project root)",
+                                "Relative path (directory or file) to search within",
                                 "Treat query as regex",
-                                "Case-insensitive search"
+                                "Perform a case-insensitive search"
                         }
-                )));
-
-        return tools;
+                )
+        );
     }
 
     /**

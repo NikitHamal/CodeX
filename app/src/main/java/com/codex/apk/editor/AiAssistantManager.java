@@ -504,42 +504,85 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                 currentStreamingMessagePosition = null;
             }
 
-            // Derive actions and/or plan from raw JSON if needed
-            List<ChatMessage.FileActionDetail> effectiveProposedFileChanges = new ArrayList<>();
-            if (proposedFileChanges != null && !proposedFileChanges.isEmpty()) {
-                effectiveProposedFileChanges.addAll(proposedFileChanges);
-            }
+            // Use a mutable local copy for file actions to satisfy lambda finality rules
+            List<ChatMessage.FileActionDetail> effectiveProposedFileChanges = proposedFileChanges;
 
             boolean isPlan = false;
             List<ChatMessage.PlanStep> planSteps = new ArrayList<>();
             try {
-                String trimmed = rawAiResponseJson != null ? rawAiResponseJson.trim() : null;
-                if (trimmed != null && com.codex.apk.QwenResponseParser.looksLikeJson(trimmed)) {
-                    com.codex.apk.QwenResponseParser.ParsedResponse pr = com.codex.apk.QwenResponseParser.parseResponse(trimmed);
-                    if (pr != null) {
-                        if (effectiveProposedFileChanges.isEmpty() && pr.operations != null && !pr.operations.isEmpty()) {
-                            effectiveProposedFileChanges = com.codex.apk.QwenResponseParser.toFileActionDetails(pr);
-                        }
-                        if (pr.planSteps != null && !pr.planSteps.isEmpty()) {
-                            planSteps = com.codex.apk.QwenResponseParser.toPlanSteps(pr);
-                            isPlan = true;
+                if (rawAiResponseJson != null) {
+                    QwenResponseParser.ParsedResponse parsed = QwenResponseParser.parseResponse(rawAiResponseJson);
+                    if (parsed != null && "plan".equals(parsed.action)) {
+                        isPlan = true;
+                        planSteps = QwenResponseParser.toPlanSteps(parsed);
+                    } else if (parsed != null && ("file_operation".equals(parsed.action) || QwenResponseParser.looksLikeJson(parsed.explanation))) {
+                        // If model returned file ops JSON but fileActions list is empty, convert and set
+                        List<ChatMessage.FileActionDetail> ops = QwenResponseParser.toFileActionDetails(parsed);
+                        if (effectiveProposedFileChanges == null || effectiveProposedFileChanges.isEmpty()) {
+                            effectiveProposedFileChanges = ops;
                         }
                     }
                 }
             } catch (Exception e) {
-                Log.w(TAG, "Failed to parse raw AI response for plan/file ops: " + e.getMessage());
+                Log.w(TAG, "Plan/file parse failed", e);
             }
 
+            // If this is a file_operation response during an executing plan, update the existing plan message
+            if (!isPlan && isExecutingPlan && lastPlanMessagePosition != null) {
+                if (effectiveProposedFileChanges != null && !effectiveProposedFileChanges.isEmpty()) {
+                    planStepRetryCount = 0; // Reset retry count on successful action
+                    AIChatFragment frag = activity.getAiChatFragment();
+                    ChatMessage planMsg = frag.getMessageAt(lastPlanMessagePosition);
+                    if (planMsg != null) {
+                        // Merge proposed file changes for this step
+                        List<ChatMessage.FileActionDetail> merged = planMsg.getProposedFileChanges() != null ? planMsg.getProposedFileChanges() : new ArrayList<>();
+                        merged.addAll(effectiveProposedFileChanges);
+                        planMsg.setProposedFileChanges(merged);
+                        // Update the single message and auto-apply
+                        frag.updateMessage(lastPlanMessagePosition, planMsg);
+                        onAiAcceptActions(lastPlanMessagePosition, planMsg);
+                        return;
+                    }
+                } else {
+                    // AI returned no file ops, retry the step
+                    planStepRetryCount++;
+                    if (planStepRetryCount > 2) {
+                        Log.e(TAG, "AI failed to produce file ops for step after 3 retries. Marking as failed.");
+                        setCurrentRunningPlanStepStatus("failed");
+                        planStepRetryCount = 0; // Reset for next step
+                        sendNextPlanStepFollowUp(); // Move to next step
+                    } else {
+                        Log.w(TAG, "AI did not return file operations. Retrying step (attempt " + planStepRetryCount + ")");
+                        sendNextPlanStepFollowUp(); // Re-prompt for the same step
+                    }
+                    return;
+                }
+            }
+
+            // Build final AI message for normal flow (not plan-merge)
+            String finalExplanation = explanation != null ? explanation.trim() : "";
+            if (rawAiResponseJson != null && !rawAiResponseJson.isEmpty()) {
+                try {
+                    com.google.gson.JsonObject obj = com.google.gson.JsonParser.parseString(rawAiResponseJson).getAsJsonObject();
+                    if (obj.has("action") && ("plan".equalsIgnoreCase(obj.get("action").getAsString()) || "file_operation".equalsIgnoreCase(obj.get("action").getAsString()))) {
+                        // Suppress echoing structured JSON in the bubble; rely on dedicated UI sections
+                        if (!finalExplanation.startsWith("Plan:")) {
+                            // keep concise title if available, else empty
+                            finalExplanation = finalExplanation;
+                        }
+                    }
+                } catch (Exception ignore) {}
+            }
             ChatMessage aiMessage = new ChatMessage(
-                ChatMessage.SENDER_AI,
-                explanation != null ? explanation : "",
-                suggestions,
-                null,
-                aiModelDisplayName,
-                System.currentTimeMillis(),
-                rawAiResponseJson, // always store raw response for long-press
-                effectiveProposedFileChanges,
-                ChatMessage.STATUS_PENDING_APPROVAL
+                    ChatMessage.SENDER_AI,
+                    finalExplanation,
+                    null,
+                    suggestions != null ? new ArrayList<>(suggestions) : new ArrayList<>(),
+                    aiModelDisplayName,
+                    System.currentTimeMillis(),
+                    rawAiResponseJson, // always store raw response for long-press
+                    effectiveProposedFileChanges,
+                    ChatMessage.STATUS_PENDING_APPROVAL
             );
             if (thinkingContent != null && !thinkingContent.isEmpty()) {
                 aiMessage.setThinkingContent(thinkingContent);
@@ -577,22 +620,6 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                 } else if (aiAssistant != null && aiAssistant.isAgentModeEnabled()
                            && effectiveProposedFileChanges != null && !effectiveProposedFileChanges.isEmpty()) {
                     onAiAcceptActions(insertedPos, aiMessage);
-                } else {
-                    // If we are executing a plan but received no actionable plan/file ops,
-                    // finalize the current running step to avoid lingering 'running' status.
-                    boolean agentEnabledNow = aiAssistant != null && aiAssistant.isAgentModeEnabled();
-                    if (agentEnabledNow && isExecutingPlan) {
-                        boolean hasActions = effectiveProposedFileChanges != null && !effectiveProposedFileChanges.isEmpty();
-                        boolean hasPlan = isPlan && planSteps != null && !planSteps.isEmpty();
-                        if (!hasActions && !hasPlan) {
-                            setCurrentRunningPlanStepStatus("completed");
-                            if (lastPlanMessagePosition != null) {
-                                ChatMessage planMsg = frag.getMessageAt(lastPlanMessagePosition);
-                                if (planMsg != null) frag.updateMessage(lastPlanMessagePosition, planMsg);
-                            }
-                            sendNextPlanStepFollowUp();
-                        }
-                    }
                 }
             } else {
                 Log.w(TAG, "AiChatFragment is null! Cannot add message to UI.");

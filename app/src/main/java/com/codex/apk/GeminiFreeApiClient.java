@@ -559,13 +559,19 @@ public class GeminiFreeApiClient implements ApiClient {
             for (int i = 0; i < responseJson.size(); i++) {
                 try {
                     com.google.gson.JsonArray part = JsonParser.parseString(responseJson.get(i).getAsJsonArray().get(2).getAsString()).getAsJsonArray();
-                    // body structure has metadata at [1] -> [cid, rid, rcid] possibly
+                    // Preferred: metadata at index 1: [cid, rid, rcid]
                     if (part.size() > 1 && part.get(1).isJsonArray()) {
-                        String meta = part.get(1).toString();
-                        if (meta != null && meta.length() > 2) { // simple validity check
-                            SettingsActivity.setFreeConversationMetadata(context, modelId, meta);
+                        com.google.gson.JsonArray metaArr = part.get(1).getAsJsonArray();
+                        if (looksLikeConversationMeta(metaArr)) {
+                            SettingsActivity.setFreeConversationMetadata(context, modelId, metaArr.toString());
                             return;
                         }
+                    }
+                    // Fallback: scan whole part for any array that looks like [cid, rid, rcid]
+                    com.google.gson.JsonArray candidate = deepFindConversationMeta(part);
+                    if (candidate != null) {
+                        SettingsActivity.setFreeConversationMetadata(context, modelId, candidate.toString());
+                        return;
                     }
                 } catch (Exception ignore) {}
             }
@@ -582,10 +588,53 @@ public class GeminiFreeApiClient implements ApiClient {
                     com.google.gson.JsonArray part = JsonParser.parseString(responseJson.get(i).getAsJsonArray().get(2).getAsString()).getAsJsonArray();
                     if (part.size() > 1 && part.get(1).isJsonArray()) {
                         com.google.gson.JsonArray metaArr = part.get(1).getAsJsonArray();
-                        // Return JSON string of [cid, rid, rcid] (can be shorter)
-                        return metaArr.toString();
+                        if (looksLikeConversationMeta(metaArr)) return metaArr.toString();
                     }
+                    com.google.gson.JsonArray candidate = deepFindConversationMeta(part);
+                    if (candidate != null) return candidate.toString();
                 } catch (Exception ignore) {}
+            }
+        } catch (Exception ignore) {}
+        return null;
+    }
+
+    // Heuristic: [cid, rid, rcid] are short strings; cid often starts with 'C' and rid with 'r' or similar.
+    private boolean looksLikeConversationMeta(com.google.gson.JsonArray arr) {
+        try {
+            if (arr == null) return false;
+            int n = arr.size();
+            if (n < 2) return false;
+            // Accept 2 or 3 elements
+            for (int i = 0; i < n; i++) {
+                if (!arr.get(i).isJsonPrimitive() || !arr.get(i).getAsJsonPrimitive().isString()) return false;
+                String s = arr.get(i).getAsString();
+                if (s == null || s.length() < 6) return false;
+            }
+            String cid = arr.get(0).getAsString();
+            // Weak prefix checks
+            return cid.startsWith("C") || cid.startsWith("c");
+        } catch (Exception ignore) { return false; }
+    }
+
+    // Search any nested arrays for a sequence that looks like the conversation meta
+    private com.google.gson.JsonArray deepFindConversationMeta(com.google.gson.JsonArray root) {
+        try {
+            java.util.Deque<com.google.gson.JsonElement> dq = new java.util.ArrayDeque<>();
+            dq.add(root);
+            while (!dq.isEmpty()) {
+                com.google.gson.JsonElement el = dq.removeFirst();
+                if (el.isJsonArray()) {
+                    com.google.gson.JsonArray a = el.getAsJsonArray();
+                    if (looksLikeConversationMeta(a)) return a;
+                    for (int i = 0; i < a.size(); i++) {
+                        if (a.get(i).isJsonArray() || a.get(i).isJsonObject()) dq.addLast(a.get(i));
+                    }
+                } else if (el.isJsonObject()) {
+                    com.google.gson.JsonObject o = el.getAsJsonObject();
+                    for (java.util.Map.Entry<String, com.google.gson.JsonElement> e : o.entrySet()) {
+                        if (e.getValue().isJsonArray() || e.getValue().isJsonObject()) dq.addLast(e.getValue());
+                    }
+                }
             }
         } catch (Exception ignore) {}
         return null;

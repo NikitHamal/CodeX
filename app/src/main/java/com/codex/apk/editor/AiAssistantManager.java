@@ -502,10 +502,44 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
             if (agentEnabledAtUi && isExecutingPlan) {
                 uiFrag.hideThinkingMessage();
                 currentStreamingMessagePosition = null;
-                    System.currentTimeMillis(),
-                    rawAiResponseJson, // always store raw response for long-press
-                    effectiveProposedFileChanges,
-                    ChatMessage.STATUS_PENDING_APPROVAL
+            }
+
+            // Derive actions and/or plan from raw JSON if needed
+            List<ChatMessage.FileActionDetail> effectiveProposedFileChanges = new ArrayList<>();
+            if (proposedFileChanges != null && !proposedFileChanges.isEmpty()) {
+                effectiveProposedFileChanges.addAll(proposedFileChanges);
+            }
+
+            boolean isPlan = false;
+            List<ChatMessage.PlanStep> planSteps = new ArrayList<>();
+            try {
+                String trimmed = rawAiResponseJson != null ? rawAiResponseJson.trim() : null;
+                if (trimmed != null && com.codex.apk.QwenResponseParser.looksLikeJson(trimmed)) {
+                    com.codex.apk.QwenResponseParser.ParsedResponse pr = com.codex.apk.QwenResponseParser.parseResponse(trimmed);
+                    if (pr != null) {
+                        if (effectiveProposedFileChanges.isEmpty() && pr.operations != null && !pr.operations.isEmpty()) {
+                            effectiveProposedFileChanges = com.codex.apk.QwenResponseParser.toFileActionDetails(pr);
+                        }
+                        if (pr.planSteps != null && !pr.planSteps.isEmpty()) {
+                            planSteps = com.codex.apk.QwenResponseParser.toPlanSteps(pr);
+                            isPlan = true;
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                Log.w(TAG, "Failed to parse raw AI response for plan/file ops: " + e.getMessage());
+            }
+
+            ChatMessage aiMessage = new ChatMessage(
+                ChatMessage.SENDER_AI,
+                explanation != null ? explanation : "",
+                suggestions,
+                null,
+                aiModelDisplayName,
+                System.currentTimeMillis(),
+                rawAiResponseJson, // always store raw response for long-press
+                effectiveProposedFileChanges,
+                ChatMessage.STATUS_PENDING_APPROVAL
             );
             if (thinkingContent != null && !thinkingContent.isEmpty()) {
                 aiMessage.setThinkingContent(thinkingContent);

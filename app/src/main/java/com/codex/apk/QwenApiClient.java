@@ -303,24 +303,24 @@ public class QwenApiClient implements ApiClient {
                                         if (parsed != null && parsed.isValid) {
                                             if ("plan".equals(parsed.action)) {
                                                 if (actionListener != null) {
-                                                    notifyAiActionsProcessed(jsonToParse, parsed.explanation, new ArrayList<>(), new ArrayList<>(), model.getDisplayName(), thinkingContent.toString(), webSources);
+                                                    notifyAiActionsProcessed(finalContent, parsed.explanation, new ArrayList<>(), new ArrayList<>(), model.getDisplayName(), thinkingContent.toString(), webSources);
                                                 }
                                             } else if (parsed.action != null && parsed.action.contains("file")) {
                                                 List<ChatMessage.FileActionDetail> details = QwenResponseParser.toFileActionDetails(parsed);
                                                 enrichFileActionDetails(details);
-                                                if (actionListener != null) notifyAiActionsProcessed(jsonToParse, parsed.explanation, new ArrayList<>(), details, model.getDisplayName(), thinkingContent.toString(), webSources);
+                                                if (actionListener != null) notifyAiActionsProcessed(finalContent, parsed.explanation, new ArrayList<>(), details, model.getDisplayName(), thinkingContent.toString(), webSources);
                                             } else {
-                                                if (actionListener != null) notifyAiActionsProcessed(jsonToParse, parsed.explanation, new ArrayList<>(), new ArrayList<>(), model.getDisplayName(), thinkingContent.toString(), webSources);
+                                                if (actionListener != null) notifyAiActionsProcessed(finalContent, parsed.explanation, new ArrayList<>(), new ArrayList<>(), model.getDisplayName(), thinkingContent.toString(), webSources);
                                             }
                                         } else {
-                                            if (actionListener != null) notifyAiActionsProcessed(null, finalContent, new ArrayList<>(), new ArrayList<>(), model.getDisplayName(), thinkingContent.toString(), webSources);
+                                            if (actionListener != null) notifyAiActionsProcessed(finalContent, finalContent, new ArrayList<>(), new ArrayList<>(), model.getDisplayName(), thinkingContent.toString(), webSources);
                                         }
                                     } catch (Exception e) {
                                         Log.e(TAG, "Failed to parse extracted JSON, treating as text.", e);
-                                        if (actionListener != null) notifyAiActionsProcessed(null, finalContent, new ArrayList<>(), new ArrayList<>(), model.getDisplayName(), thinkingContent.toString(), webSources);
+                                        if (actionListener != null) notifyAiActionsProcessed(finalContent, finalContent, new ArrayList<>(), new ArrayList<>(), model.getDisplayName(), thinkingContent.toString(), webSources);
                                     }
                                 } else {
-                                    if (actionListener != null) notifyAiActionsProcessed(null, finalContent, new ArrayList<>(), new ArrayList<>(), model.getDisplayName(), thinkingContent.toString(), webSources);
+                                    if (actionListener != null) notifyAiActionsProcessed(finalContent, finalContent, new ArrayList<>(), new ArrayList<>(), model.getDisplayName(), thinkingContent.toString(), webSources);
                                 }
 
                                 // Notify listener to save the updated state (final)

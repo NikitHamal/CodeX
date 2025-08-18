@@ -170,4 +170,16 @@
         app:backgroundTint="@color/primary"
         app:tint="@color/white" />
 
+    <!-- Delete Selection FAB (shown only in selection mode) -->
+    <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
+        android:id="@+id/fab_delete_selection"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end"
+        android:layout_margin="16dp"
+        android:text="Delete"
+        android:textAllCaps="false"
+        android:visibility="gone"
+        />
+
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

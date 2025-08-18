@@ -20,6 +20,9 @@ import com.google.android.material.textfield.TextInputEditText;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 public class ProjectsAdapter extends RecyclerView.Adapter<ProjectsAdapter.ProjectViewHolder> {
 
@@ -27,10 +30,73 @@ public class ProjectsAdapter extends RecyclerView.Adapter<ProjectsAdapter.Projec
     private final ArrayList<HashMap<String, Object>> projectsList;
     private final MainActivity mainActivity;
 
+    // Multi-select state
+    private boolean selectionMode = false;
+    private final Set<Integer> selectedPositions = new HashSet<>();
+
+    public interface SelectionListener {
+        void onSelectionChanged(int selectedCount, boolean selectionMode);
+    }
+
+    private SelectionListener selectionListener;
+
     public ProjectsAdapter(Context context, ArrayList<HashMap<String, Object>> projectsList, MainActivity mainActivity) {
         this.context = context;
         this.projectsList = projectsList;
         this.mainActivity = mainActivity;
+    }
+
+    public void setSelectionListener(SelectionListener listener) {
+        this.selectionListener = listener;
+    }
+
+    public boolean isSelectionMode() {
+        return selectionMode;
+    }
+
+    public int getSelectedCount() {
+        return selectedPositions.size();
+    }
+
+    public List<File> getSelectedProjectFiles() {
+        List<File> files = new ArrayList<>();
+        for (Integer pos : selectedPositions) {
+            if (pos >= 0 && pos < projectsList.size()) {
+                HashMap<String, Object> project = projectsList.get(pos);
+                String projectPath = (String) project.get("path");
+                if (projectPath != null) files.add(new File(projectPath));
+            }
+        }
+        return files;
+    }
+
+    public void exitSelectionMode() {
+        selectionMode = false;
+        selectedPositions.clear();
+        notifySelectionChanged();
+        notifyDataSetChanged();
+    }
+
+    private void toggleSelection(int position) {
+        if (!selectionMode) {
+            selectionMode = true;
+        }
+        if (selectedPositions.contains(position)) {
+            selectedPositions.remove(position);
+            if (selectedPositions.isEmpty()) {
+                selectionMode = false;
+            }
+        } else {
+            selectedPositions.add(position);
+        }
+        notifyItemChanged(position);
+        notifySelectionChanged();
+    }
+
+    private void notifySelectionChanged() {
+        if (selectionListener != null) {
+            selectionListener.onSelectionChanged(getSelectedCount(), selectionMode);
+        }
     }
 
     @NonNull
@@ -55,29 +121,54 @@ public class ProjectsAdapter extends RecyclerView.Adapter<ProjectsAdapter.Projec
         TextView textProjectName;
         TextView textProjectDate;
         ImageView imageMore;
+        com.google.android.material.checkbox.MaterialCheckBox checkbox;
 
         ProjectViewHolder(View itemView) {
             super(itemView);
             textProjectName = itemView.findViewById(R.id.text_project_name);
             textProjectDate = itemView.findViewById(R.id.text_project_date);
             imageMore = itemView.findViewById(R.id.image_more);
+            checkbox = itemView.findViewById(R.id.checkbox_select);
         }
 
         void bind(final HashMap<String, Object> project, final int position) {
             textProjectName.setText((String) project.get("name"));
             textProjectDate.setText((String) project.get("lastModified"));
 
+            // Selection UI state
+            boolean isSelected = selectedPositions.contains(position);
+            checkbox.setVisibility(selectionMode ? View.VISIBLE : View.GONE);
+            checkbox.setChecked(isSelected);
+            itemView.setActivated(isSelected);
+
             itemView.setOnClickListener(v -> {
-                String projectPath = (String) project.get("path");
-                String projectName = (String) project.get("name");
-                if (projectPath != null && projectName != null) {
-                    mainActivity.openProject(projectPath, projectName);
+                if (selectionMode) {
+                    toggleSelection(position);
                 } else {
-                    Toast.makeText(context, context.getString(R.string.error_invalid_project_data), Toast.LENGTH_SHORT).show();
+                    String projectPath = (String) project.get("path");
+                    String projectName = (String) project.get("name");
+                    if (projectPath != null && projectName != null) {
+                        mainActivity.openProject(projectPath, projectName);
+                    } else {
+                        Toast.makeText(context, context.getString(R.string.error_invalid_project_data), Toast.LENGTH_SHORT).show();
+                    }
                 }
             });
 
-            imageMore.setOnClickListener(v -> showProjectOptions(v, position));
+            itemView.setOnLongClickListener(v -> {
+                toggleSelection(position);
+                return true;
+            });
+
+            checkbox.setOnClickListener(v -> toggleSelection(position));
+
+            imageMore.setOnClickListener(v -> {
+                if (selectionMode) {
+                    toggleSelection(position);
+                } else {
+                    showProjectOptions(v, position);
+                }
+            });
         }
 
         private void showProjectOptions(View view, final int position) {

@@ -14,13 +14,23 @@
         android:layout_height="wrap_content"
         android:padding="16dp">
 
+        <com.google.android.material.checkbox.MaterialCheckBox
+            android:id="@+id/checkbox_select"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:visibility="gone"
+            app:useMaterialThemeColors="true"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent" />
+
         <ImageView
             android:id="@+id/image_project_icon"
             android:layout_width="32dp"
             android:layout_height="32dp"
             android:src="@drawable/ic_folder_code"
             android:contentDescription="Project folder"
-            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintStart_toEndOf="@id/checkbox_select"
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintBottom_toBottomOf="parent"
             app:tint="@color/primary" />

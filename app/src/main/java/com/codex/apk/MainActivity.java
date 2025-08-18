@@ -16,6 +16,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.button.MaterialButton;
+import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.textfield.TextInputEditText;
 import java.io.File;
@@ -30,6 +31,8 @@ public class MainActivity extends AppCompatActivity {
 
     private ArrayList<HashMap<String, Object>> projectsList;
     private ProjectsAdapter projectsAdapter;
+    private ExtendedFloatingActionButton fabQuickActions;
+    private ExtendedFloatingActionButton fabDeleteSelection;
 
     public ProjectManager projectManager;
     public PermissionManager permissionManager;
@@ -64,7 +67,23 @@ public class MainActivity extends AppCompatActivity {
 
         // Setup Listeners
         findViewById(R.id.button_refresh_projects).setOnClickListener(v -> refreshProjectsList());
-        findViewById(R.id.fab_quick_actions).setOnClickListener(v -> showQuickActionsMenu());
+        fabQuickActions = findViewById(R.id.fab_quick_actions);
+        fabDeleteSelection = findViewById(R.id.fab_delete_selection);
+        fabQuickActions.setOnClickListener(v -> showQuickActionsMenu());
+
+        // Selection listener to toggle FABs
+        projectsAdapter.setSelectionListener((selectedCount, selectionMode) -> {
+            if (selectionMode) {
+                if (fabQuickActions.getVisibility() == View.VISIBLE) fabQuickActions.setVisibility(View.GONE);
+                fabDeleteSelection.setVisibility(View.VISIBLE);
+                fabDeleteSelection.setText(getString(R.string.delete) + (selectedCount > 0 ? " (" + selectedCount + ")" : ""));
+            } else {
+                fabDeleteSelection.setVisibility(View.GONE);
+                fabQuickActions.setVisibility(View.VISIBLE);
+            }
+        });
+
+        fabDeleteSelection.setOnClickListener(v -> onDeleteSelectionRequested());
 
         permissionManager.checkAndRequestPermissions();
     }
@@ -99,6 +118,15 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @Override
+    public void onBackPressed() {
+        if (projectsAdapter != null && projectsAdapter.isSelectionMode()) {
+            projectsAdapter.exitSelectionMode();
+            return;
+        }
+        super.onBackPressed();
+    }
+
+    @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == PermissionManager.REQUEST_CODE_MANAGE_EXTERNAL_STORAGE) {
@@ -111,6 +139,25 @@ public class MainActivity extends AppCompatActivity {
                 importExportManager.handleImportZipFile(uri);
             }
         }
+    }
+
+    private void onDeleteSelectionRequested() {
+        if (projectsAdapter == null || projectsAdapter.getSelectedCount() == 0) return;
+        final int count = projectsAdapter.getSelectedCount();
+        new MaterialAlertDialogBuilder(this, R.style.AlertDialogCustom)
+                .setTitle(getString(R.string.delete_project))
+                .setMessage("Delete " + count + " selected project" + (count > 1 ? "s" : "") + "?")
+                .setPositiveButton(getString(R.string.delete), (dialog, which) -> {
+                    for (File projectDir : projectsAdapter.getSelectedProjectFiles()) {
+                        if (projectDir != null) {
+                            projectManager.deleteProjectDirectory(projectDir);
+                        }
+                    }
+                    projectsAdapter.exitSelectionMode();
+                    projectManager.loadProjectsList();
+                })
+                .setNegativeButton(getString(R.string.cancel), null)
+                .show();
     }
 
     public void openProject(String projectPath, String projectName) {

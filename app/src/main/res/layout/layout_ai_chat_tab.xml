@@ -212,6 +212,7 @@
                     app:iconGravity="textStart"
                     app:iconPadding="0dp"
                     app:cornerRadius="20dp"
+                    android:rotation="270"
                     android:contentDescription="Send message"
                     style="@style/Widget.Material3.Button" />
 

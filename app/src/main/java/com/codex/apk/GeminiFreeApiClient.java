@@ -205,14 +205,28 @@ public class GeminiFreeApiClient implements ApiClient {
                     persistConversationMetaIfAvailable(modelId, body);
                     String explanation = deriveHumanExplanation(parsed.text, parsed.thoughts);
                     if (actionListener != null) {
-                        // Store actual raw response for long-press, but show only the derived explanation
-                        // Normalize JSON for model-agnostic downstream parsing (plan/file ops)
+                        // Normalize model text; if it looks like JSON, let downstream render plans/file ops
                         String normalized = normalizeJsonIfPresent(parsed.text);
+                        boolean normalizedIsJson = com.codex.apk.QwenResponseParser.looksLikeJson(normalized != null ? normalized.trim() : "");
+
+                        // Try to parse file operations from normalized JSON to surface actions immediately
+                        java.util.List<ChatMessage.FileActionDetail> fileActions = new java.util.ArrayList<>();
+                        if (normalizedIsJson) {
+                            try {
+                                com.codex.apk.QwenResponseParser.ParsedResponse pr = com.codex.apk.QwenResponseParser.parseResponse(normalized);
+                                if (pr != null && pr.operations != null && !pr.operations.isEmpty()) {
+                                    fileActions = com.codex.apk.QwenResponseParser.toFileActionDetails(pr);
+                                }
+                            } catch (Exception ignore) {}
+                        }
+
+                        // Keep the original raw body for UI long-press. Manager already normalizes when parsing.
+                        String rawForUi = body;
                         notifyAiActionsProcessed(
-                                body,
+                                rawForUi,
                                 explanation,
                                 new ArrayList<>(),
-                                new ArrayList<>(),
+                                fileActions,
                                 model != null ? model.getDisplayName() : "Gemini (Free)",
                                 parsed.thoughts,
                                 new ArrayList<>()

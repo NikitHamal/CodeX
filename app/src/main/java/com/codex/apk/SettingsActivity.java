@@ -79,8 +79,8 @@ public class SettingsActivity extends AppCompatActivity {
 		com.google.android.material.card.MaterialCardView agentsCard = findViewById(R.id.card_agents);
 		com.google.android.material.card.MaterialCardView apiCard = findViewById(R.id.card_api);
 		com.google.android.material.card.MaterialCardView promptsCard = findViewById(R.id.card_prompts);
-		com.google.android.material.switchmaterial.SwitchMaterial wrapSwitch = findViewById(R.id.switch_wrap);
-		com.google.android.material.switchmaterial.SwitchMaterial readOnlySwitch = findViewById(R.id.switch_read_only);
+		com.google.android.material.materialswitch.MaterialSwitch wrapSwitch = findViewById(R.id.switch_wrap);
+		com.google.android.material.materialswitch.MaterialSwitch readOnlySwitch = findViewById(R.id.switch_read_only);
 		com.google.android.material.slider.Slider fontSizeSlider = findViewById(R.id.slider_font_size);
 
 		// Load saved settings

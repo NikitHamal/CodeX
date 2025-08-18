@@ -138,6 +138,7 @@ public class ProjectsAdapter extends RecyclerView.Adapter<ProjectsAdapter.Projec
             // Selection UI state
             boolean isSelected = selectedPositions.contains(position);
             checkbox.setVisibility(selectionMode ? View.VISIBLE : View.GONE);
+            imageMore.setVisibility(selectionMode ? View.GONE : View.VISIBLE);
             checkbox.setChecked(isSelected);
             itemView.setActivated(isSelected);
 

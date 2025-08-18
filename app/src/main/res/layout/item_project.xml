@@ -14,23 +14,13 @@
         android:layout_height="wrap_content"
         android:padding="16dp">
 
-        <com.google.android.material.checkbox.MaterialCheckBox
-            android:id="@+id/checkbox_select"
-            android:layout_width="24dp"
-            android:layout_height="24dp"
-            android:visibility="gone"
-            app:useMaterialThemeColors="true"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintBottom_toBottomOf="parent" />
-
         <ImageView
             android:id="@+id/image_project_icon"
             android:layout_width="32dp"
             android:layout_height="32dp"
             android:src="@drawable/ic_folder_code"
             android:contentDescription="Project folder"
-            app:layout_constraintStart_toEndOf="@id/checkbox_select"
+            app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintBottom_toBottomOf="parent"
             app:tint="@color/primary" />
@@ -42,7 +32,7 @@
             android:layout_marginStart="16dp"
             android:layout_marginEnd="16dp"
             app:layout_constraintStart_toEndOf="@id/image_project_icon"
-            app:layout_constraintEnd_toStartOf="@id/image_more"
+            app:layout_constraintEnd_toStartOf="@id/end_action_container"
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintBottom_toBottomOf="parent">
 
@@ -69,17 +59,33 @@
 
         </LinearLayout>
 
-        <ImageView
-            android:id="@+id/image_more"
+        <!-- End action container hosts either the more icon or the checkbox in the same slot -->
+        <FrameLayout
+            android:id="@+id/end_action_container"
             android:layout_width="24dp"
             android:layout_height="24dp"
-            android:src="@drawable/ic_more_vert"
-            android:contentDescription="More options"
-            android:background="@android:color/transparent" android:padding="4dp"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:tint="@color/on_surface_variant" />
+            app:layout_constraintBottom_toBottomOf="parent">
+
+            <ImageView
+                android:id="@+id/image_more"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:src="@drawable/ic_more_vert"
+                android:contentDescription="More options"
+                android:background="@android:color/transparent"
+                android:padding="4dp"
+                android:tint="@color/on_surface_variant" />
+
+            <com.google.android.material.checkbox.MaterialCheckBox
+                android:id="@+id/checkbox_select"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:visibility="gone"
+                app:useMaterialThemeColors="true" />
+
+        </FrameLayout>
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 

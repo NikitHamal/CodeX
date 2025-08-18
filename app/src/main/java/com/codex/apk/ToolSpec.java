@@ -171,6 +171,54 @@ public class ToolSpec {
     }
 
     /**
+     * Optional, non-breaking extended tools for enhanced workflows. These are not
+     * included in defaultFileTools() and can be enabled explicitly by the host app.
+     */
+    public static java.util.List<ToolSpec> extendedTools() {
+        java.util.List<ToolSpec> tools = new java.util.ArrayList<>();
+
+        // browserPreview
+        tools.add(new ToolSpec(
+                "browserPreview",
+                "Start a local preview server for the current project and optionally open the in-app Preview activity.",
+                buildSchema(
+                        new String[]{"projectPath", "autoOpen"},
+                        new String[]{"string", "boolean"},
+                        new String[]{
+                                "Absolute or workspace-resolved path to the project root to serve",
+                                "If true, open the PreviewActivity after starting the server"
+                        }
+                )));
+
+        // readUrlContent
+        tools.add(new ToolSpec(
+                "readUrlContent",
+                "Fetch static content from an HTTP(S) URL for reference (no execution).",
+                buildSchema(
+                        new String[]{"url"},
+                        new String[]{"string"},
+                        new String[]{"HTTP or HTTPS URL to read"}
+                )));
+
+        // grepSearch
+        tools.add(new ToolSpec(
+                "grepSearch",
+                "Search within files in a path. Supports regex and case-insensitive flags.",
+                buildSchema(
+                        new String[]{"query", "path", "isRegex", "caseInsensitive"},
+                        new String[]{"string", "string", "boolean", "boolean"},
+                        new String[]{
+                                "Search term or regex pattern",
+                                "Directory or file path to search ('.' for project root)",
+                                "Treat query as regex",
+                                "Case-insensitive search"
+                        }
+                )));
+
+        return tools;
+    }
+
+    /**
      * Enhanced schema builder with descriptions
      */
     private static JsonObject buildSchema(String[] keys, String[] types, String[] descriptions) {

@@ -528,6 +528,56 @@ public class QwenApiClient implements ApiClient {
                     }
                     break;
                 }
+                case "readUrlContent": {
+                    String url = args.get("url").getAsString();
+                    Request request = new Request.Builder()
+                            .url(url)
+                            .get()
+                            .addHeader("Accept", "*/*")
+                            .build();
+                    try (Response resp = httpClient.newCall(request).execute()) {
+                        if (resp.isSuccessful() && resp.body() != null) {
+                            String content = resp.body().string();
+                            String type = resp.header("Content-Type", "");
+                            // Truncate overly large responses to keep UI responsive
+                            int max = 200_000;
+                            if (content.length() > max) content = content.substring(0, max);
+                            result.addProperty("ok", true);
+                            result.addProperty("content", content);
+                            result.addProperty("contentType", type);
+                            result.addProperty("status", resp.code());
+                        } else {
+                            result.addProperty("ok", false);
+                            result.addProperty("error", "HTTP " + (resp != null ? resp.code() : 0));
+                        }
+                    }
+                    break;
+                }
+                case "grepSearch": {
+                    String query = args.get("query").getAsString();
+                    String relPath = args.has("path") ? args.get("path").getAsString() : ".";
+                    boolean isRegex = args.has("isRegex") && args.get("isRegex").getAsBoolean();
+                    boolean caseInsensitive = args.has("caseInsensitive") && args.get("caseInsensitive").getAsBoolean();
+
+                    java.io.File start = new java.io.File(projectDir, relPath);
+                    if (!start.exists()) {
+                        result.addProperty("ok", false);
+                        result.addProperty("error", "Path not found: " + relPath);
+                        break;
+                    }
+
+                    int flags = caseInsensitive ? java.util.regex.Pattern.CASE_INSENSITIVE : 0;
+                    java.util.regex.Pattern pattern = isRegex
+                            ? java.util.regex.Pattern.compile(query, flags)
+                            : java.util.regex.Pattern.compile(java.util.regex.Pattern.quote(query), flags);
+
+                    JsonArray matches = new JsonArray();
+                    final int maxMatches = 2000;
+                    grepWalk(start, projectDir, pattern, matches, new int[]{0}, maxMatches);
+                    result.addProperty("ok", true);
+                    result.add("matches", matches);
+                    break;
+                }
                 default:
                     result.addProperty("ok", false);
                     result.addProperty("error", "Unknown tool: " + name);
@@ -539,6 +589,90 @@ public class QwenApiClient implements ApiClient {
         return result.toString();
     }
     
+    // Helper methods to support grepSearch
+    private void grepWalk(java.io.File file, java.io.File projectRoot, java.util.regex.Pattern pattern,
+                          com.google.gson.JsonArray outMatches, int[] count, int maxMatches) {
+        if (count[0] >= maxMatches || file == null || !file.exists()) return;
+        if (file.isDirectory()) {
+            String name = file.getName();
+            if (shouldSkipDir(name)) return;
+            java.io.File[] children = file.listFiles();
+            if (children == null) return;
+            for (java.io.File c : children) {
+                if (count[0] >= maxMatches) break;
+                grepWalk(c, projectRoot, pattern, outMatches, count, maxMatches);
+            }
+            return;
+        }
+
+        // Skip large/binary files
+        long maxSize = 2_000_000; // 2MB
+        if (file.length() > maxSize || looksBinary(file)) return;
+
+        try (java.io.BufferedReader br = new java.io.BufferedReader(
+                new java.io.InputStreamReader(new java.io.FileInputStream(file), java.nio.charset.StandardCharsets.UTF_8))) {
+            String line;
+            int lineNo = 0;
+            while ((line = br.readLine()) != null) {
+                lineNo++;
+                if (pattern.matcher(line).find()) {
+                    com.google.gson.JsonObject m = new com.google.gson.JsonObject();
+                    m.addProperty("file", relPath(projectRoot, file));
+                    m.addProperty("line", lineNo);
+                    // Limit line length in output
+                    String text = line;
+                    int maxLen = 500;
+                    if (text.length() > maxLen) text = text.substring(0, maxLen);
+                    m.addProperty("text", text);
+                    outMatches.add(m);
+                    count[0]++;
+                    if (count[0] >= maxMatches) break;
+                }
+            }
+        } catch (Exception ignored) { }
+    }
+
+    private boolean shouldSkipDir(String name) {
+        if (name == null) return true;
+        String n = name.toLowerCase();
+        return n.equals(".git") || n.equals(".gradle") || n.equals("build") || n.equals("dist") ||
+               n.equals("node_modules") || n.equals(".idea") || n.equals("out") || n.equals(".next") ||
+               n.equals(".nuxt") || n.equals("target");
+    }
+
+    private boolean looksBinary(java.io.File f) {
+        // Heuristic: read first 4096 bytes; if there are NULs or many non-text chars, treat as binary
+        int sample = 4096;
+        byte[] buf = new byte[sample];
+        try (java.io.FileInputStream fis = new java.io.FileInputStream(f)) {
+            int read = fis.read(buf);
+            if (read <= 0) return false;
+            int nonText = 0;
+            for (int i = 0; i < read; i++) {
+                int b = buf[i] & 0xFF;
+                if (b == 0) return true; // NUL byte
+                // Allow common text control chars: tab, CR, LF, FF
+                if (b < 0x09 || (b > 0x0D && b < 0x20)) nonText++;
+            }
+            return nonText > read * 0.3; // >30% suspicious
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private String relPath(java.io.File root, java.io.File file) {
+        try {
+            String rp = root.getCanonicalPath();
+            String fp = file.getCanonicalPath();
+            if (fp.startsWith(rp)) {
+                String r = fp.substring(rp.length());
+                if (r.startsWith(java.io.File.separator)) r = r.substring(1);
+                return r.replace('\\', '/');
+            }
+        } catch (Exception ignored) {}
+        return file.getPath().replace('\\', '/');
+    }
+
 
     private String extractJsonFromCodeBlock(String content) {
         if (content == null || content.trim().isEmpty()) {

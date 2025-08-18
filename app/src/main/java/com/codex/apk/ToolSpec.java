@@ -177,19 +177,6 @@ public class ToolSpec {
     public static java.util.List<ToolSpec> extendedTools() {
         java.util.List<ToolSpec> tools = new java.util.ArrayList<>();
 
-        // browserPreview
-        tools.add(new ToolSpec(
-                "browserPreview",
-                "Start a local preview server for the current project and optionally open the in-app Preview activity.",
-                buildSchema(
-                        new String[]{"projectPath", "autoOpen"},
-                        new String[]{"string", "boolean"},
-                        new String[]{
-                                "Absolute or workspace-resolved path to the project root to serve",
-                                "If true, open the PreviewActivity after starting the server"
-                        }
-                )));
-
         // readUrlContent
         tools.add(new ToolSpec(
                 "readUrlContent",

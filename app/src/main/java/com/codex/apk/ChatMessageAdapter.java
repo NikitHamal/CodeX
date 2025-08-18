@@ -370,35 +370,7 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
                 textMessage.setText("");
             }
 
-            // Wire Preview button to open PreviewActivity using EditorActivity context
-            View previewBtn = itemView.findViewById(R.id.button_preview);
-            if (previewBtn != null) {
-                boolean showPreview = !isTyping; // hide while typing
-                previewBtn.setVisibility(showPreview ? View.VISIBLE : View.GONE);
-                if (showPreview) {
-                    previewBtn.setOnClickListener(v -> {
-                        Context ctx = itemView.getContext();
-                        if (ctx instanceof EditorActivity) {
-                            EditorActivity ea = (EditorActivity) ctx;
-                            Intent previewIntent = new Intent(ctx, PreviewActivity.class);
-                            java.io.File projDir = ea.getProjectDirectory();
-                            if (projDir != null) {
-                                previewIntent.putExtra(PreviewActivity.EXTRA_PROJECT_PATH, projDir.getAbsolutePath());
-                            }
-                            previewIntent.putExtra(PreviewActivity.EXTRA_PROJECT_NAME, ea.getProjectName());
-
-                            TabItem active = ea.getActiveTab();
-                            if (active != null) {
-                                previewIntent.putExtra(PreviewActivity.EXTRA_HTML_CONTENT, active.getContent());
-                                previewIntent.putExtra(PreviewActivity.EXTRA_FILE_NAME, active.getFileName());
-                            }
-                            ctx.startActivity(previewIntent);
-                        }
-                    });
-                } else {
-                    previewBtn.setOnClickListener(null);
-                }
-            }
+            // Preview button removed per requirements; no-op
 
             if (layoutThinkingSection.getVisibility() == View.VISIBLE) {
                 String processedThinking = markdownFormatter.preprocessMarkdown(message.getThinkingContent());

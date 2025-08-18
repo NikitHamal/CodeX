@@ -135,7 +135,13 @@ public class GeminiFreeApiClient implements ApiClient {
                     }
                 }
 
-                RequestBody formBody = buildGenerateForm(accessToken, message, chatMeta, uploaded);
+                // Inject system prompt (gem-like) by prepending to the user message
+                String systemPrompt = (enabledTools != null && !enabledTools.isEmpty())
+                        ? PromptManager.getDefaultFileOpsPrompt()
+                        : PromptManager.getDefaultGeneralPrompt();
+                String composedPrompt = systemPrompt + "\n\n" + message;
+
+                RequestBody formBody = buildGenerateForm(accessToken, composedPrompt, chatMeta, uploaded);
                 Request req = new Request.Builder()
                         .url(GENERATE_URL)
                         .headers(requestHeaders)
@@ -155,7 +161,7 @@ public class GeminiFreeApiClient implements ApiClient {
                                     .url(GENERATE_URL)
                                     .headers(requestHeaders)
                                     .header("Cookie", buildCookieHeader(cookies))
-                                    .post(buildGenerateForm(accessToken, message, chatMeta, uploaded))
+                                    .post(buildGenerateForm(accessToken, composedPrompt, chatMeta, uploaded))
                                     .build();
                             try (Response resp2 = httpClient.newCall(retry).execute()) {
                                 if (!resp2.isSuccessful() || resp2.body() == null) {
@@ -174,7 +180,7 @@ public class GeminiFreeApiClient implements ApiClient {
                                 List<ChatMessage.FileActionDetail> files2 = new ArrayList<>();
                                 // Route via richer callback so thinking is separate
                                 notifyAiActionsProcessed(
-                                        com.codex.apk.QwenResponseParser.looksLikeJson(normalized2) ? normalized2 : null,
+                                        body2,
                                         explanation2,
                                         suggestions2,
                                         files2,
@@ -193,36 +199,8 @@ public class GeminiFreeApiClient implements ApiClient {
                         return;
                     }
 
-                    // Stream parse lines for partial updates
-                    BufferedSource source = resp.body().source();
-                    StringBuilder full = new StringBuilder();
-                    while (!source.exhausted()) {
-                        String line = source.readUtf8Line();
-                        if (line == null) break;
-                        full.append(line).append("\n");
-                        // emit incremental thinking/text when possible
-                        try {
-                            String[] parts = full.toString().split("\n");
-                            if (parts.length >= 3) {
-                                com.google.gson.JsonArray responseJson = JsonParser.parseString(parts[2]).getAsJsonArray();
-                                // naive partial: look at last part for candidate delta
-                                for (int i = 0; i < responseJson.size(); i++) {
-                                    try {
-                                        com.google.gson.JsonArray part = JsonParser.parseString(responseJson.get(i).getAsJsonArray().get(2).getAsString()).getAsJsonArray();
-                                        if (part.size() > 4 && !part.get(4).isJsonNull()) {
-                                            com.google.gson.JsonArray candidates = part.get(4).getAsJsonArray();
-                                            if (candidates.size() > 0) {
-                                                String partial = candidates.get(0).getAsJsonArray().get(1).getAsJsonArray().get(0).getAsString();
-                                                if (actionListener != null) actionListener.onAiStreamUpdate(partial, false);
-                                            }
-                                        }
-                                    } catch (Exception ignore) {}
-                                }
-                            }
-                        } catch (Exception ignore) {}
-                    }
-
-                    String body = full.toString();
+                    // Streaming disabled: read entire body once and process
+                    String body = resp.body().string();
                     ParsedOutput parsed = parseOutputFromStream(body);
                     persistConversationMetaIfAvailable(modelId, body);
                     String explanation = deriveHumanExplanation(parsed.text, parsed.thoughts);
@@ -231,7 +209,7 @@ public class GeminiFreeApiClient implements ApiClient {
                         // Normalize JSON for model-agnostic downstream parsing (plan/file ops)
                         String normalized = normalizeJsonIfPresent(parsed.text);
                         notifyAiActionsProcessed(
-                                com.codex.apk.QwenResponseParser.looksLikeJson(normalized) ? normalized : null,
+                                body,
                                 explanation,
                                 new ArrayList<>(),
                                 new ArrayList<>(),
@@ -559,23 +537,74 @@ public class GeminiFreeApiClient implements ApiClient {
             for (int i = 0; i < responseJson.size(); i++) {
                 try {
                     com.google.gson.JsonArray part = JsonParser.parseString(responseJson.get(i).getAsJsonArray().get(2).getAsString()).getAsJsonArray();
-                    // Preferred: metadata at index 1: [cid, rid, rcid]
+                    // Preferred: metadata at index 1: [cid, rid] or [cid, rid, rcid]
+                    com.google.gson.JsonArray metaArr = null;
                     if (part.size() > 1 && part.get(1).isJsonArray()) {
-                        com.google.gson.JsonArray metaArr = part.get(1).getAsJsonArray();
-                        if (looksLikeConversationMeta(metaArr)) {
-                            SettingsActivity.setFreeConversationMetadata(context, modelId, metaArr.toString());
-                            return;
+                        com.google.gson.JsonArray maybe = part.get(1).getAsJsonArray();
+                        if (looksLikeConversationMeta(maybe)) {
+                            metaArr = maybe.deepCopy();
                         }
                     }
-                    // Fallback: scan whole part for any array that looks like [cid, rid, rcid]
-                    com.google.gson.JsonArray candidate = deepFindConversationMeta(part);
-                    if (candidate != null) {
-                        SettingsActivity.setFreeConversationMetadata(context, modelId, candidate.toString());
+                    if (metaArr == null) {
+                        // Fallback: scan whole part for any array that looks like conversation meta
+                        com.google.gson.JsonArray candidate = deepFindConversationMeta(part);
+                        if (candidate != null) metaArr = candidate.deepCopy();
+                    }
+                    if (metaArr != null) {
+                        // Heuristically locate rcid (often present elsewhere in first candidate) and merge
+                        String rcid = findRcidHeuristically(part);
+                        if (rcid != null) {
+                            // Ensure meta has 3 elements [cid, rid, rcid]
+                            if (metaArr.size() == 2) {
+                                metaArr.add(rcid);
+                            } else if (metaArr.size() >= 3) {
+                                // Replace third if empty/different
+                                try {
+                                    String existing = metaArr.get(2).getAsString();
+                                    if (existing == null || existing.isEmpty() || !existing.equals(rcid)) {
+                                        metaArr.set(2, new com.google.gson.JsonPrimitive(rcid));
+                                    }
+                                } catch (Exception ignored) { metaArr.add(rcid); }
+                            }
+                        }
+                        SettingsActivity.setFreeConversationMetadata(context, modelId, metaArr.toString());
                         return;
                     }
                 } catch (Exception ignore) {}
             }
         } catch (Exception ignore) {}
+    }
+
+    // Heuristic search for rcid string within a response part. rcid is typically a short string id, distinct from cid/rid.
+    private String findRcidHeuristically(com.google.gson.JsonArray part) {
+        try {
+            java.util.Set<String> candidates = new java.util.HashSet<>();
+            java.util.Deque<com.google.gson.JsonElement> dq = new java.util.ArrayDeque<>();
+            dq.add(part);
+            while (!dq.isEmpty()) {
+                com.google.gson.JsonElement el = dq.removeFirst();
+                if (el.isJsonArray()) {
+                    com.google.gson.JsonArray arr = el.getAsJsonArray();
+                    for (int i = 0; i < arr.size(); i++) dq.addLast(arr.get(i));
+                } else if (el.isJsonObject()) {
+                    com.google.gson.JsonObject obj = el.getAsJsonObject();
+                    for (java.util.Map.Entry<String, com.google.gson.JsonElement> e : obj.entrySet()) dq.addLast(e.getValue());
+                } else if (el.isJsonPrimitive() && el.getAsJsonPrimitive().isString()) {
+                    String s = el.getAsString();
+                    if (s != null && s.length() >= 6) {
+                        // rcid often contains "rc" or starts with 'C' with different pattern; avoid URLs and long texts
+                        boolean looksId = (s.startsWith("rc") || s.contains("rc")) && !s.contains("http") && s.length() <= 64;
+                        if (looksId) candidates.add(s);
+                    }
+                }
+            }
+            // Heuristic pick: shortest candidate containing "rc"
+            String pick = null;
+            for (String c : candidates) {
+                if (pick == null || c.length() < pick.length()) pick = c;
+            }
+            return pick;
+        } catch (Exception ignore) { return null; }
     }
 
     private String extractMetadataArrayFromRaw(String rawResponse) {

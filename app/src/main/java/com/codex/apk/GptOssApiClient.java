@@ -102,12 +102,13 @@ public class GptOssApiClient implements ApiClient {
 
                 StringBuilder finalText = new StringBuilder();
                 StringBuilder thinkingText = new StringBuilder();
-                streamSse(response, state, finalText, thinkingText);
+                StringBuilder rawSse = new StringBuilder();
+                streamSse(response, state, finalText, thinkingText, rawSse);
 
                 // Emit final processed callback if applicable
                 if (actionListener != null && (finalText.length() > 0 || thinkingText.length() > 0)) {
                     actionListener.onAiActionsProcessed(
-                            "",
+                            rawSse.toString(),
                             finalText.toString(),
                             new ArrayList<String>(),
                             new ArrayList<ChatMessage.FileActionDetail>(),
@@ -153,7 +154,7 @@ public class GptOssApiClient implements ApiClient {
         return root;
     }
 
-    private void streamSse(Response response, QwenConversationState state, StringBuilder finalText, StringBuilder thinkingText) throws IOException {
+    private void streamSse(Response response, QwenConversationState state, StringBuilder finalText, StringBuilder thinkingText, StringBuilder rawAnswer) throws IOException {
         BufferedSource source = response.body().source();
         StringBuilder eventBuf = new StringBuilder();
         // Throttle trackers
@@ -174,7 +175,7 @@ public class GptOssApiClient implements ApiClient {
             if (line.isEmpty()) {
                 // end of event
                 handleSseEvent(eventBuf.toString(), state, finalText, thinkingText,
-                        lastEmitNsAnswer, lastEmitNsThinking, lastSentLenAnswer, lastSentLenThinking, currentContentIndex);
+                        lastEmitNsAnswer, lastEmitNsThinking, lastSentLenAnswer, lastSentLenThinking, currentContentIndex, rawAnswer);
                 eventBuf.setLength(0);
                 continue;
             }
@@ -183,14 +184,14 @@ public class GptOssApiClient implements ApiClient {
         // flush remaining
         if (eventBuf.length() > 0) {
             handleSseEvent(eventBuf.toString(), state, finalText, thinkingText,
-                    lastEmitNsAnswer, lastEmitNsThinking, lastSentLenAnswer, lastSentLenThinking, currentContentIndex);
+                    lastEmitNsAnswer, lastEmitNsThinking, lastSentLenAnswer, lastSentLenThinking, currentContentIndex, rawAnswer);
         }
     }
 
     private void handleSseEvent(String rawEvent, QwenConversationState state, StringBuilder finalText, StringBuilder thinkingText,
                                 long[] lastEmitNsAnswer, long[] lastEmitNsThinking,
                                 int[] lastSentLenAnswer, int[] lastSentLenThinking,
-                                int[] currentContentIndex) {
+                                int[] currentContentIndex, StringBuilder rawAnswer) {
         // Expect lines like: data: {json}
         String prefix = "data:";
         int idx = rawEvent.indexOf(prefix);
@@ -236,6 +237,7 @@ public class GptOssApiClient implements ApiClient {
                         }
                         if (!delta.isEmpty()) {
                             finalText.append(delta);
+                            if (rawAnswer != null) rawAnswer.append(delta);
                             maybeEmitAnswer(finalText, lastEmitNsAnswer, lastSentLenAnswer);
                         }
                     }

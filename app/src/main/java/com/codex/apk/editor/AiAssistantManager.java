@@ -32,6 +32,10 @@ import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 
 import com.codex.apk.QwenResponseParser; // Plan/file parsing
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import com.codex.apk.ToolExecutor;
 
 /**
  * Manages the interaction with the AIAssistant, handling UI updates and delegation
@@ -65,7 +69,7 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
 
         String apiKey = SettingsActivity.getGeminiApiKey(activity);
         this.aiAssistant = new AIAssistant(activity, apiKey, projectDir, projectName, executorService, this);
-        this.aiAssistant.setEnabledTools(com.codex.apk.ToolSpec.defaultFileTools());
+        this.aiAssistant.setEnabledTools(com.codex.apk.ToolSpec.defaultFileToolsPlusSearchNet());
 
         // Model selection: prefer per-project last-used, else global default, else fallback
         SharedPreferences settingsPrefs = activity.getSharedPreferences("settings", Context.MODE_PRIVATE);
@@ -240,7 +244,7 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
         while (planProgressIndex < steps.size()) {
             ChatMessage.PlanStep ps = steps.get(planProgressIndex);
             if (ps != null && (ps.kind == null || ps.kind.equalsIgnoreCase("file")) &&
-                    !("completed".equals(ps.status) || "failed".equals(ps.status))) {
+                    !"completed".equals(ps.status) && !"failed".equals(ps.status)) {
                 ps.status = status;
                 break;
             }
@@ -503,6 +507,44 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                 uiFrag.hideThinkingMessage();
                 currentStreamingMessagePosition = null;
             }
+
+            // Intercept model-agnostic tool calls: if the raw response is a tool_call, execute locally
+            try {
+                if (rawAiResponseJson != null && !rawAiResponseJson.isEmpty()) {
+                    JsonObject maybe = JsonParser.parseString(rawAiResponseJson).getAsJsonObject();
+                    if (maybe.has("action") && "tool_call".equalsIgnoreCase(maybe.get("action").getAsString()) && maybe.has("tool_calls") && maybe.get("tool_calls").isJsonArray()) {
+                        JsonArray calls = maybe.getAsJsonArray("tool_calls");
+                        JsonArray results = new JsonArray();
+                        File projectDir = activity.getProjectDirectory();
+                        for (int i = 0; i < calls.size(); i++) {
+                            try {
+                                JsonObject c = calls.get(i).getAsJsonObject();
+                                String name = c.get("name").getAsString();
+                                JsonObject args = c.has("args") && c.get("args").isJsonObject() ? c.getAsJsonObject("args") : new JsonObject();
+                                JsonObject res = new JsonObject();
+                                res.addProperty("name", name);
+                                JsonObject exec = ToolExecutor.execute(projectDir, name, args);
+                                // attach either parsed object or raw in "result"
+                                res.add("result", exec);
+                                results.add(res);
+                            } catch (Exception inner) {
+                                JsonObject res = new JsonObject();
+                                res.addProperty("name", "unknown");
+                                JsonObject err = new JsonObject();
+                                err.addProperty("ok", false);
+                                err.addProperty("error", inner.getMessage());
+                                res.add("result", err);
+                                results.add(res);
+                            }
+                        }
+                        // Build continuation and send immediately; suppress UI emission for this intermediate response
+                        String continuation = ToolExecutor.buildToolResultContinuation(results);
+                        String fenced = "```json\n" + continuation + "\n```\n";
+                        sendAiPrompt(fenced, new java.util.ArrayList<>(), activity.getQwenState(), activity.getActiveTab());
+                        return;
+                    }
+                }
+            } catch (Exception ignore) {}
 
             // Use a mutable local copy for file actions to satisfy lambda finality rules
             List<ChatMessage.FileActionDetail> effectiveProposedFileChanges = proposedFileChanges;

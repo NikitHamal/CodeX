@@ -29,6 +29,7 @@
 
     <!-- Thinking Mode -->
     <LinearLayout
+        android:id="@+id/row_thinking_mode"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
@@ -68,6 +69,7 @@
 
     <!-- Thinking Effort -->
     <LinearLayout
+        android:id="@+id/container_thinking_effort"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"

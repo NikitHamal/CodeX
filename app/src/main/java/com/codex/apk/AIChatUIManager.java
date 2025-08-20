@@ -215,6 +215,8 @@ public class AIChatUIManager {
         MaterialSwitch switchThinking = dialogView.findViewById(R.id.switch_thinking_mode);
         MaterialSwitch switchWebSearch = dialogView.findViewById(R.id.switch_web_search);
         MaterialSwitch switchAgent = dialogView.findViewById(R.id.switch_agent_mode);
+        View rowThinking = dialogView.findViewById(R.id.row_thinking_mode);
+        View containerEffort = dialogView.findViewById(R.id.container_thinking_effort);
 
         com.google.android.material.button.MaterialButtonToggleGroup effortGroup = dialogView.findViewById(R.id.thinking_effort_group);
         com.google.android.material.button.MaterialButton btnEffortLow = dialogView.findViewById(R.id.btn_effort_low);
@@ -223,14 +225,20 @@ public class AIChatUIManager {
 
         ModelCapabilities capabilities = aiAssistant.getCurrentModel().getCapabilities();
         boolean isGptOss = aiAssistant.getCurrentModel().getProvider() == AIProvider.GPT_OSS;
+        boolean supportsThinking = capabilities.supportsThinking;
+
+        // Hide entire Thinking row if model doesn't support thinking
+        if (rowThinking != null) {
+            rowThinking.setVisibility(supportsThinking ? View.VISIBLE : View.GONE);
+        }
 
         switchThinking.setChecked(aiAssistant.isThinkingModeEnabled());
-        switchThinking.setEnabled(capabilities.supportsThinking);
+        switchThinking.setEnabled(supportsThinking);
         switchThinking.setOnCheckedChangeListener((buttonView, isChecked) -> {
             aiAssistant.setThinkingModeEnabled(isChecked);
             // Enable/disable effort group with the thinking toggle (GPT OSS only)
             if (effortGroup != null && isGptOss) {
-                boolean enableEffort = capabilities.supportsThinking && isChecked;
+                boolean enableEffort = supportsThinking && isChecked;
                 effortGroup.setEnabled(enableEffort);
                 if (btnEffortLow != null) btnEffortLow.setEnabled(enableEffort);
                 if (btnEffortMedium != null) btnEffortMedium.setEnabled(enableEffort);
@@ -250,15 +258,19 @@ public class AIChatUIManager {
         android.content.SharedPreferences sp = context.getSharedPreferences("settings", Context.MODE_PRIVATE);
         String effort = sp.getString("thinking_effort", "high");
         if (effortGroup != null) {
-            // Show effort group only for GPT OSS models
-            effortGroup.setVisibility(isGptOss ? View.VISIBLE : View.GONE);
+            // Show effort only for GPT OSS models that support thinking; hide otherwise, including the texts container
+            if (containerEffort != null) {
+                containerEffort.setVisibility(isGptOss && supportsThinking ? View.VISIBLE : View.GONE);
+            } else {
+                effortGroup.setVisibility(isGptOss && supportsThinking ? View.VISIBLE : View.GONE);
+            }
             if ("low".equalsIgnoreCase(effort) && btnEffortLow != null) effortGroup.check(btnEffortLow.getId());
             else if ("medium".equalsIgnoreCase(effort) && btnEffortMedium != null) effortGroup.check(btnEffortMedium.getId());
             else if (btnEffortHigh != null) effortGroup.check(btnEffortHigh.getId());
 
             // Enable group based on capability and current thinking toggle (GPT OSS only)
             if (isGptOss) {
-                boolean enableEffort = capabilities.supportsThinking && switchThinking.isChecked();
+                boolean enableEffort = supportsThinking && switchThinking.isChecked();
                 effortGroup.setEnabled(enableEffort);
                 if (btnEffortLow != null) btnEffortLow.setEnabled(enableEffort);
                 if (btnEffortMedium != null) btnEffortMedium.setEnabled(enableEffort);

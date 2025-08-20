@@ -174,7 +174,7 @@ public class GeminiFreeApiClient implements ApiClient {
                                 List<ChatMessage.FileActionDetail> files2 = new ArrayList<>();
                                 // Route via richer callback so thinking is separate
                                 notifyAiActionsProcessed(
-                                        com.codex.apk.QwenResponseParser.looksLikeJson(normalized2) ? normalized2 : null,
+                                        body2,
                                         explanation2,
                                         suggestions2,
                                         files2,
@@ -231,7 +231,7 @@ public class GeminiFreeApiClient implements ApiClient {
                         // Normalize JSON for model-agnostic downstream parsing (plan/file ops)
                         String normalized = normalizeJsonIfPresent(parsed.text);
                         notifyAiActionsProcessed(
-                                com.codex.apk.QwenResponseParser.looksLikeJson(normalized) ? normalized : null,
+                                body,
                                 explanation,
                                 new ArrayList<>(),
                                 new ArrayList<>(),

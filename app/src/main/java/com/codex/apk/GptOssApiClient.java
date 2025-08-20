@@ -104,16 +104,14 @@ public class GptOssApiClient implements ApiClient {
                 StringBuilder thinkingText = new StringBuilder();
                 streamSse(response, state, finalText, thinkingText);
 
-                // Emit final processed callback if applicable (include thinking content if available)
+                // Emit final processed callback if applicable
                 if (actionListener != null && (finalText.length() > 0 || thinkingText.length() > 0)) {
                     actionListener.onAiActionsProcessed(
                             "",
                             finalText.toString(),
-                            new ArrayList<>(),
-                            new ArrayList<>(),
-                            model.getDisplayName(),
-                            thinkingText.length() > 0 ? thinkingText.toString() : null,
-                            null
+                            new ArrayList<String>(),
+                            new ArrayList<ChatMessage.FileActionDetail>(),
+                            model.getDisplayName()
                     );
                 }
             } catch (Exception e) {

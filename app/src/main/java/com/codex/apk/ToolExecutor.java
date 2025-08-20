@@ -147,7 +147,10 @@ public class ToolExecutor {
                     String path = args.has("path") ? args.get("path").getAsString() : ".";
                     boolean isRegex = args.has("isRegex") && args.get("isRegex").getAsBoolean();
                     boolean caseInsensitive = args.has("caseInsensitive") && args.get("caseInsensitive").getAsBoolean();
-                    JsonArray results = FileOps.grepSearch(projectDir, path, query, isRegex, caseInsensitive);
+                    boolean caseSensitive = !caseInsensitive;
+                    File root = new File(projectDir, path);
+                    // Use existing offset/snippet search; no extension filter, cap results
+                    JsonArray results = FileOps.searchInFilesOffsets(root, query, caseSensitive, isRegex, new java.util.ArrayList<>(), 500);
                     result.addProperty("ok", true);
                     result.add("results", results);
                     break;

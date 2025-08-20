@@ -4,7 +4,8 @@ public enum AIProvider {
     GOOGLE("Google"),
     ALIBABA("Alibaba"),
     Z("Z"),
-    FREE("Free");
+    FREE("Free"),
+    GPT_OSS("GPT OSS");
 
     private final String displayName;
 

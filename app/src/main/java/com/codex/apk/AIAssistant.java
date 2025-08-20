@@ -32,6 +32,8 @@ public class AIAssistant {
         apiClients.put(AIProvider.Z, new GLMApiClient(actionListener));
         // Register Free Gemini client for FREE provider
         apiClients.put(AIProvider.FREE, new GeminiFreeApiClient(context, actionListener));
+        // Register GPT OSS provider client
+        apiClients.put(AIProvider.GPT_OSS, new GptOssApiClient(context, actionListener));
     }
 
     // Legacy constructor for compatibility

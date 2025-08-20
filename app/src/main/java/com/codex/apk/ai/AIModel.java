@@ -70,7 +70,11 @@ public class AIModel {
             // Free Provider (Gemini reverse-engineered)
             new AIModel("gemini-2.5-flash", "Gemini 2.5 Flash (Free)", AIProvider.FREE, new ModelCapabilities(true, true, true, true, true, true, true, 1048576, 8192)),
             new AIModel("gemini-2.5-pro", "Gemini 2.5 Pro (Free)", AIProvider.FREE, new ModelCapabilities(true, true, true, true, true, true, true, 2097152, 8192)),
-            new AIModel("gemini-2.0-flash", "Gemini 2.0 Flash (Free)", AIProvider.FREE, new ModelCapabilities(true, true, true, true, true, true, true, 1048576, 8192))
+            new AIModel("gemini-2.0-flash", "Gemini 2.0 Flash (Free)", AIProvider.FREE, new ModelCapabilities(true, true, true, true, true, true, true, 1048576, 8192)),
+
+            // GPT OSS Provider
+            new AIModel("gpt-oss-120b", "GPT OSS 120B", AIProvider.GPT_OSS, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)),
+            new AIModel("gpt-oss-20b", "GPT OSS 20B", AIProvider.GPT_OSS, new ModelCapabilities(true, false, false, true, false, false, false, 65536, 4096))
         ));
         for (AIModel model : initialModels) {
             modelsByProvider.computeIfAbsent(model.getProvider(), k -> new ArrayList<>()).add(model);

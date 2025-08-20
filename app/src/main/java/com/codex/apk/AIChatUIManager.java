@@ -216,11 +216,26 @@ public class AIChatUIManager {
         MaterialSwitch switchWebSearch = dialogView.findViewById(R.id.switch_web_search);
         MaterialSwitch switchAgent = dialogView.findViewById(R.id.switch_agent_mode);
 
+        com.google.android.material.button.MaterialButtonToggleGroup effortGroup = dialogView.findViewById(R.id.thinking_effort_group);
+        com.google.android.material.button.MaterialButton btnEffortLow = dialogView.findViewById(R.id.btn_effort_low);
+        com.google.android.material.button.MaterialButton btnEffortMedium = dialogView.findViewById(R.id.btn_effort_medium);
+        com.google.android.material.button.MaterialButton btnEffortHigh = dialogView.findViewById(R.id.btn_effort_high);
+
         ModelCapabilities capabilities = aiAssistant.getCurrentModel().getCapabilities();
 
         switchThinking.setChecked(aiAssistant.isThinkingModeEnabled());
         switchThinking.setEnabled(capabilities.supportsThinking);
-        switchThinking.setOnCheckedChangeListener((buttonView, isChecked) -> aiAssistant.setThinkingModeEnabled(isChecked));
+        switchThinking.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            aiAssistant.setThinkingModeEnabled(isChecked);
+            // Enable/disable effort group with the thinking toggle
+            boolean enableEffort = capabilities.supportsThinking && isChecked;
+            if (effortGroup != null) {
+                effortGroup.setEnabled(enableEffort);
+                if (btnEffortLow != null) btnEffortLow.setEnabled(enableEffort);
+                if (btnEffortMedium != null) btnEffortMedium.setEnabled(enableEffort);
+                if (btnEffortHigh != null) btnEffortHigh.setEnabled(enableEffort);
+            }
+        });
 
         switchWebSearch.setChecked(aiAssistant.isWebSearchEnabled());
         switchWebSearch.setEnabled(capabilities.supportsWebSearch);
@@ -229,6 +244,31 @@ public class AIChatUIManager {
         // Agent mode has no provider capability constraint
         switchAgent.setChecked(aiAssistant.isAgentModeEnabled());
         switchAgent.setOnCheckedChangeListener((buttonView, isChecked) -> aiAssistant.setAgentModeEnabled(isChecked));
+
+        // Initialize Thinking Effort selection from preferences
+        android.content.SharedPreferences sp = context.getSharedPreferences("settings", Context.MODE_PRIVATE);
+        String effort = sp.getString("thinking_effort", "high");
+        if (effortGroup != null) {
+            if ("low".equalsIgnoreCase(effort) && btnEffortLow != null) effortGroup.check(btnEffortLow.getId());
+            else if ("medium".equalsIgnoreCase(effort) && btnEffortMedium != null) effortGroup.check(btnEffortMedium.getId());
+            else if (btnEffortHigh != null) effortGroup.check(btnEffortHigh.getId());
+
+            // Enable group based on capability and current thinking toggle
+            boolean enableEffort = capabilities.supportsThinking && switchThinking.isChecked();
+            effortGroup.setEnabled(enableEffort);
+            if (btnEffortLow != null) btnEffortLow.setEnabled(enableEffort);
+            if (btnEffortMedium != null) btnEffortMedium.setEnabled(enableEffort);
+            if (btnEffortHigh != null) btnEffortHigh.setEnabled(enableEffort);
+
+            effortGroup.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
+                if (!isChecked) return;
+                String val = "high";
+                if (btnEffortLow != null && checkedId == btnEffortLow.getId()) val = "low";
+                else if (btnEffortMedium != null && checkedId == btnEffortMedium.getId()) val = "medium";
+                else if (btnEffortHigh != null && checkedId == btnEffortHigh.getId()) val = "high";
+                sp.edit().putString("thinking_effort", val).apply();
+            });
+        }
 
         aiSettingsDialog.show();
     }

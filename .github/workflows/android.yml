@@ -31,25 +31,13 @@ jobs:
           java-version: 17
           distribution: temurin
 
-      - name: Set environmental variables
-        shell: bash
-        env:
-          JSON_CONTENT: ${{ secrets.GOOGLE_SERVICES_JSON }}
-        if: ${{ env.JSON_CONTENT != '' }}
-        run: |
-          printf 'GOOGLE_SERVICES_JSON<<EOF\n%s\nEOF\n' >> $GITHUB_ENV
-
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
-        with:
-          cache-disabled: true
 
       - name: Make gradlew executable
         run: chmod +x ./gradlew
       - name: Build Release APK
-        env:
-          SKETCHUB_API_KEY: ${{ secrets.SKETCHUB_API_KEY }}
-        run: ./gradlew assembleRelease
+        run: ./gradlew --no-daemon --stacktrace --build-cache assembleRelease
 
       - name: Set short SHA
         id: set_sha

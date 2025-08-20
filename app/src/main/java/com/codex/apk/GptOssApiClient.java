@@ -90,22 +90,31 @@ public class GptOssApiClient implements ApiClient {
                     return;
                 }
 
-                // Extract user_id cookie for new threads
-                String setCookie = response.header("set-cookie");
-                if ((state == null || state.getConversationId() == null) && setCookie != null && setCookie.contains("user_id=")) {
-                    String userId = extractCookieValue(setCookie, "user_id");
-                    if (state != null) {
+                // Extract user_id cookie for new threads (robust: check all Set-Cookie headers)
+                if (state == null || state.getConversationId() == null) {
+                    List<String> setCookies = response.headers("set-cookie");
+                    String userId = extractCookieValueFromHeaders(setCookies, "user_id");
+                    if (userId != null && state != null) {
                         state.setLastParentId(userId);
                         if (actionListener != null) actionListener.onQwenConversationStateUpdated(state);
                     }
                 }
 
                 StringBuilder finalText = new StringBuilder();
-                streamSse(response, state, finalText);
+                StringBuilder thinkingText = new StringBuilder();
+                streamSse(response, state, finalText, thinkingText);
 
-                // Emit final processed callback if applicable
-                if (actionListener != null && finalText.length() > 0) {
-                    actionListener.onAiActionsProcessed("", finalText.toString(), new ArrayList<>(), new ArrayList<>(), model.getDisplayName());
+                // Emit final processed callback if applicable (include thinking content if available)
+                if (actionListener != null && (finalText.length() > 0 || thinkingText.length() > 0)) {
+                    actionListener.onAiActionsProcessed(
+                            "",
+                            finalText.toString(),
+                            new ArrayList<>(),
+                            new ArrayList<>(),
+                            model.getDisplayName(),
+                            thinkingText.length() > 0 ? thinkingText.toString() : null,
+                            null
+                    );
                 }
             } catch (Exception e) {
                 Log.e(TAG, "Error streaming from GPT OSS", e);
@@ -146,9 +155,15 @@ public class GptOssApiClient implements ApiClient {
         return root;
     }
 
-    private void streamSse(Response response, QwenConversationState state, StringBuilder finalText) throws IOException {
+    private void streamSse(Response response, QwenConversationState state, StringBuilder finalText, StringBuilder thinkingText) throws IOException {
         BufferedSource source = response.body().source();
         StringBuilder eventBuf = new StringBuilder();
+        // Throttle trackers
+        long[] lastEmitNsAnswer = new long[]{0L};
+        long[] lastEmitNsThinking = new long[]{0L};
+        int[] lastSentLenAnswer = new int[]{0};
+        int[] lastSentLenThinking = new int[]{0};
+        int[] currentContentIndex = new int[]{-1};
         while (true) {
             String line;
             try {
@@ -160,7 +175,8 @@ public class GptOssApiClient implements ApiClient {
 
             if (line.isEmpty()) {
                 // end of event
-                handleSseEvent(eventBuf.toString(), state, finalText);
+                handleSseEvent(eventBuf.toString(), state, finalText, thinkingText,
+                        lastEmitNsAnswer, lastEmitNsThinking, lastSentLenAnswer, lastSentLenThinking, currentContentIndex);
                 eventBuf.setLength(0);
                 continue;
             }
@@ -168,11 +184,15 @@ public class GptOssApiClient implements ApiClient {
         }
         // flush remaining
         if (eventBuf.length() > 0) {
-            handleSseEvent(eventBuf.toString(), state, finalText);
+            handleSseEvent(eventBuf.toString(), state, finalText, thinkingText,
+                    lastEmitNsAnswer, lastEmitNsThinking, lastSentLenAnswer, lastSentLenThinking, currentContentIndex);
         }
     }
 
-    private void handleSseEvent(String rawEvent, QwenConversationState state, StringBuilder finalText) {
+    private void handleSseEvent(String rawEvent, QwenConversationState state, StringBuilder finalText, StringBuilder thinkingText,
+                                long[] lastEmitNsAnswer, long[] lastEmitNsThinking,
+                                int[] lastSentLenAnswer, int[] lastSentLenThinking,
+                                int[] currentContentIndex) {
         // Expect lines like: data: {json}
         String prefix = "data:";
         int idx = rawEvent.indexOf(prefix);
@@ -200,17 +220,36 @@ public class GptOssApiClient implements ApiClient {
                     String entryType = entry.has("type") ? entry.get("type").getAsString() : "";
                     if ("thought".equals(entryType)) {
                         String content = entry.has("content") ? entry.get("content").getAsString() : "";
-                        if (actionListener != null) actionListener.onAiStreamUpdate(content, true);
+                        if (!content.isEmpty()) {
+                            thinkingText.append(content);
+                            maybeEmitThinking(thinkingText, lastEmitNsThinking, lastSentLenThinking);
+                        }
+                    } else if ("recap".equals(entryType)) {
+                        // Optional: could surface recap summary; keep minimal for now
+                        // No-op or append small marker
                     } else if ("assistant_message.content_part.text_delta".equals(entryType)) {
                         String delta = entry.has("delta") ? entry.get("delta").getAsString() : "";
+                        int contentIndex = update.has("contentIndex") ? update.get("contentIndex").getAsInt() : entry.has("contentIndex") ? entry.get("contentIndex").getAsInt() : 0;
+                        // Separate parts when contentIndex increases
+                        if (contentIndex != currentContentIndex[0]) {
+                            if (finalText.length() > 0 && finalText.charAt(finalText.length()-1) != '\n') finalText.append('\n');
+                            finalText.append('\n');
+                            currentContentIndex[0] = contentIndex;
+                        }
                         if (!delta.isEmpty()) {
                             finalText.append(delta);
-                            if (actionListener != null) actionListener.onAiStreamUpdate(delta, false);
+                            maybeEmitAnswer(finalText, lastEmitNsAnswer, lastSentLenAnswer);
                         }
                     }
                     break;
                 case "thread.updated":
-                    // Title generated; no-op for now
+                    // Title generated; optionally could be used to set conversation title
+                    // No-op for now
+                    break;
+                case "thread.item_done":
+                    // Force final emission at item completion
+                    forceEmit(finalText, lastSentLenAnswer);
+                    forceEmit(thinkingText, lastSentLenThinking);
                     break;
                 default:
                     break;
@@ -220,13 +259,58 @@ public class GptOssApiClient implements ApiClient {
         }
     }
 
+    // Throttling helpers: emit at most every ~40ms or when enough new chars are buffered
+    private void maybeEmitAnswer(StringBuilder finalText, long[] lastEmitNs, int[] lastSentLen) {
+        maybeEmit(finalText, false, lastEmitNs, lastSentLen);
+    }
+
+    private void maybeEmitThinking(StringBuilder thinkingText, long[] lastEmitNs, int[] lastSentLen) {
+        maybeEmit(thinkingText, true, lastEmitNs, lastSentLen);
+    }
+
+    private void maybeEmit(StringBuilder buf, boolean thinking, long[] lastEmitNs, int[] lastSentLen) {
+        if (actionListener == null) return;
+        int len = buf.length();
+        if (len == lastSentLen[0]) return;
+        long now = System.nanoTime();
+        long last = lastEmitNs[0];
+        boolean timeReady = (last == 0L) || (now - last) >= 40_000_000L; // ~40ms
+        boolean sizeReady = (len - lastSentLen[0]) >= 24; // or burst threshold
+        boolean boundaryReady = len > 0 && (buf.charAt(len-1) == '\n');
+        if (timeReady || sizeReady || boundaryReady) {
+            actionListener.onAiStreamUpdate(buf.toString(), thinking);
+            lastEmitNs[0] = now;
+            lastSentLen[0] = len;
+        }
+    }
+
+    private void forceEmit(StringBuilder buf, int[] lastSentLen) {
+        if (actionListener == null) return;
+        int len = buf.length();
+        if (len == lastSentLen[0]) return;
+        actionListener.onAiStreamUpdate(buf.toString(), false);
+        lastSentLen[0] = len;
+    }
+
     private static String extractCookieValue(String setCookieHeader, String key) {
-        // e.g., user_id=abc123; Path=/; HttpOnly
-        for (String part : setCookieHeader.split(";")) {
-            String trimmed = part.trim();
-            if (trimmed.startsWith(key + "=")) {
-                return trimmed.substring((key + "=").length());
+        if (setCookieHeader == null) return null;
+        for (String cookieLine : setCookieHeader.split(",")) { // handle combined headers
+            for (String part : cookieLine.split(";")) {
+                String trimmed = part.trim();
+                if (trimmed.startsWith(key + "=")) {
+                    String val = trimmed.substring((key + "=").length());
+                    return val;
+                }
             }
+        }
+        return null;
+    }
+
+    private static String extractCookieValueFromHeaders(List<String> setCookieHeaders, String key) {
+        if (setCookieHeaders == null) return null;
+        for (String header : setCookieHeaders) {
+            String val = extractCookieValue(header, key);
+            if (val != null) return val;
         }
         return null;
     }

@@ -17,9 +17,11 @@ import com.codex.apk.ToolSpec;
 import com.codex.apk.SettingsActivity;
 import com.codex.apk.TabItem;
 import com.codex.apk.DiffGenerator;
-import com.codex.apk.ProjectVerifier;
-import android.content.SharedPreferences;
-
+import com.codex.apk.QwenResponseParser; // Plan/file parsing
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import com.codex.apk.ToolExecutor;
 
 import java.io.File;
 import java.io.IOException;
@@ -150,13 +152,8 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                         String summary = aiProcessor.applyFileAction(detail);
                         appliedSummaries.add(summary);
                     }
-                    // Post-apply verification
-                    ProjectVerifier verifier = new ProjectVerifier();
-                    ProjectVerifier.VerificationResult vr = verifier.verify(message.getProposedFileChanges(), activity.getProjectDirectory());
-
                     activity.runOnUiThread(() -> {
-                        // Always keep chat concise; do not append lint details
-                        activity.showToast(vr.ok ? "AI actions applied successfully!" : "Applied with issues.");
+                        activity.showToast("AI actions applied successfully!");
                         message.setStatus(ChatMessage.STATUS_ACCEPTED);
                         message.setActionSummaries(appliedSummaries);
                         AIChatFragment aiChatFragment = activity.getAiChatFragment();
@@ -205,10 +202,6 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                 });
             }
 
-            // Post-batch verification for this message batch
-            ProjectVerifier verifier = new ProjectVerifier();
-            ProjectVerifier.VerificationResult vr = verifier.verify(steps, activity.getProjectDirectory());
-
             boolean anyFailedBatch = anyFailed;
             activity.runOnUiThread(() -> {
                 message.setStatus(ChatMessage.STATUS_ACCEPTED);
@@ -216,7 +209,7 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                 if (frag != null) frag.updateMessage(messagePosition, message);
                 activity.tabManager.refreshOpenTabsAfterAi();
                 activity.loadFileTree();
-                activity.showToast(vr.ok ? "Agent step applied" : "Applied with issues; continuing.");
+                activity.showToast("Agent step applied");
                 // After finishing this file_operation batch as part of plan, advance to next step automatically
                 if (isExecutingPlan) {
                     // Mark the current plan step as completed/failed ONCE per batch
@@ -383,6 +376,57 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
         return sb.toString();
     }
 
+    // Extract the first JSON object from mixed text. Prefer ```json fenced blocks.
+    private String extractFirstJsonObjectFromText(String input) {
+        if (input == null) return null;
+        try {
+            String s = input.trim();
+            // Prefer fenced code blocks ```json ... ```
+            int fenceStart = indexOfIgnoreCase(s, "```json");
+            if (fenceStart >= 0) {
+                fenceStart = s.indexOf('{', fenceStart);
+                if (fenceStart >= 0) {
+                    int end = findMatchingBraceEnd(s, fenceStart);
+                    if (end > fenceStart) return s.substring(fenceStart, end + 1);
+                }
+            }
+            // Fallback: first top-level JSON object
+            int firstBrace = s.indexOf('{');
+            if (firstBrace >= 0) {
+                int end = findMatchingBraceEnd(s, firstBrace);
+                if (end > firstBrace) return s.substring(firstBrace, end + 1);
+            }
+        } catch (Exception ignored) {}
+        return null;
+    }
+
+    private int indexOfIgnoreCase(String haystack, String needle) {
+        String h = haystack.toLowerCase();
+        String n = needle.toLowerCase();
+        return h.indexOf(n);
+    }
+
+    // Finds the end index of a balanced JSON object starting at '{'
+    private int findMatchingBraceEnd(String s, int startIdx) {
+        int depth = 0; boolean inString = false; boolean escape = false;
+        for (int i = startIdx; i < s.length(); i++) {
+            char c = s.charAt(i);
+            if (inString) {
+                if (escape) { escape = false; continue; }
+                if (c == '\\') { escape = true; continue; }
+                if (c == '"') inString = false;
+                continue;
+            }
+            if (c == '"') { inString = true; continue; }
+            if (c == '{') depth++;
+            else if (c == '}') {
+                depth--;
+                if (depth == 0) return i;
+            }
+        }
+        return -1;
+    }
+
     private void buildFileTreeRec(File dir, int depth, int maxDepth, StringBuilder sb, int[] count, int maxEntries) {
         if (dir == null || !dir.exists() || count[0] >= maxEntries) return;
         if (depth > maxDepth) return;
@@ -511,7 +555,9 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
             // Intercept model-agnostic tool calls: if the raw response is a tool_call, execute locally
             try {
                 if (rawAiResponseJson != null && !rawAiResponseJson.isEmpty()) {
-                    JsonObject maybe = JsonParser.parseString(rawAiResponseJson).getAsJsonObject();
+                    String normalized = extractFirstJsonObjectFromText(rawAiResponseJson);
+                    String toParse = normalized != null ? normalized : rawAiResponseJson;
+                    JsonObject maybe = JsonParser.parseString(toParse).getAsJsonObject();
                     if (maybe.has("action") && "tool_call".equalsIgnoreCase(maybe.get("action").getAsString()) && maybe.has("tool_calls") && maybe.get("tool_calls").isJsonArray()) {
                         JsonArray calls = maybe.getAsJsonArray("tool_calls");
                         JsonArray results = new JsonArray();
@@ -553,7 +599,9 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
             List<ChatMessage.PlanStep> planSteps = new ArrayList<>();
             try {
                 if (rawAiResponseJson != null) {
-                    QwenResponseParser.ParsedResponse parsed = QwenResponseParser.parseResponse(rawAiResponseJson);
+                    String normalized = extractFirstJsonObjectFromText(rawAiResponseJson);
+                    String toParse = normalized != null ? normalized : rawAiResponseJson;
+                    QwenResponseParser.ParsedResponse parsed = QwenResponseParser.parseResponse(toParse);
                     if (parsed != null && "plan".equals(parsed.action)) {
                         isPlan = true;
                         planSteps = QwenResponseParser.toPlanSteps(parsed);

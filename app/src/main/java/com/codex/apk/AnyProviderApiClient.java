@@ -73,7 +73,7 @@ public class AnyProviderApiClient implements ApiClient {
 
                 // Build request JSON (OpenAI-style)
                 String providerModel = mapToProviderModel(model != null ? model.getModelId() : null);
-                JsonObject body = buildOpenAIStyleBody(providerModel, message, history, thinkingModeEnabled);
+                JsonObject body = buildOpenAIStyleBody(providerModel, message, history, thinkingModeEnabled, model);
 
                 Request request = new Request.Builder()
                         .url(OPENAI_ENDPOINT)
@@ -123,8 +123,14 @@ public class AnyProviderApiClient implements ApiClient {
         }).start();
     }
 
-    private JsonObject buildOpenAIStyleBody(String modelId, String userMessage, List<ChatMessage> history, boolean thinkingModeEnabled) {
+    private JsonObject buildOpenAIStyleBody(String modelId, String userMessage, List<ChatMessage> history, boolean thinkingModeEnabled, AIModel model) {
         JsonArray messages = new JsonArray();
+        // Inject a system identity so the assistant reports its correct model name and not "GPT-4"
+        String identity = model != null ? model.getDisplayName() : "Pollinations Model";
+        JsonObject sys = new JsonObject();
+        sys.addProperty("role", "system");
+        sys.addProperty("content", "You are an AI assistant running the model '" + identity + "'. When asked about your model or identity, reply exactly with '" + identity + "' and do not claim to be GPT-4 or any other model. Be truthful and concise.");
+        messages.add(sys);
         // Convert existing history (keep it light)
         if (history != null) {
             for (ChatMessage m : history) {

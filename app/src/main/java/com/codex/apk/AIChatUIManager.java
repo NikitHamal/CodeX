@@ -298,9 +298,9 @@ public class AIChatUIManager {
 
         buttonAiSettings.setEnabled(hasSettings);
 
-        // Show attach button only for FREE (Gemini reverse-engineered) models
+        // Show attach button only for COOKIES (Gemini reverse-engineered) models
         if (buttonAiAttach != null) {
-            boolean showAttach = aiAssistant.getCurrentModel() != null && aiAssistant.getCurrentModel().getProvider() == AIProvider.FREE;
+            boolean showAttach = aiAssistant.getCurrentModel() != null && aiAssistant.getCurrentModel().getProvider() == AIProvider.COOKIES;
             buttonAiAttach.setVisibility(showAttach ? View.VISIBLE : View.GONE);
         }
     }
@@ -312,10 +312,10 @@ public class AIChatUIManager {
         if (buttonAiAttach != null) {
             buttonAiAttach.setOnClickListener(v -> {
                 if (fragment.getAIAssistant() != null && fragment.getAIAssistant().getCurrentModel() != null
-                    && fragment.getAIAssistant().getCurrentModel().getProvider() == AIProvider.FREE) {
+                    && fragment.getAIAssistant().getCurrentModel().getProvider() == AIProvider.COOKIES) {
                     fragment.onAttachButtonClicked();
                 } else {
-                    Toast.makeText(context, "Attachments available only for Gemini Free models", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(context, "Attachments available only for Gemini (Cookies) models", Toast.LENGTH_SHORT).show();
                 }
             });
         }

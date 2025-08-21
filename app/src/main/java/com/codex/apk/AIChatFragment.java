@@ -126,7 +126,7 @@ public class AIChatFragment extends Fragment implements ChatMessageAdapter.OnAiA
         chatMessageAdapter.setOnAiActionInteractionListener(this);
         uiManager.setupRecyclerView(chatMessageAdapter);
 
-        // If model is FREE, show attach icon immediately
+        // Update attach icon visibility/state based on current model
         if (listener != null && listener.getAIAssistant() != null) {
             uiManager.updateSettingsButtonState(listener.getAIAssistant());
         }
@@ -181,9 +181,9 @@ public class AIChatFragment extends Fragment implements ChatMessageAdapter.OnAiA
 
         uiManager.setText("");
         if (listener != null) {
-            // Directly call assistant with attachments only for FREE provider
+            // Directly call assistant with attachments only for COOKIES provider
             if (aiAssistant != null && aiAssistant.getCurrentModel() != null
-                && aiAssistant.getCurrentModel().getProvider() == com.codex.apk.ai.AIProvider.FREE) {
+                && aiAssistant.getCurrentModel().getProvider() == com.codex.apk.ai.AIProvider.COOKIES) {
                 aiAssistant.sendMessage(prompt, new ArrayList<>(chatHistory), qwenConversationState, new java.util.ArrayList<>(pendingAttachments));
             } else {
                 listener.sendAiPrompt(prompt, new ArrayList<>(chatHistory), qwenConversationState);

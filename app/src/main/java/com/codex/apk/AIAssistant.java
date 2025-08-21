@@ -20,6 +20,7 @@ public class AIAssistant {
     private List<ToolSpec> enabledTools = new ArrayList<>();
     private AIAssistant.AIActionListener actionListener;
     private File projectDir; // Track project directory for tool operations
+    private String apiKey = ""; // Tracks Gemini (official) API key
 
     public AIAssistant(Context context, ExecutorService executorService, AIActionListener actionListener) {
         this.actionListener = actionListener;
@@ -34,6 +35,10 @@ public class AIAssistant {
         apiClients.put(AIProvider.FREE, new GeminiFreeApiClient(context, actionListener));
         // Register GPT OSS provider client
         apiClients.put(AIProvider.GPT_OSS, new GptOssApiClient(context, actionListener));
+        // Register Official Gemini client for GOOGLE provider, API key can be set later
+        String initialKey = SettingsActivity.getGeminiApiKey(context);
+        this.apiKey = initialKey != null ? initialKey : "";
+        apiClients.put(AIProvider.GOOGLE, new GeminiOfficialApiClient(context, actionListener, this.apiKey));
     }
 
     // Legacy constructor for compatibility
@@ -44,6 +49,10 @@ public class AIAssistant {
         this.projectDir = projectDir;
         ApiClient qwen = new QwenApiClient(context, this.actionListener, projectDir);
         apiClients.put(AIProvider.ALIBABA, qwen);
+        // Store API key and update Google client
+        if (apiKey != null) this.apiKey = apiKey; else this.apiKey = SettingsActivity.getGeminiApiKey(context);
+        ApiClient google = new GeminiOfficialApiClient(context, this.actionListener, this.apiKey);
+        apiClients.put(AIProvider.GOOGLE, google);
     }
 
     public void sendPrompt(String userPrompt, List<ChatMessage> chatHistory, QwenConversationState qwenState, String fileName, String fileContent) {
@@ -117,7 +126,13 @@ public class AIAssistant {
     public void setAgentModeEnabled(boolean enabled) { this.agentModeEnabled = enabled; }
     public void setEnabledTools(List<ToolSpec> tools) { this.enabledTools = tools; }
     public void setActionListener(AIActionListener listener) { this.actionListener = listener; }
-    public String getApiKey() { return ""; }
-    public void setApiKey(String apiKey) {}
+    public String getApiKey() { return this.apiKey; }
+    public void setApiKey(String apiKey) {
+        this.apiKey = apiKey != null ? apiKey : "";
+        ApiClient google = apiClients.get(AIProvider.GOOGLE);
+        if (google instanceof GeminiOfficialApiClient) {
+            ((GeminiOfficialApiClient) google).setApiKey(this.apiKey);
+        }
+    }
     public void shutdown() {}
 }

@@ -80,7 +80,8 @@ public class DeepInfraApiClient implements ApiClient {
 
                 response = httpClient.newCall(request).execute();
                 if (response.isSuccessful() && response.body() != null) {
-                    streamOpenAiSse(response);
+                    String modelDisplay = model != null ? model.getDisplayName() : (modelId != null ? modelId : "DeepInfra");
+                    streamOpenAiSse(response, modelDisplay);
                 } else {
                     if (actionListener != null) actionListener.onAiError("DeepInfra error: " + (response != null ? response.code() : -1));
                 }
@@ -119,7 +120,7 @@ public class DeepInfraApiClient implements ApiClient {
         return root;
     }
 
-    private void streamOpenAiSse(Response response) throws IOException {
+    private void streamOpenAiSse(Response response, String modelDisplayName) throws IOException {
         BufferedSource source = response.body().source();
         try { source.timeout().timeout(60, TimeUnit.SECONDS); } catch (Exception ignore) {}
         StringBuilder eventBuf = new StringBuilder();
@@ -143,8 +144,15 @@ public class DeepInfraApiClient implements ApiClient {
         if (eventBuf.length() > 0) {
             handleOpenAiEvent(eventBuf.toString(), finalText, lastEmitNs, lastSentLen);
         }
-        if (actionListener != null && finalText.length() != lastSentLen[0]) {
-            actionListener.onAiStreamUpdate(finalText.toString(), false);
+        if (actionListener != null) {
+            if (finalText.length() != lastSentLen[0]) {
+                actionListener.onAiStreamUpdate(finalText.toString(), false);
+            }
+            try {
+                actionListener.onAiActionsProcessed(finalText.toString(), finalText.toString(), new java.util.ArrayList<>(), new java.util.ArrayList<>(), modelDisplayName);
+            } catch (Exception e) {
+                Log.w(TAG, "DeepInfra finalize parse dispatch failed: " + e.getMessage());
+            }
         }
     }
 

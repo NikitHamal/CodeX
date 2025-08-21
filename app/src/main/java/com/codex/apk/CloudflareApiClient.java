@@ -82,7 +82,8 @@ public class CloudflareApiClient implements ApiClient {
 
                 response = httpClient.newCall(request).execute();
                 if (response.isSuccessful() && response.body() != null) {
-                    streamCloudflare(response);
+                    String modelDisplay = model != null ? model.getDisplayName() : (modelId != null ? modelId : "Cloudflare");
+                    streamCloudflare(response, modelDisplay);
                 } else {
                     if (actionListener != null) actionListener.onAiError("Cloudflare error: " + (response != null ? response.code() : -1));
                 }
@@ -136,7 +137,7 @@ public class CloudflareApiClient implements ApiClient {
         return body;
     }
 
-    private void streamCloudflare(Response response) throws IOException {
+    private void streamCloudflare(Response response, String modelDisplayName) throws IOException {
         BufferedSource source = response.body().source();
         try { source.timeout().timeout(60, TimeUnit.SECONDS); } catch (Exception ignore) {}
         StringBuilder buf = new StringBuilder();
@@ -173,7 +174,16 @@ public class CloudflareApiClient implements ApiClient {
                 // usage/end marker; ignore
             }
         }
-        if (actionListener != null) actionListener.onAiStreamUpdate(buf.toString(), false);
+        if (actionListener != null) {
+            // Final stream update
+            actionListener.onAiStreamUpdate(buf.toString(), false);
+            // Hand off full response to universal parser in AiAssistantManager
+            try {
+                actionListener.onAiActionsProcessed(buf.toString(), buf.toString(), new java.util.ArrayList<>(), new java.util.ArrayList<>(), modelDisplayName);
+            } catch (Exception e) {
+                Log.w(TAG, "CF finalize parse dispatch failed: " + e.getMessage());
+            }
+        }
     }
 
     private void maybeEmit(StringBuilder buf, long[] lastEmitNs, int[] lastSentLen) {

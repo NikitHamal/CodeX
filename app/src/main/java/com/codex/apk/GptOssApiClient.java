@@ -75,7 +75,9 @@ public class GptOssApiClient implements ApiClient {
                         .addHeader("accept", "text/event-stream")
                         .addHeader("x-reasoning-effort", effort)
                         .addHeader("x-selected-model", model.getModelId())
-                        .addHeader("x-show-reasoning", thinkingModeEnabled && model.getCapabilities().supportsThinking ? "true" : "false");
+                        .addHeader("x-show-reasoning", thinkingModeEnabled && model.getCapabilities().supportsThinking ? "true" : "false")
+                        .addHeader("Cache-Control", "no-cache")
+                        .addHeader("Accept-Encoding", "identity");
 
                 // Continue conversation requires user_id cookie
                 if (state != null && state.getConversationId() != null && state.getLastParentId() != null) {
@@ -86,7 +88,10 @@ public class GptOssApiClient implements ApiClient {
                 response = httpClient.newCall(request).execute();
 
                 if (!response.isSuccessful() || response.body() == null) {
-                    if (actionListener != null) actionListener.onAiError("GPT OSS request failed: " + (response != null ? response.code() : -1));
+                    String errBody = null;
+                    try { if (response != null && response.body() != null) errBody = response.body().string(); } catch (Exception ignore) {}
+                    String snippet = errBody != null ? (errBody.length() > 400 ? errBody.substring(0, 400) + "..." : errBody) : null;
+                    if (actionListener != null) actionListener.onAiError("GPT OSS request failed: " + (response != null ? response.code() : -1) + (snippet != null ? (" | body: " + snippet) : ""));
                     return;
                 }
 
@@ -114,6 +119,8 @@ public class GptOssApiClient implements ApiClient {
                             new ArrayList<ChatMessage.FileActionDetail>(),
                             model.getDisplayName()
                     );
+                } else if (actionListener != null) {
+                    actionListener.onAiError("No response from GPT-OSS (empty stream)");
                 }
             } catch (Exception e) {
                 Log.e(TAG, "Error streaming from GPT OSS", e);
@@ -156,6 +163,8 @@ public class GptOssApiClient implements ApiClient {
 
     private void streamSse(Response response, QwenConversationState state, StringBuilder finalText, StringBuilder thinkingText, StringBuilder rawAnswer) throws IOException {
         BufferedSource source = response.body().source();
+        // Per-read timeout to avoid endless silence without data
+        try { source.timeout().timeout(60, TimeUnit.SECONDS); } catch (Exception ignore) {}
         StringBuilder eventBuf = new StringBuilder();
         // Throttle trackers
         long[] lastEmitNsAnswer = new long[]{0L};
@@ -169,6 +178,10 @@ public class GptOssApiClient implements ApiClient {
                 line = source.readUtf8LineStrict();
             } catch (EOFException eof) {
                 break; // stream ended
+            } catch (java.io.InterruptedIOException timeout) {
+                // No data within timeout
+                Log.w(TAG, "GPT-OSS SSE read timed out (no data)");
+                break;
             }
             if (line == null) break;
 
@@ -199,6 +212,8 @@ public class GptOssApiClient implements ApiClient {
         String jsonPart = rawEvent.substring(idx + prefix.length()).trim();
         if (jsonPart.isEmpty() || jsonPart.equals("[DONE]")) return;
         try {
+            // Capture raw SSE JSON for diagnostics / downstream parsing
+            if (rawAnswer != null) rawAnswer.append(jsonPart).append('\n');
             JsonElement elem = JsonParser.parseString(jsonPart);
             if (!elem.isJsonObject()) return;
             JsonObject obj = elem.getAsJsonObject();
@@ -237,7 +252,6 @@ public class GptOssApiClient implements ApiClient {
                         }
                         if (!delta.isEmpty()) {
                             finalText.append(delta);
-                            if (rawAnswer != null) rawAnswer.append(delta);
                             maybeEmitAnswer(finalText, lastEmitNsAnswer, lastSentLenAnswer);
                         }
                     }

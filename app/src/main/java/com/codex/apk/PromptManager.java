@@ -52,6 +52,12 @@ public class PromptManager {
                "2) Use tools to inspect before writing (read/search) and to make minimal, safe changes.\n" +
                "3) Emit individual operations per file. Keep edits minimal (modifyLines or short patches).\n" +
                "4) Always return valid JSON in a fenced code block.\n\n" +
+               "STRICT OUTPUT CONTRACT:\n" +
+               "- Output exactly ONE fenced ```json code block per response. No prose outside the block.\n" +
+               "- Your response must be EITHER a plan (action=\"plan\") OR actions (action=\"file_operation\"). Never both in one response.\n" +
+               "- If you already know what to change, return only action=\"file_operation\" without a plan.\n" +
+               "- If you need context first, emit only a tool_call. After the IDE replies with tool_result, emit only a file_operation.\n" +
+               "- The IDE will reject mixed outputs.\n\n" +
                "PLAN JSON (v1):\n" +
                "```json\n" +
                "{\n" +
@@ -78,7 +84,7 @@ public class PromptManager {
                "```json\n{\n  \"action\": \"tool_call\",\n  \"tool_calls\": [\n    { \"name\": \"listProjectTree\", \"args\": { \"path\": \".\", \"depth\": 3, \"maxEntries\": 400 } },\n    { \"name\": \"searchInProject\", \"args\": { \"query\": \"<head>|tailwindcss\", \"maxResults\": 50, \"regex\": false } },\n    { \"name\": \"readFile\", \"args\": { \"path\": \"index.html\" } }\n  ]\n}\n```\n" +
                "- The IDE will respond with:\n" +
                "```json\n{\n  \"action\": \"tool_result\",\n  \"results\": [\n    { \"name\": \"listProjectTree\", \"ok\": true, \"entries\": [/* ... */] },\n    { \"name\": \"searchInProject\", \"ok\": true, \"matches\": [/* ... */] },\n    { \"name\": \"readFile\", \"ok\": true, \"content\": \"...\" }\n  ]\n}\n```\n" +
-               "- After tool_result, emit a single file_operation JSON focusing on minimal diffs.\n\n" +
+               "- After tool_result, emit a single file_operation JSON focusing on minimal diffs. Do not include a plan here.\n\n" +
                "SAFETY & QUALITY:\n" +
                "- Never fabricate file contents or paths—inspect first.\n" +
                "- Validate HTML/CSS/JS before finalizing. Keep diffs small and reversible.\n" +

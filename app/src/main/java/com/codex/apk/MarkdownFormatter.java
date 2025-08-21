@@ -78,20 +78,35 @@ public class MarkdownFormatter {
      */
     public String preprocessMarkdown(String markdown) {
         if (markdown == null) return "";
-        
-        // Handle code blocks with language specification
-        markdown = markdown.replaceAll("```(\\w+)\\n", "```$1\n");
-        
+        String s = markdown;
+
+        // Heuristic: if looks like raw/minified HTML and not already fenced, wrap and pretty-print
+        String trimmed = s.trim();
+        boolean alreadyFenced = trimmed.contains("```");
+        boolean looksHtml = !alreadyFenced && trimmed.startsWith("<") && trimmed.contains(">") && (
+                trimmed.contains("<html") || trimmed.contains("<!DOCTYPE") || trimmed.contains("<head") ||
+                trimmed.contains("<body") || trimmed.contains("<div") || trimmed.contains("<span") ||
+                trimmed.contains("<p ") || trimmed.contains("<p>") || trimmed.matches("(?s).*<([a-zA-Z][a-zA-Z0-9-]*)([^>]*)>.*</\\1>.*")
+        );
+        if (looksHtml) {
+            // Insert newlines between adjacent tags to improve readability
+            String pretty = trimmed.replace("><", ">\n<");
+            return "```html\n" + pretty + "\n```";
+        }
+
+        // Handle code blocks with language specification (normalize line endings after language)
+        s = s.replaceAll("```(\\w+)\\r?\\n", "```$1\n");
+
         // Ensure proper line breaks for lists
-        markdown = markdown.replaceAll("(?<!\\n)\\n([*+-]\\s)", "\n\n$1");
-        
+        s = s.replaceAll("(?<!\\n)\\n([*+-]\\s)", "\n\n$1");
+
         // Handle numbered lists
-        markdown = markdown.replaceAll("(?<!\\n)\\n(\\d+\\.\\s)", "\n\n$1");
-        
+        s = s.replaceAll("(?<!\\n)\\n(\\d+\\.\\s)", "\n\n$1");
+
         // Normalize citations spacing: [[n]] -> [[n]] with surrounding spaces ensured by renderer
-        markdown = markdown.replaceAll("\\[\\[(\\d+)\\]\\]", "[[$1]]");
-        
-        return markdown;
+        s = s.replaceAll("\\[\\[(\\d+)\\]\\]", "[[$1]]");
+
+        return s;
     }
     
     /**

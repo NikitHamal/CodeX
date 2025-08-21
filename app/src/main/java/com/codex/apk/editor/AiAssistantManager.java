@@ -4,6 +4,8 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.util.Log;
 import android.widget.Toast;
+import android.os.Handler;
+import android.os.Looper;
 
 import com.codex.apk.AIChatFragment;
 import com.codex.apk.AIAssistant;
@@ -62,6 +64,11 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
 
     // Track current streaming AI message position
     private Integer currentStreamingMessagePosition = null;
+
+    // Watchdog to prevent stuck running steps
+    private final Handler planWatchdogHandler = new Handler(Looper.getMainLooper());
+    private Runnable planWatchdogRunnable = null;
+    private int planWatchdogForIndex = -1;
 
     public AiAssistantManager(EditorActivity activity, File projectDir, String projectName,
                               FileManager fileManager, ExecutorService executorService) {
@@ -220,6 +227,7 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                         ChatMessage planMsg = frag != null ? frag.getMessageAt(lastPlanMessagePosition) : null;
                         if (frag != null && planMsg != null) frag.updateMessage(lastPlanMessagePosition, planMsg);
                     }
+                    cancelPlanWatchdog();
                     sendNextPlanStepFollowUp();
                 }
             });
@@ -275,6 +283,7 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                 if (changed) { frag.updateMessage(lastPlanMessagePosition, pm); }
             }
         }
+        cancelPlanWatchdog();
         isExecutingPlan = false;
         if (frag != null) { frag.hideThinkingMessage(); }
         currentStreamingMessagePosition = null;
@@ -353,6 +362,11 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                 if (pm != null) activity.getAiChatFragment().updateMessage(lastPlanMessagePosition, pm);
             }
         });
+
+        // Cancel any previous watchdog and schedule a new one for this running step
+        cancelPlanWatchdog();
+        final int runningIndex = planProgressIndex;
+        schedulePlanWatchdog(runningIndex, 30_000);
 
         sendAiPrompt(prompt.toString(), new ArrayList<>(), activity.getQwenState(), activity.getActiveTab());
     }
@@ -598,24 +612,47 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
 
             boolean isPlan = false;
             List<ChatMessage.PlanStep> planSteps = new ArrayList<>();
+            QwenResponseParser.ParsedResponse parsed = null;
             try {
                 if (rawAiResponseJson != null) {
                     String normalized = extractFirstJsonObjectFromText(rawAiResponseJson);
                     String toParse = normalized != null ? normalized : rawAiResponseJson;
-                    QwenResponseParser.ParsedResponse parsed = QwenResponseParser.parseResponse(toParse);
-                    if (parsed != null && "plan".equals(parsed.action)) {
-                        isPlan = true;
-                        planSteps = QwenResponseParser.toPlanSteps(parsed);
-                    } else if (parsed != null && ("file_operation".equals(parsed.action) || QwenResponseParser.looksLikeJson(parsed.explanation))) {
-                        // If model returned file ops JSON but fileActions list is empty, convert and set
-                        List<ChatMessage.FileActionDetail> ops = QwenResponseParser.toFileActionDetails(parsed);
-                        if (effectiveProposedFileChanges == null || effectiveProposedFileChanges.isEmpty()) {
-                            effectiveProposedFileChanges = ops;
-                        }
+                    parsed = QwenResponseParser.parseResponse(toParse);
+                }
+                // Fallback: some providers may put JSON only in the final answer text
+                if (parsed == null && explanation != null && !explanation.isEmpty()) {
+                    String exNorm = extractFirstJsonObjectFromText(explanation);
+                    if (exNorm != null) {
+                        try { parsed = QwenResponseParser.parseResponse(exNorm); } catch (Exception ignored) {}
+                    }
+                }
+                if (parsed != null && "plan".equals(parsed.action)) {
+                    isPlan = true;
+                    planSteps = QwenResponseParser.toPlanSteps(parsed);
+                } else if (parsed != null && ("file_operation".equals(parsed.action) || QwenResponseParser.looksLikeJson(parsed.explanation))) {
+                    // If model returned file ops JSON but fileActions list is empty, convert and set
+                    List<ChatMessage.FileActionDetail> ops = QwenResponseParser.toFileActionDetails(parsed);
+                    if (effectiveProposedFileChanges == null || effectiveProposedFileChanges.isEmpty()) {
+                        effectiveProposedFileChanges = ops;
                     }
                 }
             } catch (Exception e) {
                 Log.w(TAG, "Plan/file parse failed", e);
+            }
+
+            // Enforce exclusive outputs: if both a plan and file operations appear, resolve per mode
+            boolean hasOps = effectiveProposedFileChanges != null && !effectiveProposedFileChanges.isEmpty();
+            if (isPlan && hasOps) {
+                Log.w(TAG, "Mixed 'plan' and 'file_operation' detected in single response; enforcing separation.");
+                boolean agent = aiAssistant != null && aiAssistant.isAgentModeEnabled();
+                if (isExecutingPlan || agent) {
+                    // During plan execution or in agent mode, prefer actionable edits now
+                    isPlan = false;
+                    planSteps.clear();
+                } else {
+                    // In non-agent mode, prefer the plan and drop actions
+                    effectiveProposedFileChanges = new ArrayList<>();
+                }
             }
 
             // If this is a file_operation response during an executing plan, update the existing plan message
@@ -631,6 +668,8 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                         planMsg.setProposedFileChanges(merged);
                         // Update the single message and auto-apply
                         frag.updateMessage(lastPlanMessagePosition, planMsg);
+                        // Cancel watchdog since we received ops for this step
+                        cancelPlanWatchdog();
                         onAiAcceptActions(lastPlanMessagePosition, planMsg);
                         return;
                     }
@@ -640,6 +679,7 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                     if (planStepRetryCount > 2) {
                         Log.e(TAG, "AI failed to produce file ops for step after 3 retries. Marking as failed.");
                         setCurrentRunningPlanStepStatus("failed");
+                        cancelPlanWatchdog();
                         planStepRetryCount = 0; // Reset for next step
                         sendNextPlanStepFollowUp(); // Move to next step
                     } else {
@@ -744,6 +784,7 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                         ChatMessage planMsg = aiChatFragment.getMessageAt(lastPlanMessagePosition);
                         if (planMsg != null) aiChatFragment.updateMessage(lastPlanMessagePosition, planMsg);
                     }
+                    cancelPlanWatchdog();
                     sendNextPlanStepFollowUp();
                 }
             }

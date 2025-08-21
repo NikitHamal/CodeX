@@ -675,8 +675,8 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                 }
             }
 
-            // If this is a file_operation response during an executing plan, update the existing plan message
-            if (!isPlan && isExecutingPlan && lastPlanMessagePosition != null) {
+            // If we are executing a plan, never insert a new AI message; always update the existing plan message
+            if (isExecutingPlan && lastPlanMessagePosition != null) {
                 if (effectiveProposedFileChanges != null && !effectiveProposedFileChanges.isEmpty()) {
                     planStepRetryCount = 0; // Reset retry count on successful action
                     AIChatFragment frag = activity.getAiChatFragment();
@@ -704,7 +704,24 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                         return;
                     }
                 } else {
-                    // AI returned no file ops, retry the step
+                    // AI returned no file ops; capture raw response for this step and then retry/advance per policy
+                    try {
+                        AIChatFragment frag = activity.getAiChatFragment();
+                        if (frag != null) {
+                            ChatMessage planMsg = frag.getMessageAt(lastPlanMessagePosition);
+                            if (planMsg != null) {
+                                List<ChatMessage.PlanStep> steps = planMsg.getPlanSteps();
+                                if (steps != null && planProgressIndex < steps.size()) {
+                                    ChatMessage.PlanStep running = steps.get(planProgressIndex);
+                                    if (running != null && (running.rawResponse == null || running.rawResponse.isEmpty())) {
+                                        running.rawResponse = (rawAiResponseJson != null && !rawAiResponseJson.isEmpty()) ? rawAiResponseJson : (explanation != null ? explanation : "");
+                                        frag.updateMessage(lastPlanMessagePosition, planMsg);
+                                    }
+                                }
+                            }
+                        }
+                    } catch (Exception ignored) {}
+                    // Retry logic (bounded) and auto-advance as previously implemented
                     planStepRetryCount++;
                     if (planStepRetryCount > 2) {
                         Log.e(TAG, "AI did not produce file ops after 3 prompts; auto-advancing and marking step completed.");

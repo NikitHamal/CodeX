@@ -1,0 +1,101 @@
+name: Cleanup Old Workflow Runs and Artifacts
+
+on:
+  schedule:
+    - cron: '0 * * * *' # every hour
+  workflow_dispatch: {}
+
+permissions:
+  actions: write
+  contents: read
+
+concurrency:
+  group: cleanup-old-workflows
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete runs and artifacts older than 5 hours
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const FIVE_HOURS_MS = 5 * 60 * 60 * 1000;
+            const cutoff = new Date(Date.now() - FIVE_HOURS_MS);
+
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            // Helper: paginate through all items for a given list API
+            async function paginate(method, params) {
+              const items = [];
+              for await (const response of github.paginate.iterator(method, { per_page: 100, ...params })) {
+                items.push(...response.data);
+              }
+              return items;
+            }
+
+            // Guard: only proceed if total workflow runs > 5
+            const runsMeta = await github.rest.actions.listWorkflowRunsForRepo({ owner, repo, per_page: 1 });
+            const totalRuns = runsMeta?.data?.total_count ?? (runsMeta?.data?.workflow_runs?.length ?? 0);
+            core.info(`Total workflow runs in repo: ${totalRuns}`);
+            if (totalRuns <= 5) {
+              core.info('Total runs are 5 or fewer. Skipping cleanup.');
+              core.summary.addHeading('Cleanup Skipped').addRaw(`Total runs: ${totalRuns} (<= 5)\n`).write();
+              return;
+            }
+
+            // 1) Delete old workflow runs
+            core.info(`Cutoff time: ${cutoff.toISOString()}`);
+            const statuses = [
+              'success','failure','cancelled','skipped','timed_out','completed'
+            ];
+
+            // We will list all runs (completed states) and filter by created_at
+            const runs = await paginate(github.rest.actions.listWorkflowRunsForRepo, {
+              owner,
+              repo,
+              status: 'completed'
+            });
+
+            let deletedRuns = 0;
+            for (const run of runs) {
+              const createdAt = new Date(run.created_at);
+              if (createdAt < cutoff) {
+                try {
+                  await github.rest.actions.deleteWorkflowRun({ owner, repo, run_id: run.id });
+                  deletedRuns++;
+                } catch (err) {
+                  core.warning(`Failed to delete run ${run.id} (${run.name}) - ${err.message}`);
+                }
+              }
+            }
+            core.info(`Deleted ${deletedRuns} workflow runs older than 5 hours.`);
+
+            // 2) Delete old artifacts
+            const artifacts = await paginate(github.rest.actions.listArtifactsForRepo, {
+              owner,
+              repo
+            });
+
+            let deletedArtifacts = 0;
+            for (const artifact of artifacts) {
+              const createdAt = new Date(artifact.created_at || artifact.updated_at || artifact.expires_at);
+              if (createdAt < cutoff) {
+                try {
+                  await github.rest.actions.deleteArtifact({ owner, repo, artifact_id: artifact.id });
+                  deletedArtifacts++;
+                } catch (err) {
+                  core.warning(`Failed to delete artifact ${artifact.id} (${artifact.name}) - ${err.message}`);
+                }
+              }
+            }
+            core.info(`Deleted ${deletedArtifacts} artifacts older than 5 hours.`);
+
+            core.summary
+              .addHeading('Cleanup Summary')
+              .addRaw(`Cutoff: ${cutoff.toISOString()}\n`)
+              .addRaw(`Deleted runs: ${deletedRuns}\n`)
+              .addRaw(`Deleted artifacts: ${deletedArtifacts}\n`)
+              .write();

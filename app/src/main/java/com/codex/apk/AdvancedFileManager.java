@@ -67,12 +67,13 @@ public class AdvancedFileManager {
                     }
                 }
             }
-
-            // Backup before write if requested via updateType 'patch' or safety default
-            File backup = new File(file.getParentFile(), file.getName() + ".bak");
-            try {
-                writeFileContent(backup, currentContent);
-            } catch (Exception ignored) {}
+            // Idempotency: if no changes, skip write and return success
+            if (finalContent.equals(currentContent)) {
+                result.setSuccess(true);
+                result.setMessage("No changes; skipped write");
+                result.setDiff("");
+                return result;
+            }
 
             // Write the file
             writeFileContent(file, finalContent);

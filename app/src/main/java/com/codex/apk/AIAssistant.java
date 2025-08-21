@@ -33,6 +33,10 @@ public class AIAssistant {
         apiClients.put(AIProvider.Z, new GLMApiClient(actionListener));
         // Register Api.Airforce client for AIRFORCE provider
         apiClients.put(AIProvider.AIRFORCE, new ApiAirforceApiClient(context, actionListener));
+        // Register Cloudflare AI client
+        apiClients.put(AIProvider.CLOUDFLARE, new CloudflareApiClient(context, actionListener));
+        // Register DeepInfra client
+        apiClients.put(AIProvider.DEEPINFRA, new DeepInfraApiClient(context, actionListener));
         // Register generic Free client for FREE provider (Pollinations/OpenAI-style)
         apiClients.put(AIProvider.FREE, new AnyProviderApiClient(context, actionListener));
         // Register Cookies-based Gemini client under COOKIES provider

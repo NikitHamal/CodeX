@@ -5,6 +5,8 @@ public enum AIProvider {
     ALIBABA("Alibaba"),
     Z("Z"),
     AIRFORCE("Api.Airforce"),
+    CLOUDFLARE("Cloudflare AI"),
+    DEEPINFRA("DeepInfra"),
     FREE("Free"),
     COOKIES("Cookies"),
     GPT_OSS("GPT OSS");

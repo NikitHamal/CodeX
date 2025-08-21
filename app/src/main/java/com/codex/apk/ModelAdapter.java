@@ -42,13 +42,6 @@ public class ModelAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
             checkedStates.put(model.getDisplayName(), prefs.getBoolean(key, true));
         }
 
-    public interface OnProviderHeaderLongClickListener {
-        void onProviderHeaderLongClick(AIProvider provider);
-    }
-
-    public void setOnProviderHeaderLongClickListener(OnProviderHeaderLongClickListener l) {
-        this.headerLongClickListener = l;
-    }
 
         // Group models by provider
         for (AIModel model : models) {
@@ -63,6 +56,14 @@ public class ModelAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
             items.add(entry.getKey());
             items.addAll(entry.getValue());
         }
+    }
+
+    public interface OnProviderHeaderLongClickListener {
+        void onProviderHeaderLongClick(AIProvider provider);
+    }
+
+    public void setOnProviderHeaderLongClickListener(OnProviderHeaderLongClickListener l) {
+        this.headerLongClickListener = l;
     }
 
     @Override

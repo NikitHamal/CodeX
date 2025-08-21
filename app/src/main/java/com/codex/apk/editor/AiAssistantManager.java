@@ -308,6 +308,24 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
         planWatchdogForIndex = -1;
     }
 
+    // Finalize plan execution and clean up any lingering state
+    private void finalizePlanExecution(String toastMessage, boolean sanitizeDanglingRunning) {
+        AIChatFragment frag = activity.getAiChatFragment();
+        if (sanitizeDanglingRunning && frag != null && lastPlanMessagePosition != null) {
+            ChatMessage pm = frag.getMessageAt(lastPlanMessagePosition);
+            if (pm != null && pm.getPlanSteps() != null) {
+                boolean changed = false;
+                for (ChatMessage.PlanStep ps : pm.getPlanSteps()) {
+                    if (ps != null && "running".equals(ps.status)) { ps.status = "completed"; changed = true; }
+                }
+                if (changed) { frag.updateMessage(lastPlanMessagePosition, pm); }
+            }
+        }
+        cancelPlanWatchdog();
+        isExecutingPlan = false;
+        if (frag != null) { frag.hideThinkingMessage(); }
+        currentStreamingMessagePosition = null;
+        lastPlanMessagePosition = null;
         planProgressIndex = 0;
         planStepRetryCount = 0;
         executedStepSummaries.clear();

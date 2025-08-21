@@ -1,7 +1,6 @@
 package com.codex.apk;
 
 import android.content.Context;
-import android.content.SharedPreferences;
 import android.util.Log;
 
 import com.codex.apk.ai.AIModel;
@@ -20,7 +19,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
 import okhttp3.MediaType;
@@ -31,24 +29,22 @@ import okhttp3.Response;
 import okio.BufferedSource;
 
 /**
- * AnyProviderApiClient
- * Generic client for free endpoints (starting with Pollinations text API).
- * - Streams OpenAI-style SSE deltas from https://text.pollinations.ai/openai
- * - No API key required
- * - Gracefully maps unknown FREE models to a default provider model
+ * ApiAirforceApiClient
+ * OpenAI-compatible streaming client targeting Api.Airforce free provider.
+ * - Endpoint: https://api.airforce/v1/chat/completions
+ * - No API key assumed (free route); add key header in future if needed
  */
-public class AnyProviderApiClient implements ApiClient {
+public class ApiAirforceApiClient implements ApiClient {
 
-    private static final String TAG = "AnyProviderApiClient";
-    private static final String OPENAI_ENDPOINT = "https://text.pollinations.ai/openai";
+    private static final String TAG = "ApiAirforceApiClient";
+    private static final String AIRFORCE_ENDPOINT = "https://api.airforce/v1/chat/completions";
 
     private final Context context;
     private final AIAssistant.AIActionListener actionListener;
     private final OkHttpClient httpClient;
     private final Gson gson = new Gson();
-    private final Random random = new Random();
 
-    public AnyProviderApiClient(Context context, AIAssistant.AIActionListener actionListener) {
+    public ApiAirforceApiClient(Context context, AIAssistant.AIActionListener actionListener) {
         this.context = context.getApplicationContext();
         this.actionListener = actionListener;
         this.httpClient = new OkHttpClient.Builder()
@@ -72,18 +68,14 @@ public class AnyProviderApiClient implements ApiClient {
             try {
                 if (actionListener != null) actionListener.onAiRequestStarted();
 
-                // Build request JSON (OpenAI-style)
-                String providerModel = mapToProviderModel(model != null ? model.getModelId() : null);
-                JsonObject body = buildOpenAIStyleBody(providerModel, message, history, thinkingModeEnabled);
+                String modelId = model != null ? model.getModelId() : "openai";
+                JsonObject body = buildOpenAIStyleBody(modelId, message, history, thinkingModeEnabled);
 
                 Request request = new Request.Builder()
-                        .url(OPENAI_ENDPOINT)
+                        .url(AIRFORCE_ENDPOINT)
                         .post(RequestBody.create(body.toString(), MediaType.parse("application/json")))
                         .addHeader("accept", "text/event-stream")
                         .addHeader("user-agent", "Mozilla/5.0 (Linux; Android) CodeX-Android/1.0")
-                        .addHeader("origin", "https://pollinations.ai")
-                        .addHeader("referer", "https://pollinations.ai/")
-                        .addHeader("cache-control", "no-cache")
                         .addHeader("accept-encoding", "identity")
                         .build();
 
@@ -92,11 +84,10 @@ public class AnyProviderApiClient implements ApiClient {
                     String errBody = null;
                     try { if (response != null && response.body() != null) errBody = response.body().string(); } catch (Exception ignore) {}
                     String snippet = errBody != null ? (errBody.length() > 400 ? errBody.substring(0, 400) + "..." : errBody) : null;
-                    if (actionListener != null) actionListener.onAiError("Free endpoint request failed: " + (response != null ? response.code() : -1) + (snippet != null ? (" | body: " + snippet) : ""));
+                    if (actionListener != null) actionListener.onAiError("Api.Airforce request failed: " + (response != null ? response.code() : -1) + (snippet != null ? (" | body: " + snippet) : ""));
                     return;
                 }
 
-                // Stream OpenAI-like SSE
                 StringBuilder finalText = new StringBuilder();
                 StringBuilder rawSse = new StringBuilder();
                 streamOpenAiSse(response, finalText, rawSse);
@@ -108,14 +99,14 @@ public class AnyProviderApiClient implements ApiClient {
                                 finalText.toString(),
                                 new ArrayList<String>(),
                                 new ArrayList<ChatMessage.FileActionDetail>(),
-                                ""
+                                model != null ? model.getDisplayName() : "Api.Airforce"
                         );
                     }
                 } else {
-                    if (actionListener != null) actionListener.onAiError("No response from free provider");
+                    if (actionListener != null) actionListener.onAiError("No response from Api.Airforce");
                 }
             } catch (Exception e) {
-                Log.e(TAG, "Error calling free provider", e);
+                Log.e(TAG, "Error calling Api.Airforce", e);
                 if (actionListener != null) actionListener.onAiError("Error: " + e.getMessage());
             } finally {
                 try { if (response != null) response.close(); } catch (Exception ignore) {}
@@ -126,7 +117,6 @@ public class AnyProviderApiClient implements ApiClient {
 
     private JsonObject buildOpenAIStyleBody(String modelId, String userMessage, List<ChatMessage> history, boolean thinkingModeEnabled) {
         JsonArray messages = new JsonArray();
-        // Convert existing history (keep it light)
         if (history != null) {
             for (ChatMessage m : history) {
                 String role = m.getSender() == ChatMessage.SENDER_USER ? "user" : "assistant";
@@ -138,7 +128,6 @@ public class AnyProviderApiClient implements ApiClient {
                 messages.add(msg);
             }
         }
-        // Append the new user message (AIAssistant has already prepended system prompt when needed)
         JsonObject user = new JsonObject();
         user.addProperty("role", "user");
         user.addProperty("content", userMessage);
@@ -148,13 +137,7 @@ public class AnyProviderApiClient implements ApiClient {
         root.addProperty("model", modelId);
         root.add("messages", messages);
         root.addProperty("stream", true);
-        // Pollinations supports seed and referrer; seed helps cache-busting and diversity
-        root.addProperty("seed", random.nextInt(Integer.MAX_VALUE));
-        root.addProperty("referrer", "https://github.com/NikitHamal/CodeZ");
-        // If provider supports reasoning visibility, prefer default (no explicit toggle); keep payload minimal
-        if (thinkingModeEnabled) {
-            // Some providers accept x-show-reasoning header; we rely on minimal body here
-        }
+        // optional reasoning config left minimal
         return root;
     }
 
@@ -162,7 +145,6 @@ public class AnyProviderApiClient implements ApiClient {
         BufferedSource source = response.body().source();
         try { source.timeout().timeout(60, TimeUnit.SECONDS); } catch (Exception ignore) {}
         StringBuilder eventBuf = new StringBuilder();
-        // Throttle
         long[] lastEmitNs = new long[]{0L};
         int[] lastSentLen = new int[]{0};
         while (true) {
@@ -170,7 +152,7 @@ public class AnyProviderApiClient implements ApiClient {
             try {
                 line = source.readUtf8LineStrict();
             } catch (EOFException eof) { break; }
-            catch (java.io.InterruptedIOException timeout) { Log.w(TAG, "Free SSE read timed out"); break; }
+            catch (java.io.InterruptedIOException timeout) { Log.w(TAG, "Airforce SSE read timed out"); break; }
             if (line == null) break;
             if (line.isEmpty()) {
                 handleOpenAiEvent(eventBuf.toString(), finalText, rawAnswer, lastEmitNs, lastSentLen);
@@ -182,7 +164,6 @@ public class AnyProviderApiClient implements ApiClient {
         if (eventBuf.length() > 0) {
             handleOpenAiEvent(eventBuf.toString(), finalText, rawAnswer, lastEmitNs, lastSentLen);
         }
-        // Force final emit
         if (actionListener != null && finalText.length() != lastSentLen[0]) {
             actionListener.onAiStreamUpdate(finalText.toString(), false);
         }
@@ -213,7 +194,6 @@ public class AnyProviderApiClient implements ApiClient {
                             }
                         }
                     } else if (choice.has("message") && choice.get("message").isJsonObject()) {
-                        // Non-streaming fallback chunk
                         JsonObject msg = choice.getAsJsonObject("message");
                         if (msg.has("content") && !msg.get("content").isJsonNull()) {
                             finalText.append(msg.get("content").getAsString());
@@ -223,7 +203,7 @@ public class AnyProviderApiClient implements ApiClient {
                 }
             }
         } catch (Exception ex) {
-            Log.w(TAG, "Failed to parse OpenAI-like SSE: " + ex.getMessage());
+            Log.w(TAG, "Failed to parse Api.Airforce SSE: " + ex.getMessage());
         }
     }
 
@@ -243,102 +223,13 @@ public class AnyProviderApiClient implements ApiClient {
         }
     }
 
-    private String mapToProviderModel(String modelId) {
-        if (modelId == null || modelId.isEmpty()) return "openai"; // sensible default
-        String lower = modelId.toLowerCase(Locale.ROOT);
-        // Pollinations exposes many backends by name; pass through most names.
-        return lower;
-    }
-
     @Override
     public List<AIModel> fetchModels() {
+        // Api.Airforce doesn't expose a public model list we can rely on here.
+        // Provide a minimal default set.
         List<AIModel> models = new ArrayList<>();
-        // Try to fetch text models from Pollinations; fall back to a minimal set
-        try {
-            OkHttpClient client = httpClient.newBuilder().readTimeout(30, TimeUnit.SECONDS).build();
-            Request req = new Request.Builder().url("https://text.pollinations.ai/models")
-                    .addHeader("user-agent", "Mozilla/5.0 (Linux; Android) CodeX-Android/1.0")
-                    .build();
-            try (Response r = client.newCall(req).execute()) {
-                if (r.isSuccessful() && r.body() != null) {
-                    String body = new String(r.body().bytes(), StandardCharsets.UTF_8);
-                    // Persist raw models JSON for FREE in SharedPreferences for quick reuse
-                    try {
-                        SharedPreferences sp = context.getSharedPreferences("ai_free_models", Context.MODE_PRIVATE);
-                        sp.edit()
-                          .putString("pollinations_models_json", body)
-                          .putLong("pollinations_models_ts", System.currentTimeMillis())
-                          .apply();
-                    } catch (Exception ignore) {}
-                    JsonElement el = JsonParser.parseString(body);
-                    if (el.isJsonArray()) {
-                        for (JsonElement e : el.getAsJsonArray()) {
-                            if (!e.isJsonObject()) continue;
-                            JsonObject obj = e.getAsJsonObject();
-                            String name = obj.has("name") && !obj.get("name").isJsonNull() ? obj.get("name").getAsString() : null;
-                            if (name == null || name.isEmpty()) continue;
-                            String display = toDisplay(name);
-
-                            boolean reasoning = obj.has("reasoning") && !obj.get("reasoning").isJsonNull() && obj.get("reasoning").getAsBoolean();
-                            boolean tools = obj.has("tools") && !obj.get("tools").isJsonNull() && obj.get("tools").getAsBoolean();
-                            boolean vision = obj.has("vision") && !obj.get("vision").isJsonNull() && obj.get("vision").getAsBoolean();
-                            boolean audio = obj.has("audio") && !obj.get("audio").isJsonNull() && obj.get("audio").getAsBoolean();
-
-                            // Derive vision/audio from input_modalities if flags are missing
-                            if (!vision && obj.has("input_modalities") && obj.get("input_modalities").isJsonArray()) {
-                                for (JsonElement im : obj.getAsJsonArray("input_modalities")) {
-                                    if (im.isJsonPrimitive()) {
-                                        String s = im.getAsString();
-                                        if ("image".equalsIgnoreCase(s)) { vision = true; }
-                                        if ("audio".equalsIgnoreCase(s)) { audio = true; }
-                                    }
-                                }
-                            }
-
-                            // supportsText=true, supportsImagesIn=vision, supportsFiles=false (FREE doesn't accept attachments),
-                            // supportsWebSearch=false, supportsThinking=reasoning, supportsVision=vision, supportsAudio=audio
-                            int maxInputTokens = 131072;
-                            try {
-                                if (obj.has("maxInputChars") && !obj.get("maxInputChars").isJsonNull()) {
-                                    int chars = obj.get("maxInputChars").getAsInt();
-                                    // rough heuristic: ~4 chars per token
-                                    maxInputTokens = Math.max(2048, Math.min(262144, chars / 4));
-                                }
-                            } catch (Exception ignore) {}
-
-                            ModelCapabilities caps = new ModelCapabilities(
-                                    true,
-                                    vision,
-                                    false,
-                                    false,
-                                    reasoning,
-                                    vision,
-                                    audio,
-                                    maxInputTokens,
-                                    8192
-                            );
-
-                            models.add(new AIModel(name, display, AIProvider.FREE, caps));
-                        }
-                    }
-                }
-            }
-        } catch (Exception ex) {
-            Log.w(TAG, "Failed to fetch pollinations text models: " + ex.getMessage());
-        }
-        if (models.isEmpty()) {
-            models.add(new AIModel("openai", "Pollinations OpenAI", AIProvider.FREE,
-                    new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)));
-            models.add(new AIModel("deepseek", "Pollinations DeepSeek", AIProvider.FREE,
-                    new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)));
-        }
+        models.add(new AIModel("openai", "Api.Airforce OpenAI", AIProvider.AIRFORCE,
+                new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)));
         return models;
-    }
-
-    private static String toDisplay(String id) {
-        if (id == null || id.isEmpty()) return "Unnamed Model";
-        String s = id.replace('-', ' ').trim();
-        if (s.isEmpty()) return id;
-        return s.substring(0, 1).toUpperCase(Locale.ROOT) + s.substring(1);
     }
 }

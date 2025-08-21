@@ -63,8 +63,9 @@ public class ModelsActivity extends AppCompatActivity {
         };
         // Long-press on FREE provider header refreshes Pollinations models
         adapter.setOnProviderHeaderLongClickListener(provider -> {
-            if (provider == AIProvider.FREE) {
-                Toast.makeText(this, "Refreshing Free models...", Toast.LENGTH_SHORT).show();
+            if (provider == AIProvider.FREE || provider == AIProvider.AIRFORCE) {
+                String nice = provider == AIProvider.FREE ? "Free" : "Api.Airforce";
+                Toast.makeText(this, "Refreshing " + nice + " models...", Toast.LENGTH_SHORT).show();
                 java.util.concurrent.ExecutorService exec = java.util.concurrent.Executors.newSingleThreadExecutor();
                 AIAssistant assistant = new AIAssistant(this, exec, new AIAssistant.AIActionListener() {
                     public void onAiActionsProcessed(String a, String b, java.util.List<String> c, java.util.List<ChatMessage.FileActionDetail> d, String e) {}
@@ -74,7 +75,7 @@ public class ModelsActivity extends AppCompatActivity {
                     public void onAiRequestCompleted() {}
                     public void onQwenConversationStateUpdated(QwenConversationState state) {}
                 });
-                assistant.refreshModelsForProvider(AIProvider.FREE, (success, message) -> {
+                assistant.refreshModelsForProvider(provider, (success, message) -> {
                     runOnUiThread(() -> {
                         setupAdapter();
                         Toast.makeText(this, message, Toast.LENGTH_SHORT).show();

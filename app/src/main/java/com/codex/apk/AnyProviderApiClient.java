@@ -1,6 +1,7 @@
 package com.codex.apk;
 
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.util.Log;
 
 import com.codex.apk.ai.AIModel;
@@ -73,7 +74,7 @@ public class AnyProviderApiClient implements ApiClient {
 
                 // Build request JSON (OpenAI-style)
                 String providerModel = mapToProviderModel(model != null ? model.getModelId() : null);
-                JsonObject body = buildOpenAIStyleBody(providerModel, message, history, thinkingModeEnabled, model);
+                JsonObject body = buildOpenAIStyleBody(providerModel, message, history, thinkingModeEnabled);
 
                 Request request = new Request.Builder()
                         .url(OPENAI_ENDPOINT)
@@ -107,7 +108,7 @@ public class AnyProviderApiClient implements ApiClient {
                                 finalText.toString(),
                                 new ArrayList<String>(),
                                 new ArrayList<ChatMessage.FileActionDetail>(),
-                                model != null ? model.getDisplayName() : "Free Model"
+                                ""
                         );
                     }
                 } else {
@@ -123,14 +124,8 @@ public class AnyProviderApiClient implements ApiClient {
         }).start();
     }
 
-    private JsonObject buildOpenAIStyleBody(String modelId, String userMessage, List<ChatMessage> history, boolean thinkingModeEnabled, AIModel model) {
+    private JsonObject buildOpenAIStyleBody(String modelId, String userMessage, List<ChatMessage> history, boolean thinkingModeEnabled) {
         JsonArray messages = new JsonArray();
-        // Inject a system identity so the assistant reports its correct model name and not "GPT-4"
-        String identity = model != null ? model.getDisplayName() : "Pollinations Model";
-        JsonObject sys = new JsonObject();
-        sys.addProperty("role", "system");
-        sys.addProperty("content", "You are an AI assistant running the model '" + identity + "'. When asked about your model or identity, reply exactly with '" + identity + "' and do not claim to be GPT-4 or any other model. Be truthful and concise.");
-        messages.add(sys);
         // Convert existing history (keep it light)
         if (history != null) {
             for (ChatMessage m : history) {
@@ -251,18 +246,10 @@ public class AnyProviderApiClient implements ApiClient {
     private String mapToProviderModel(String modelId) {
         if (modelId == null || modelId.isEmpty()) return "openai"; // sensible default
         String lower = modelId.toLowerCase(Locale.ROOT);
-        if (lower.startsWith("gemini")) return "openai"; // map Gemini-free to openai backend
-        // pass through known pollinations models, otherwise fallback
-        switch (lower) {
-            case "openai":
-            case "deepseek":
-            case "deepseek-reasoning":
-            case "llamascout":
-            case "grok":
-                return lower;
-            default:
-                return "openai";
-        }
+        // Pollinations exposes many backends by name; pass through most names.
+        // Special-case Gemini which should target an OpenAI-compatible backend string.
+        if (lower.startsWith("gemini")) return "openai";
+        return lower;
     }
 
     @Override
@@ -277,6 +264,14 @@ public class AnyProviderApiClient implements ApiClient {
             try (Response r = client.newCall(req).execute()) {
                 if (r.isSuccessful() && r.body() != null) {
                     String body = new String(r.body().bytes(), StandardCharsets.UTF_8);
+                    // Persist raw models JSON for FREE in SharedPreferences for quick reuse
+                    try {
+                        SharedPreferences sp = context.getSharedPreferences("ai_free_models", Context.MODE_PRIVATE);
+                        sp.edit()
+                          .putString("pollinations_models_json", body)
+                          .putLong("pollinations_models_ts", System.currentTimeMillis())
+                          .apply();
+                    } catch (Exception ignore) {}
                     JsonElement el = JsonParser.parseString(body);
                     if (el.isJsonArray()) {
                         for (JsonElement e : el.getAsJsonArray()) {
@@ -285,8 +280,47 @@ public class AnyProviderApiClient implements ApiClient {
                             String name = obj.has("name") && !obj.get("name").isJsonNull() ? obj.get("name").getAsString() : null;
                             if (name == null || name.isEmpty()) continue;
                             String display = toDisplay(name);
-                            models.add(new AIModel(name, display, AIProvider.FREE,
-                                    new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)));
+
+                            boolean reasoning = obj.has("reasoning") && !obj.get("reasoning").isJsonNull() && obj.get("reasoning").getAsBoolean();
+                            boolean tools = obj.has("tools") && !obj.get("tools").isJsonNull() && obj.get("tools").getAsBoolean();
+                            boolean vision = obj.has("vision") && !obj.get("vision").isJsonNull() && obj.get("vision").getAsBoolean();
+                            boolean audio = obj.has("audio") && !obj.get("audio").isJsonNull() && obj.get("audio").getAsBoolean();
+
+                            // Derive vision/audio from input_modalities if flags are missing
+                            if (!vision && obj.has("input_modalities") && obj.get("input_modalities").isJsonArray()) {
+                                for (JsonElement im : obj.getAsJsonArray("input_modalities")) {
+                                    if (im.isJsonPrimitive()) {
+                                        String s = im.getAsString();
+                                        if ("image".equalsIgnoreCase(s)) { vision = true; }
+                                        if ("audio".equalsIgnoreCase(s)) { audio = true; }
+                                    }
+                                }
+                            }
+
+                            // supportsText=true, supportsImagesIn=vision, supportsFiles=false (FREE doesn't accept attachments),
+                            // supportsWebSearch=false, supportsThinking=reasoning, supportsVision=vision, supportsAudio=audio
+                            int maxInputTokens = 131072;
+                            try {
+                                if (obj.has("maxInputChars") && !obj.get("maxInputChars").isJsonNull()) {
+                                    int chars = obj.get("maxInputChars").getAsInt();
+                                    // rough heuristic: ~4 chars per token
+                                    maxInputTokens = Math.max(2048, Math.min(262144, chars / 4));
+                                }
+                            } catch (Exception ignore) {}
+
+                            ModelCapabilities caps = new ModelCapabilities(
+                                    true,
+                                    vision,
+                                    false,
+                                    false,
+                                    reasoning,
+                                    vision,
+                                    audio,
+                                    maxInputTokens,
+                                    8192
+                            );
+
+                            models.add(new AIModel(name, display, AIProvider.FREE, caps));
                         }
                     }
                 }

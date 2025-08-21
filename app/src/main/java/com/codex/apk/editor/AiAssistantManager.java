@@ -821,12 +821,12 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                     ChatMessage existing = frag.getMessageAt(targetPos);
                     if (existing != null) {
                         existing.setContent(finalExplanation);
-                        existing.setSuggestions(suggestions != null ? new ArrayList<>(suggestions) : new ArrayList<>());
-                        existing.setRawApiResponse(rawAiResponseJson);
+                        // Suggestions field has no setter; keep existing suggestions if any.
+                        // Raw API response has no setter on ChatMessage; we only store it on new messages.
                         existing.setProposedFileChanges(effectiveProposedFileChanges);
                         existing.setStatus(ChatMessage.STATUS_PENDING_APPROVAL);
                         if (thinkingContent != null && !thinkingContent.isEmpty()) existing.setThinkingContent(thinkingContent);
-                        if (aiModelDisplayName != null) existing.setAiModelDisplayName(aiModelDisplayName);
+                        if (aiModelDisplayName != null) existing.setAiModelName(aiModelDisplayName);
                         if (webSources != null && !webSources.isEmpty()) existing.setWebSources(webSources);
                         else if (existing.getWebSources() == null || existing.getWebSources().isEmpty()) {
                             // keep previously parsed webSources block if present; else try parse from raw

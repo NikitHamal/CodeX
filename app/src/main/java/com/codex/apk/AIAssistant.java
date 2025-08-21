@@ -31,8 +31,8 @@ public class AIAssistant {
         apiClients.put(AIProvider.ALIBABA, new QwenApiClient(context, actionListener, null)); // projectDir can be set later
         // Register GLM client for Z provider
         apiClients.put(AIProvider.Z, new GLMApiClient(actionListener));
-        // Register Free Gemini client for FREE provider
-        apiClients.put(AIProvider.FREE, new GeminiFreeApiClient(context, actionListener));
+        // Register generic Free client for FREE provider (Pollinations/OpenAI-style)
+        apiClients.put(AIProvider.FREE, new AnyProviderApiClient(context, actionListener));
         // Register GPT OSS provider client
         apiClients.put(AIProvider.GPT_OSS, new GptOssApiClient(context, actionListener));
         // Register Official Gemini client for GOOGLE provider, API key can be set later

@@ -444,8 +444,11 @@ public class QwenApiClient implements ApiClient {
     private synchronized String ensureMidToken() throws IOException {
         if (midToken != null) {
             midTokenUses++;
+            Log.i(TAG, "Reusing midtoken. Use count: " + midTokenUses);
             return midToken;
         }
+
+        Log.i(TAG, "No active midtoken. Fetching a new one...");
         Request req = new Request.Builder()
                 .url("https://sg-wum.alibaba.com/w/wu.json")
                 .get()
@@ -463,9 +466,19 @@ public class QwenApiClient implements ApiClient {
             }
             midToken = m.group(1);
             midTokenUses = 1;
-            Log.i(TAG, "Obtained bx-umidtoken (uses=1)");
+
+            // Save to SharedPreferences
+            sharedPreferences.edit().putString(QWEN_MIDTOKEN_KEY, midToken).apply();
+            Log.i(TAG, "Obtained and saved new midtoken. Use count: 1");
             return midToken;
         }
+    }
+
+    private void invalidateMidToken() {
+        Log.w(TAG, "Invalidating current midtoken due to a rate limit error.");
+        this.midToken = null;
+        this.midTokenUses = 0;
+        sharedPreferences.edit().remove(QWEN_MIDTOKEN_KEY).apply();
     }
 
     private String executeToolCall(String name, JsonObject args) {
@@ -1013,5 +1026,42 @@ public class QwenApiClient implements ApiClient {
                 Log.w(TAG, "Failed to enrich action detail for path " + d.path + ": " + e.getMessage());
             }
         }
+    }
+
+    private String getProjectStateKey() {
+        if (projectDir == null) return null;
+        // Sanitize the path to make it a valid preferences key
+        return QWEN_CONVERSATION_STATE_KEY_PREFIX + projectDir.getAbsolutePath().replaceAll("[^a-zA-Z0-9_-]", "_");
+    }
+
+    private void saveConversationState(QwenConversationState state) {
+        String key = getProjectStateKey();
+        if (key == null || state == null) return;
+
+        try {
+            String jsonState = gson.toJson(state);
+            sharedPreferences.edit().putString(key, jsonState).apply();
+            Log.i(TAG, "Saved conversation state for project: " + projectDir.getName());
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to save conversation state.", e);
+        }
+    }
+
+    private QwenConversationState loadConversationState() {
+        String key = getProjectStateKey();
+        if (key == null) return new QwenConversationState();
+
+        String jsonState = sharedPreferences.getString(key, null);
+        if (jsonState != null) {
+            try {
+                Log.i(TAG, "Loaded conversation state for project: " + projectDir.getName());
+                return gson.fromJson(jsonState, QwenConversationState.class);
+            } catch (Exception e) {
+                Log.e(TAG, "Failed to load/parse conversation state.", e);
+                // Fallback to a new state if parsing fails
+                return new QwenConversationState();
+            }
+        }
+        return new QwenConversationState();
     }
 }

@@ -1,6 +1,7 @@
 package com.codex.apk;
 
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.util.Log;
 
 import com.codex.apk.ai.AIModel;
@@ -38,6 +39,7 @@ public class ApiAirforceApiClient implements ApiClient {
 
     private static final String TAG = "ApiAirforceApiClient";
     private static final String AIRFORCE_ENDPOINT = "https://api.airforce/v1/chat/completions";
+    private static final String AIRFORCE_MODELS_ENDPOINT = "https://api.airforce/v1/models";
 
     private final Context context;
     private final AIAssistant.AIActionListener actionListener;
@@ -225,11 +227,79 @@ public class ApiAirforceApiClient implements ApiClient {
 
     @Override
     public List<AIModel> fetchModels() {
-        // Api.Airforce doesn't expose a public model list we can rely on here.
-        // Provide a minimal default set.
-        List<AIModel> models = new ArrayList<>();
-        models.add(new AIModel("openai", "Api.Airforce OpenAI", AIProvider.AIRFORCE,
-                new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)));
-        return models;
+        List<AIModel> out = new ArrayList<>();
+        try {
+            OkHttpClient client = httpClient.newBuilder().readTimeout(30, java.util.concurrent.TimeUnit.SECONDS).build();
+            Request req = new Request.Builder()
+                    .url(AIRFORCE_MODELS_ENDPOINT)
+                    .addHeader("user-agent", "Mozilla/5.0 (Linux; Android) CodeX-Android/1.0")
+                    .addHeader("accept", "*/*")
+                    .build();
+            try (Response r = client.newCall(req).execute()) {
+                if (r.isSuccessful() && r.body() != null) {
+                    String body = new String(r.body().bytes(), java.nio.charset.StandardCharsets.UTF_8);
+                    // Cache raw JSON for fast reloads
+                    try {
+                        SharedPreferences sp = context.getSharedPreferences("ai_airforce_models", Context.MODE_PRIVATE);
+                        sp.edit()
+                          .putString("airforce_models_json", body)
+                          .putLong("airforce_models_ts", System.currentTimeMillis())
+                          .apply();
+                    } catch (Exception ignored) {}
+
+                    try {
+                        com.google.gson.JsonElement root = com.google.gson.JsonParser.parseString(body);
+                        if (root.isJsonObject()) {
+                            com.google.gson.JsonObject obj = root.getAsJsonObject();
+                            if (obj.has("data") && obj.get("data").isJsonArray()) {
+                                com.google.gson.JsonArray data = obj.getAsJsonArray("data");
+                                for (int i = 0; i < data.size(); i++) {
+                                    com.google.gson.JsonElement e = data.get(i);
+                                    if (!e.isJsonObject()) continue;
+                                    com.google.gson.JsonObject m = e.getAsJsonObject();
+                                    String id = m.has("id") ? m.get("id").getAsString() : null;
+                                    if (id == null || id.isEmpty()) continue;
+                                    boolean supportsChat = m.has("supports_chat") && m.get("supports_chat").getAsBoolean();
+                                    boolean supportsImages = m.has("supports_images") && m.get("supports_images").getAsBoolean();
+                                    String display = toDisplayName(id);
+                                    ModelCapabilities caps = new ModelCapabilities(
+                                            false, // thinking
+                                            false, // web
+                                            supportsImages, // vision
+                                            true,  // document/text
+                                            false, // video
+                                            false, // audio
+                                            false, // citations
+                                            131072,
+                                            8192
+                                    );
+                                    // Only list chat-capable models for chat UI
+                                    if (supportsChat) {
+                                        out.add(new AIModel(id, display, AIProvider.AIRFORCE, caps));
+                                    }
+                                }
+                            }
+                        }
+                    } catch (Exception parseErr) {
+                        Log.w(TAG, "Failed to parse Api.Airforce models JSON", parseErr);
+                    }
+                }
+            }
+        } catch (Exception ex) {
+            Log.w(TAG, "Api.Airforce models fetch failed", ex);
+        }
+
+        if (out.isEmpty()) {
+            // Fallback minimal set
+            out.add(new AIModel("openai", "Api.Airforce OpenAI", AIProvider.AIRFORCE,
+                    new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)));
+        }
+        return out;
+    }
+
+    private String toDisplayName(String id) {
+        if (id == null || id.isEmpty()) return "Api.Airforce";
+        String s = id.replace('-', ' ').replace('_', ' ');
+        return s.substring(0, 1).toUpperCase(java.util.Locale.ROOT) + s.substring(1);
     }
 }

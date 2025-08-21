@@ -67,60 +67,79 @@ public class GptOssApiClient implements ApiClient {
                 String effort = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
                         .getString("thinking_effort", "high");
 
-                JsonObject body = buildRequestBody(message, state);
+                int maxAttempts = 2; // initial + one retry
+                for (int attempt = 0; attempt < maxAttempts; attempt++) {
+                    JsonObject body = buildRequestBody(message, state);
 
-                Request.Builder builder = new Request.Builder()
-                        .url(ENDPOINT)
-                        .post(RequestBody.create(body.toString(), MediaType.parse("application/json")))
-                        .addHeader("accept", "text/event-stream")
-                        .addHeader("x-reasoning-effort", effort)
-                        .addHeader("x-selected-model", model.getModelId())
-                        .addHeader("x-show-reasoning", thinkingModeEnabled && model.getCapabilities().supportsThinking ? "true" : "false")
-                        .addHeader("Cache-Control", "no-cache")
-                        .addHeader("Accept-Encoding", "identity");
+                    Request.Builder builder = new Request.Builder()
+                            .url(ENDPOINT)
+                            .post(RequestBody.create(body.toString(), MediaType.parse("application/json")))
+                            .addHeader("accept", "text/event-stream")
+                            .addHeader("x-reasoning-effort", effort)
+                            .addHeader("x-selected-model", model.getModelId())
+                            .addHeader("x-show-reasoning", thinkingModeEnabled && model.getCapabilities().supportsThinking ? "true" : "false")
+                            .addHeader("Cache-Control", "no-cache")
+                            .addHeader("Accept-Encoding", "identity");
 
-                // Continue conversation requires user_id cookie
-                if (state != null && state.getConversationId() != null && state.getLastParentId() != null) {
-                    builder.addHeader("Cookie", "user_id=" + state.getLastParentId());
-                }
-
-                Request request = builder.build();
-                response = httpClient.newCall(request).execute();
-
-                if (!response.isSuccessful() || response.body() == null) {
-                    String errBody = null;
-                    try { if (response != null && response.body() != null) errBody = response.body().string(); } catch (Exception ignore) {}
-                    String snippet = errBody != null ? (errBody.length() > 400 ? errBody.substring(0, 400) + "..." : errBody) : null;
-                    if (actionListener != null) actionListener.onAiError("GPT OSS request failed: " + (response != null ? response.code() : -1) + (snippet != null ? (" | body: " + snippet) : ""));
-                    return;
-                }
-
-                // Extract user_id cookie for new threads (robust: check all Set-Cookie headers)
-                if (state == null || state.getConversationId() == null) {
-                    List<String> setCookies = response.headers("set-cookie");
-                    String userId = extractCookieValueFromHeaders(setCookies, "user_id");
-                    if (userId != null && state != null) {
-                        state.setLastParentId(userId);
-                        if (actionListener != null) actionListener.onQwenConversationStateUpdated(state);
+                    // Continue conversation requires user_id cookie
+                    if (state != null && state.getConversationId() != null && state.getLastParentId() != null) {
+                        builder.addHeader("Cookie", "user_id=" + state.getLastParentId());
                     }
-                }
 
-                StringBuilder finalText = new StringBuilder();
-                StringBuilder thinkingText = new StringBuilder();
-                StringBuilder rawSse = new StringBuilder();
-                streamSse(response, state, finalText, thinkingText, rawSse);
+                    Request request = builder.build();
+                    try { if (response != null) { response.close(); } } catch (Exception ignore) {}
+                    response = httpClient.newCall(request).execute();
 
-                // Emit final processed callback if applicable
-                if (actionListener != null && (finalText.length() > 0 || thinkingText.length() > 0)) {
-                    actionListener.onAiActionsProcessed(
-                            rawSse.toString(),
-                            finalText.toString(),
-                            new ArrayList<String>(),
-                            new ArrayList<ChatMessage.FileActionDetail>(),
-                            model.getDisplayName()
-                    );
-                } else if (actionListener != null) {
-                    actionListener.onAiError("No response from GPT-OSS (empty stream)");
+                    if (!response.isSuccessful() || response.body() == null) {
+                        String errBody = null;
+                        try { if (response != null && response.body() != null) errBody = response.body().string(); } catch (Exception ignore) {}
+                        String snippet = errBody != null ? (errBody.length() > 400 ? errBody.substring(0, 400) + "..." : errBody) : null;
+                        if (attempt == maxAttempts - 1) {
+                            if (actionListener != null) actionListener.onAiError("GPT OSS request failed: " + (response != null ? response.code() : -1) + (snippet != null ? (" | body: " + snippet) : ""));
+                        } else {
+                            Log.w(TAG, "GPT-OSS non-200 response, will retry once: code=" + (response != null ? response.code() : -1));
+                            continue;
+                        }
+                        return;
+                    }
+
+                    // Extract user_id cookie for new threads (robust: check all Set-Cookie headers)
+                    if (state == null || state.getConversationId() == null) {
+                        List<String> setCookies = response.headers("set-cookie");
+                        String userId = extractCookieValueFromHeaders(setCookies, "user_id");
+                        if (userId != null && state != null) {
+                            state.setLastParentId(userId);
+                            if (actionListener != null) actionListener.onQwenConversationStateUpdated(state);
+                        }
+                    }
+
+                    StringBuilder finalText = new StringBuilder();
+                    StringBuilder thinkingText = new StringBuilder();
+                    StringBuilder rawSse = new StringBuilder();
+                    streamSse(response, state, finalText, thinkingText, rawSse);
+
+                    if (finalText.length() > 0 || thinkingText.length() > 0) {
+                        // Success
+                        if (actionListener != null) {
+                            actionListener.onAiActionsProcessed(
+                                    rawSse.toString(),
+                                    finalText.toString(),
+                                    new ArrayList<String>(),
+                                    new ArrayList<ChatMessage.FileActionDetail>(),
+                                    model.getDisplayName()
+                            );
+                        }
+                        return;
+                    } else {
+                        // Empty stream (timeout or premature end)
+                        if (attempt < maxAttempts - 1) {
+                            Log.w(TAG, "GPT-OSS empty stream, retrying once...");
+                            continue;
+                        } else {
+                            if (actionListener != null) actionListener.onAiError("No response from GPT-OSS (empty stream after retry)");
+                            return;
+                        }
+                    }
                 }
             } catch (Exception e) {
                 Log.e(TAG, "Error streaming from GPT OSS", e);

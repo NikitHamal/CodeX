@@ -50,10 +50,12 @@ public class QwenApiClient implements ApiClient {
     private static final String QWEN_BASE_URL = "https://chat.qwen.ai/api/v2";
     private static final String QWEN_BX_V = "2.5.31";
     private static final Pattern MIDTOKEN_PATTERN = Pattern.compile("(?:umx\\.wu|__fycb)\\('([^']+)'\\)");
+    private static final String QWEN_MIDTOKEN_KEY = "qwen_midtoken";
 
     private final Context context;
     private final OkHttpClient httpClient;
     private final Gson gson;
+    private final SharedPreferences sharedPreferences;
     private final AIAssistant.AIActionListener actionListener;
 
     private final File projectDir;
@@ -86,6 +88,14 @@ public class QwenApiClient implements ApiClient {
                 .cookieJar(cookieJar)
                 .build();
         this.gson = new Gson();
+        this.sharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        try {
+            this.midToken = sharedPreferences.getString(QWEN_MIDTOKEN_KEY, null);
+            if (this.midToken != null) {
+                this.midTokenUses = 0;
+                Log.i(TAG, "Loaded persisted midtoken.");
+            }
+        } catch (Exception ignored) {}
     }
 
     @Override

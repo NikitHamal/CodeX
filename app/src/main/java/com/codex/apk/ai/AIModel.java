@@ -141,6 +141,26 @@ public class AIModel {
         if (context == null) return;
         android.content.SharedPreferences prefs = context.getSharedPreferences("model_settings", android.content.Context.MODE_PRIVATE);
         com.google.gson.Gson gson = new com.google.gson.Gson();
+        // Load previously fetched models per provider and replace in-memory lists where present
+        try {
+            for (AIProvider p : AIProvider.values()) {
+                String key = "fetched_models_" + p.name();
+                String fetchedJson = prefs.getString(key, null);
+                if (fetchedJson != null && !fetchedJson.isEmpty()) {
+                    SimpleModel[] arr = gson.fromJson(fetchedJson, SimpleModel[].class);
+                    if (arr != null && arr.length > 0) {
+                        java.util.List<AIModel> restored = new java.util.ArrayList<>();
+                        for (SimpleModel sm : arr) {
+                            // Preserve existing caps if known, else default to chat-only
+                            AIModel existing = findByDisplayName(sm.displayName);
+                            ModelCapabilities caps = existing != null ? existing.getCapabilities() : new ModelCapabilities(false, false, false, true, false, false, false, 0, 0);
+                            restored.add(new AIModel(sm.modelId, sm.displayName, AIProvider.valueOf(sm.provider), caps));
+                        }
+                        modelsByProvider.put(p, restored);
+                    }
+                }
+            }
+        } catch (Exception ignored) {}
         // Deletions
         String deletedJson = prefs.getString("deleted_models", null);
         java.util.Set<String> deleted = new java.util.HashSet<>();
@@ -267,6 +287,20 @@ public class AIModel {
 
     public static void updateModelsForProvider(AIProvider provider, List<AIModel> newModels) {
         modelsByProvider.put(provider, new ArrayList<>(newModels));
+        // Persist a lightweight list so models survive app restarts
+        android.content.Context context = com.codex.apk.CodeXApplication.getAppContext();
+        if (context != null) {
+            try {
+                java.util.List<SimpleModel> simple = new java.util.ArrayList<>();
+                for (AIModel m : newModels) {
+                    simple.add(new SimpleModel(m.getModelId(), m.getDisplayName(), m.getProvider().name()));
+                }
+                com.google.gson.Gson gson = new com.google.gson.Gson();
+                String json = gson.toJson(simple.toArray(new SimpleModel[0]));
+                android.content.SharedPreferences prefs = context.getSharedPreferences("model_settings", android.content.Context.MODE_PRIVATE);
+                prefs.edit().putString("fetched_models_" + provider.name(), json).apply();
+            } catch (Exception ignored) {}
+        }
     }
 
     public static AIModel fromDisplayName(String displayName) {

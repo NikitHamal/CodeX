@@ -815,6 +815,59 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
 
             AIChatFragment frag = activity.getAiChatFragment();
             if (frag != null) {
+                Integer targetPos = currentStreamingMessagePosition;
+                if (targetPos != null) {
+                    // Replace the streaming bubble instead of adding a new one
+                    ChatMessage existing = frag.getMessageAt(targetPos);
+                    if (existing != null) {
+                        existing.setContent(finalExplanation);
+                        existing.setSuggestions(suggestions != null ? new ArrayList<>(suggestions) : new ArrayList<>());
+                        existing.setRawApiResponse(rawAiResponseJson);
+                        existing.setProposedFileChanges(effectiveProposedFileChanges);
+                        existing.setStatus(ChatMessage.STATUS_PENDING_APPROVAL);
+                        if (thinkingContent != null && !thinkingContent.isEmpty()) existing.setThinkingContent(thinkingContent);
+                        if (aiModelDisplayName != null) existing.setAiModelDisplayName(aiModelDisplayName);
+                        if (webSources != null && !webSources.isEmpty()) existing.setWebSources(webSources);
+                        else if (existing.getWebSources() == null || existing.getWebSources().isEmpty()) {
+                            // keep previously parsed webSources block if present; else try parse from raw
+                            if (rawAiResponseJson != null && rawAiResponseJson.contains("web_sources")) {
+                                try {
+                                    com.google.gson.JsonObject obj = com.google.gson.JsonParser.parseString(rawAiResponseJson).getAsJsonObject();
+                                    if (obj.has("web_sources") && obj.get("web_sources").isJsonArray()) {
+                                        java.util.List<WebSource> parsedSources = new java.util.ArrayList<>();
+                                        com.google.gson.JsonArray arr = obj.getAsJsonArray("web_sources");
+                                        for (int i = 0; i < arr.size(); i++) {
+                                            com.google.gson.JsonObject s = arr.get(i).getAsJsonObject();
+                                            String url = s.has("url") ? s.get("url").getAsString() : "";
+                                            String title = s.has("title") ? s.get("title").getAsString() : url;
+                                            String snippet = s.has("snippet") ? s.get("snippet").getAsString() : "";
+                                            String favicon = s.has("favicon") ? s.get("favicon").getAsString() : "";
+                                            parsedSources.add(new WebSource(url, title, snippet, favicon));
+                                        }
+                                        if (!parsedSources.isEmpty()) existing.setWebSources(parsedSources);
+                                    }
+                                } catch (Exception ignore) {}
+                            }
+                        }
+                        if (isPlan && planSteps != null && !planSteps.isEmpty()) {
+                            existing.setPlanSteps(planSteps);
+                            lastPlanMessagePosition = targetPos;
+                            planProgressIndex = 0;
+                            executedStepSummaries.clear();
+                        } else if (aiAssistant != null && aiAssistant.isAgentModeEnabled()
+                                   && effectiveProposedFileChanges != null && !effectiveProposedFileChanges.isEmpty()) {
+                            // Trigger auto-apply on the updated bubble
+                            frag.updateMessage(targetPos, existing);
+                            currentStreamingMessagePosition = null;
+                            onAiAcceptActions(targetPos, existing);
+                            return;
+                        }
+                        frag.updateMessage(targetPos, existing);
+                        currentStreamingMessagePosition = null;
+                        return;
+                    }
+                }
+                // Fallback: no streaming message exists; insert a fresh one
                 int insertedPos = frag.addMessage(aiMessage);
                 if (isPlan && planSteps != null && !planSteps.isEmpty()) {
                     aiMessage.setPlanSteps(planSteps);

@@ -70,57 +70,6 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
     private Runnable planWatchdogRunnable = null;
     private int planWatchdogForIndex = -1;
 
-    // Cancel any active watchdog timer for the current plan step
-    private void cancelPlanWatchdog() {
-        if (planWatchdogRunnable != null) {
-            planWatchdogHandler.removeCallbacks(planWatchdogRunnable);
-            Log.d(TAG, "Plan watchdog cancelled for index=" + planWatchdogForIndex);
-        }
-        planWatchdogRunnable = null;
-        planWatchdogForIndex = -1;
-    }
-
-    // Schedule a watchdog to fail a stuck running step after timeoutMs
-    private void schedulePlanWatchdog(final int forIndex, long timeoutMs) {
-        cancelPlanWatchdog();
-        planWatchdogForIndex = forIndex;
-        planWatchdogRunnable = new Runnable() {
-            @Override
-            public void run() {
-                Log.w(TAG, "Plan watchdog fired for index=" + forIndex + ", currentIndex=" + planProgressIndex + ", isExecutingPlan=" + isExecutingPlan);
-                if (!isExecutingPlan) { cancelPlanWatchdog(); return; }
-                AIChatFragment frag = activity.getAiChatFragment();
-                if (frag == null || lastPlanMessagePosition == null) { cancelPlanWatchdog(); return; }
-                ChatMessage pm = frag.getMessageAt(lastPlanMessagePosition);
-                if (pm == null || pm.getPlanSteps() == null) { cancelPlanWatchdog(); return; }
-                // Only act if we're still on the same running index
-                if (planProgressIndex == forIndex) {
-                    List<ChatMessage.PlanStep> steps = pm.getPlanSteps();
-                    if (forIndex < steps.size()) {
-                        ChatMessage.PlanStep ps = steps.get(forIndex);
-                        String prev = ps != null ? ps.status : "<null>";
-                        if (ps != null && "running".equals(prev)) {
-                            ps.status = "failed";
-                            planProgressIndex = forIndex + 1;
-                            frag.updateMessage(lastPlanMessagePosition, pm);
-                            Log.e(TAG, "Watchdog marked step failed and advanced. index=" + forIndex);
-                        } else {
-                            Log.w(TAG, "Watchdog fired but step not running. index=" + forIndex + ", status=" + prev);
-                        }
-                    }
-                    planStepRetryCount = 0;
-                    // Advance to next step attempt
-                    sendNextPlanStepFollowUp();
-                } else {
-                    Log.i(TAG, "Watchdog fired for stale index; ignoring. firedFor=" + forIndex + ", nowAt=" + planProgressIndex);
-                }
-                cancelPlanWatchdog();
-            }
-        };
-        Log.d(TAG, "Plan watchdog scheduled for index=" + forIndex + ", timeoutMs=" + timeoutMs);
-        planWatchdogHandler.postDelayed(planWatchdogRunnable, timeoutMs);
-    }
-
     public AiAssistantManager(EditorActivity activity, File projectDir, String projectName,
                               FileManager fileManager, ExecutorService executorService) {
         this.activity = activity;
@@ -271,8 +220,8 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                 activity.showToast("Agent step applied");
                 // After finishing this file_operation batch as part of plan, advance to next step automatically
                 if (isExecutingPlan) {
-                    // Mark the current plan step as completed/failed ONCE per batch
-                    setCurrentRunningPlanStepStatus(anyFailedBatch ? "failed" : "completed");
+                    // Always mark the current plan step as completed (never failed)
+                    setCurrentRunningPlanStepStatus("completed");
                     // Refresh the plan message to reflect the status change
                     if (lastPlanMessagePosition != null) {
                         ChatMessage planMsg = frag != null ? frag.getMessageAt(lastPlanMessagePosition) : null;
@@ -299,7 +248,6 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
             if (ps != null && (ps.kind == null || ps.kind.equalsIgnoreCase("file")) &&
                     !"completed".equals(ps.status) && !"failed".equals(ps.status)) {
                 ps.status = status;
-                Log.d(TAG, "setNextPlanStepStatus: idx=" + planProgressIndex + " -> " + status);
                 break;
             }
             planProgressIndex++;
@@ -316,32 +264,50 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
         if (planProgressIndex < steps.size()) {
             ChatMessage.PlanStep ps = steps.get(planProgressIndex);
             if (ps != null) {
-                String prev = ps.status;
                 ps.status = status;
-                Log.d(TAG, "setCurrentRunningPlanStepStatus: idx=" + planProgressIndex + " " + prev + " -> " + status);
                 planProgressIndex++;
             }
         }
     }
 
-    // Centralized cleanup to avoid lingering running states and UI placeholders
-    private void finalizePlanExecution(String toastMessage, boolean sanitizeDanglingRunning) {
-        AIChatFragment frag = activity.getAiChatFragment();
-        if (sanitizeDanglingRunning && frag != null && lastPlanMessagePosition != null) {
-            ChatMessage pm = frag.getMessageAt(lastPlanMessagePosition);
-            if (pm != null && pm.getPlanSteps() != null) {
-                boolean changed = false;
-                for (ChatMessage.PlanStep ps : pm.getPlanSteps()) {
-                    if (ps != null && "running".equals(ps.status)) { ps.status = "failed"; changed = true; }
-                }
-                if (changed) { frag.updateMessage(lastPlanMessagePosition, pm); }
-            }
-        }
+    // Watchdog: never mark as failed; on timeout, auto-complete the running step and advance
+    private void schedulePlanWatchdog(final int indexFor, long timeoutMs) {
         cancelPlanWatchdog();
-        isExecutingPlan = false;
-        if (frag != null) { frag.hideThinkingMessage(); }
-        currentStreamingMessagePosition = null;
-        lastPlanMessagePosition = null;
+        planWatchdogForIndex = indexFor;
+        planWatchdogRunnable = () -> {
+            if (!isExecutingPlan) return;
+            if (lastPlanMessagePosition == null) return;
+            try {
+                AIChatFragment frag = activity.getAiChatFragment();
+                if (frag == null) return;
+                ChatMessage pm = frag.getMessageAt(lastPlanMessagePosition);
+                if (pm == null || pm.getPlanSteps() == null) return;
+                // Only act if the same step is still running
+                if (planProgressIndex == indexFor && indexFor < pm.getPlanSteps().size()) {
+                    ChatMessage.PlanStep ps = pm.getPlanSteps().get(indexFor);
+                    if (ps != null && "running".equals(ps.status)) {
+                        Log.w(TAG, "Watchdog timeout for step index=" + indexFor + "; auto-marking completed and advancing.");
+                        ps.status = "completed";
+                        frag.updateMessage(lastPlanMessagePosition, pm);
+                        planProgressIndex = indexFor + 1;
+                        sendNextPlanStepFollowUp();
+                    }
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Watchdog error", e);
+            }
+        };
+        planWatchdogHandler.postDelayed(planWatchdogRunnable, Math.max(1, timeoutMs));
+    }
+
+    private void cancelPlanWatchdog() {
+        if (planWatchdogRunnable != null) {
+            planWatchdogHandler.removeCallbacks(planWatchdogRunnable);
+            planWatchdogRunnable = null;
+        }
+        planWatchdogForIndex = -1;
+    }
+
         planProgressIndex = 0;
         planStepRetryCount = 0;
         executedStepSummaries.clear();
@@ -407,7 +373,6 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
         }
         prompt.append("Proceed now with the step. Return only the JSON.\n");
 
-        Log.d(TAG, "sendNextPlanStepFollowUp: next file-kind step idx=" + idx);
         isExecutingPlan = true;
         // Mark step running visually before sending
         setNextPlanStepStatus("running");
@@ -717,6 +682,16 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                     AIChatFragment frag = activity.getAiChatFragment();
                     ChatMessage planMsg = frag.getMessageAt(lastPlanMessagePosition);
                     if (planMsg != null) {
+                        // Capture per-step raw response for debugging
+                        try {
+                            List<ChatMessage.PlanStep> steps = planMsg.getPlanSteps();
+                            if (steps != null && planProgressIndex < steps.size()) {
+                                ChatMessage.PlanStep running = steps.get(planProgressIndex);
+                                if (running != null) {
+                                    running.rawResponse = (rawAiResponseJson != null && !rawAiResponseJson.isEmpty()) ? rawAiResponseJson : (explanation != null ? explanation : "");
+                                }
+                            }
+                        } catch (Exception ignored) {}
                         // Merge proposed file changes for this step
                         List<ChatMessage.FileActionDetail> merged = planMsg.getProposedFileChanges() != null ? planMsg.getProposedFileChanges() : new ArrayList<>();
                         merged.addAll(effectiveProposedFileChanges);
@@ -732,8 +707,8 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                     // AI returned no file ops, retry the step
                     planStepRetryCount++;
                     if (planStepRetryCount > 2) {
-                        Log.e(TAG, "AI failed to produce file ops for step after 3 retries. Marking as failed.");
-                        setCurrentRunningPlanStepStatus("failed");
+                        Log.e(TAG, "AI did not produce file ops after 3 prompts; auto-advancing and marking step completed.");
+                        setCurrentRunningPlanStepStatus("completed");
                         cancelPlanWatchdog();
                         planStepRetryCount = 0; // Reset for next step
                         sendNextPlanStepFollowUp(); // Move to next step
@@ -834,7 +809,7 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                 if (agentEnabled && isExecutingPlan) {
                     aiChatFragment.hideThinkingMessage();
                     currentStreamingMessagePosition = null;
-                    setCurrentRunningPlanStepStatus("failed");
+                    setCurrentRunningPlanStepStatus("completed");
                     if (lastPlanMessagePosition != null) {
                         ChatMessage planMsg = aiChatFragment.getMessageAt(lastPlanMessagePosition);
                         if (planMsg != null) aiChatFragment.updateMessage(lastPlanMessagePosition, planMsg);

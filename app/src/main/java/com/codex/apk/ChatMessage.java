@@ -131,11 +131,13 @@ public class ChatMessage {
         public final String title;
         public final String kind;
         public String status; // pending | running | completed | failed
+        public String rawResponse; // raw JSON/text response captured for this specific step
         public PlanStep(String id, String title, String kind) {
             this.id = id;
             this.title = title;
             this.kind = kind;
             this.status = "pending";
+            this.rawResponse = null;
         }
     }
 

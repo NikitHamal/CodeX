@@ -78,6 +78,8 @@ public class GptOssApiClient implements ApiClient {
                             .addHeader("x-reasoning-effort", effort)
                             .addHeader("x-selected-model", model.getModelId())
                             .addHeader("x-show-reasoning", thinkingModeEnabled && model.getCapabilities().supportsThinking ? "true" : "false")
+                            .addHeader("User-Agent", "CodeX-Android/1.0")
+                            .addHeader("Origin", "https://api.gpt-oss.com")
                             .addHeader("Cache-Control", "no-cache")
                             .addHeader("Accept-Encoding", "identity");
 
@@ -134,8 +136,18 @@ public class GptOssApiClient implements ApiClient {
                         // Empty stream (timeout or premature end)
                         if (attempt < maxAttempts - 1) {
                             Log.w(TAG, "GPT-OSS empty stream, retrying once...");
+                            String raw = rawSse.toString();
+                            if (!raw.isEmpty()) {
+                                String snip = raw.length() > 500 ? raw.substring(0, 500) + "..." : raw;
+                                Log.w(TAG, "Raw SSE (truncated) before retry: " + snip);
+                            }
                             continue;
                         } else {
+                            String raw = rawSse.toString();
+                            if (!raw.isEmpty()) {
+                                String snip = raw.length() > 500 ? raw.substring(0, 500) + "..." : raw;
+                                Log.w(TAG, "Raw SSE (truncated) on final empty: " + snip);
+                            }
                             if (actionListener != null) actionListener.onAiError("No response from GPT-OSS (empty stream after retry)");
                             return;
                         }
@@ -260,7 +272,11 @@ public class GptOssApiClient implements ApiClient {
                     } else if ("recap".equals(entryType)) {
                         // Optional: could surface recap summary; keep minimal for now
                         // No-op or append small marker
-                    } else if ("assistant_message.content_part.text_delta".equals(entryType)) {
+                    } else if ("assistant_message.content_part.text_delta".equals(entryType)
+                            || "assistant_message.delta".equals(entryType)
+                            || "message.delta".equals(entryType)
+                            || "response.output_text.delta".equals(entryType)
+                            || "model_output_text.delta".equals(entryType)) {
                         String delta = entry.has("delta") ? entry.get("delta").getAsString() : "";
                         int contentIndex = update.has("contentIndex") ? update.get("contentIndex").getAsInt() : entry.has("contentIndex") ? entry.get("contentIndex").getAsInt() : 0;
                         // Separate parts when contentIndex increases
@@ -272,6 +288,15 @@ public class GptOssApiClient implements ApiClient {
                         if (!delta.isEmpty()) {
                             finalText.append(delta);
                             maybeEmitAnswer(finalText, lastEmitNsAnswer, lastSentLenAnswer);
+                        }
+                    } else {
+                        // Generic fallback: append any textual delta if present
+                        if (entry.has("delta") && entry.get("delta").isJsonPrimitive()) {
+                            String delta = entry.get("delta").getAsString();
+                            if (!delta.isEmpty()) {
+                                finalText.append(delta);
+                                maybeEmitAnswer(finalText, lastEmitNsAnswer, lastSentLenAnswer);
+                            }
                         }
                     }
                     break;

@@ -117,6 +117,31 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
                 int colorId;
                 switch (s) { case "running": colorId = R.color.warning_container; break; case "completed": colorId = R.color.success_container; break; case "failed": colorId = R.color.error_container; break; default: colorId = R.color.surface_container; }
                 if (status.getBackground() instanceof GradientDrawable) { GradientDrawable bg = (GradientDrawable) status.getBackground().mutate(); bg.setColor(itemView.getResources().getColor(colorId)); }
+
+                // Long-press to show raw response for this step
+                itemView.setOnLongClickListener(v -> {
+                    Context ctx = itemView.getContext();
+                    View dialogView = LayoutInflater.from(ctx).inflate(R.layout.dialog_raw_api_response, null);
+                    TextView textRawResponse = dialogView.findViewById(R.id.text_raw_response);
+                    com.google.android.material.button.MaterialButton buttonCopy = dialogView.findViewById(R.id.button_copy);
+                    com.google.android.material.button.MaterialButton buttonClose = dialogView.findViewById(R.id.button_close);
+                    String raw = step.rawResponse;
+                    textRawResponse.setText(raw != null && !raw.isEmpty() ? raw : "No raw response captured for this step yet.");
+                    androidx.appcompat.app.AlertDialog.Builder builder = new androidx.appcompat.app.AlertDialog.Builder(ctx);
+                    builder.setView(dialogView);
+                    final androidx.appcompat.app.AlertDialog dialog = builder.create();
+                    buttonCopy.setOnClickListener(x -> {
+                        android.content.ClipboardManager clipboard = (android.content.ClipboardManager) ctx.getSystemService(Context.CLIPBOARD_SERVICE);
+                        if (clipboard != null) {
+                            android.content.ClipData clip = android.content.ClipData.newPlainText("Plan Step Raw Response", raw != null ? raw : "");
+                            clipboard.setPrimaryClip(clip);
+                            android.widget.Toast.makeText(ctx, "Raw response copied", android.widget.Toast.LENGTH_SHORT).show();
+                        }
+                    });
+                    buttonClose.setOnClickListener(x -> dialog.dismiss());
+                    dialog.show();
+                    return true;
+                });
             }
             private String capitalize(String x) { return x.length() > 0 ? Character.toUpperCase(x.charAt(0)) + x.substring(1) : x; }
         }

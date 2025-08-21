@@ -33,6 +33,8 @@ public class AIAssistant {
         apiClients.put(AIProvider.Z, new GLMApiClient(actionListener));
         // Register generic Free client for FREE provider (Pollinations/OpenAI-style)
         apiClients.put(AIProvider.FREE, new AnyProviderApiClient(context, actionListener));
+        // Register Cookies-based Gemini client under COOKIES provider
+        apiClients.put(AIProvider.COOKIES, new GeminiFreeApiClient(context, actionListener));
         // Register GPT OSS provider client
         apiClients.put(AIProvider.GPT_OSS, new GptOssApiClient(context, actionListener));
         // Register Official Gemini client for GOOGLE provider, API key can be set later
@@ -76,7 +78,11 @@ public class AIAssistant {
                 finalMessage = system + "\n\n" + message;
             }
             // Note: Gemini Free context is maintained via server-side conversation metadata (cid,rid,rcid)
-            client.sendMessage(finalMessage, currentModel, chatHistory, qwenState, thinkingModeEnabled, webSearchEnabled, enabledTools, attachments);
+            List<File> safeAttachments = attachments;
+            if (currentModel != null && currentModel.getProvider() != AIProvider.COOKIES) {
+                safeAttachments = new ArrayList<>();
+            }
+            client.sendMessage(finalMessage, currentModel, chatHistory, qwenState, thinkingModeEnabled, webSearchEnabled, enabledTools, safeAttachments);
         } else {
             if (actionListener != null) {
                 actionListener.onAiError("API client for provider " + currentModel.getProvider() + " not found.");

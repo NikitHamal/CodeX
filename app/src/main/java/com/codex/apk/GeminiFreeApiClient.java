@@ -252,11 +252,11 @@ public class GeminiFreeApiClient implements ApiClient {
 
     @Override
     public List<AIModel> fetchModels() {
-        // Static supported list for FREE provider
+        // Static supported list for COOKIES provider (cookie-based Gemini)
         List<AIModel> list = new ArrayList<>();
-        list.add(new AIModel("gemini-2.5-flash", "Gemini 2.5 Flash (Free)", AIProvider.FREE, new com.codex.apk.ai.ModelCapabilities(true, true, true, true, true, true, true, 1048576, 8192)));
-        list.add(new AIModel("gemini-2.5-pro", "Gemini 2.5 Pro (Free)", AIProvider.FREE, new com.codex.apk.ai.ModelCapabilities(true, true, true, true, true, true, true, 2097152, 8192)));
-        list.add(new AIModel("gemini-2.0-flash", "Gemini 2.0 Flash (Free)", AIProvider.FREE, new com.codex.apk.ai.ModelCapabilities(true, true, true, true, true, true, true, 1048576, 8192)));
+        list.add(new AIModel("gemini-2.5-flash", "Gemini 2.5 Flash", AIProvider.COOKIES, new com.codex.apk.ai.ModelCapabilities(true, true, true, true, true, true, true, 1048576, 8192)));
+        list.add(new AIModel("gemini-2.5-pro", "Gemini 2.5 Pro", AIProvider.COOKIES, new com.codex.apk.ai.ModelCapabilities(true, true, true, true, true, true, true, 2097152, 8192)));
+        list.add(new AIModel("gemini-2.0-flash", "Gemini 2.0 Flash", AIProvider.COOKIES, new com.codex.apk.ai.ModelCapabilities(true, true, true, true, true, true, true, 1048576, 8192)));
         return list;
     }
 

@@ -29,6 +29,7 @@ public class ModelAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
     private final Map<AIProvider, List<AIModel>> modelsByProvider;
     private final Map<String, Boolean> checkedStates = new LinkedHashMap<>();
     private final SharedPreferences prefs;
+    private OnProviderHeaderLongClickListener headerLongClickListener;
 
     public ModelAdapter(Context context, List<AIModel> models) {
         this.context = context;
@@ -40,6 +41,14 @@ public class ModelAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
             String key = "model_" + model.getDisplayName() + "_enabled";
             checkedStates.put(model.getDisplayName(), prefs.getBoolean(key, true));
         }
+
+    public interface OnProviderHeaderLongClickListener {
+        void onProviderHeaderLongClick(AIProvider provider);
+    }
+
+    public void setOnProviderHeaderLongClickListener(OnProviderHeaderLongClickListener l) {
+        this.headerLongClickListener = l;
+    }
 
         // Group models by provider
         for (AIModel model : models) {
@@ -130,6 +139,15 @@ public class ModelAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
                     editor.apply();
                     notifyDataSetChanged();
                 }
+            });
+
+            // Long press on header invokes callback if set
+            itemView.setOnLongClickListener(v -> {
+                if (headerLongClickListener != null) {
+                    headerLongClickListener.onProviderHeaderLongClick(provider);
+                    return true;
+                }
+                return false;
             });
         }
     }

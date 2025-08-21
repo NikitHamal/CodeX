@@ -412,7 +412,13 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
     private String planToJson(ChatMessage planMsg) {
         try {
             String raw = planMsg.getRawApiResponse();
-            if (raw != null && raw.trim().startsWith("{")) return raw;
+            if (raw != null) {
+                String trimmed = raw.trim();
+                if (trimmed.startsWith("{")) return raw;
+                // Try to extract JSON object from fenced/plain text
+                String extracted = extractFirstJsonObjectFromText(raw);
+                if (extracted != null) return extracted;
+            }
         } catch (Exception ignored) {}
         return "{\"action\":\"plan\"}";
     }
@@ -667,15 +673,18 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                 if (parsed != null && "plan".equals(parsed.action)) {
                     isPlan = true;
                     planSteps = QwenResponseParser.toPlanSteps(parsed);
+                    try { Log.d(TAG, "Parsed response as plan; steps=" + (planSteps != null ? planSteps.size() : 0)); } catch (Exception ignore) {}
                 } else if (parsed != null && ("file_operation".equals(parsed.action) || QwenResponseParser.looksLikeJson(parsed.explanation))) {
                     // If model returned file ops JSON but fileActions list is empty, convert and set
                     List<ChatMessage.FileActionDetail> ops = QwenResponseParser.toFileActionDetails(parsed);
                     if (effectiveProposedFileChanges == null || effectiveProposedFileChanges.isEmpty()) {
                         effectiveProposedFileChanges = ops;
                     }
+                    try { Log.d(TAG, "Parsed response as file_operation; ops=" + (ops != null ? ops.size() : 0)); } catch (Exception ignore) {}
                 }
             } catch (Exception e) {
                 Log.w(TAG, "Plan/file parse failed", e);
+                try { Log.d(TAG, "Parse failed for raw length=" + (rawAiResponseJson != null ? rawAiResponseJson.length() : -1)); } catch (Exception ignore) {}
             }
 
             // Enforce exclusive outputs: if both a plan and file operations appear, resolve per mode

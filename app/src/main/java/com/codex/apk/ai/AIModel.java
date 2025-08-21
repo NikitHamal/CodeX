@@ -67,10 +67,10 @@ public class AIModel {
             new AIModel("cogvideox", "CogVideoX", AIProvider.Z, new ModelCapabilities(false, false, false, false, false, true, false, 0, 0)),
             new AIModel("glm-4-alltools", "GLM-4-AllTools", AIProvider.Z, new ModelCapabilities(false, false, true, true, false, false, true, 128000, 4096)),
 
-            // Free Provider (Gemini reverse-engineered)
-            new AIModel("gemini-2.5-flash", "Gemini 2.5 Flash (Free)", AIProvider.FREE, new ModelCapabilities(true, true, true, true, true, true, true, 1048576, 8192)),
-            new AIModel("gemini-2.5-pro", "Gemini 2.5 Pro (Free)", AIProvider.FREE, new ModelCapabilities(true, true, true, true, true, true, true, 2097152, 8192)),
-            new AIModel("gemini-2.0-flash", "Gemini 2.0 Flash (Free)", AIProvider.FREE, new ModelCapabilities(true, true, true, true, true, true, true, 1048576, 8192)),
+            // Cookies Provider (Gemini reverse-engineered via cookies)
+            new AIModel("gemini-2.5-flash", "Gemini 2.5 Flash", AIProvider.COOKIES, new ModelCapabilities(true, true, true, true, true, true, true, 1048576, 8192)),
+            new AIModel("gemini-2.5-pro", "Gemini 2.5 Pro", AIProvider.COOKIES, new ModelCapabilities(true, true, true, true, true, true, true, 2097152, 8192)),
+            new AIModel("gemini-2.0-flash", "Gemini 2.0 Flash", AIProvider.COOKIES, new ModelCapabilities(true, true, true, true, true, true, true, 1048576, 8192)),
 
             // GPT OSS Provider
             new AIModel("gpt-oss-120b", "GPT OSS 120B", AIProvider.GPT_OSS, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)),
@@ -98,6 +98,8 @@ public class AIModel {
 
     public static void addCustomModel(AIModel model) {
         customModels.add(model);
+        // Reflect immediately in in-memory map to show in UI without duplication
+        upsertModel(model);
         saveCustomModels();
     }
 
@@ -235,7 +237,6 @@ public class AIModel {
         for (List<AIModel> modelList : modelsByProvider.values()) {
             allModels.addAll(modelList);
         }
-        allModels.addAll(customModels);
         return allModels;
     }
 

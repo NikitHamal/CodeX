@@ -45,7 +45,7 @@ public class ModelsActivity extends AppCompatActivity {
     }
 
     private void setupAdapter() {
-        recyclerView.setAdapter(new ModelAdapter(this, AIModel.getAllModels()) {
+        ModelAdapter adapter = new ModelAdapter(this, AIModel.getAllModels()) {
             @Override
             public void onBindViewHolder(RecyclerView.ViewHolder holder, int position) {
                 super.onBindViewHolder(holder, position);
@@ -60,7 +60,29 @@ public class ModelsActivity extends AppCompatActivity {
                 }
             }
             public java.util.List<?> getItems() { try { java.lang.reflect.Field f = ModelAdapter.class.getDeclaredField("items"); f.setAccessible(true); return (java.util.List<?>) f.get(this);} catch(Exception e){ return java.util.Collections.emptyList(); } }
+        };
+        // Long-press on FREE provider header refreshes Pollinations models
+        adapter.setOnProviderHeaderLongClickListener(provider -> {
+            if (provider == AIProvider.FREE) {
+                Toast.makeText(this, "Refreshing Free models...", Toast.LENGTH_SHORT).show();
+                java.util.concurrent.ExecutorService exec = java.util.concurrent.Executors.newSingleThreadExecutor();
+                AIAssistant assistant = new AIAssistant(this, exec, new AIAssistant.AIActionListener() {
+                    public void onAiActionsProcessed(String a, String b, java.util.List<String> c, java.util.List<ChatMessage.FileActionDetail> d, String e) {}
+                    public void onAiError(String errorMessage) {}
+                    public void onAiRequestStarted() {}
+                    public void onAiStreamUpdate(String partialResponse, boolean isThinking) {}
+                    public void onAiRequestCompleted() {}
+                    public void onQwenConversationStateUpdated(QwenConversationState state) {}
+                });
+                assistant.refreshModelsForProvider(AIProvider.FREE, (success, message) -> {
+                    runOnUiThread(() -> {
+                        setupAdapter();
+                        Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
+                    });
+                });
+            }
         });
+        recyclerView.setAdapter(adapter);
     }
 
     private void showAddModelDialog() {

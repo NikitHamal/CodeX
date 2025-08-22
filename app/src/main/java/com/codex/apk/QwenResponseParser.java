@@ -314,7 +314,6 @@ public class QwenResponseParser {
             if (op.searchPattern != null) detail.searchPattern = op.searchPattern;
             if (op.replaceWith != null) detail.replaceWith = op.replaceWith;
             if (op.diffPatch != null) detail.diffPatch = op.diffPatch;
-            if (op.createBackup != null) detail.createBackup = op.createBackup;
             if (op.validateContent != null) detail.validateContent = op.validateContent;
             if (op.contentType != null) detail.contentType = op.contentType;
             if (op.errorHandling != null) detail.errorHandling = op.errorHandling;
@@ -325,8 +324,10 @@ public class QwenResponseParser {
         
         return details;
     }
-
-    /** Convert ParsedResponse plan steps to ChatMessage.PlanStep list */
+    
+    /**
+     * Converts a ParsedResponse plan steps to ChatMessage.PlanStep list
+     */
     public static List<ChatMessage.PlanStep> toPlanSteps(ParsedResponse response) {
         List<ChatMessage.PlanStep> out = new ArrayList<>();
         if (response.planSteps == null) return out;

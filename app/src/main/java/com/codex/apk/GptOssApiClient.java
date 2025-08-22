@@ -4,6 +4,7 @@ import android.content.Context;
 import android.util.Log;
 
 import com.codex.apk.ai.AIModel;
+import com.codex.apk.ai.ModelRegistry;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
@@ -377,8 +378,10 @@ public class GptOssApiClient implements ApiClient {
     public List<AIModel> fetchModels() {
         // Provide known GPT-OSS models
         List<AIModel> models = new ArrayList<>();
-        models.add(com.codex.apk.ai.AIModel.fromModelId("gpt-oss-120b"));
-        models.add(com.codex.apk.ai.AIModel.fromModelId("gpt-oss-20b"));
+        AIModel m1 = ModelRegistry.byId("gpt-oss-120b");
+        AIModel m2 = ModelRegistry.byId("gpt-oss-20b");
+        if (m1 != null) models.add(m1);
+        if (m2 != null) models.add(m2);
         return models;
     }
 }

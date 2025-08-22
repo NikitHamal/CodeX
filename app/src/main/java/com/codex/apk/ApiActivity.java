@@ -7,6 +7,7 @@ import android.view.MenuItem;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.google.android.material.appbar.MaterialToolbar;
+import com.codex.apk.core.Prefs;
 
 public class ApiActivity extends AppCompatActivity {
 
@@ -24,18 +25,18 @@ public class ApiActivity extends AppCompatActivity {
         com.google.android.material.textfield.TextInputEditText cookie1psidEditText = findViewById(R.id.edit_text_secure_1psid);
         com.google.android.material.textfield.TextInputEditText cookie1psidtsEditText = findViewById(R.id.edit_text_secure_1psidts);
 
-        SharedPreferences prefs = getSharedPreferences("settings", MODE_PRIVATE);
-        String savedApiKey = prefs.getString("gemini_api_key", "");
-        String saved1psid = prefs.getString("secure_1psid", "");
-        String saved1psidts = prefs.getString("secure_1psidts", "");
+        SharedPreferences prefs = Prefs.of(this);
+        String savedApiKey = Prefs.getString(this, Prefs.KEY_GEMINI_API, "");
+        String saved1psid = Prefs.getString(this, Prefs.KEY_SECURE_1PSID, "");
+        String saved1psidts = Prefs.getString(this, Prefs.KEY_SECURE_1PSIDTS, "");
 
         if (apiKeyEditText != null) apiKeyEditText.setText(savedApiKey);
         if (cookie1psidEditText != null) cookie1psidEditText.setText(saved1psid);
         if (cookie1psidtsEditText != null) cookie1psidtsEditText.setText(saved1psidts);
 
-        setupDebouncedSaver(apiKeyEditText, s -> prefs.edit().putString("gemini_api_key", s).apply());
-        setupDebouncedSaver(cookie1psidEditText, s -> prefs.edit().putString("secure_1psid", s).apply());
-        setupDebouncedSaver(cookie1psidtsEditText, s -> prefs.edit().putString("secure_1psidts", s).apply());
+        setupDebouncedSaver(apiKeyEditText, s -> Prefs.putString(this, Prefs.KEY_GEMINI_API, s));
+        setupDebouncedSaver(cookie1psidEditText, s -> Prefs.putString(this, Prefs.KEY_SECURE_1PSID, s));
+        setupDebouncedSaver(cookie1psidtsEditText, s -> Prefs.putString(this, Prefs.KEY_SECURE_1PSIDTS, s));
     }
 
     private void setupDebouncedSaver(com.google.android.material.textfield.TextInputEditText editText, java.util.function.Consumer<String> onSave) {

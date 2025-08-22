@@ -5,6 +5,7 @@ import android.content.Context;
 import android.content.Intent;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import com.codex.apk.core.ServiceLocator;
 
 /**
  * Custom Application class for CodeX
@@ -21,6 +22,9 @@ public class CodeXApplication extends Application {
 
         // Set up theme based on user preferences at app startup
         ThemeManager.setupTheme(this);
+
+        // Initialize service locator for global services
+        ServiceLocator.init(this);
 
         // Set up crash handler
         Thread.setDefaultUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler() {

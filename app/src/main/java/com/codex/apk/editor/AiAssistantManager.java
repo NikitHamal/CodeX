@@ -410,6 +410,22 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
         sendAiPrompt(prompt.toString(), new ArrayList<>(), activity.getQwenState(), activity.getActiveTab());
     }
 
+    // Accept a broader set of kinds as actionable edits to support providers that
+    // emit non-"file" labels (e.g., "code", "edit", "modify", "update", "patch").
+    private boolean isActionableStepKind(String kind) {
+        if (kind == null || kind.trim().isEmpty()) return true; // default to actionable
+        String k = kind.trim().toLowerCase(java.util.Locale.ROOT);
+        return k.equals("file")
+                || k.equals("code")
+                || k.equals("edit")
+                || k.equals("modify")
+                || k.equals("update")
+                || k.equals("patch")
+                || k.equals("change")
+                || k.equals("smartupdate")
+                || k.equals("refactor");
+    }
+
     private String planToJson(ChatMessage planMsg) {
         try {
             String raw = planMsg.getRawApiResponse();

@@ -245,7 +245,7 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
         List<ChatMessage.PlanStep> steps = planMsg.getPlanSteps();
         while (planProgressIndex < steps.size()) {
             ChatMessage.PlanStep ps = steps.get(planProgressIndex);
-            if (ps != null && (ps.kind == null || ps.kind.equalsIgnoreCase("file")) &&
+            if (ps != null && (isActionableStepKind(ps.kind)) &&
                     !"completed".equals(ps.status) && !"failed".equals(ps.status)) {
                 ps.status = status;
                 break;
@@ -347,16 +347,17 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
         }
         List<ChatMessage.PlanStep> steps = planMsg.getPlanSteps();
 
-        // Find next file-kind step starting at planProgressIndex
+        // Find next actionable step starting at planProgressIndex
         int idx = planProgressIndex;
         while (idx < steps.size()) {
             ChatMessage.PlanStep s = steps.get(idx);
-            if (s != null && (s.kind == null || "file".equalsIgnoreCase(s.kind))
+            if (s != null && (isActionableStepKind(s.kind))
                     && !"completed".equals(s.status) && !"failed".equals(s.status)) {
                 break;
             }
             idx++;
         }
+
         if (idx >= steps.size()) {
             // All steps done
             finalizePlanExecution("Plan completed", false);

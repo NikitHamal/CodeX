@@ -1,47 +1,5 @@
 package com.codex.apk.core.model;
 
-import java.util.ArrayList;
-import java.util.List;
-
-/**
- * Validation result class for collecting errors and warnings during validation.
- */
-public class ValidationResult {
-    private final List<String> errors;
-    private final List<String> warnings;
-    private final boolean valid;
-    
-    private ValidationResult(Builder builder) {
-        this.errors = new ArrayList<>(builder.errors);
-        this.warnings = new ArrayList<>(builder.warnings);
-        this.valid = this.errors.isEmpty();
-    }
-    
-    public List<String> getErrors() { return new ArrayList<>(errors); }
-    public List<String> getWarnings() { return new ArrayList<>(warnings); }
-    public boolean isValid() { return valid; }
-    public boolean hasErrors() { return !errors.isEmpty(); }
-    public boolean hasWarnings() { return !warnings.isEmpty(); }
-    
-    public static class Builder {
-        private List<String> errors = new ArrayList<>();
-        private List<String> warnings = new ArrayList<>();
-        
-        public Builder addError(String error) { errors.add(error); return this; }
-        public Builder addWarning(String warning) { warnings.add(warning); return this; }
-        public Builder merge(ValidationResult other) {
-            if (other != null) {
-                errors.addAll(other.errors);
-                warnings.addAll(other.warnings);
-            }
-            return this;
-        }
-        public ValidationResult build() { return new ValidationResult(this); }
-    }
-    
-    public static Builder builder() { return new Builder(); }
-}
-
 /**
  * Required capabilities for AI requests.
  */
@@ -117,7 +75,7 @@ class Attachment {
 /**
  * Tool call representation.
  */
-class ToolCall {
+public class ToolCall {
     private final String id;
     private final String name;
     private final String arguments;
@@ -242,7 +200,7 @@ class AIError {
 /**
  * Execution context for requests.
  */
-class ExecutionContext {
+public class ExecutionContext {
     private final String userId;
     private final String sessionId;
     private final java.io.File projectDir;
@@ -261,7 +219,7 @@ class ExecutionContext {
 /**
  * Provider capabilities model.
  */
-class ProviderCapabilities {
+public class ProviderCapabilities {
     private final boolean supportsStreaming;
     private final boolean supportsVision;
     private final boolean supportsTools;
@@ -307,7 +265,7 @@ class ProviderCapabilities {
 /**
  * Provider information.
  */
-class ProviderInfo {
+public class ProviderInfo {
     private final com.codex.apk.ai.AIProvider type;
     private final String displayName;
     private final String description;
@@ -329,7 +287,7 @@ class ProviderInfo {
 /**
  * Health status for providers.
  */
-class HealthStatus {
+public class HealthStatus {
     private final boolean healthy;
     private final String message;
     private final long responseTimeMs;

@@ -14,9 +14,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
-
-import io.reactivex.rxjava3.core.Observable;
-import io.reactivex.rxjava3.schedulers.Schedulers;
+import java.util.concurrent.CompletableFuture;
+import java.util.function.Consumer;
 import okhttp3.*;
 import okio.BufferedSource;
 
@@ -81,7 +80,20 @@ public class OpenAICompatibleService extends BaseAIService {
     }
     
     @Override
-    protected Observable<AIResponse> handleStreamingResponse(Response response, String requestId) {
+    protected CompletableFuture<Void> handleStreamingResponse(Response response, String requestId,
+                                                              Consumer<AIResponse> onResponse,
+                                                              Consumer<Throwable> onError) {
+        return CompletableFuture.runAsync(() -> {
+            try {
+                String responseBody = response.body().string();
+                // Simple implementation - parse the whole response and send as one chunk
+                AIResponse aiResponse = parseResponse(response, requestId);
+                onResponse.accept(aiResponse);
+            } catch (Exception e) {
+                onError.accept(e);
+            }
+        });
+    }
         return Observable.create(emitter -> {
             try (BufferedSource source = response.body().source()) {
                 source.timeout().timeout(60, TimeUnit.SECONDS);

@@ -11,11 +11,10 @@ import com.codex.apk.ai.AIProvider;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Map;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
-
-import io.reactivex.rxjava3.core.Observable;
-import io.reactivex.rxjava3.schedulers.Schedulers;
+import java.util.concurrent.TimeoutException;
+import java.util.function.Consumer;
 
 /**
  * Central service manager that orchestrates AI service operations across multiple providers.
@@ -69,19 +68,26 @@ public class AIServiceManager {
      * Executes an AI request using the appropriate provider.
      * 
      * @param request The AI request to execute
-     * @return Observable stream of responses
+     * @param onResponse Consumer to handle streaming responses
+     * @param onError Consumer to handle errors
+     * @return CompletableFuture that completes when request is finished
      */
-    public Observable<AIResponse> executeRequest(AIRequest request) {
-        return Observable.fromCallable(() -> selectProvider(request))
-            .subscribeOn(Schedulers.io())
-            .flatMap(selection -> {
+    public CompletableFuture<Void> executeRequest(AIRequest request, 
+                                                 Consumer<AIResponse> onResponse, 
+                                                 Consumer<Throwable> onError) {
+        return CompletableFuture.supplyAsync(() -> selectProvider(request))
+            .thenCompose(selection -> {
                 if (selection.isFailure()) {
-                    return Observable.error(new ServiceException(selection.getErrorMessage()));
+                    onError.accept(new ServiceException(selection.getErrorMessage()));
+                    return CompletableFuture.completedFuture(null);
                 }
-                return pipeline.execute(request, selection.getService());
+                return pipeline.execute(request, selection.getService(), onResponse, onError);
             })
-            .timeout(configuration.getRequestTimeout().toMillis(), TimeUnit.MILLISECONDS)
-            .onErrorResumeNext(error -> handleError(request, error));
+            .orTimeout(configuration.getRequestTimeout().toMillis(), TimeUnit.MILLISECONDS)
+            .exceptionally(error -> {
+                handleError(request, error, onResponse, onError);
+                return null;
+            });
     }
     
     /**
@@ -171,7 +177,8 @@ public class AIServiceManager {
         }
     }
     
-    private Observable<AIResponse> handleError(AIRequest request, Throwable error) {
+    private void handleError(AIRequest request, Throwable error, 
+                           Consumer<AIResponse> onResponse, Consumer<Throwable> onError) {
         // Try to find a fallback provider
         List<AIProvider> availableProviders = List.copyOf(registry.getAvailableProviders());
         for (AIProvider fallback : availableProviders) {
@@ -180,10 +187,10 @@ public class AIServiceManager {
             try {
                 AIService service = getService(fallback);
                 if (service.canHandle(request)) {
-                    return pipeline.execute(request, service)
-                        .doOnSubscribe(sub -> 
-                            android.util.Log.w("AIServiceManager", 
-                                "Falling back to provider: " + fallback + " due to error: " + error.getMessage()));
+                    android.util.Log.w("AIServiceManager", 
+                        "Falling back to provider: " + fallback + " due to error: " + error.getMessage());
+                    pipeline.execute(request, service, onResponse, onError);
+                    return;
                 }
             } catch (Exception e) {
                 // Continue to next fallback
@@ -191,7 +198,7 @@ public class AIServiceManager {
         }
         
         // No fallback available, return original error
-        return Observable.error(error);
+        onError.accept(error);
     }
     
     /**

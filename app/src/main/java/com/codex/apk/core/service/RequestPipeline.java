@@ -5,7 +5,8 @@ import com.codex.apk.core.model.AIResponse;
 import com.codex.apk.core.pipeline.RequestInterceptor;
 import com.codex.apk.core.pipeline.ResponseProcessor;
 
-import io.reactivex.rxjava3.core.Observable;
+import java.util.concurrent.CompletableFuture;
+import java.util.function.Consumer;
 
 /**
  * Request pipeline for processing AI requests and responses through a chain of
@@ -20,9 +21,13 @@ public interface RequestPipeline {
      * 
      * @param request The AI request to process
      * @param service The AI service to execute the request with
-     * @return Observable stream of processed responses
+     * @param onResponse Consumer to handle streaming responses
+     * @param onError Consumer to handle errors
+     * @return CompletableFuture that completes when the request is finished
      */
-    Observable<AIResponse> execute(AIRequest request, AIService service);
+    CompletableFuture<Void> execute(AIRequest request, AIService service, 
+                                   Consumer<AIResponse> onResponse, 
+                                   Consumer<Throwable> onError);
     
     /**
      * Adds a request interceptor to the pipeline. Interceptors are executed

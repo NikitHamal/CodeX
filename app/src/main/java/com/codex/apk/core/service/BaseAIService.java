@@ -8,9 +8,7 @@ import com.codex.apk.ai.AIProvider;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
-
-import io.reactivex.rxjava3.core.Observable;
-import io.reactivex.rxjava3.schedulers.Schedulers;
+import java.util.function.Consumer;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
@@ -34,22 +32,36 @@ public abstract class BaseAIService implements AIService {
     }
     
     @Override
-    public final Observable<AIResponse> sendMessage(AIRequest request) {
+    public final CompletableFuture<Void> sendMessage(AIRequest request, 
+                                                    Consumer<AIResponse> onResponse, 
+                                                    Consumer<Throwable> onError) {
         if (isShutdown) {
-            return Observable.error(new IllegalStateException("Service has been shut down"));
+            onError.accept(new IllegalStateException("Service has been shut down"));
+            return CompletableFuture.completedFuture(null);
         }
         
-        return Observable.fromCallable(() -> validateRequest(request))
-            .subscribeOn(Schedulers.io())
-            .flatMap(validatedRequest -> {
-                try {
-                    return executeRequest(validatedRequest);
-                } catch (Exception e) {
-                    return Observable.error(mapToAIError(e, request.getId()));
-                }
-            })
-            .doOnError(error -> logError("Request failed", error))
-            .onErrorResumeNext(error -> Observable.just(createErrorResponse(request.getId(), error)));
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                return validateRequest(request);
+            } catch (Exception e) {
+                onError.accept(mapToAIError(e, request.getId()));
+                return null;
+            }
+        }).thenCompose(validatedRequest -> {
+            if (validatedRequest == null) {
+                return CompletableFuture.completedFuture(null);
+            }
+            try {
+                return executeRequest(validatedRequest, onResponse, onError);
+            } catch (Exception e) {
+                onError.accept(mapToAIError(e, request.getId()));
+                return CompletableFuture.completedFuture(null);
+            }
+        }).exceptionally(error -> {
+            logError("Request failed", error);
+            onResponse.accept(createErrorResponse(request.getId(), error));
+            return null;
+        });
     }
     
     @Override
@@ -155,9 +167,13 @@ public abstract class BaseAIService implements AIService {
      * 
      * @param response The HTTP response containing the stream
      * @param requestId The original request ID
-     * @return Observable stream of AI responses
+     * @param onResponse Consumer to handle each response chunk
+     * @param onError Consumer to handle errors
+     * @return CompletableFuture that completes when streaming is done
      */
-    protected abstract Observable<AIResponse> handleStreamingResponse(Response response, String requestId);
+    protected abstract CompletableFuture<Void> handleStreamingResponse(Response response, String requestId,
+                                                                      Consumer<AIResponse> onResponse,
+                                                                      Consumer<Throwable> onError);
     
     /**
      * Fetches the list of available models from the provider.
@@ -176,26 +192,48 @@ public abstract class BaseAIService implements AIService {
     protected abstract boolean performHealthCheck() throws Exception;
     
     // Template method for request execution
-    private Observable<AIResponse> executeRequest(AIRequest request) {
-        return Observable.fromCallable(() -> buildHttpRequest(request))
-            .flatMap(httpRequest -> executeHttpRequest(httpRequest, request))
-            .doOnSubscribe(disposable -> logInfo("Executing request: " + request.getId()));
+    private CompletableFuture<Void> executeRequest(AIRequest request, 
+                                                  Consumer<AIResponse> onResponse, 
+                                                  Consumer<Throwable> onError) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                return buildHttpRequest(request);
+            } catch (Exception e) {
+                onError.accept(e);
+                return null;
+            }
+        }).thenCompose(httpRequest -> {
+            if (httpRequest == null) {
+                return CompletableFuture.completedFuture(null);
+            }
+            return executeHttpRequest(httpRequest, request, onResponse, onError);
+        }).thenApply(result -> {
+            logInfo("Completed request: " + request.getId());
+            return null;
+        });
     }
     
-    private Observable<AIResponse> executeHttpRequest(Request httpRequest, AIRequest aiRequest) {
-        return Observable.fromCallable(() -> {
+    private CompletableFuture<Void> executeHttpRequest(Request httpRequest, AIRequest aiRequest,
+                                                      Consumer<AIResponse> onResponse,
+                                                      Consumer<Throwable> onError) {
+        return CompletableFuture.supplyAsync(() -> {
             try (Response response = httpClient.newCall(httpRequest).execute()) {
                 if (!response.isSuccessful()) {
                     throw new ServiceException("HTTP request failed: " + response.code() + " " + response.message());
                 }
                 
                 if (aiRequest.isStreaming() && supportsStreaming()) {
-                    return handleStreamingResponse(response, aiRequest.getId());
+                    return handleStreamingResponse(response, aiRequest.getId(), onResponse, onError);
                 } else {
-                    return Observable.just(parseResponse(response, aiRequest.getId()));
+                    AIResponse aiResponse = parseResponse(response, aiRequest.getId());
+                    onResponse.accept(aiResponse);
+                    return CompletableFuture.completedFuture(null);
                 }
+            } catch (Exception e) {
+                onError.accept(e);
+                return CompletableFuture.completedFuture(null);
             }
-        }).flatMap(obs -> obs);
+        }).thenCompose(future -> future != null ? future : CompletableFuture.completedFuture(null));
     }
     
     // Helper methods

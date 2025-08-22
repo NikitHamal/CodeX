@@ -12,9 +12,8 @@ import com.google.gson.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
-
-import io.reactivex.rxjava3.core.Observable;
-import io.reactivex.rxjava3.schedulers.Schedulers;
+import java.util.concurrent.CompletableFuture;
+import java.util.function.Consumer;
 import okhttp3.*;
 
 /**
@@ -81,15 +80,17 @@ public class GeminiOfficialService extends BaseAIService {
     }
     
     @Override
-    protected Observable<AIResponse> handleStreamingResponse(Response response, String requestId) {
-        return Observable.create(emitter -> {
-            try (BufferedSource source = response.body().source()) {
-                source.timeout().timeout(60, TimeUnit.SECONDS);
+    protected CompletableFuture<Void> handleStreamingResponse(Response response, String requestId,
+                                                              Consumer<AIResponse> onResponse,
+                                                              Consumer<Throwable> onError) {
+        return CompletableFuture.runAsync(() -> {
+            try {
+                String responseBody = response.body().string();
+                String[] lines = responseBody.split("\n");
                 
                 StringBuilder contentBuffer = new StringBuilder();
-                String line;
                 
-                while (!emitter.isDisposed() && (line = source.readUtf8LineStrict()) != null) {
+                for (String line : lines) {
                     if (line.isEmpty()) continue;
                     
                     if (line.startsWith("data: ")) {
@@ -104,8 +105,7 @@ public class GeminiOfficialService extends BaseAIService {
                                 .isStreaming(false)
                                 .isComplete(true)
                                 .build();
-                            emitter.onNext(finalResponse);
-                            emitter.onComplete();
+                            onResponse.accept(finalResponse);
                             break;
                         }
                         
@@ -114,7 +114,7 @@ public class GeminiOfficialService extends BaseAIService {
                             AIResponse deltaResponse = parseStreamingChunk(streamChunk, requestId, contentBuffer);
                             
                             if (deltaResponse != null) {
-                                emitter.onNext(deltaResponse);
+                                onResponse.accept(deltaResponse);
                             }
                             
                         } catch (JsonSyntaxException e) {
@@ -124,9 +124,9 @@ public class GeminiOfficialService extends BaseAIService {
                 }
                 
             } catch (Exception e) {
-                emitter.onError(e);
+                onError.accept(e);
             }
-        }).subscribeOn(Schedulers.io());
+        });
     }
     
     @Override

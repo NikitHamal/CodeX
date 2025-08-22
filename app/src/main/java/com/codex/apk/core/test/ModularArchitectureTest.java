@@ -238,9 +238,11 @@ class DefaultRequestPipeline implements RequestPipeline {
     private final java.util.List<com.codex.apk.core.pipeline.ResponseProcessor> processors = new java.util.ArrayList<>();
     
     @Override
-    public io.reactivex.rxjava3.core.Observable<AIResponse> execute(AIRequest request, AIService service) {
+    public CompletableFuture<Void> execute(AIRequest request, AIService service, 
+                                          java.util.function.Consumer<AIResponse> onResponse, 
+                                          java.util.function.Consumer<Throwable> onError) {
         // Simple implementation that just forwards to the service
-        return service.sendMessage(request);
+        return service.sendMessage(request, onResponse, onError);
     }
     
     @Override

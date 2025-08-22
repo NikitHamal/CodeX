@@ -8,8 +8,7 @@ import com.codex.apk.ai.AIModel;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-
-import io.reactivex.rxjava3.core.Observable;
+import java.util.function.Consumer;
 
 /**
  * Universal AI Service interface that all provider implementations must implement.
@@ -20,13 +19,17 @@ import io.reactivex.rxjava3.core.Observable;
 public interface AIService {
     
     /**
-     * Sends a message to the AI service and returns an observable stream of responses.
+     * Sends a message to the AI service with streaming response handling.
      * Supports both streaming and non-streaming modes based on the request configuration.
      * 
      * @param request The AI request containing message, parameters, and context
-     * @return Observable stream of AI responses (single response for non-streaming, multiple for streaming)
+     * @param onResponse Consumer to handle streaming responses
+     * @param onError Consumer to handle errors
+     * @return CompletableFuture that completes when the request is finished
      */
-    Observable<AIResponse> sendMessage(AIRequest request);
+    CompletableFuture<Void> sendMessage(AIRequest request, 
+                                       Consumer<AIResponse> onResponse, 
+                                       Consumer<Throwable> onError);
     
     /**
      * Gets the capabilities of this AI service, including supported features,

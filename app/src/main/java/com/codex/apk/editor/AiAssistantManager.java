@@ -10,8 +10,6 @@ import android.os.Looper;
 import com.codex.apk.AIChatFragment;
 import com.codex.apk.AIAssistant;
 import com.codex.apk.ai.AIModel;
-import com.codex.apk.ai.ModelRegistry;
-
 import com.codex.apk.ai.WebSource;
 import com.codex.apk.AiProcessor; // Import AiProcessor
 import com.codex.apk.ChatMessage;
@@ -89,8 +87,8 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
         String projectKey = "project_" + (projectName != null ? projectName : "default") + "_last_model";
         String lastUsed = settingsPrefs.getString(projectKey, null);
         String defaultModelName = modelPrefs.getString("default_model", null);
-        String initialName = lastUsed != null ? lastUsed : (defaultModelName != null ? defaultModelName : (ModelRegistry.byId("qwen3-coder-plus") != null ? ModelRegistry.byId("qwen3-coder-plus").getDisplayName() : "Qwen3-Coder"));
-        AIModel initialModel = ModelRegistry.byName(initialName);
+        String initialName = lastUsed != null ? lastUsed : (defaultModelName != null ? defaultModelName : AIModel.fromModelId("qwen3-coder-plus").getDisplayName());
+        AIModel initialModel = AIModel.fromDisplayName(initialName);
         if (initialModel != null) {
             this.aiAssistant.setCurrentModel(initialModel);
         }

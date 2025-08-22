@@ -8,7 +8,6 @@ import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.codex.apk.ai.AIModel;
-import com.codex.apk.ai.ModelRegistry;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -60,14 +59,14 @@ public class AgentsActivity extends AppCompatActivity {
         com.google.android.material.textfield.TextInputEditText agentPromptEditText = dialogView.findViewById(R.id.edit_text_agent_prompt);
         android.widget.AutoCompleteTextView modelAutoComplete = dialogView.findViewById(R.id.auto_complete_model);
 
-        java.util.List<String> modelNames = com.codex.apk.ai.ModelRegistry.displayNames();
+        java.util.List<String> modelNames = AIModel.getAllDisplayNames();
         android.widget.ArrayAdapter<String> adapter = new android.widget.ArrayAdapter<>(this, android.R.layout.simple_dropdown_item_1line, modelNames);
         modelAutoComplete.setAdapter(adapter);
 
         if (agentToEdit != null) {
             agentNameEditText.setText(agentToEdit.name);
             agentPromptEditText.setText(agentToEdit.prompt);
-            AIModel model = ModelRegistry.byId(agentToEdit.modelId);
+            AIModel model = AIModel.fromModelId(agentToEdit.modelId);
             if (model != null) {
                 modelAutoComplete.setText(model.getDisplayName(), false);
             }
@@ -83,7 +82,7 @@ public class AgentsActivity extends AppCompatActivity {
                 return;
             }
 
-            AIModel selectedModel = ModelRegistry.byName(modelDisplayName);
+            AIModel selectedModel = AIModel.fromDisplayName(modelDisplayName);
             if (selectedModel == null) {
                 Toast.makeText(this, "Invalid model selected", Toast.LENGTH_SHORT).show();
                 return;

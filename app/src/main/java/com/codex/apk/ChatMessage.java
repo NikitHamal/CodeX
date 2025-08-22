@@ -164,6 +164,8 @@ public class ChatMessage {
         public String replaceWith; // Replacement content for smart updates
         public String diffPatch; // Unified diff patch content
         public String versionId; // Version identifier for tracking
+        public String backupPath; // Path to backup file
+        public boolean createBackup; // Whether to create backup
         public boolean validateContent; // Whether to validate content
         public String contentType; // File type for validation
         public Map<String, Object> metadata; // Additional metadata
@@ -194,6 +196,7 @@ public class ChatMessage {
             
             // Initialize advanced fields
             this.updateType = "full";
+            this.createBackup = true;
             this.validateContent = true;
             this.generateDiff = true;
             this.diffFormat = "unified";
@@ -222,6 +225,7 @@ public class ChatMessage {
             this.replaceWith = replaceWith;
             this.diffPatch = diffPatch;
             this.versionId = versionId;
+            this.createBackup = createBackup;
             this.validateContent = validateContent;
             this.contentType = contentType;
             this.errorHandling = errorHandling != null ? errorHandling : "strict";

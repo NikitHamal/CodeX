@@ -10,7 +10,6 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.codex.apk.ai.AIModel;
-import com.codex.apk.ai.ModelRegistry;
 
 import java.util.List;
 
@@ -66,7 +65,7 @@ public class AgentAdapter extends RecyclerView.Adapter<AgentAdapter.AgentViewHol
             agentName.setText(agent.name);
             agentPrompt.setText(agent.prompt);
 
-            AIModel model = ModelRegistry.byId(agent.modelId);
+            AIModel model = AIModel.fromModelId(agent.modelId);
             if (model != null) {
                 agentModel.setText("Model: " + model.getDisplayName());
             } else {

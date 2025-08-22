@@ -9,7 +9,6 @@ import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import com.codex.apk.ai.AIModel;
 import com.codex.apk.ai.AIProvider;
-import com.codex.apk.ai.ModelRegistry;
 
 public class AIAssistant {
 
@@ -26,7 +25,7 @@ public class AIAssistant {
     public AIAssistant(Context context, ExecutorService executorService, AIActionListener actionListener) {
         this.actionListener = actionListener;
         // Default to an Alibaba/Qwen model since we have a working client for it
-        this.currentModel = ModelRegistry.byId("qwen3-coder-plus");
+        this.currentModel = AIModel.fromModelId("qwen3-coder-plus");
 
         // Initialize API clients for each provider
         apiClients.put(AIProvider.ALIBABA, new QwenApiClient(context, actionListener, null)); // projectDir can be set later
@@ -103,7 +102,7 @@ public class AIAssistant {
             new Thread(() -> {
                 List<AIModel> models = client.fetchModels();
                 if (models != null && !models.isEmpty()) {
-                    ModelRegistry.updateForProvider(provider, models);
+                    AIModel.updateModelsForProvider(provider, models);
                     callback.onRefreshComplete(true, "Models refreshed successfully for " + provider.name());
                 } else {
                     callback.onRefreshComplete(false, "Failed to refresh models for " + provider.name());

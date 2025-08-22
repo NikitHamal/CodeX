@@ -18,7 +18,6 @@ import java.util.Map;
 import com.codex.apk.ai.AIModel;
 import com.codex.apk.ai.AIProvider;
 import com.codex.apk.ai.ModelCapabilities;
-import com.codex.apk.ai.ModelRegistry;
 
 public class AIChatUIManager {
 
@@ -109,7 +108,7 @@ public class AIChatUIManager {
 
         android.content.SharedPreferences prefs = context.getSharedPreferences("model_settings", Context.MODE_PRIVATE);
         List<String> modelNamesList = new java.util.ArrayList<>();
-        for (AIModel model : ModelRegistry.all()) {
+        for (AIModel model : AIModel.getAllModels()) {
             String key = "model_" + model.getDisplayName() + "_enabled";
             if (prefs.getBoolean(key, true)) {
                 modelNamesList.add(model.getDisplayName());
@@ -130,7 +129,7 @@ public class AIChatUIManager {
                 .setTitle("Select AI Model")
                 .setSingleChoiceItems(modelNames, selectedIndex, (dialog, which) -> {
                     String selectedModelName = modelNames[which];
-                    AIModel selectedModel = ModelRegistry.byName(selectedModelName);
+                    AIModel selectedModel = AIModel.fromDisplayName(selectedModelName);
                     if (selectedModel != null) {
                         aiAssistant.setCurrentModel(selectedModel);
                         textSelectedModel.setText(selectedModelName);
@@ -178,7 +177,7 @@ public class AIChatUIManager {
                 CustomAgent a = agents.get(position);
                 tv.setText(a.name + " (" + a.modelId + ")");
                 tv.setOnClickListener(v -> {
-                    AIModel model = ModelRegistry.byId(a.modelId);
+                    AIModel model = AIModel.fromModelId(a.modelId);
                     if (model != null) {
                         aiAssistant.setCurrentModel(model);
                         textSelectedModel.setText(model.getDisplayName());

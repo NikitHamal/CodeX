@@ -5,7 +5,6 @@ import android.util.Log;
 
 import com.codex.apk.ai.AIModel;
 import com.codex.apk.ai.AIProvider;
-import com.codex.apk.ai.ModelRegistry;
 import com.codex.apk.util.ResponseUtils;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
@@ -129,12 +128,13 @@ public class GeminiOfficialApiClient implements ApiClient {
 
     @Override
     public List<AIModel> fetchModels() {
-        // Return models for GOOGLE provider from ModelRegistry
-        List<AIModel> result = new ArrayList<>();
-        for (AIModel m : ModelRegistry.all()) {
-            if (m.getProvider() == AIProvider.GOOGLE) result.add(m);
+        // Return static models for GOOGLE provider from AIModel registry.
+        List<AIModel> all = com.codex.apk.ai.AIModel.values();
+        List<AIModel> google = new ArrayList<>();
+        for (AIModel m : all) {
+            if (m.getProvider() == AIProvider.GOOGLE) google.add(m);
         }
-        return result;
+        return google;
     }
 
     private JsonObject textPart(String text) {

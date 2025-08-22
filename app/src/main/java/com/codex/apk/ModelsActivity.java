@@ -10,7 +10,6 @@ import androidx.appcompat.app.AppCompatActivity;
 import com.codex.apk.ai.AIModel;
 import com.codex.apk.ai.AIProvider;
 import com.codex.apk.ai.ModelCapabilities;
-import com.codex.apk.ai.ModelRegistry;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -46,7 +45,7 @@ public class ModelsActivity extends AppCompatActivity {
     }
 
     private void setupAdapter() {
-        ModelAdapter adapter = new ModelAdapter(this, ModelRegistry.all()) {
+        ModelAdapter adapter = new ModelAdapter(this, AIModel.getAllModels()) {
             @Override
             public void onBindViewHolder(RecyclerView.ViewHolder holder, int position) {
                 super.onBindViewHolder(holder, position);
@@ -120,7 +119,7 @@ public class ModelsActivity extends AppCompatActivity {
             }
 
             AIProvider provider = AIProvider.valueOf(providerName);
-            ModelRegistry.addCustom(new AIModel(id, name, provider, new ModelCapabilities(false, false, false, true, false, false, false, 0, 0)));
+            AIModel.addCustomModel(new AIModel(id, name, provider, new ModelCapabilities(false, false, false, true, false, false, false, 0, 0)));
 
             setupAdapter(); // Refresh the list
             Toast.makeText(this, "Model " + name + " added!", Toast.LENGTH_SHORT).show();
@@ -146,7 +145,7 @@ public class ModelsActivity extends AppCompatActivity {
                     showEditModelDialog(model);
                     break;
                 case "Delete":
-                    ModelRegistry.removeByDisplayName(model.getDisplayName());
+                    AIModel.removeModelByDisplayName(model.getDisplayName());
                     setupAdapter();
                     Toast.makeText(this, "Model deleted", Toast.LENGTH_SHORT).show();
                     break;
@@ -181,7 +180,7 @@ public class ModelsActivity extends AppCompatActivity {
                 Toast.makeText(this, "All fields are required", Toast.LENGTH_SHORT).show();
                 return;
             }
-            ModelRegistry.overrideModel(model.getDisplayName(), name, id, AIProvider.valueOf(providerName));
+            AIModel.updateModel(model.getDisplayName(), name, id, AIProvider.valueOf(providerName));
             setupAdapter();
             Toast.makeText(this, "Model updated", Toast.LENGTH_SHORT).show();
         });

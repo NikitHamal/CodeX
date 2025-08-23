@@ -293,10 +293,9 @@ public class AIChatUIManager {
     public void updateSettingsButtonState(AIAssistant aiAssistant) {
         if (buttonAiSettings == null || aiAssistant == null) return;
 
-        ModelCapabilities capabilities = aiAssistant.getCurrentModel().getCapabilities();
-        boolean hasSettings = capabilities.supportsThinking || capabilities.supportsWebSearch;
-
-        buttonAiSettings.setEnabled(hasSettings);
+        // The settings button should always be enabled because "Agent Mode" is always available.
+        // The individual settings inside the dialog are enabled/disabled based on capabilities.
+        buttonAiSettings.setEnabled(true);
 
         // Show attach button only for COOKIES (Gemini reverse-engineered) models
         if (buttonAiAttach != null) {

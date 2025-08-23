@@ -113,8 +113,8 @@ public class QwenResponseParser {
             Log.d(TAG, "Parsing response: " + responseText.substring(0, Math.min(200, responseText.length())) + "...");
             JsonObject jsonObj = JsonParser.parseString(responseText).getAsJsonObject();
 
-            // Plan response
-            if (jsonObj.has("action") && "plan".equalsIgnoreCase(jsonObj.get("action").getAsString()) && jsonObj.has("steps")) {
+            // Plan response (more flexible: any JSON with a "steps" array is considered a plan)
+            if (jsonObj.has("steps") && jsonObj.get("steps").isJsonArray()) {
                 List<PlanStep> steps = new ArrayList<>();
                 JsonArray arr = jsonObj.getAsJsonArray("steps");
                 for (int i = 0; i < arr.size(); i++) {

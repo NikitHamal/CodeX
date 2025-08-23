@@ -9,15 +9,12 @@ import com.codex.apk.ToolSpec;
 
 import com.google.gson.*;
 
-import java.io.EOFException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import okhttp3.*;
-import okio.BufferedSource;
 
 /**
  * OpenAI-compatible service implementation that works with multiple providers

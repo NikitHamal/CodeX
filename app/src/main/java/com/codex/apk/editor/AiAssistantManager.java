@@ -838,8 +838,8 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                 ChatMessage finalMessage = new ChatMessage(
                         ChatMessage.SENDER_AI,
                         finalExplanation,
+                        new ArrayList<>(), // actionSummaries
                         suggestions,
-                        effectiveProposedFileChanges,
                         aiModelDisplayName,
                         System.currentTimeMillis(),
                         rawAiResponseJson,

@@ -28,18 +28,18 @@ class FileSystemToolExecutor implements ToolExecutor {
                     Path p = resolvePath(context, extract(args, "path"));
                     String content = extract(args, "content");
                     Files.createDirectories(p.getParent());
-                    Files.writeString(p, content == null ? "" : content, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+                    Files.write(p, (content == null ? "" : content).getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
                     return ToolResult.success(call.getId(), "created:" + p.toString());
                 }
                 case "readFile": {
                     Path p = resolvePath(context, extract(args, "path"));
-                    String content = Files.exists(p) ? Files.readString(p) : "";
+                    String content = Files.exists(p) ? new String(Files.readAllBytes(p)) : "";
                     return ToolResult.success(call.getId(), content);
                 }
                 case "updateFile": {
                     Path p = resolvePath(context, extract(args, "path"));
                     String content = extract(args, "content");
-                    Files.writeString(p, content == null ? "" : content, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+                    Files.write(p, (content == null ? "" : content).getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
                     return ToolResult.success(call.getId(), "updated:" + p.toString());
                 }
                 case "deleteFile": {

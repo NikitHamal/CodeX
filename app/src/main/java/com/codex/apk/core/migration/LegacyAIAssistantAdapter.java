@@ -48,12 +48,8 @@ public class LegacyAIAssistantAdapter extends AIAssistant {
             );
             
             // Execute through new architecture
-            serviceManager.executeRequest(request)
-                .subscribe(
-                    this::handleResponse,
-                    this::handleError,
-                    this::handleComplete
-                );
+            serviceManager.executeRequest(request, this::handleResponse, this::handleError)
+                    .thenRun(this::handleComplete);
                 
         } catch (Exception e) {
             if (getActionListener() != null) {

@@ -117,7 +117,13 @@ public class AIRequest {
      */
     public AIRequest optimizeForProvider(com.codex.apk.ai.AIProvider providerType) {
         // This could be extended to apply provider-specific optimizations
-        return new Builder(this).build();
+        try {
+            return new Builder(this).build();
+        } catch (ValidationException e) {
+            // Log the error and return the original request
+            System.err.println("Failed to optimize request for provider " + providerType + ": " + e.getMessage());
+            return this;
+        }
     }
     
     /**

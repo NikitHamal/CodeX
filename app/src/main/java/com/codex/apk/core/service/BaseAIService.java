@@ -233,7 +233,7 @@ public abstract class BaseAIService implements AIService {
                 onError.accept(e);
                 return CompletableFuture.completedFuture(null);
             }
-        }).thenCompose(future -> future != null ? future : CompletableFuture.<Void>completedFuture(null));
+        }).thenCompose(future -> future);
     }
     
     // Helper methods

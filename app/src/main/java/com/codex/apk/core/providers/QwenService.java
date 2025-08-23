@@ -108,55 +108,6 @@ public class QwenService extends BaseAIService {
             }
         });
     }
-        return Observable.create(emitter -> {
-            try (BufferedSource source = response.body().source()) {
-                source.timeout().timeout(60, TimeUnit.SECONDS);
-                
-                StringBuilder contentBuffer = new StringBuilder();
-                StringBuilder thinkingBuffer = new StringBuilder();
-                String line;
-                
-                while (!emitter.isDisposed() && (line = source.readUtf8LineStrict()) != null) {
-                    if (line.isEmpty()) continue;
-                    
-                    if (line.startsWith("data: ")) {
-                        String data = line.substring(6).trim();
-                        
-                        if ("[DONE]".equals(data)) {
-                            // Emit final complete response
-                            AIResponse finalResponse = AIResponse.builder()
-                                .withRequestId(requestId)
-                                .withContent(contentBuffer.toString())
-                                .withThinking(thinkingBuffer.length() > 0 ? 
-                                    new ThinkingContent(thinkingBuffer.toString(), true) : null)
-                                .withFinishReason(AIResponse.FinishReason.STOP)
-                                .isStreaming(false)
-                                .isComplete(true)
-                                .build();
-                            emitter.onNext(finalResponse);
-                            emitter.onComplete();
-                            break;
-                        }
-                        
-                        try {
-                            JsonObject deltaObject = JsonParser.parseString(data).getAsJsonObject();
-                            AIResponse deltaResponse = parseStreamingDelta(deltaObject, requestId, contentBuffer, thinkingBuffer);
-                            
-                            if (deltaResponse != null) {
-                                emitter.onNext(deltaResponse);
-                            }
-                            
-                        } catch (JsonSyntaxException e) {
-                            logError("Failed to parse Qwen streaming delta: " + data, e);
-                        }
-                    }
-                }
-                
-            } catch (Exception e) {
-                emitter.onError(e);
-            }
-        }).subscribeOn(Schedulers.io());
-    }
     
     @Override
     protected List<AIModel> fetchAvailableModels() throws Exception {

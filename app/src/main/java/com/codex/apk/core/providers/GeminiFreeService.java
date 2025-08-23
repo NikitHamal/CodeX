@@ -105,48 +105,6 @@ public class GeminiFreeService extends BaseAIService {
             }
         });
     }
-        return Observable.create(emitter -> {
-            try (BufferedSource source = response.body().source()) {
-                source.timeout().timeout(60, TimeUnit.SECONDS);
-                
-                StringBuilder contentBuffer = new StringBuilder();
-                StringBuilder fullResponse = new StringBuilder();
-                String line;
-                
-                while (!emitter.isDisposed() && (line = source.readUtf8LineStrict()) != null) {
-                    if (line.isEmpty()) continue;
-                    
-                    fullResponse.append(line).append("\n");
-                    
-                    // Try to parse each line as potential response data
-                    try {
-                        AIResponse deltaResponse = parseStreamingLine(line, requestId, contentBuffer);
-                        if (deltaResponse != null) {
-                            emitter.onNext(deltaResponse);
-                        }
-                    } catch (Exception e) {
-                        // Continue processing other lines
-                        logError("Failed to parse streaming line: " + line, e);
-                    }
-                }
-                
-                // Emit final complete response
-                try {
-                    AIResponse finalResponse = parseGeminiFreeResponse(fullResponse.toString(), requestId, false, true);
-                    if (finalResponse.hasContent()) {
-                        emitter.onNext(finalResponse);
-                    }
-                } catch (Exception e) {
-                    logError("Failed to parse final response", e);
-                }
-                
-                emitter.onComplete();
-                
-            } catch (Exception e) {
-                emitter.onError(e);
-            }
-        }).subscribeOn(Schedulers.io());
-    }
     
     @Override
     protected List<AIModel> fetchAvailableModels() throws Exception {

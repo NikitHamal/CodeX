@@ -29,8 +29,6 @@ public class AIAssistant {
 
         // Initialize API clients for each provider
         apiClients.put(AIProvider.ALIBABA, new QwenApiClient(context, actionListener, null)); // projectDir can be set later
-        // Register GLM client for Z provider
-        apiClients.put(AIProvider.Z, new GLMApiClient(actionListener));
         // Register Api.Airforce client for AIRFORCE provider
         apiClients.put(AIProvider.AIRFORCE, new ApiAirforceApiClient(context, actionListener));
         // Register Cloudflare AI client

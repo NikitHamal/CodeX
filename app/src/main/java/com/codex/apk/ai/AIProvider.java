@@ -3,7 +3,6 @@ package com.codex.apk.ai;
 public enum AIProvider {
     GOOGLE("Google"),
     ALIBABA("Alibaba"),
-    Z("Z"),
     AIRFORCE("Api.Airforce"),
     CLOUDFLARE("Cloudflare AI"),
     DEEPINFRA("DeepInfra"),

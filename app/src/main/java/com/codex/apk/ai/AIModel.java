@@ -54,19 +54,6 @@ public class AIModel {
             new AIModel("qwen2.5-coder-32b-instruct", "Qwen2.5-Coder-32B-Instruct", AIProvider.ALIBABA, new ModelCapabilities(true, true, true, true, true, false, true, 131072, 8192)),
             new AIModel("qwen2.5-72b-instruct", "Qwen2.5-72B-Instruct", AIProvider.ALIBABA, new ModelCapabilities(true, true, true, true, true, false, true, 131072, 8192)),
 
-            // Z/GLM Models
-            new AIModel("glm-4-plus", "GLM-4-Plus", AIProvider.Z, new ModelCapabilities(true, false, true, true, false, false, true, 128000, 4096)),
-            new AIModel("glm-4-0520", "GLM-4-0520", AIProvider.Z, new ModelCapabilities(true, false, true, true, false, false, true, 128000, 4096)),
-            new AIModel("glm-4-long", "GLM-4-Long", AIProvider.Z, new ModelCapabilities(false, false, false, true, false, false, false, 1000000, 4096)),
-            new AIModel("glm-4-airx", "GLM-4-AirX", AIProvider.Z, new ModelCapabilities(false, false, true, true, false, false, true, 128000, 4096)),
-            new AIModel("glm-4-air", "GLM-4-Air", AIProvider.Z, new ModelCapabilities(false, false, true, true, false, false, true, 128000, 4096)),
-            new AIModel("glm-4-flash", "GLM-4-Flash", AIProvider.Z, new ModelCapabilities(false, false, true, true, false, false, true, 128000, 4096)),
-            new AIModel("glm-4v-plus", "GLM-4V-Plus", AIProvider.Z, new ModelCapabilities(true, false, true, true, true, false, true, 128000, 4096)),
-            new AIModel("glm-4v", "GLM-4V", AIProvider.Z, new ModelCapabilities(false, false, true, true, true, false, true, 128000, 4096)),
-            new AIModel("cogview-3-plus", "CogView-3-Plus", AIProvider.Z, new ModelCapabilities(false, false, false, false, false, false, false, 0, 0)),
-            new AIModel("cogvideox", "CogVideoX", AIProvider.Z, new ModelCapabilities(false, false, false, false, false, true, false, 0, 0)),
-            new AIModel("glm-4-alltools", "GLM-4-AllTools", AIProvider.Z, new ModelCapabilities(false, false, true, true, false, false, true, 128000, 4096)),
-
             // Api.Airforce Provider (OpenAI-compatible free endpoint)
             new AIModel("openai", "Api.Airforce OpenAI", AIProvider.AIRFORCE, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)),
 

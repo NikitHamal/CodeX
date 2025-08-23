@@ -148,10 +148,28 @@ public class DeepInfraApiClient implements ApiClient {
             if (finalText.length() != lastSentLen[0]) {
                 actionListener.onAiStreamUpdate(finalText.toString(), false);
             }
-            try {
+            String jsonToParse = extractJsonFromCodeBlock(finalText.toString());
+            if (jsonToParse == null && looksLikeJson(finalText.toString())) {
+                jsonToParse = finalText.toString();
+            }
+
+            if (jsonToParse != null) {
+                try {
+                    QwenResponseParser.ParsedResponse parsed = QwenResponseParser.parseResponse(jsonToParse);
+                    if (parsed != null && parsed.isValid) {
+                        List<ChatMessage.FileActionDetail> fileActions = QwenResponseParser.toFileActionDetails(parsed);
+                        actionListener.onAiActionsProcessed(jsonToParse, parsed.explanation, new ArrayList<>(), fileActions, modelDisplayName);
+                    } else {
+                        // Not a valid plan, treat as text
+                        actionListener.onAiActionsProcessed(finalText.toString(), finalText.toString(), new java.util.ArrayList<>(), new java.util.ArrayList<>(), modelDisplayName);
+                    }
+                } catch (Exception e) {
+                    Log.w(TAG, "DeepInfra JSON parse failed, treating as text: " + e.getMessage());
+                    actionListener.onAiActionsProcessed(finalText.toString(), finalText.toString(), new java.util.ArrayList<>(), new java.util.ArrayList<>(), modelDisplayName);
+                }
+            } else {
+                // No JSON found, treat as plain text
                 actionListener.onAiActionsProcessed(finalText.toString(), finalText.toString(), new java.util.ArrayList<>(), new java.util.ArrayList<>(), modelDisplayName);
-            } catch (Exception e) {
-                Log.w(TAG, "DeepInfra finalize parse dispatch failed: " + e.getMessage());
             }
         }
     }
@@ -255,6 +273,50 @@ public class DeepInfraApiClient implements ApiClient {
                     new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)));
         }
         return out;
+    }
+
+    private String extractJsonFromCodeBlock(String content) {
+        if (content == null || content.trim().isEmpty()) {
+            return null;
+        }
+
+        // Look for ```json ... ``` pattern
+        String jsonPattern = "```json\\s*([\\s\\S]*?)```";
+        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile(jsonPattern, java.util.regex.Pattern.CASE_INSENSITIVE);
+        java.util.regex.Matcher matcher = pattern.matcher(content);
+
+        if (matcher.find()) {
+            return matcher.group(1).trim();
+        }
+
+        // Also check for ``` ... ``` pattern (without json specifier)
+        String genericPattern = "```\\s*([\\s\\S]*?)```";
+        pattern = java.util.regex.Pattern.compile(genericPattern);
+        matcher = pattern.matcher(content);
+
+        if (matcher.find()) {
+            String extracted = matcher.group(1).trim();
+            // Check if the extracted content looks like JSON
+            if (looksLikeJson(extracted)) {
+                return extracted;
+            }
+        }
+
+        return null;
+    }
+
+    public static boolean looksLikeJson(String response) {
+        if (response == null || response.trim().isEmpty()) {
+            Log.d(TAG, "looksLikeJson: response is null or empty");
+            return false;
+        }
+
+        String trimmed = response.trim();
+        boolean isJson = (trimmed.startsWith("{") && trimmed.endsWith("}")) ||
+                        (trimmed.startsWith("[") && trimmed.endsWith("]"));
+
+        Log.d(TAG, "looksLikeJson: checking '" + trimmed.substring(0, Math.min(50, trimmed.length())) + "...'");
+        return isJson;
     }
 
     private String toDisplayName(String id) {

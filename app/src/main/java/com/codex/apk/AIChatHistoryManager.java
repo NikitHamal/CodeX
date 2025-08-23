@@ -134,6 +134,10 @@ public class AIChatHistoryManager {
         editor.remove(historyKey);
         editor.remove(qwenStateKey);
         editor.remove(freeMetaKey);
+
+        // Also remove the old, generic key to fix the bug where history reappears.
+        editor.remove(OLD_GENERIC_CHAT_HISTORY_KEY);
+
         editor.apply();
     }
 }

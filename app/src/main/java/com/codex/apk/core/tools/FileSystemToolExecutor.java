@@ -5,6 +5,8 @@ import com.codex.apk.core.model.ToolCall;
 
 import java.io.File;
 import java.nio.file.Files;
+import org.apache.commons.io.FileUtils;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.EnumSet;
@@ -28,18 +30,18 @@ class FileSystemToolExecutor implements ToolExecutor {
                     Path p = resolvePath(context, extract(args, "path"));
                     String content = extract(args, "content");
                     Files.createDirectories(p.getParent());
-                    Files.write(p, (content == null ? "" : content).getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+                    FileUtils.writeStringToFile(p.toFile(), content == null ? "" : content, StandardCharsets.UTF_8);
                     return ToolResult.success(call.getId(), "created:" + p.toString());
                 }
                 case "readFile": {
                     Path p = resolvePath(context, extract(args, "path"));
-                    String content = Files.exists(p) ? new String(Files.readAllBytes(p)) : "";
+                    String content = Files.exists(p) ? FileUtils.readFileToString(p.toFile(), StandardCharsets.UTF_8) : "";
                     return ToolResult.success(call.getId(), content);
                 }
                 case "updateFile": {
                     Path p = resolvePath(context, extract(args, "path"));
                     String content = extract(args, "content");
-                    Files.write(p, (content == null ? "" : content).getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+                    FileUtils.writeStringToFile(p.toFile(), content == null ? "" : content, StandardCharsets.UTF_8);
                     return ToolResult.success(call.getId(), "updated:" + p.toString());
                 }
                 case "deleteFile": {

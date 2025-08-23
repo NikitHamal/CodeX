@@ -216,12 +216,20 @@ public abstract class BaseAIService implements AIService {
     private CompletableFuture<Void> executeHttpRequest(Request httpRequest, AIRequest aiRequest,
                                                       Consumer<AIResponse> onResponse,
                                                       Consumer<Throwable> onError) {
-        return CompletableFuture.supplyAsync(() -> {
-            try (Response response = httpClient.newCall(httpRequest).execute()) {
+        CompletableFuture<Response> responseFuture = CompletableFuture.supplyAsync(() -> {
+            try {
+                return httpClient.newCall(httpRequest).execute();
+            } catch (java.io.IOException e) {
+                throw new java.util.concurrent.CompletionException(e);
+            }
+        });
+
+        return responseFuture.thenCompose(response -> {
+            try {
                 if (!response.isSuccessful()) {
                     throw new ServiceException("HTTP request failed: " + response.code() + " " + response.message());
                 }
-                
+
                 if (aiRequest.isStreaming() && supportsStreaming()) {
                     return handleStreamingResponse(response, aiRequest.getId(), onResponse, onError);
                 } else {
@@ -232,8 +240,13 @@ public abstract class BaseAIService implements AIService {
             } catch (Exception e) {
                 onError.accept(e);
                 return CompletableFuture.completedFuture(null);
+            } finally {
+                response.close(); // Ensure response is always closed
             }
-        }).thenCompose(future -> future);
+        }).exceptionally(error -> {
+            onError.accept(error);
+            return null;
+        });
     }
     
     // Helper methods

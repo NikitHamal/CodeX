@@ -43,7 +43,7 @@ public class QwenService extends BaseAIService {
             .setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES)
             .create();
         this.conversationStates = new ConcurrentHashMap<>();
-        this.midToken = configuration.getProviderSpecificConfig("midtoken", null);
+        this.midToken = configuration.getProviderSpecificConfig("midtoken", "");
     }
     
     @Override

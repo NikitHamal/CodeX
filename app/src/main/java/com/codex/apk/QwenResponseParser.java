@@ -176,6 +176,48 @@ public class QwenResponseParser {
                 return new ParsedResponse(type, operations, new ArrayList<>(), explanation, true);
             }
 
+            // Fallback: check if the root object itself is a single file operation
+            if (jsonObj.has("type") && isSingleFileAction(jsonObj.get("type").getAsString())) {
+                Log.d(TAG, "Detected root object as single file operation with type: " + jsonObj.get("type").getAsString());
+                List<FileOperation> operations = new ArrayList<>();
+                String type = jsonObj.get("type").getAsString();
+                String path = jsonObj.has("path") ? jsonObj.get("path").getAsString() : "";
+                String content = jsonObj.has("content") ? jsonObj.get("content").getAsString() : "";
+                String oldPath = jsonObj.has("oldPath") ? jsonObj.get("oldPath").getAsString() : "";
+                String newPath = jsonObj.has("newPath") ? jsonObj.get("newPath").getAsString() : "";
+                String search = jsonObj.has("search") ? jsonObj.get("search").getAsString() : "";
+                String replace = jsonObj.has("replace") ? jsonObj.get("replace").getAsString() : "";
+
+                // Advanced fields
+                String updateType = jsonObj.has("updateType") ? jsonObj.get("updateType").getAsString() : null;
+                String searchPattern = jsonObj.has("searchPattern") ? jsonObj.get("searchPattern").getAsString() : null;
+                String replaceWith = jsonObj.has("replaceWith") ? jsonObj.get("replaceWith").getAsString() : null;
+                String diffPatch = jsonObj.has("diffPatch") ? jsonObj.get("diffPatch").getAsString() : null;
+                Boolean createBackup = jsonObj.has("createBackup") ? jsonObj.get("createBackup").getAsBoolean() : null;
+                Boolean validateContent = jsonObj.has("validateContent") ? jsonObj.get("validateContent").getAsBoolean() : null;
+                String contentType = jsonObj.has("contentType") ? jsonObj.get("contentType").getAsString() : null;
+                String errorHandling = jsonObj.has("errorHandling") ? jsonObj.get("errorHandling").getAsString() : null;
+                Boolean generateDiff = jsonObj.has("generateDiff") ? jsonObj.get("generateDiff").getAsBoolean() : null;
+                String diffFormat = jsonObj.has("diffFormat") ? jsonObj.get("diffFormat").getAsString() : null;
+
+                Integer startLine = jsonObj.has("startLine") ? jsonObj.get("startLine").getAsInt() : null;
+                Integer deleteCount = jsonObj.has("deleteCount") ? jsonObj.get("deleteCount").getAsInt() : null;
+                List<String> insertLines = null;
+                if (jsonObj.has("insertLines") && jsonObj.get("insertLines").isJsonArray()) {
+                    insertLines = new ArrayList<>();
+                    JsonArray arr = jsonObj.getAsJsonArray("insertLines");
+                    for (int i = 0; i < arr.size(); i++) insertLines.add(arr.get(i).getAsString());
+                }
+
+                operations.add(new FileOperation(type, path, content, oldPath, newPath, search, replace,
+                        startLine, deleteCount, insertLines,
+                        updateType, searchPattern, replaceWith, diffPatch, createBackup, validateContent, contentType,
+                        errorHandling, generateDiff, diffFormat));
+
+                String explanation = jsonObj.has("explanation") ? jsonObj.get("explanation").getAsString() : "";
+                return new ParsedResponse(type, operations, new ArrayList<>(), explanation, true);
+            }
+
             Log.d(TAG, "Not a recognized file operation response, treating as regular JSON");
             // Fallback for non-file operation JSON
             return parseRegularJsonResponse(jsonObj);

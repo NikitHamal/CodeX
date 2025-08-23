@@ -98,6 +98,13 @@ public class AIServiceManager {
     public List<ProviderInfo> getAvailableProviders() {
         return registry.getProviderInfo();
     }
+
+    /**
+     * Exposes available provider types for internal helpers.
+     */
+    public java.util.Set<AIProvider> getAvailableProviderTypes() {
+        return registry.getAvailableProviders();
+    }
     
     /**
      * Gets the currently selected provider.
@@ -356,7 +363,7 @@ class HealthMonitor {
     
     public CompletableFuture<Map<AIProvider, HealthStatus>> checkAllServices() {
         Map<AIProvider, CompletableFuture<HealthStatus>> futures = new java.util.HashMap<>();
-        for (AIProvider provider : serviceManager.registry.getAvailableProviders()) {
+        for (AIProvider provider : serviceManager.getAvailableProviderTypes()) {
             futures.put(provider, checkService(provider));
         }
         

@@ -1,5 +1,6 @@
 package com.codex.apk.core.model;
 
+/*
 /**
  * Required capabilities for AI requests.
  */
@@ -305,3 +306,4 @@ public class HealthStatus {
     public static HealthStatus healthy() { return new HealthStatus(true, "OK", 0); }
     public static HealthStatus unhealthy(String message) { return new HealthStatus(false, message, -1); }
 }
+*/

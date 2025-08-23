@@ -135,8 +135,8 @@ public class GeminiFreeService extends BaseAIService {
     private void initializeSession() {
         try {
             // Get cookies from configuration
-            String psid = configuration.getProviderSpecificConfig("psid", null);
-            String psidts = configuration.getProviderSpecificConfig("psidts", null);
+            String psid = configuration.getProviderSpecificConfig("psid", "");
+            String psidts = configuration.getProviderSpecificConfig("psidts", "");
             
             if (psid == null || psid.isEmpty()) {
                 logError("__Secure-1PSID cookie not configured", null);

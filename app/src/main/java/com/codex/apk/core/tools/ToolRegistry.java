@@ -3,6 +3,7 @@ package com.codex.apk.core.tools;
 import com.codex.apk.ToolSpec;
 import com.codex.apk.core.model.ExecutionContext;
 import com.codex.apk.core.model.ValidationResult;
+import com.codex.apk.core.model.ToolCall;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CompletableFuture;

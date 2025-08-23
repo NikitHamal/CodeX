@@ -78,13 +78,13 @@ public class GeminiServiceFactory implements AIServiceFactory {
                 
             case COOKIES:
                 // Cookie-based implementation requires PSID cookie
-                String psid = config.getProviderSpecificConfig("psid", null);
+                String psid = config.getProviderSpecificConfig("psid", "");
                 if (psid == null || psid.isEmpty()) {
                     result.addError("__Secure-1PSID cookie is required for Gemini Free (cookie-based) access");
                 }
                 
                 // PSIDTS is optional but recommended
-                String psidts = config.getProviderSpecificConfig("psidts", null);
+                String psidts = config.getProviderSpecificConfig("psidts", "");
                 if (psidts == null || psidts.isEmpty()) {
                     result.addWarning("__Secure-1PSIDTS cookie is recommended for better session stability");
                 }

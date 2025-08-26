@@ -90,15 +90,18 @@ public class SimpleSoraTabAdapter extends RecyclerView.Adapter<RecyclerView.View
 
     public static class ViewHolder extends RecyclerView.ViewHolder {
         public CodeEditor codeEditor;
-        public boolean isListenerAttached = false;
-        public String currentTabId = null;
-        public androidx.recyclerview.widget.RecyclerView diffRecycler;
+        public boolean isListenerAttached;
+        public String currentTabId;
+        public RecyclerView diffRecycler;
         public InlineDiffAdapter diffAdapter;
 
         public ViewHolder(@NonNull View itemView) {
             super(itemView);
             codeEditor = itemView.findViewById(R.id.code_editor);
             diffRecycler = itemView.findViewById(R.id.diff_recycler);
+            isListenerAttached = false;
+            currentTabId = null;
+            diffAdapter = null;
         }
     }
 

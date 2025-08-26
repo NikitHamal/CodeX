@@ -471,14 +471,17 @@ public class SimpleSoraTabAdapter extends RecyclerView.Adapter<RecyclerView.View
     }
 
     @Override
-    public void onViewRecycled(@NonNull ViewHolder holder) {
-        holders.remove(holder.getAdapterPosition());
-        // Detach diff adapter to help GC
-        if (holder.diffRecycler != null) {
-            holder.diffRecycler.setAdapter(null);
+    public void onViewRecycled(@NonNull RecyclerView.ViewHolder rawHolder) {
+        if (rawHolder instanceof ViewHolder) {
+            ViewHolder holder = (ViewHolder) rawHolder;
+            holders.remove(holder.getAdapterPosition());
+            // Detach diff adapter to help GC
+            if (holder.diffRecycler != null) {
+                holder.diffRecycler.setAdapter(null);
+            }
+            holder.diffAdapter = null;
         }
-        holder.diffAdapter = null;
-        super.onViewRecycled(holder);
+        super.onViewRecycled(rawHolder);
     }
 
     public ViewHolder getHolderForPosition(int position) {

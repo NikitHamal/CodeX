@@ -105,7 +105,7 @@ public class PromptBuilder {
             char c = s.charAt(i);
             if (inString) {
                 if (escape) { escape = false; continue; }
-                if (c == '\\\\') { escape = true; continue; }
+                if (c == '\\') { escape = true; continue; }
                 if (c == '\"') inString = false;
                 continue;
             }

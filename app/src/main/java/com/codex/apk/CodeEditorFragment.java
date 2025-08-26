@@ -105,6 +105,27 @@ public class CodeEditorFragment extends Fragment implements SimpleSoraTabAdapter
 
         new TabLayoutMediator(tabLayout, fileViewPager, (tab, position) -> {
             tab.setText(openTabs.get(position).getFileName());
+            // This is a workaround to get the TextView and set its properties,
+            // as the default tab layout doesn't expose it directly.
+            tab.view.addOnLayoutChangeListener(new View.OnLayoutChangeListener() {
+                @Override
+                public void onLayoutChange(View v, int left, int top, int right, int bottom, int oldLeft, int oldTop, int oldRight, int oldBottom) {
+                    if (v instanceof ViewGroup) {
+                        ViewGroup viewGroup = (ViewGroup) v;
+                        for (int i = 0; i < viewGroup.getChildCount(); i++) {
+                            View child = viewGroup.getChildAt(i);
+                            if (child instanceof TextView) {
+                                TextView textView = (TextView) child;
+                                textView.setSingleLine(true);
+                                textView.setEllipsize(android.text.TextUtils.TruncateAt.END);
+                                // Remove the listener to avoid multiple calls
+                                tab.view.removeOnLayoutChangeListener(this);
+                                break;
+                            }
+                        }
+                    }
+                }
+            });
         }).attach();
     }
 

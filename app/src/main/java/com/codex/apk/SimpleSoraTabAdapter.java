@@ -35,7 +35,7 @@ import java.util.LinkedHashMap;
  * Simplified TabAdapter using Sora Editor for high-performance code editing.
  * Uses built-in language support without requiring TextMate assets.
  */
-public class SimpleSoraTabAdapter extends RecyclerView.Adapter<SimpleSoraTabAdapter.ViewHolder> {
+public class SimpleSoraTabAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     private static final String TAG = "SimpleSoraTabAdapter";
     private static boolean textMateInitialized = false;
     private static final String TEXTMATE_LANG_INDEX = "textmate/languages.json";
@@ -76,6 +76,18 @@ public class SimpleSoraTabAdapter extends RecyclerView.Adapter<SimpleSoraTabAdap
     /**
      * ViewHolder for the Sora Editor
      */
+    private static final int VIEW_TYPE_EDITOR = 0;
+    private static final int VIEW_TYPE_IMAGE = 1;
+
+    public static class ImageViewHolder extends RecyclerView.ViewHolder {
+        public android.widget.ImageView imageView;
+
+        public ImageViewHolder(@NonNull View itemView) {
+            super(itemView);
+            imageView = itemView.findViewById(R.id.image_view_content);
+        }
+    }
+
     public static class ViewHolder extends RecyclerView.ViewHolder {
         public CodeEditor codeEditor;
         public boolean isListenerAttached = false;
@@ -101,16 +113,56 @@ public class SimpleSoraTabAdapter extends RecyclerView.Adapter<SimpleSoraTabAdap
         setHasStableIds(true);
     }
 
+    @Override
+    public int getItemViewType(int position) {
+        String fileName = openTabs.get(position).getFileName().toLowerCase();
+        if (fileName.endsWith(".svg") || fileName.endsWith(".png") || fileName.endsWith(".jpg") || fileName.endsWith(".jpeg") || fileName.endsWith(".gif") || fileName.endsWith(".webp")) {
+            return VIEW_TYPE_IMAGE;
+        }
+        return VIEW_TYPE_EDITOR;
+    }
+
     @NonNull
     @Override
-    public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+    public RecyclerView.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+        if (viewType == VIEW_TYPE_IMAGE) {
+            View view = LayoutInflater.from(context).inflate(R.layout.item_image_tab, parent, false);
+            return new ImageViewHolder(view);
+        }
         View view = LayoutInflater.from(context).inflate(R.layout.item_editor_tab, parent, false);
         return new ViewHolder(view);
     }
 
     @Override
-    public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
-        holders.put(position, holder);
+    public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
+        if (holder.getItemViewType() == VIEW_TYPE_IMAGE) {
+            ImageViewHolder imageViewHolder = (ImageViewHolder) holder;
+            TabItem tabItem = openTabs.get(position);
+            try {
+                com.caverock.androidsvg.SVG svg = com.caverock.androidsvg.SVG.getFromInputStream(new java.io.FileInputStream(tabItem.getFile()));
+                if (svg.getDocumentWidth() != -1) {
+                    android.graphics.drawable.PictureDrawable drawable = new android.graphics.drawable.PictureDrawable(svg.renderToPicture());
+                    imageViewHolder.imageView.setImageDrawable(drawable);
+                } else {
+                    // Not an SVG, or SVG parsing failed. Try to load as a bitmap.
+                    android.graphics.Bitmap bitmap = android.graphics.BitmapFactory.decodeFile(tabItem.getFile().getAbsolutePath());
+                    imageViewHolder.imageView.setImageBitmap(bitmap);
+                }
+            } catch (Exception e) {
+                // Not an SVG, or SVG parsing failed. Try to load as a bitmap.
+                try {
+                    android.graphics.Bitmap bitmap = android.graphics.BitmapFactory.decodeFile(tabItem.getFile().getAbsolutePath());
+                    imageViewHolder.imageView.setImageBitmap(bitmap);
+                } catch (Exception ex) {
+                    Log.e(TAG, "Failed to load image: " + tabItem.getFileName(), ex);
+                    imageViewHolder.imageView.setImageResource(R.drawable.icon_file_round); // Fallback icon
+                }
+            }
+            return;
+        }
+
+        ViewHolder editorViewHolder = (ViewHolder) holder;
+        holders.put(position, editorViewHolder);
         if (position >= openTabs.size()) {
             Log.e(TAG, "Position " + position + " is out of bounds for openTabs size " + openTabs.size());
             return;

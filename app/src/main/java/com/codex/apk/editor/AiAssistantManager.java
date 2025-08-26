@@ -28,19 +28,11 @@ import com.codex.apk.ToolExecutor;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Deque;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
-
-import com.codex.apk.QwenResponseParser; // Plan/file parsing
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
-import com.codex.apk.ToolExecutor;
 
 /**
  * Manages the interaction with the AIAssistant, handling UI updates and delegation
@@ -54,21 +46,10 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
     private final FileManager fileManager;
     private final AiProcessor aiProcessor; // AiProcessor instance
     private final ExecutorService executorService;
-
-    // Track the last plan message for status updates and autonomous run
-    private Integer lastPlanMessagePosition = null;
-    private int planProgressIndex = 0; // index into plan steps list for file-kind steps
-    private int planStepRetryCount = 0;
-    private boolean isExecutingPlan = false;
-    private Deque<String> executedStepSummaries = new ArrayDeque<>();
+    private PlanExecutor planExecutor; // The new PlanExecutor instance
 
     // Track current streaming AI message position
     private Integer currentStreamingMessagePosition = null;
-
-    // Watchdog to prevent stuck running steps
-    private final Handler planWatchdogHandler = new Handler(Looper.getMainLooper());
-    private Runnable planWatchdogRunnable = null;
-    private int planWatchdogForIndex = -1;
 
     public AiAssistantManager(EditorActivity activity, File projectDir, String projectName,
                               FileManager fileManager, ExecutorService executorService) {
@@ -76,6 +57,7 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
         this.fileManager = fileManager;
         this.executorService = executorService;
         this.aiProcessor = new AiProcessor(projectDir, activity.getApplicationContext());
+        this.planExecutor = new PlanExecutor(activity, this); // Initialize the PlanExecutor
 
         String apiKey = SettingsActivity.getGeminiApiKey(activity);
         this.aiAssistant = new AIAssistant(activity, apiKey, projectDir, projectName, executorService, this);
@@ -92,6 +74,10 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
         if (initialModel != null) {
             this.aiAssistant.setCurrentModel(initialModel);
         }
+    }
+
+    public void setCurrentStreamingMessagePosition(Integer position) {
+        this.currentStreamingMessagePosition = position;
     }
 
     public AIAssistant getAIAssistant() { return aiAssistant; }
@@ -191,14 +177,18 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                 try {
                     String summary = aiProcessor.applyFileAction(step);
                     appliedSummaries.add(summary);
-                    executedStepSummaries.add(summary);
+                    if (planExecutor != null && planExecutor.isExecutingPlan()) {
+                        planExecutor.addExecutedStepSummary(summary);
+                    }
                     step.stepStatus = "completed";
                     step.stepMessage = "Completed";
                 } catch (Exception ex) {
                     Log.e(TAG, "Agent step failed: " + step.getSummary(), ex);
                     step.stepStatus = "failed";
                     step.stepMessage = ex.getMessage();
-                    executedStepSummaries.add("FAILED: " + step.getSummary() + " - " + ex.getMessage());
+                    if (planExecutor != null && planExecutor.isExecutingPlan()) {
+                        planExecutor.addExecutedStepSummary("FAILED: " + step.getSummary() + " - " + ex.getMessage());
+                    }
                     anyFailed = true;
                 }
 
@@ -210,7 +200,6 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                 });
             }
 
-            boolean anyFailedBatch = anyFailed;
             activity.runOnUiThread(() -> {
                 message.setStatus(ChatMessage.STATUS_ACCEPTED);
                 AIChatFragment frag = activity.getAiChatFragment();
@@ -218,247 +207,18 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                 activity.tabManager.refreshOpenTabsAfterAi();
                 activity.loadFileTree();
                 activity.showToast("Agent step applied");
-                // After finishing this file_operation batch as part of plan, advance to next step automatically
-                if (isExecutingPlan) {
-                    // Always mark the current plan step as completed (never failed)
-                    setCurrentRunningPlanStepStatus("completed");
-                    // Refresh the plan message to reflect the status change
-                    if (lastPlanMessagePosition != null) {
-                        ChatMessage planMsg = frag != null ? frag.getMessageAt(lastPlanMessagePosition) : null;
-                        if (frag != null && planMsg != null) frag.updateMessage(lastPlanMessagePosition, planMsg);
-                    }
-                    cancelPlanWatchdog();
-                    sendNextPlanStepFollowUp();
+                if (planExecutor != null && planExecutor.isExecutingPlan()) {
+                    planExecutor.onStepActionsApplied();
                 }
             });
         });
     }
 
-    // Plan step status helpers
-    private void setNextPlanStepStatus(String status) {
-        if (lastPlanMessagePosition == null) return;
-        AIChatFragment frag = activity.getAiChatFragment();
-        if (frag == null) return;
-        ChatMessage planMsg = frag.getMessageAt(lastPlanMessagePosition);
-        if (planMsg == null || planMsg.getPlanSteps() == null || planMsg.getPlanSteps().isEmpty()) return;
-
-        List<ChatMessage.PlanStep> steps = planMsg.getPlanSteps();
-        while (planProgressIndex < steps.size()) {
-            ChatMessage.PlanStep ps = steps.get(planProgressIndex);
-            if (ps != null && (isActionableStepKind(ps.kind)) &&
-                    !"completed".equals(ps.status) && !"failed".equals(ps.status)) {
-                ps.status = status;
-                break;
-            }
-            planProgressIndex++;
-        }
-    }
-
-    private void setCurrentRunningPlanStepStatus(String status) {
-        if (lastPlanMessagePosition == null) return;
-        AIChatFragment frag = activity.getAiChatFragment();
-        if (frag == null) return;
-        ChatMessage planMsg = frag.getMessageAt(lastPlanMessagePosition);
-        if (planMsg == null || planMsg.getPlanSteps() == null || planMsg.getPlanSteps().isEmpty()) return;
-        List<ChatMessage.PlanStep> steps = planMsg.getPlanSteps();
-        if (planProgressIndex < steps.size()) {
-            ChatMessage.PlanStep ps = steps.get(planProgressIndex);
-            if (ps != null) {
-                ps.status = status;
-                planProgressIndex++;
-            }
-        }
-    }
-
-    // Watchdog: never mark as failed; on timeout, auto-complete the running step and advance
-    private void schedulePlanWatchdog(final int indexFor, long timeoutMs) {
-        cancelPlanWatchdog();
-        planWatchdogForIndex = indexFor;
-        planWatchdogRunnable = () -> {
-            if (!isExecutingPlan) return;
-            if (lastPlanMessagePosition == null) return;
-            try {
-                AIChatFragment frag = activity.getAiChatFragment();
-                if (frag == null) return;
-                ChatMessage pm = frag.getMessageAt(lastPlanMessagePosition);
-                if (pm == null || pm.getPlanSteps() == null) return;
-                // Only act if the same step is still running
-                if (planProgressIndex == indexFor && indexFor < pm.getPlanSteps().size()) {
-                    ChatMessage.PlanStep ps = pm.getPlanSteps().get(indexFor);
-                    if (ps != null && "running".equals(ps.status)) {
-                        Log.w(TAG, "Watchdog timeout for step index=" + indexFor + "; auto-marking completed and advancing.");
-                        ps.status = "completed";
-                        frag.updateMessage(lastPlanMessagePosition, pm);
-                        planProgressIndex = indexFor + 1;
-                        sendNextPlanStepFollowUp();
-                    }
-                }
-            } catch (Exception e) {
-                Log.e(TAG, "Watchdog error", e);
-            }
-        };
-        planWatchdogHandler.postDelayed(planWatchdogRunnable, Math.max(1, timeoutMs));
-    }
-
-    private void cancelPlanWatchdog() {
-        if (planWatchdogRunnable != null) {
-            planWatchdogHandler.removeCallbacks(planWatchdogRunnable);
-            planWatchdogRunnable = null;
-        }
-        planWatchdogForIndex = -1;
-    }
-
-    // Finalize plan execution and clean up any lingering state
-    private void finalizePlanExecution(String toastMessage, boolean sanitizeDanglingRunning) {
-        AIChatFragment frag = activity.getAiChatFragment();
-        if (sanitizeDanglingRunning && frag != null && lastPlanMessagePosition != null) {
-            ChatMessage pm = frag.getMessageAt(lastPlanMessagePosition);
-            if (pm != null && pm.getPlanSteps() != null) {
-                boolean changed = false;
-                for (ChatMessage.PlanStep ps : pm.getPlanSteps()) {
-                    if (ps != null && "running".equals(ps.status)) { ps.status = "completed"; changed = true; }
-                }
-                if (changed) { frag.updateMessage(lastPlanMessagePosition, pm); }
-            }
-        }
-        cancelPlanWatchdog();
-        isExecutingPlan = false;
-        if (frag != null) { frag.hideThinkingMessage(); }
-        currentStreamingMessagePosition = null;
-        lastPlanMessagePosition = null;
-        planProgressIndex = 0;
-        planStepRetryCount = 0;
-        executedStepSummaries.clear();
-        if (toastMessage != null) activity.showToast(toastMessage);
-        Log.i(TAG, "Plan execution finalized. sanitizeDanglingRunning=" + sanitizeDanglingRunning);
-    }
-
-    // Orchestrate detailed autonomous follow-ups per plan step with rich context
-    private void sendNextPlanStepFollowUp() {
-        AIChatFragment frag = activity.getAiChatFragment();
-        if (frag == null || lastPlanMessagePosition == null) {
-            finalizePlanExecution("Plan completed", true);
-            return;
-        }
-        ChatMessage planMsg = frag.getMessageAt(lastPlanMessagePosition);
-        if (planMsg == null || planMsg.getPlanSteps() == null || planMsg.getPlanSteps().isEmpty()) {
-            finalizePlanExecution("Plan completed", true);
-            return;
-        }
-        List<ChatMessage.PlanStep> steps = planMsg.getPlanSteps();
-
-        // Find next actionable step starting at planProgressIndex
-        int idx = planProgressIndex;
-        while (idx < steps.size()) {
-            ChatMessage.PlanStep s = steps.get(idx);
-            if (s != null && (isActionableStepKind(s.kind))
-                    && !"completed".equals(s.status) && !"failed".equals(s.status)) {
-                break;
-            }
-            idx++;
-        }
-
-        if (idx >= steps.size()) {
-            // All steps done
-            finalizePlanExecution("Plan completed", false);
-            return;
-        }
-
-        // Build follow-up prompt for this step
-        ChatMessage.PlanStep target = steps.get(idx);
-        StringBuilder prompt = new StringBuilder();
-        prompt.append("You are executing an approved plan step.\n");
-        prompt.append("Step ID: ").append(target.id != null ? target.id : String.valueOf(idx + 1)).append("\n");
-        prompt.append("Step Title: ").append(target.title != null ? target.title : "").append("\n\n");
-        prompt.append("Output strictly a single JSON object with action=\"file_operation\" inside a ```json fenced code block.\n");
-        prompt.append("No natural language outside the JSON. Use fields appropriate to file operations.\n\n");
-        prompt.append("Context summary:\n");
-        prompt.append("- Plan (truncated): ").append(safeTruncate(planToJson(planMsg), 2000)).append("\n");
-        if (!executedStepSummaries.isEmpty()) {
-            prompt.append("- Executed steps so far:\n");
-            int count = 0;
-            for (String ssum : executedStepSummaries) {
-                if (count++ >= 10) break;
-                prompt.append("  • ").append(ssum).append("\n");
-            }
-        }
-        prompt.append("- File tree (project root):\n");
-        prompt.append(safeTruncate(buildFileTree(activity.getProjectDirectory(), 3, 200), 3000)).append("\n");
-        TabItem active = activity.getActiveTab();
-        if (active != null) {
-            prompt.append("- Active file: ").append(active.getFileName()).append("\n");
-            prompt.append("- Active file content (truncated):\n---\n");
-            prompt.append(safeTruncate(active.getContent(), 2000)).append("\n---\n");
-        }
-        prompt.append("Proceed now with the step. Return only the JSON.\n");
-
-        isExecutingPlan = true;
-        // Mark step running visually before sending
-        setNextPlanStepStatus("running");
-        activity.runOnUiThread(() -> {
-            if (lastPlanMessagePosition != null) {
-                ChatMessage pm = activity.getAiChatFragment().getMessageAt(lastPlanMessagePosition);
-                if (pm != null) activity.getAiChatFragment().updateMessage(lastPlanMessagePosition, pm);
-            }
-        });
-
-        // Cancel any previous watchdog and schedule a new one for this running step
-        cancelPlanWatchdog();
-        final int runningIndex = planProgressIndex;
-        schedulePlanWatchdog(runningIndex, 30_000);
-
-        sendAiPrompt(prompt.toString(), new ArrayList<>(), activity.getQwenState(), activity.getActiveTab());
-    }
-
-    // Accept a broader set of kinds as actionable edits to support providers that
-    // emit non-"file" labels (e.g., "code", "edit", "modify", "update", "patch").
-    private boolean isActionableStepKind(String kind) {
-        if (kind == null || kind.trim().isEmpty()) return true; // default to actionable
-        String k = kind.trim().toLowerCase(java.util.Locale.ROOT);
-        return k.equals("file")
-                || k.equals("code")
-                || k.equals("edit")
-                || k.equals("modify")
-                || k.equals("update")
-                || k.equals("patch")
-                || k.equals("change")
-                || k.equals("smartupdate")
-                || k.equals("refactor");
-    }
-
-    private String planToJson(ChatMessage planMsg) {
-        try {
-            String raw = planMsg.getRawApiResponse();
-            if (raw != null) {
-                String trimmed = raw.trim();
-                if (trimmed.startsWith("{")) return raw;
-                // Try to extract JSON object from fenced/plain text
-                String extracted = extractFirstJsonObjectFromText(raw);
-                if (extracted != null) return extracted;
-            }
-        } catch (Exception ignored) {}
-        return "{\"action\":\"plan\"}";
-    }
-
-    private String safeTruncate(String s, int max) {
-        if (s == null) return "";
-        if (s.length() <= max) return s;
-        return s.substring(0, Math.max(0, max)) + "\n...";
-    }
-
-    private String buildFileTree(File root, int maxDepth, int maxEntries) {
-        StringBuilder sb = new StringBuilder();
-        buildFileTreeRec(root, 0, maxDepth, sb, new int[]{0}, maxEntries);
-        return sb.toString();
-    }
-
-    // Extract the first JSON object from mixed text. Prefer ```json fenced blocks.
     private String extractFirstJsonObjectFromText(String input) {
         if (input == null) return null;
         try {
             String s = input.trim();
-            // Prefer fenced code blocks ```json ... ```
-            int fenceStart = indexOfIgnoreCase(s, "```json");
+            int fenceStart = s.toLowerCase().indexOf("```json");
             if (fenceStart >= 0) {
                 fenceStart = s.indexOf('{', fenceStart);
                 if (fenceStart >= 0) {
@@ -466,7 +226,6 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                     if (end > fenceStart) return s.substring(fenceStart, end + 1);
                 }
             }
-            // Fallback: first top-level JSON object
             int firstBrace = s.indexOf('{');
             if (firstBrace >= 0) {
                 int end = findMatchingBraceEnd(s, firstBrace);
@@ -476,13 +235,6 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
         return null;
     }
 
-    private int indexOfIgnoreCase(String haystack, String needle) {
-        String h = haystack.toLowerCase();
-        String n = needle.toLowerCase();
-        return h.indexOf(n);
-    }
-
-    // Finds the end index of a balanced JSON object starting at '{'
     private int findMatchingBraceEnd(String s, int startIdx) {
         int depth = 0; boolean inString = false; boolean escape = false;
         for (int i = startIdx; i < s.length(); i++) {
@@ -503,19 +255,6 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
         return -1;
     }
 
-    private void buildFileTreeRec(File dir, int depth, int maxDepth, StringBuilder sb, int[] count, int maxEntries) {
-        if (dir == null || !dir.exists() || count[0] >= maxEntries) return;
-        if (depth > maxDepth) return;
-        File[] files = dir.listFiles();
-        if (files == null) return;
-        for (File f : files) {
-            if (count[0]++ >= maxEntries) return;
-            for (int i = 0; i < depth; i++) sb.append("  ");
-            sb.append(f.isDirectory() ? "[d] " : "[f] ").append(f.getName()).append("\n");
-            if (f.isDirectory()) buildFileTreeRec(f, depth + 1, maxDepth, sb, count, maxEntries);
-        }
-    }
-
     // Public API required by EditorActivity and UI
     public void onAiDiscardActions(int messagePosition, ChatMessage message) {
         Log.d(TAG, "User discarded AI actions for message at position: " + messagePosition);
@@ -533,33 +272,15 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
     }
 
     public void acceptPlan(int messagePosition, ChatMessage message) {
-        Log.d(TAG, "User accepted plan for message at position: " + messagePosition);
-        isExecutingPlan = true;
-        planStepRetryCount = 0;
-        message.setStatus(ChatMessage.STATUS_ACCEPTED);
-        // Track the plan message position and reset progress
-        lastPlanMessagePosition = messagePosition;
-        planProgressIndex = 0;
-        executedStepSummaries.clear();
-        AIChatFragment aiChatFragment = activity.getAiChatFragment();
-        if (aiChatFragment != null) {
-            aiChatFragment.updateMessage(messagePosition, message);
-            // Ensure no lingering thinking placeholder
-            aiChatFragment.hideThinkingMessage();
+        if (planExecutor != null) {
+            planExecutor.acceptPlan(messagePosition, message);
         }
-        currentStreamingMessagePosition = null;
-        sendNextPlanStepFollowUp();
     }
 
     public void discardPlan(int messagePosition, ChatMessage message) {
-        Log.d(TAG, "User discarded plan for message at position: " + messagePosition);
-        message.setStatus(ChatMessage.STATUS_DISCARDED);
-        AIChatFragment aiChatFragment = activity.getAiChatFragment();
-        if (aiChatFragment != null) {
-            aiChatFragment.updateMessage(messagePosition, message);
+        if (planExecutor != null) {
+            planExecutor.discardPlan(messagePosition, message);
         }
-        // Centralized cleanup (also sanitizes any dangling running steps to failed)
-        finalizePlanExecution("Plan discarded.", true);
     }
 
     public void onAiFileChangeClicked(ChatMessage.FileActionDetail fileActionDetail) {
@@ -621,14 +342,13 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                 return;
             }
 
-            // If we are executing a plan in agent mode, suppress any dangling thinking/streaming placeholder
-            boolean agentEnabledAtUi = aiAssistant != null && aiAssistant.isAgentModeEnabled();
-            if (agentEnabledAtUi && isExecutingPlan) {
+            boolean isCurrentlyExecutingPlan = planExecutor != null && planExecutor.isExecutingPlan();
+
+            if (aiAssistant != null && aiAssistant.isAgentModeEnabled() && isCurrentlyExecutingPlan) {
                 uiFrag.hideThinkingMessage();
                 currentStreamingMessagePosition = null;
             }
 
-            // Intercept model-agnostic tool calls: if the raw response is a tool_call, execute locally
             try {
                 if (rawAiResponseJson != null && !rawAiResponseJson.isEmpty()) {
                     String normalized = extractFirstJsonObjectFromText(rawAiResponseJson);
@@ -646,7 +366,6 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                                 JsonObject res = new JsonObject();
                                 res.addProperty("name", name);
                                 JsonObject exec = ToolExecutor.execute(projectDir, name, args);
-                                // attach either parsed object or raw in "result"
                                 res.add("result", exec);
                                 results.add(res);
                             } catch (Exception inner) {
@@ -659,7 +378,6 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                                 results.add(res);
                             }
                         }
-                        // Build continuation and send immediately; suppress UI emission for this intermediate response
                         String continuation = ToolExecutor.buildToolResultContinuation(results);
                         String fenced = "```json\n" + continuation + "\n```\n";
                         sendAiPrompt(fenced, new java.util.ArrayList<>(), activity.getQwenState(), activity.getActiveTab());
@@ -668,9 +386,7 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                 }
             } catch (Exception ignore) {}
 
-            // Use a mutable local copy for file actions to satisfy lambda finality rules
             List<ChatMessage.FileActionDetail> effectiveProposedFileChanges = proposedFileChanges;
-
             boolean isPlan = false;
             List<ChatMessage.PlanStep> planSteps = new ArrayList<>();
             QwenResponseParser.ParsedResponse parsed = null;
@@ -680,7 +396,6 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                     String toParse = normalized != null ? normalized : rawAiResponseJson;
                     parsed = QwenResponseParser.parseResponse(toParse);
                 }
-                // Fallback: some providers may put JSON only in the final answer text
                 if (parsed == null && explanation != null && !explanation.isEmpty()) {
                     String exNorm = extractFirstJsonObjectFromText(explanation);
                     if (exNorm != null) {
@@ -690,111 +405,28 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                 if (parsed != null && "plan".equals(parsed.action)) {
                     isPlan = true;
                     planSteps = QwenResponseParser.toPlanSteps(parsed);
-                    try { Log.d(TAG, "Parsed response as plan; steps=" + (planSteps != null ? planSteps.size() : 0)); } catch (Exception ignore) {}
                 } else if (parsed != null && ("file_operation".equals(parsed.action) || QwenResponseParser.looksLikeJson(parsed.explanation))) {
-                    // If model returned file ops JSON but fileActions list is empty, convert and set
                     List<ChatMessage.FileActionDetail> ops = QwenResponseParser.toFileActionDetails(parsed);
                     if (effectiveProposedFileChanges == null || effectiveProposedFileChanges.isEmpty()) {
                         effectiveProposedFileChanges = ops;
                     }
-                    try { Log.d(TAG, "Parsed response as file_operation; ops=" + (ops != null ? ops.size() : 0)); } catch (Exception ignore) {}
                 }
             } catch (Exception e) {
                 Log.w(TAG, "Plan/file parse failed", e);
-                try { Log.d(TAG, "Parse failed for raw length=" + (rawAiResponseJson != null ? rawAiResponseJson.length() : -1)); } catch (Exception ignore) {}
             }
 
-            // Enforce exclusive outputs: if both a plan and file operations appear, resolve per mode
             boolean hasOps = effectiveProposedFileChanges != null && !effectiveProposedFileChanges.isEmpty();
             if (isPlan && hasOps) {
-                Log.w(TAG, "Mixed 'plan' and 'file_operation' detected in single response; enforcing separation.");
-                boolean agent = aiAssistant != null && aiAssistant.isAgentModeEnabled();
-                if (isExecutingPlan || agent) {
-                    // During plan execution or in agent mode, prefer actionable edits now
-                    isPlan = false;
-                    planSteps.clear();
-                } else {
-                    // In non-agent mode, prefer the plan and drop actions
-                    effectiveProposedFileChanges = new ArrayList<>();
-                }
+                Log.w(TAG, "Mixed 'plan' and 'file_operation' detected; preferring plan.");
+                effectiveProposedFileChanges = new ArrayList<>();
             }
 
-            // If we are executing a plan, never insert a new AI message; always update the existing plan message
-            if (isExecutingPlan && lastPlanMessagePosition != null) {
-                if (effectiveProposedFileChanges != null && !effectiveProposedFileChanges.isEmpty()) {
-                    planStepRetryCount = 0; // Reset retry count on successful action
-                    AIChatFragment frag = activity.getAiChatFragment();
-                    ChatMessage planMsg = frag.getMessageAt(lastPlanMessagePosition);
-                    if (planMsg != null) {
-                        // Capture per-step raw response for debugging
-                        try {
-                            List<ChatMessage.PlanStep> steps = planMsg.getPlanSteps();
-                            if (steps != null && planProgressIndex < steps.size()) {
-                                ChatMessage.PlanStep running = steps.get(planProgressIndex);
-                                if (running != null) {
-                                    running.rawResponse = (rawAiResponseJson != null && !rawAiResponseJson.isEmpty()) ? rawAiResponseJson : (explanation != null ? explanation : "");
-                                }
-                            }
-                        } catch (Exception ignored) {}
-                        // Merge proposed file changes for this step
-                        List<ChatMessage.FileActionDetail> merged = planMsg.getProposedFileChanges() != null ? planMsg.getProposedFileChanges() : new ArrayList<>();
-                        merged.addAll(effectiveProposedFileChanges);
-                        planMsg.setProposedFileChanges(merged);
-                        // Update the single message and auto-apply
-                        frag.updateMessage(lastPlanMessagePosition, planMsg);
-                        // Cancel watchdog since we received ops for this step
-                        cancelPlanWatchdog();
-                        onAiAcceptActions(lastPlanMessagePosition, planMsg);
-                        return;
-                    }
-                } else {
-                    // AI returned no file ops; capture raw response for this step and then retry/advance per policy
-                    try {
-                        AIChatFragment frag = activity.getAiChatFragment();
-                        if (frag != null) {
-                            ChatMessage planMsg = frag.getMessageAt(lastPlanMessagePosition);
-                            if (planMsg != null) {
-                                List<ChatMessage.PlanStep> steps = planMsg.getPlanSteps();
-                                if (steps != null && planProgressIndex < steps.size()) {
-                                    ChatMessage.PlanStep running = steps.get(planProgressIndex);
-                                    if (running != null && (running.rawResponse == null || running.rawResponse.isEmpty())) {
-                                        running.rawResponse = (rawAiResponseJson != null && !rawAiResponseJson.isEmpty()) ? rawAiResponseJson : (explanation != null ? explanation : "");
-                                        frag.updateMessage(lastPlanMessagePosition, planMsg);
-                                    }
-                                }
-                            }
-                        }
-                    } catch (Exception ignored) {}
-                    // Retry logic (bounded) and auto-advance as previously implemented
-                    planStepRetryCount++;
-                    if (planStepRetryCount > 2) {
-                        Log.e(TAG, "AI did not produce file ops after 3 prompts; auto-advancing and marking step completed.");
-                        setCurrentRunningPlanStepStatus("completed");
-                        cancelPlanWatchdog();
-                        planStepRetryCount = 0; // Reset for next step
-                        sendNextPlanStepFollowUp(); // Move to next step
-                    } else {
-                        Log.w(TAG, "AI did not return file operations. Retrying step (attempt " + planStepRetryCount + ")");
-                        sendNextPlanStepFollowUp(); // Re-prompt for the same step
-                    }
-                    return;
-                }
+            if (isCurrentlyExecutingPlan) {
+                planExecutor.onStepExecutionResult(effectiveProposedFileChanges, rawAiResponseJson, explanation);
+                return;
             }
 
-            // Build final AI message for normal flow (not plan-merge)
             String finalExplanation = explanation != null ? explanation.trim() : "";
-            if (rawAiResponseJson != null && !rawAiResponseJson.isEmpty()) {
-                try {
-                    com.google.gson.JsonObject obj = com.google.gson.JsonParser.parseString(rawAiResponseJson).getAsJsonObject();
-                    if (obj.has("action") && ("plan".equalsIgnoreCase(obj.get("action").getAsString()) || "file_operation".equalsIgnoreCase(obj.get("action").getAsString()))) {
-                        // Suppress echoing structured JSON in the bubble; rely on dedicated UI sections
-                        if (!finalExplanation.startsWith("Plan:")) {
-                            // keep concise title if available, else empty
-                            finalExplanation = finalExplanation;
-                        }
-                    }
-                } catch (Exception ignore) {}
-            }
             ChatMessage aiMessage = new ChatMessage(
                     ChatMessage.SENDER_AI,
                     finalExplanation,
@@ -802,7 +434,7 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                     suggestions != null ? new ArrayList<>(suggestions) : new ArrayList<>(),
                     aiModelDisplayName,
                     System.currentTimeMillis(),
-                    rawAiResponseJson, // always store raw response for long-press
+                    rawAiResponseJson,
                     effectiveProposedFileChanges,
                     ChatMessage.STATUS_PENDING_APPROVAL
             );
@@ -811,72 +443,27 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
             }
             if (webSources != null && !webSources.isEmpty()) {
                 aiMessage.setWebSources(webSources);
-            } else if (rawAiResponseJson != null && rawAiResponseJson.contains("web_sources")) {
-                try {
-                    com.google.gson.JsonObject obj = com.google.gson.JsonParser.parseString(rawAiResponseJson).getAsJsonObject();
-                    if (obj.has("web_sources") && obj.get("web_sources").isJsonArray()) {
-                        java.util.List<WebSource> parsedSources = new java.util.ArrayList<>();
-                        com.google.gson.JsonArray arr = obj.getAsJsonArray("web_sources");
-                        for (int i = 0; i < arr.size(); i++) {
-                            com.google.gson.JsonObject s = arr.get(i).getAsJsonObject();
-                            String url = s.has("url") ? s.get("url").getAsString() : "";
-                            String title = s.has("title") ? s.get("title").getAsString() : url;
-                            String snippet = s.has("snippet") ? s.get("snippet").getAsString() : "";
-                            String favicon = s.has("favicon") ? s.get("favicon").getAsString() : "";
-                            parsedSources.add(new WebSource(url, title, snippet, favicon));
-                        }
-                        if (!parsedSources.isEmpty()) aiMessage.setWebSources(parsedSources);
-                    }
-                } catch (Exception ignore) {}
             }
 
-            AIChatFragment frag = activity.getAiChatFragment();
-            if (frag != null) {
-                Integer targetPos = currentStreamingMessagePosition;
-            if (targetPos != null && frag.getMessageAt(targetPos) != null) {
-                // Replace the streaming bubble with the final message
-                ChatMessage finalMessage = new ChatMessage(
-                        ChatMessage.SENDER_AI,
-                        finalExplanation,
-                        new ArrayList<>(), // actionSummaries
-                        suggestions,
-                        aiModelDisplayName,
-                        System.currentTimeMillis(),
-                        rawAiResponseJson,
-                        effectiveProposedFileChanges,
-                        ChatMessage.STATUS_PENDING_APPROVAL
-                );
-                if (thinkingContent != null && !thinkingContent.isEmpty()) finalMessage.setThinkingContent(thinkingContent);
-                if (webSources != null && !webSources.isEmpty()) finalMessage.setWebSources(webSources);
-
-                if (isPlan && planSteps != null && !planSteps.isEmpty()) {
-                    finalMessage.setPlanSteps(planSteps);
-                    lastPlanMessagePosition = targetPos;
-                }
-
-                frag.updateMessage(targetPos, finalMessage);
-                currentStreamingMessagePosition = null;
-
-                if (aiAssistant != null && aiAssistant.isAgentModeEnabled()
-                           && effectiveProposedFileChanges != null && !effectiveProposedFileChanges.isEmpty()) {
-                    onAiAcceptActions(targetPos, finalMessage);
-                    }
-                return;
-                }
-                // Fallback: no streaming message exists; insert a fresh one
-                int insertedPos = frag.addMessage(aiMessage);
+            Integer targetPos = currentStreamingMessagePosition;
+            if (targetPos != null && uiFrag.getMessageAt(targetPos) != null) {
                 if (isPlan && planSteps != null && !planSteps.isEmpty()) {
                     aiMessage.setPlanSteps(planSteps);
-                    frag.updateMessage(insertedPos, aiMessage);
-                    lastPlanMessagePosition = insertedPos;
-                    planProgressIndex = 0;
-                    executedStepSummaries.clear();
-                } else if (aiAssistant != null && aiAssistant.isAgentModeEnabled()
-                           && effectiveProposedFileChanges != null && !effectiveProposedFileChanges.isEmpty()) {
-                    onAiAcceptActions(insertedPos, aiMessage);
+                }
+                uiFrag.updateMessage(targetPos, aiMessage);
+                currentStreamingMessagePosition = null;
+
+                if (aiAssistant != null && aiAssistant.isAgentModeEnabled() && hasOps) {
+                    onAiAcceptActions(targetPos, aiMessage);
                 }
             } else {
-                Log.w(TAG, "AiChatFragment is null! Cannot add message to UI.");
+                int insertedPos = uiFrag.addMessage(aiMessage);
+                if (isPlan && planSteps != null && !planSteps.isEmpty()) {
+                    aiMessage.setPlanSteps(planSteps);
+                    uiFrag.updateMessage(insertedPos, aiMessage);
+                } else if (aiAssistant != null && aiAssistant.isAgentModeEnabled() && hasOps) {
+                    onAiAcceptActions(insertedPos, aiMessage);
+                }
             }
         });
     }
@@ -897,18 +484,11 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                         ChatMessage.STATUS_NONE
                 );
                 aiChatFragment.addMessage(aiErrorMessage);
-                // If a plan is executing, mark current step failed and advance to prevent stuck state
-                boolean agentEnabled = aiAssistant != null && aiAssistant.isAgentModeEnabled();
-                if (agentEnabled && isExecutingPlan) {
+
+                if (planExecutor != null && planExecutor.isExecutingPlan()) {
                     aiChatFragment.hideThinkingMessage();
                     currentStreamingMessagePosition = null;
-                    setCurrentRunningPlanStepStatus("completed");
-                    if (lastPlanMessagePosition != null) {
-                        ChatMessage planMsg = aiChatFragment.getMessageAt(lastPlanMessagePosition);
-                        if (planMsg != null) aiChatFragment.updateMessage(lastPlanMessagePosition, planMsg);
-                    }
-                    cancelPlanWatchdog();
-                    sendNextPlanStepFollowUp();
+                    planExecutor.onStepExecutionResult(null, "Error: " + errorMessage, errorMessage);
                 }
             }
         });
@@ -917,8 +497,7 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
     @Override
     public void onAiRequestStarted() {
         activity.runOnUiThread(() -> {
-            // Suppress streaming placeholder during agent plan execution
-            boolean suppress = aiAssistant != null && aiAssistant.isAgentModeEnabled() && isExecutingPlan;
+            boolean suppress = aiAssistant != null && aiAssistant.isAgentModeEnabled() && planExecutor != null && planExecutor.isExecutingPlan();
             if (suppress) {
                 AIChatFragment uiFrag = activity.getAiChatFragment();
                 if (uiFrag != null) {
@@ -929,7 +508,6 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
             }
             AIChatFragment chatFragment = activity.getAiChatFragment();
             if (chatFragment != null) {
-                // Start a streaming AI message that will be updated with thoughts/answer
                 ChatMessage aiMsg = new ChatMessage(
                         ChatMessage.SENDER_AI,
                         activity.getString(com.codex.apk.R.string.ai_is_thinking),
@@ -947,20 +525,17 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
     @Override
     public void onAiStreamUpdate(String partialResponse, boolean isThinking) {
         activity.runOnUiThread(() -> {
-            // Suppress streaming updates during agent plan execution
-            if (aiAssistant != null && aiAssistant.isAgentModeEnabled() && isExecutingPlan) return;
+            if (aiAssistant != null && aiAssistant.isAgentModeEnabled() && planExecutor != null && planExecutor.isExecutingPlan()) return;
             AIChatFragment chatFragment = activity.getAiChatFragment();
             if (chatFragment == null || currentStreamingMessagePosition == null) return;
             ChatMessage msg = chatFragment.getMessageAt(currentStreamingMessagePosition);
             if (msg == null) return;
             if (isThinking) {
-                // Move content from typing indicator to Thoughts section as soon as we have text
                 if (partialResponse != null && !partialResponse.isEmpty()) {
-                    msg.setContent(""); // disable typing indicator view
+                    msg.setContent("");
                     msg.setThinkingContent(partialResponse);
                 }
             } else {
-                // Stream main answer tokens into content
                 msg.setContent(partialResponse != null ? partialResponse : "");
             }
             chatFragment.updateMessage(currentStreamingMessagePosition, msg);

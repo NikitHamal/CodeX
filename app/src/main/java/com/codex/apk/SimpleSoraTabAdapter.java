@@ -173,12 +173,12 @@ public class SimpleSoraTabAdapter extends RecyclerView.Adapter<RecyclerView.View
 
         TabItem tabItem = openTabs.get(position);
         String tabId = tabItem.getFile().getAbsolutePath();
-        CodeEditor codeEditor = holder.codeEditor;
+        CodeEditor codeEditor = editorViewHolder.codeEditor;
         boolean isDiffTab = tabItem.getFile().getName().startsWith("DIFF_");
 
         // Only reconfigure if this is a different tab
-        if (!tabId.equals(holder.currentTabId)) {
-            holder.currentTabId = tabId;
+        if (!tabId.equals(editorViewHolder.currentTabId)) {
+            editorViewHolder.currentTabId = tabId;
 
             // Configure the editor only for new tabs (skip heavy setup for DIFF_ tabs)
             if (!isDiffTab) {
@@ -195,10 +195,10 @@ public class SimpleSoraTabAdapter extends RecyclerView.Adapter<RecyclerView.View
             }
 
             // Set up content change listener only once per tab
-            if (!holder.isListenerAttached) {
+            if (!editorViewHolder.isListenerAttached) {
                 codeEditor.subscribeEvent(io.github.rosemoe.sora.event.ContentChangeEvent.class, (event, unsubscribe) -> {
                     // Get the current tab item for this holder
-                    int currentPos = holder.getAdapterPosition();
+                    int currentPos = editorViewHolder.getAdapterPosition();
                     if (currentPos != RecyclerView.NO_POSITION && currentPos < openTabs.size()) {
                         TabItem currentTabItem = openTabs.get(currentPos);
                         String newContent = codeEditor.getText().toString();
@@ -214,7 +214,7 @@ public class SimpleSoraTabAdapter extends RecyclerView.Adapter<RecyclerView.View
                         }
                     }
                 });
-                holder.isListenerAttached = true;
+                editorViewHolder.isListenerAttached = true;
             }
         }
 
@@ -222,12 +222,12 @@ public class SimpleSoraTabAdapter extends RecyclerView.Adapter<RecyclerView.View
         if (isDiffTab) {
             // Show diff view
             codeEditor.setVisibility(View.GONE);
-            if (holder.diffRecycler != null) {
-                holder.diffRecycler.setVisibility(View.VISIBLE);
-                if (holder.diffRecycler.getLayoutManager() == null) {
-                    holder.diffRecycler.setLayoutManager(new LinearLayoutManager(context));
-                    holder.diffRecycler.setHasFixedSize(true);
-                    holder.diffRecycler.setItemViewCacheSize(64);
+            if (editorViewHolder.diffRecycler != null) {
+                editorViewHolder.diffRecycler.setVisibility(View.VISIBLE);
+                if (editorViewHolder.diffRecycler.getLayoutManager() == null) {
+                    editorViewHolder.diffRecycler.setLayoutManager(new LinearLayoutManager(context));
+                    editorViewHolder.diffRecycler.setHasFixedSize(true);
+                    editorViewHolder.diffRecycler.setItemViewCacheSize(64);
                 }
                 // Parse and bind diff lines with LRU caching
                 String key = tabId;
@@ -244,20 +244,20 @@ public class SimpleSoraTabAdapter extends RecyclerView.Adapter<RecyclerView.View
                 } else {
                     lines = entry.lines;
                 }
-                if (holder.diffAdapter == null) {
-                    holder.diffAdapter = new InlineDiffAdapter(context, lines);
-                    holder.diffRecycler.setAdapter(holder.diffAdapter);
+                if (editorViewHolder.diffAdapter == null) {
+                    editorViewHolder.diffAdapter = new InlineDiffAdapter(context, lines);
+                    editorViewHolder.diffRecycler.setAdapter(editorViewHolder.diffAdapter);
                 } else {
-                    holder.diffAdapter.updateLines(lines);
+                    editorViewHolder.diffAdapter.updateLines(lines);
                 }
             }
         } else {
             // Show normal editor
             codeEditor.setVisibility(View.VISIBLE);
-            if (holder.diffRecycler != null) {
-                holder.diffRecycler.setVisibility(View.GONE);
-                holder.diffRecycler.setAdapter(null);
-                holder.diffAdapter = null;
+            if (editorViewHolder.diffRecycler != null) {
+                editorViewHolder.diffRecycler.setVisibility(View.GONE);
+                editorViewHolder.diffRecycler.setAdapter(null);
+                editorViewHolder.diffAdapter = null;
             }
         }
 

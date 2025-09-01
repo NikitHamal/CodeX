@@ -214,34 +214,32 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
         });
     }
 
-    private String extractFirstJsonObjectFromText(String input) {
-        if (input == null) return null;
-        try {
-            String s = input.trim();
-            // Handle fenced code blocks (with or without "json" language specifier)
-            int fenceStart = s.indexOf("```");
-            if (fenceStart >= 0) {
-                int secondFence = s.indexOf("```", fenceStart + 3);
-                if (secondFence > fenceStart) {
-                    String betweenFences = s.substring(fenceStart + 3, secondFence).trim();
-                    // Find the first '{' within the fenced block
-                    int braceStart = betweenFences.indexOf('{');
-                    if (braceStart >= 0) {
-                        int braceEnd = findMatchingBraceEnd(betweenFences, braceStart);
-                        if (braceEnd > braceStart) {
-                            return betweenFences.substring(braceStart, braceEnd + 1);
-                        }
-                    }
-                }
+    private String extractJsonFromCodeBlock(String content) {
+        if (content == null || content.trim().isEmpty()) {
+            return null;
+        }
+        // Look for ```json ... ``` pattern
+        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("```json\\s*([\\s\\S]*?)```", java.util.regex.Pattern.CASE_INSENSITIVE);
+        java.util.regex.Matcher matcher = pattern.matcher(content);
+        if (matcher.find()) {
+            return matcher.group(1).trim();
+        }
+        // Also check for ``` ... ``` pattern (without json specifier)
+        pattern = java.util.regex.Pattern.compile("```\\s*([\\s\\S]*?)```");
+        matcher = pattern.matcher(content);
+        if (matcher.find()) {
+            String extracted = matcher.group(1).trim();
+            if (looksLikeJson(extracted)) {
+                return extracted;
             }
-            // Fallback for non-fenced JSON
-            int firstBrace = s.indexOf('{');
-            if (firstBrace >= 0) {
-                int end = findMatchingBraceEnd(s, firstBrace);
-                if (end > firstBrace) return s.substring(firstBrace, end + 1);
-            }
-        } catch (Exception ignored) {}
+        }
         return null;
+    }
+
+    private boolean looksLikeJson(String text) {
+        if (text == null) return false;
+        String trimmed = text.trim();
+        return (trimmed.startsWith("{") && trimmed.endsWith("}")) || (trimmed.startsWith("[") && trimmed.endsWith("]"));
     }
 
     private int findMatchingBraceEnd(String s, int startIdx) {
@@ -359,12 +357,18 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
             }
 
             // Centralized tool call handling
-            String jsonToParseForTools = extractFirstJsonObjectFromText(explanation);
+            String jsonToParseForTools = extractJsonFromCodeBlock(explanation);
             if (jsonToParseForTools == null) {
-                jsonToParseForTools = extractFirstJsonObjectFromText(rawAiResponseJson);
+                // Fallback to check the raw response if nothing is found in the explanation
+                jsonToParseForTools = extractJsonFromCodeBlock(rawAiResponseJson);
+            }
+            if (jsonToParseForTools == null && looksLikeJson(explanation)) {
+                jsonToParseForTools = explanation;
             }
 
             if (jsonToParseForTools != null) {
+                // For debugging, show the user what JSON we're about to process
+                sendSystemMessage("Detected tool call JSON:\n```json\n" + jsonToParseForTools + "\n```");
                 try {
                     JsonObject maybe = JsonParser.parseString(jsonToParseForTools).getAsJsonObject();
                     if (maybe.has("action") && "tool_call".equalsIgnoreCase(maybe.get("action").getAsString()) && maybe.has("tool_calls") && maybe.get("tool_calls").isJsonArray()) {
@@ -389,6 +393,7 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                                 err.addProperty("error", inner.getMessage());
                                 res.add("result", err);
                                 results.add(res);
+                                sendSystemMessage("Error executing tool: " + inner.getMessage());
                             }
                         }
                         String continuation = ToolExecutor.buildToolResultContinuation(results);
@@ -396,8 +401,9 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                         sendAiPrompt(fenced, new java.util.ArrayList<>(), activity.getQwenState(), activity.getActiveTab());
                         return; // Stop further processing
                     }
-                } catch (Exception ignore) {
-                    // Not a valid tool call, proceed with normal processing
+                } catch (Exception e) {
+                    // Not a valid tool call, proceed with normal processing, but inform the user for debugging
+                    sendSystemMessage("Could not execute tool call. Error parsing JSON: " + e.getMessage());
                 }
             }
 
@@ -487,26 +493,24 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
     public void onAiError(String errorMessage) {
         activity.runOnUiThread(() -> {
             activity.showToast("AI Error: " + errorMessage);
-            AIChatFragment aiChatFragment = activity.getAiChatFragment();
-            if (aiChatFragment != null) {
-                ChatMessage aiErrorMessage = new ChatMessage(
-                        ChatMessage.SENDER_AI,
-                        "Error: " + errorMessage,
-                        null, null,
-                        aiAssistant.getCurrentModel().getDisplayName(),
-                        System.currentTimeMillis(),
-                        null, null,
-                        ChatMessage.STATUS_NONE
-                );
-                aiChatFragment.addMessage(aiErrorMessage);
-
-                if (planExecutor != null && planExecutor.isExecutingPlan()) {
-                    aiChatFragment.hideThinkingMessage();
-                    currentStreamingMessagePosition = null;
-                    planExecutor.onStepExecutionResult(null, "Error: " + errorMessage, errorMessage);
-                }
-            }
+            sendSystemMessage("Error: " + errorMessage);
         });
+    }
+
+    private void sendSystemMessage(String content) {
+        AIChatFragment aiChatFragment = activity.getAiChatFragment();
+        if (aiChatFragment != null) {
+            ChatMessage systemMessage = new ChatMessage(
+                    ChatMessage.SENDER_AI,
+                    content,
+                    null, null,
+                    "System",
+                    System.currentTimeMillis(),
+                    null, null,
+                    ChatMessage.STATUS_NONE
+            );
+            aiChatFragment.addMessage(systemMessage);
+        }
     }
 
     @Override

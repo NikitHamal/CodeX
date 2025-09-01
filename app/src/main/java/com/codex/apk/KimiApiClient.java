@@ -16,6 +16,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.Random;
 
 import okhttp3.MediaType;
+import okhttp3.Cookie;
+import okhttp3.CookieJar;
+import okhttp3.HttpUrl;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
@@ -37,10 +40,23 @@ public class KimiApiClient implements ApiClient {
 
     public KimiApiClient(Context context, AIAssistant.AIActionListener actionListener, File projectDir) {
         this.actionListener = actionListener;
+        CookieJar cookieJar = new CookieJar() {
+            private final java.util.Map<String, List<Cookie>> cookieStore = new java.util.HashMap<>();
+            @Override
+            public void saveFromResponse(HttpUrl url, List<Cookie> cookies) {
+                cookieStore.put(url.host(), cookies);
+            }
+            @Override
+            public List<Cookie> loadForRequest(HttpUrl url) {
+                List<Cookie> cookies = cookieStore.get(url.host());
+                return cookies != null ? cookies : Collections.emptyList();
+            }
+        };
         this.httpClient = new OkHttpClient.Builder()
                 .connectTimeout(30, TimeUnit.SECONDS)
                 .writeTimeout(30, TimeUnit.SECONDS)
                 .readTimeout(60, TimeUnit.SECONDS)
+                .cookieJar(cookieJar)
                 .build();
         this.deviceId = String.valueOf(new Random().nextLong());
     }

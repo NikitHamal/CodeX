@@ -52,6 +52,8 @@ public class AIAssistant {
         apiClients.put(AIProvider.GOOGLE, new GeminiOfficialApiClient(context, actionListener, this.apiKey));
         apiClients.put(AIProvider.KIMI, new KimiApiClient(context, actionListener, projectDir));
         apiClients.put(AIProvider.ZHIPU, new ZhipuApiClient(context, actionListener, projectDir));
+        apiClients.put(AIProvider.OIVSCodeSer0501, new OIVSCodeSer0501ApiClient(context, actionListener));
+        apiClients.put(AIProvider.OIVSCodeSer2, new OIVSCodeSer2ApiClient(context, actionListener));
     }
 
     public void sendPrompt(String userPrompt, List<ChatMessage> chatHistory, QwenConversationState qwenState, String fileName, String fileContent) {

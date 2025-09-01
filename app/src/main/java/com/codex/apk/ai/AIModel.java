@@ -76,7 +76,13 @@ public class AIModel {
             new AIModel("k2", "Kimi K2", AIProvider.KIMI, new ModelCapabilities(false, true, false, false, false, false, false, false, false, false, 0, 0, 0, 0, new HashMap<>(), new ArrayList<>(), new ArrayList<>(), new ArrayList<>(), new HashMap<>())),
 
             // Zhipu Provider (default model)
-            new AIModel("GLM-4.5", "Zhipu GLM-4.5", AIProvider.ZHIPU, new ModelCapabilities(true, false, false, false, false, false, false, false, false, false, 0, 0, 0, 0, new HashMap<>(), new ArrayList<>(), new ArrayList<>(), new ArrayList<>(), new HashMap<>()))
+            new AIModel("GLM-4.5", "Zhipu GLM-4.5", AIProvider.ZHIPU, new ModelCapabilities(true, false, false, false, false, false, false, false, false, false, 0, 0, 0, 0, new HashMap<>(), new ArrayList<>(), new ArrayList<>(), new ArrayList<>(), new HashMap<>())),
+
+            // OIVSCodeSer0501 Provider
+            new AIModel("gpt-4.1-mini", "OIVSCodeSer0501 gpt-4.1-mini", AIProvider.OIVSCodeSer0501, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)),
+
+            // OIVSCodeSer2 Provider
+            new AIModel("gpt-4o-mini", "OIVSCodeSer2 gpt-4o-mini", AIProvider.OIVSCodeSer2, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192))
         ));
         for (AIModel model : initialModels) {
             modelsByProvider.computeIfAbsent(model.getProvider(), k -> new ArrayList<>()).add(model);

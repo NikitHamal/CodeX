@@ -10,7 +10,9 @@ public enum AIProvider {
     COOKIES("Cookies"),
     GPT_OSS("GPT OSS"),
     KIMI("Kimi"),
-    ZHIPU("Zhipu");
+    ZHIPU("Zhipu"),
+    OIVSCodeSer0501("OIVSCodeSer0501"),
+    OIVSCodeSer2("OIVSCodeSer2");
 
     private final String displayName;
 

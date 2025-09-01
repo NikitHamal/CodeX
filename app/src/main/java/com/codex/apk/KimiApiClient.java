@@ -169,15 +169,19 @@ public class KimiApiClient implements ApiClient {
             if (response.isSuccessful() && response.body() != null) {
                 processKimiStreamResponse(response);
             } else {
-                if (actionListener != null) actionListener.onAiError("Failed to send message");
+                String errorBody = response.body() != null ? response.body().string() : "Unknown error";
+                Log.e(TAG, "Kimi API error: " + response.code() + " " + errorBody);
+                if (actionListener != null) actionListener.onAiError("Kimi API Error: " + response.code() + "\n" + errorBody);
             }
         }
     }
 
     private void processKimiStreamResponse(Response response) throws IOException {
         StringBuilder answerContent = new StringBuilder();
+        StringBuilder rawResponse = new StringBuilder();
         String line;
         while ((line = response.body().source().readUtf8Line()) != null) {
+            rawResponse.append(line).append("\n");
             if (line.startsWith("data:")) {
                 String data = line.substring(5).trim();
                 try {
@@ -194,7 +198,7 @@ public class KimiApiClient implements ApiClient {
                             // Title generation, could be handled if needed
                         } else if (event.equals("all_done")) {
                             if (actionListener != null) {
-                                actionListener.onAiActionsProcessed(answerContent.toString(), answerContent.toString(), new ArrayList<>(), new ArrayList<>(), "Kimi");
+                                actionListener.onAiActionsProcessed(rawResponse.toString(), answerContent.toString(), new ArrayList<>(), new ArrayList<>(), "Kimi");
                             }
                             break;
                         }

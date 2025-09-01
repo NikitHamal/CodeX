@@ -172,12 +172,15 @@ public class ZhipuApiClient implements ApiClient {
     private void processZhipuStreamResponse(Response response) throws IOException {
         StringBuilder answerContent = new StringBuilder();
         StringBuilder thinkingContent = new StringBuilder();
+        StringBuilder rawResponse = new StringBuilder();
 
         String line;
         while ((line = response.body().source().readUtf8Line()) != null) {
+            rawResponse.append(line).append("\n");
             if (line.startsWith("data:")) {
                 String data = line.substring(5).trim();
                 if (data.isEmpty()) continue;
+                Log.d(TAG, "Zhipu SSE chunk: " + data);
                 try {
                     JsonObject json = JsonParser.parseString(data).getAsJsonObject();
                     if (json.has("type") && "chat:completion".equals(json.get("type").getAsString())) {
@@ -210,7 +213,7 @@ public class ZhipuApiClient implements ApiClient {
             }
         }
         if (actionListener != null) {
-            actionListener.onAiActionsProcessed(answerContent.toString(), answerContent.toString(), new ArrayList<>(), new ArrayList<>(), "Zhipu");
+            actionListener.onAiActionsProcessed(rawResponse.toString(), answerContent.toString(), new ArrayList<>(), new ArrayList<>(), "Zhipu");
         }
     }
 

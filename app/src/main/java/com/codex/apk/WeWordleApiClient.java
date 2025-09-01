@@ -5,17 +5,15 @@ import com.codex.apk.ai.AIModel;
 import com.google.gson.JsonObject;
 import java.io.File;
 import java.util.List;
-import java.util.Random;
 import okhttp3.MediaType;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 
-public class OIVSCodeSer0501ApiClient extends AnyProviderApiClient {
-    private static final String API_ENDPOINT = "https://oi-vscode-server-0501.onrender.com/v1/chat/completions";
-    private final Random random = new Random();
+public class WeWordleApiClient extends AnyProviderApiClient {
+    private static final String API_ENDPOINT = "https://wewordle.org/gptapi/v1/web/turbo";
 
-    public OIVSCodeSer0501ApiClient(Context context, AIAssistant.AIActionListener actionListener) {
+    public WeWordleApiClient(Context context, AIAssistant.AIActionListener actionListener) {
         super(context, actionListener);
     }
 
@@ -28,14 +26,25 @@ public class OIVSCodeSer0501ApiClient extends AnyProviderApiClient {
 
                 JsonObject body = buildOpenAIStyleBody(model.getModelId(), message, history, thinkingModeEnabled);
 
-                String userid = generateUserId();
-
                 Request request = new Request.Builder()
                         .url(API_ENDPOINT)
                         .post(RequestBody.create(body.toString(), MediaType.parse("application/json")))
-                        .addHeader("accept", "text/event-stream")
-                        .addHeader("user-agent", "Mozilla/5.0 (Linux; Android) CodeX-Android/1.0")
-                        .addHeader("userid", userid)
+                        .addHeader("accept", "*/*")
+                        .addHeader("accept-language", "en-US,en;q=0.9")
+                        .addHeader("cache-control", "no-cache")
+                        .addHeader("content-type", "application/json")
+                        .addHeader("dnt", "1")
+                        .addHeader("origin", "https://chat-gpt.com")
+                        .addHeader("pragma", "no-cache")
+                        .addHeader("priority", "u=1, i")
+                        .addHeader("referer", "https://chat-gpt.com/")
+                        .addHeader("sec-ch-ua", "\"Not.A/Brand\";v=\"99\", \"Chromium\";v=\"136\"")
+                        .addHeader("sec-ch-ua-mobile", "?0")
+                        .addHeader("sec-ch-ua-platform", "\"Linux\"")
+                        .addHeader("sec-fetch-dest", "empty")
+                        .addHeader("sec-fetch-mode", "cors")
+                        .addHeader("sec-fetch-site", "cross-site")
+                        .addHeader("user-agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36")
                         .build();
 
                 response = httpClient.newCall(request).execute();
@@ -47,17 +56,11 @@ public class OIVSCodeSer0501ApiClient extends AnyProviderApiClient {
                     return;
                 }
 
-                StringBuilder finalText = new StringBuilder();
-                StringBuilder rawSse = new StringBuilder();
-                streamOpenAiSse(response, finalText, rawSse);
-
-                if (finalText.length() > 0) {
-                    if (actionListener != null) {
-                        actionListener.onAiActionsProcessed(rawSse.toString(), finalText.toString(), new java.util.ArrayList<>(), new java.util.ArrayList<>(), model.getDisplayName());
-                    }
-                } else {
-                    if (actionListener != null) actionListener.onAiError("No response from provider");
+                String responseBody = response.body().string();
+                if (actionListener != null) {
+                    actionListener.onAiActionsProcessed(responseBody, responseBody, new java.util.ArrayList<>(), new java.util.ArrayList<>(), model.getDisplayName());
                 }
+
             } catch (Exception e) {
                 if (actionListener != null) actionListener.onAiError("Error: " + e.getMessage());
             } finally {
@@ -65,21 +68,5 @@ public class OIVSCodeSer0501ApiClient extends AnyProviderApiClient {
                 if (actionListener != null) actionListener.onAiRequestCompleted();
             }
         }).start();
-    }
-
-    private String generateUserId() {
-        String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-        StringBuilder sb = new StringBuilder(21);
-        for (int i = 0; i < 21; i++) {
-            sb.append(chars.charAt(random.nextInt(chars.length())));
-        }
-        return sb.toString();
-    }
-
-    @Override
-    protected JsonObject buildOpenAIStyleBody(String modelId, String userMessage, List<ChatMessage> history, boolean thinkingModeEnabled) {
-        JsonObject body = super.buildOpenAIStyleBody(modelId, userMessage, history, thinkingModeEnabled);
-        body.remove("referrer");
-        return body;
     }
 }

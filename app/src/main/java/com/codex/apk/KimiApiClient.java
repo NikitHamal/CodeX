@@ -58,7 +58,15 @@ public class KimiApiClient implements ApiClient {
                 .readTimeout(60, TimeUnit.SECONDS)
                 .cookieJar(cookieJar)
                 .build();
-        this.deviceId = String.valueOf(new Random().nextLong());
+        this.deviceId = generateRandomDeviceId();
+    }
+
+    private String generateRandomDeviceId() {
+        Random random = new Random();
+        long min = 1000000000000000L;
+        long max = 9999999999999999L;
+        long randomLong = min + ((long)(random.nextDouble()*(max - min)));
+        return String.valueOf(randomLong);
     }
 
     /**

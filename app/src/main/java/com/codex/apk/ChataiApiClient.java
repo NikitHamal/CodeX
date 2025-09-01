@@ -2,6 +2,7 @@ package com.codex.apk;
 
 import android.content.Context;
 import com.codex.apk.ai.AIModel;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import java.io.File;
 import java.util.List;
@@ -11,11 +12,11 @@ import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 
-public class OIVSCodeSer0501ApiClient extends AnyProviderApiClient {
-    private static final String API_ENDPOINT = "https://oi-vscode-server-0501.onrender.com/v1/chat/completions";
+public class ChataiApiClient extends AnyProviderApiClient {
+    private static final String API_ENDPOINT = "https://chatai.aritek.app/stream";
     private final Random random = new Random();
 
-    public OIVSCodeSer0501ApiClient(Context context, AIAssistant.AIActionListener actionListener) {
+    public ChataiApiClient(Context context, AIAssistant.AIActionListener actionListener) {
         super(context, actionListener);
     }
 
@@ -26,16 +27,28 @@ public class OIVSCodeSer0501ApiClient extends AnyProviderApiClient {
             try {
                 if (actionListener != null) actionListener.onAiRequestStarted();
 
-                JsonObject body = buildOpenAIStyleBody(model.getModelId(), message, history, thinkingModeEnabled);
+                JsonArray messages = new JsonArray();
+                for (ChatMessage msg : history) {
+                    messages.add(msg.toJsonObject());
+                }
+                JsonObject userMsg = new JsonObject();
+                userMsg.addProperty("role", "user");
+                userMsg.addProperty("content", message);
+                messages.add(userMsg);
 
-                String userid = generateUserId();
+                JsonObject body = new JsonObject();
+                body.addProperty("machineId", generateMachineId());
+                body.add("msg", messages);
+                body.addProperty("token", "eyJzdWIiOiIyMzQyZmczNHJ0MzR0MzQiLCJuYW1lIjoiSm9objM0NTM0NTM=");
+                body.addProperty("type", 0);
 
                 Request request = new Request.Builder()
                         .url(API_ENDPOINT)
                         .post(RequestBody.create(body.toString(), MediaType.parse("application/json")))
-                        .addHeader("accept", "text/event-stream")
-                        .addHeader("user-agent", "Mozilla/5.0 (Linux; Android) CodeX-Android/1.0")
-                        .addHeader("userid", userid)
+                        .addHeader("Accept", "text/event-stream")
+                        .addHeader("User-Agent", "Dalvik/2.1.0 (Linux; U; Android 7.1.2; SM-G935F Build/N2G48H)")
+                        .addHeader("Host", "chatai.aritek.app")
+                        .addHeader("Connection", "Keep-Alive")
                         .build();
 
                 response = httpClient.newCall(request).execute();
@@ -67,19 +80,16 @@ public class OIVSCodeSer0501ApiClient extends AnyProviderApiClient {
         }).start();
     }
 
-    private String generateUserId() {
-        String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-        StringBuilder sb = new StringBuilder(21);
-        for (int i = 0; i < 21; i++) {
-            sb.append(chars.charAt(random.nextInt(chars.length())));
+    private String generateMachineId() {
+        StringBuilder part1 = new StringBuilder(16);
+        for (int i = 0; i < 16; i++) {
+            part1.append(random.nextInt(10));
         }
-        return sb.toString();
-    }
-
-    @Override
-    protected JsonObject buildOpenAIStyleBody(String modelId, String userMessage, List<ChatMessage> history, boolean thinkingModeEnabled) {
-        JsonObject body = super.buildOpenAIStyleBody(modelId, userMessage, history, thinkingModeEnabled);
-        body.remove("referrer");
-        return body;
+        StringBuilder part2 = new StringBuilder(25);
+        String chars = "0123456789.";
+        for (int i = 0; i < 25; i++) {
+            part2.append(chars.charAt(random.nextInt(chars.length())));
+        }
+        return part1.toString() + "." + part2.toString();
     }
 }

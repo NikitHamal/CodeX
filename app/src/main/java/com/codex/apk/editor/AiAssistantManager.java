@@ -398,7 +398,9 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                         }
                         String continuation = ToolExecutor.buildToolResultContinuation(results);
                         String fenced = "```json\n" + continuation + "\n```\n";
+                        sendSystemMessage("Sending tool results back to AI:\n" + fenced);
                         sendAiPrompt(fenced, new java.util.ArrayList<>(), activity.getQwenState(), activity.getActiveTab());
+                        sendSystemMessage("Continuation prompt sent.");
                         return; // Stop further processing
                     }
                 } catch (Exception e) {

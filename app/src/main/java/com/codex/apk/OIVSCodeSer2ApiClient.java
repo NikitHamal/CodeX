@@ -75,4 +75,11 @@ public class OIVSCodeSer2ApiClient extends AnyProviderApiClient {
         }
         return sb.toString();
     }
+
+    @Override
+    protected JsonObject buildOpenAIStyleBody(String modelId, String userMessage, List<ChatMessage> history, boolean thinkingModeEnabled) {
+        JsonObject body = super.buildOpenAIStyleBody(modelId, userMessage, history, thinkingModeEnabled);
+        body.remove("referrer");
+        return body;
+    }
 }

@@ -93,8 +93,14 @@ public class ToolExecutor {
                         result.addProperty("error", "File not found: " + path);
                     } else {
                         result.addProperty("ok", true);
+                        int maxLength = 20000;
+                        if (content.length() > maxLength) {
+                            content = content.substring(0, maxLength);
+                            result.addProperty("message", "File read (truncated): " + path);
+                        } else {
+                            result.addProperty("message", "File read: " + path);
+                        }
                         result.addProperty("content", content);
-                        result.addProperty("message", "File read: " + path);
                     }
                     break;
                 }

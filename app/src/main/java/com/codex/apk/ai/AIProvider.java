@@ -12,7 +12,13 @@ public enum AIProvider {
     KIMI("Kimi"),
     ZHIPU("Zhipu"),
     OIVSCodeSer0501("OIVSCodeSer0501"),
-    OIVSCodeSer2("OIVSCodeSer2");
+    OIVSCodeSer2("OIVSCodeSer2"),
+    CHATAI("Chatai"),
+    MINTLIFY("Mintlify"),
+    WEWORDLE("WeWordle"),
+    YQCLOUD("Yqcloud"),
+    COHERE("Cohere"),
+    LAMBDA("LambdaChat");
 
     private final String displayName;
 

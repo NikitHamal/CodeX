@@ -204,50 +204,48 @@ public class CloudflareApiClient implements ApiClient {
 
     @Override
     public List<AIModel> fetchModels() {
-        List<AIModel> out = new ArrayList<>();
-        try {
-            OkHttpClient client = httpClient.newBuilder().readTimeout(30, TimeUnit.SECONDS).build();
-            Request req = new Request.Builder()
-                    .url(CF_MODELS)
-                    .addHeader("user-agent", "Mozilla/5.0 (Linux; Android) CodeX-Android/1.0")
-                    .addHeader("accept", "*/*")
-                    .build();
-            try (Response r = client.newCall(req).execute()) {
-                if (r.isSuccessful() && r.body() != null) {
-                    String body = new String(r.body().bytes(), StandardCharsets.UTF_8);
-                    try {
-                        SharedPreferences sp = context.getSharedPreferences("ai_cloudflare_models", Context.MODE_PRIVATE);
-                        sp.edit().putString("cf_models_json", body).putLong("cf_models_ts", System.currentTimeMillis()).apply();
-                    } catch (Exception ignore) {}
-
-                    try {
-                        JsonElement root = JsonParser.parseString(body);
-                        if (root.isJsonArray()) {
-                            JsonArray arr = root.getAsJsonArray();
-                            for (JsonElement e : arr) {
-                                if (!e.isJsonObject()) continue;
-                                JsonObject m = e.getAsJsonObject();
-                                String name = m.has("name") ? m.get("name").getAsString() : null;
-                                if (name == null || name.isEmpty()) continue;
-                                String id = cleanModelId(name);
-                                String display = toDisplayName(id);
-                                ModelCapabilities caps = new ModelCapabilities(false, false, m.has("vision") && m.get("vision").getAsBoolean(), true, false, false, false, 131072, 8192);
-                                out.add(new AIModel(id, display, AIProvider.CLOUDFLARE, caps));
-                            }
-                        }
-                    } catch (Exception parseErr) {
-                        Log.w(TAG, "CF models parse failed", parseErr);
-                    }
-                }
-            }
-        } catch (Exception ex) {
-            Log.w(TAG, "CF models fetch failed", ex);
-        }
-        if (out.isEmpty()) {
-            out.add(new AIModel("llama-3.3-70b", "Cloudflare Llama 3.3 70B", AIProvider.CLOUDFLARE,
-                    new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)));
-        }
-        return out;
+        // Based on the python script, this provider uses a hardcoded list of models.
+        List<AIModel> models = new ArrayList<>();
+        models.add(new AIModel("@hf/thebloke/deepseek-coder-6.7b-base-awq", "deepseek-coder-6.7b-base", AIProvider.CLOUDFLARE, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)));
+        models.add(new AIModel("@hf/thebloke/deepseek-coder-6.7b-instruct-awq", "deepseek-coder-6.7b", AIProvider.CLOUDFLARE, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)));
+        models.add(new AIModel("@cf/deepseek-ai/deepseek-math-7b-instruct", "deepseek-math-7b", AIProvider.CLOUDFLARE, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)));
+        models.add(new AIModel("@cf/deepseek-ai/deepseek-r1-distill-qwen-32b", "deepseek-distill-qwen-32b", AIProvider.CLOUDFLARE, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)));
+        models.add(new AIModel("@cf/thebloke/discolm-german-7b-v1-awq", "discolm-german-7b-v1", AIProvider.CLOUDFLARE, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)));
+        models.add(new AIModel("@cf/tiiuae/falcon-7b-instruct", "falcon-7b", AIProvider.CLOUDFLARE, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)));
+        models.add(new AIModel("@cf/google/gemma-3-12b-it", "gemma-3-12b", AIProvider.CLOUDFLARE, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)));
+        models.add(new AIModel("@hf/google/gemma-7b-it", "gemma-7b", AIProvider.CLOUDFLARE, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)));
+        models.add(new AIModel("@hf/nousresearch/hermes-2-pro-mistral-7b", "hermes-2-pro-mistral-7b", AIProvider.CLOUDFLARE, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)));
+        models.add(new AIModel("@hf/thebloke/llama-2-13b-chat-awq", "llama-2-13b", AIProvider.CLOUDFLARE, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)));
+        models.add(new AIModel("@cf/meta/llama-2-7b-chat-fp16", "llama-2-7b-fp16", AIProvider.CLOUDFLARE, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)));
+        models.add(new AIModel("@cf/meta/llama-2-7b-chat-int8", "llama-2-7b", AIProvider.CLOUDFLARE, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)));
+        models.add(new AIModel("@hf/meta-llama/meta-llama-3-8b-instruct", "llama-3-8b", AIProvider.CLOUDFLARE, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)));
+        models.add(new AIModel("@cf/meta/llama-3.1-8b-instruct-fp8", "llama-3.1-8b", AIProvider.CLOUDFLARE, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)));
+        models.add(new AIModel("@cf/meta/llama-3.2-11b-vision-instruct", "llama-3.2-11b-vision", AIProvider.CLOUDFLARE, new ModelCapabilities(true, true, true, true, false, false, false, 131072, 8192)));
+        models.add(new AIModel("@cf/meta/llama-3.2-1b-instruct", "llama-3.2-1b", AIProvider.CLOUDFLARE, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)));
+        models.add(new AIModel("@cf/meta/llama-3.2-3b-instruct", "llama-3.2-3b", AIProvider.CLOUDFLARE, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)));
+        models.add(new AIModel("@cf/meta/llama-3.3-70b-instruct-fp8-fast", "llama-3.3-70b", AIProvider.CLOUDFLARE, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)));
+        models.add(new AIModel("@cf/meta/llama-4-scout-17b-16e-instruct", "llama-4-scout", AIProvider.CLOUDFLARE, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)));
+        models.add(new AIModel("@cf/meta/llama-guard-3-8b", "llama-guard-3-8b", AIProvider.CLOUDFLARE, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)));
+        models.add(new AIModel("@hf/thebloke/llamaguard-7b-awq", "llamaguard-7b", AIProvider.CLOUDFLARE, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)));
+        models.add(new AIModel("@hf/thebloke/mistral-7b-instruct-v0.1-awq", "mistral-7b-v0.1", AIProvider.CLOUDFLARE, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)));
+        models.add(new AIModel("@hf/mistral/mistral-7b-instruct-v0.2", "mistral-7b-v0.2", AIProvider.CLOUDFLARE, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)));
+        models.add(new AIModel("@cf/mistralai/mistral-small-3.1-24b-instruct", "mistral-small-3.1-24b", AIProvider.CLOUDFLARE, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)));
+        models.add(new AIModel("@hf/thebloke/neural-chat-7b-v3-1-awq", "neural-7b-v3-1", AIProvider.CLOUDFLARE, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)));
+        models.add(new AIModel("@cf/openchat/openchat-3.5-0106", "openchat-3.5-0106", AIProvider.CLOUDFLARE, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)));
+        models.add(new AIModel("@hf/thebloke/openhermes-2.5-mistral-7b-awq", "openhermes-2.5-mistral-7b", AIProvider.CLOUDFLARE, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)));
+        models.add(new AIModel("@cf/microsoft/phi-2", "phi-2", AIProvider.CLOUDFLARE, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)));
+        models.add(new AIModel("@cf/qwen/qwen1.5-0.5b-chat", "qwen1.5-0.5b", AIProvider.CLOUDFLARE, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)));
+        models.add(new AIModel("@cf/qwen/qwen1.5-1.8b-chat", "qwen-1.5-1.8b", AIProvider.CLOUDFLARE, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)));
+        models.add(new AIModel("@cf/qwen/qwen1.5-14b-chat-awq", "qwen-1.5-14b", AIProvider.CLOUDFLARE, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)));
+        models.add(new AIModel("@cf/qwen/qwen1.5-7b-chat-awq", "qwen-1.5-7b", AIProvider.CLOUDFLARE, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)));
+        models.add(new AIModel("@cf/qwen/qwen2.5-coder-32b-instruct", "qwen-2.5-coder-32b", AIProvider.CLOUDFLARE, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)));
+        models.add(new AIModel("@cf/qwen/qwq-32b", "qwq-32b", AIProvider.CLOUDFLARE, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)));
+        models.add(new AIModel("@cf/defog/sqlcoder-7b-2", "sqlcoder-7b-2", AIProvider.CLOUDFLARE, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)));
+        models.add(new AIModel("@hf/nexusflow/starling-lm-7b-beta", "starling-lm-7b-beta", AIProvider.CLOUDFLARE, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)));
+        models.add(new AIModel("@cf/tinyllama/tinyllama-1.1b-chat-v1.0", "tinyllama-1.1b-v1.0", AIProvider.CLOUDFLARE, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)));
+        models.add(new AIModel("@cf/fblgit/una-cybertron-7b-v2-bf16", "una-cybertron-7b-v2-bf16", AIProvider.CLOUDFLARE, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)));
+        models.add(new AIModel("@hf/thebloke/zephyr-7b-beta-awq", "zephyr-7b-beta", AIProvider.CLOUDFLARE, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)));
+        return models;
     }
 
     private String cleanModelId(String name) {

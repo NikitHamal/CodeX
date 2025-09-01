@@ -82,7 +82,25 @@ public class AIModel {
             new AIModel("gpt-4.1-mini", "OIVSCodeSer0501 gpt-4.1-mini", AIProvider.OIVSCodeSer0501, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)),
 
             // OIVSCodeSer2 Provider
-            new AIModel("gpt-4o-mini", "OIVSCodeSer2 gpt-4o-mini", AIProvider.OIVSCodeSer2, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192))
+            new AIModel("gpt-4o-mini", "OIVSCodeSer2 gpt-4o-mini", AIProvider.OIVSCodeSer2, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)),
+
+            // Chatai Provider
+            new AIModel("gpt-4o-mini-2024-07-18", "Chatai gpt-4o-mini", AIProvider.CHATAI, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)),
+
+            // Mintlify Provider
+            new AIModel("mintlify", "Mintlify", AIProvider.MINTLIFY, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)),
+
+            // WeWordle Provider
+            new AIModel("gpt-4", "WeWordle GPT-4", AIProvider.WEWORDLE, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)),
+
+            // Yqcloud Provider
+            new AIModel("gpt-4", "Yqcloud GPT-4", AIProvider.YQCLOUD, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)),
+
+            // Cohere Provider
+            new AIModel("command-r-plus", "Cohere Command R+", AIProvider.COHERE, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)),
+
+            // LambdaChat Provider
+            new AIModel("deepseek-llama3.3-70b", "LambdaChat Llama 3.3 70B", AIProvider.LAMBDA, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192))
         ));
         for (AIModel model : initialModels) {
             modelsByProvider.computeIfAbsent(model.getProvider(), k -> new ArrayList<>()).add(model);

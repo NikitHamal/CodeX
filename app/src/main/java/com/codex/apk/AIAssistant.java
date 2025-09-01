@@ -24,41 +24,34 @@ public class AIAssistant {
 
     public AIAssistant(Context context, ExecutorService executorService, AIActionListener actionListener) {
         this.actionListener = actionListener;
-        // Default to an Alibaba/Qwen model since we have a working client for it
         this.currentModel = AIModel.fromModelId("qwen3-coder-plus");
-
-        // Initialize API clients for each provider
-        apiClients.put(AIProvider.ALIBABA, new QwenApiClient(context, actionListener, null)); // projectDir can be set later
-        // Register Api.Airforce client for AIRFORCE provider
-        apiClients.put(AIProvider.AIRFORCE, new ApiAirforceApiClient(context, actionListener));
-        // Register Cloudflare AI client
-        apiClients.put(AIProvider.CLOUDFLARE, new CloudflareApiClient(context, actionListener));
-        // Register DeepInfra client
-        apiClients.put(AIProvider.DEEPINFRA, new DeepInfraApiClient(context, actionListener));
-        // Register generic Free client for FREE provider (Pollinations/OpenAI-style)
-        apiClients.put(AIProvider.FREE, new AnyProviderApiClient(context, actionListener));
-        // Register Cookies-based Gemini client under COOKIES provider
-        apiClients.put(AIProvider.COOKIES, new GeminiFreeApiClient(context, actionListener));
-        // Register GPT OSS provider client
-        apiClients.put(AIProvider.GPT_OSS, new GptOssApiClient(context, actionListener));
-        // Register Official Gemini client for GOOGLE provider, API key can be set later
-        String initialKey = SettingsActivity.getGeminiApiKey(context);
-        this.apiKey = initialKey != null ? initialKey : "";
-        apiClients.put(AIProvider.GOOGLE, new GeminiOfficialApiClient(context, actionListener, this.apiKey));
+        initializeApiClients(context, null);
     }
 
     // Legacy constructor for compatibility
     public AIAssistant(Context context, String apiKey, File projectDir, String projectName,
         ExecutorService executorService, AIActionListener actionListener) {
-        this(context, executorService, actionListener);
-        // Wire the provided projectDir into Qwen client so file tools work
+        this.actionListener = actionListener;
+        this.currentModel = AIModel.fromModelId("qwen3-coder-plus");
         this.projectDir = projectDir;
-        ApiClient qwen = new QwenApiClient(context, this.actionListener, projectDir);
-        apiClients.put(AIProvider.ALIBABA, qwen);
-        // Store API key and update Google client
+        initializeApiClients(context, projectDir);
         if (apiKey != null) this.apiKey = apiKey; else this.apiKey = SettingsActivity.getGeminiApiKey(context);
-        ApiClient google = new GeminiOfficialApiClient(context, this.actionListener, this.apiKey);
-        apiClients.put(AIProvider.GOOGLE, google);
+        setApiKey(this.apiKey);
+    }
+
+    private void initializeApiClients(Context context, File projectDir) {
+        apiClients.put(AIProvider.ALIBABA, new QwenApiClient(context, actionListener, projectDir));
+        apiClients.put(AIProvider.AIRFORCE, new ApiAirforceApiClient(context, actionListener));
+        apiClients.put(AIProvider.CLOUDFLARE, new CloudflareApiClient(context, actionListener));
+        apiClients.put(AIProvider.DEEPINFRA, new DeepInfraApiClient(context, actionListener));
+        apiClients.put(AIProvider.FREE, new AnyProviderApiClient(context, actionListener));
+        apiClients.put(AIProvider.COOKIES, new GeminiFreeApiClient(context, actionListener));
+        apiClients.put(AIProvider.GPT_OSS, new GptOssApiClient(context, actionListener));
+        String initialKey = SettingsActivity.getGeminiApiKey(context);
+        this.apiKey = initialKey != null ? initialKey : "";
+        apiClients.put(AIProvider.GOOGLE, new GeminiOfficialApiClient(context, actionListener, this.apiKey));
+        apiClients.put(AIProvider.KIMI, new KimiApiClient(context, actionListener, projectDir));
+        apiClients.put(AIProvider.ZHIPU, new ZhipuApiClient(context, actionListener, projectDir));
     }
 
     public void sendPrompt(String userPrompt, List<ChatMessage> chatHistory, QwenConversationState qwenState, String fileName, String fileContent) {

@@ -63,11 +63,13 @@ public class ModelsActivity extends AppCompatActivity {
         };
         // Long-press on FREE provider header refreshes Pollinations models
         adapter.setOnProviderHeaderLongClickListener(provider -> {
-            if (provider == AIProvider.FREE || provider == AIProvider.AIRFORCE || provider == AIProvider.CLOUDFLARE || provider == AIProvider.DEEPINFRA) {
+            if (provider == AIProvider.FREE || provider == AIProvider.AIRFORCE || provider == AIProvider.CLOUDFLARE || provider == AIProvider.DEEPINFRA || provider == AIProvider.KIMI || provider == AIProvider.ZHIPU) {
                 String nice;
                 if (provider == AIProvider.FREE) nice = "Free";
                 else if (provider == AIProvider.AIRFORCE) nice = "Api.Airforce";
                 else if (provider == AIProvider.CLOUDFLARE) nice = "Cloudflare AI";
+                else if (provider == AIProvider.KIMI) nice = "Kimi";
+                else if (provider == AIProvider.ZHIPU) nice = "Zhipu";
                 else nice = "DeepInfra";
                 Toast.makeText(this, "Refreshing " + nice + " models...", Toast.LENGTH_SHORT).show();
                 java.util.concurrent.ExecutorService exec = java.util.concurrent.Executors.newSingleThreadExecutor();

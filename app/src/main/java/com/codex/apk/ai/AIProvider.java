@@ -8,7 +8,9 @@ public enum AIProvider {
     DEEPINFRA("DeepInfra"),
     FREE("Free"),
     COOKIES("Cookies"),
-    GPT_OSS("GPT OSS");
+    GPT_OSS("GPT OSS"),
+    KIMI("Kimi"),
+    ZHIPU("Zhipu");
 
     private final String displayName;
 

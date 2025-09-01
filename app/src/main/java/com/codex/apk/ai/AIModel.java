@@ -70,7 +70,13 @@ public class AIModel {
 
             // GPT OSS Provider
             new AIModel("gpt-oss-120b", "GPT OSS 120B", AIProvider.GPT_OSS, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)),
-            new AIModel("gpt-oss-20b", "GPT OSS 20B", AIProvider.GPT_OSS, new ModelCapabilities(true, false, false, true, false, false, false, 65536, 4096))
+            new AIModel("gpt-oss-20b", "GPT OSS 20B", AIProvider.GPT_OSS, new ModelCapabilities(true, false, false, true, false, false, false, 65536, 4096)),
+
+            // Kimi Provider
+            new AIModel("k2", "Kimi K2", AIProvider.KIMI, new ModelCapabilities(false, true, false, false, false, false, false, false, false, false, 0, 0, 0, 0, new HashMap<>(), new ArrayList<>(), new ArrayList<>(), new ArrayList<>(), new HashMap<>())),
+
+            // Zhipu Provider (default model)
+            new AIModel("GLM-4.5", "Zhipu GLM-4.5", AIProvider.ZHIPU, new ModelCapabilities(true, false, false, false, false, false, false, false, false, false, 0, 0, 0, 0, new HashMap<>(), new ArrayList<>(), new ArrayList<>(), new ArrayList<>(), new HashMap<>()))
         ));
         for (AIModel model : initialModels) {
             modelsByProvider.computeIfAbsent(model.getProvider(), k -> new ArrayList<>()).add(model);

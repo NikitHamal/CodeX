@@ -125,6 +125,13 @@ public class ChatMessage {
     public void setPlanSteps(List<PlanStep> planSteps) { this.planSteps = planSteps; }
     public void setUserAttachmentPaths(List<String> paths) { this.userAttachmentPaths = paths != null ? new ArrayList<>(paths) : new ArrayList<>(); }
 
+    public com.google.gson.JsonObject toJsonObject() {
+        com.google.gson.JsonObject jsonObject = new com.google.gson.JsonObject();
+        jsonObject.addProperty("role", sender == SENDER_USER ? "user" : "assistant");
+        jsonObject.addProperty("content", content);
+        return jsonObject;
+    }
+
     /** Plan step model for UI */
     public static class PlanStep {
         public final String id;

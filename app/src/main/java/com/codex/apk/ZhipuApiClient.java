@@ -163,14 +163,14 @@ public class ZhipuApiClient implements ApiClient {
 
         try (Response response = httpClient.newCall(request).execute()) {
             if (response.isSuccessful() && response.body() != null) {
-                processZhipuStreamResponse(response);
+                processZhipuStreamResponse(response, model);
             } else {
                 if (actionListener != null) actionListener.onAiError("Failed to send message: " + response.message());
             }
         }
     }
 
-    private void processZhipuStreamResponse(Response response) throws IOException {
+    private void processZhipuStreamResponse(Response response, AIModel model) throws IOException {
         StringBuilder answerContent = new StringBuilder();
         StringBuilder thinkingContent = new StringBuilder();
         StringBuilder rawResponse = new StringBuilder();
@@ -214,7 +214,7 @@ public class ZhipuApiClient implements ApiClient {
             }
         }
         if (actionListener != null) {
-            actionListener.onAiActionsProcessed(rawResponse.toString(), answerContent.toString(), new ArrayList<>(), new ArrayList<>(), "Zhipu");
+            actionListener.onAiActionsProcessed(rawResponse.toString(), answerContent.toString(), new ArrayList<>(), new ArrayList<>(), model.getDisplayName());
         }
     }
 

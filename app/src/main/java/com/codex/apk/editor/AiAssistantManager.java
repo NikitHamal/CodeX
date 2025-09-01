@@ -218,14 +218,23 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
         if (input == null) return null;
         try {
             String s = input.trim();
-            int fenceStart = s.toLowerCase().indexOf("```json");
+            // Handle fenced code blocks (with or without "json" language specifier)
+            int fenceStart = s.indexOf("```");
             if (fenceStart >= 0) {
-                fenceStart = s.indexOf('{', fenceStart);
-                if (fenceStart >= 0) {
-                    int end = findMatchingBraceEnd(s, fenceStart);
-                    if (end > fenceStart) return s.substring(fenceStart, end + 1);
+                int secondFence = s.indexOf("```", fenceStart + 3);
+                if (secondFence > fenceStart) {
+                    String betweenFences = s.substring(fenceStart + 3, secondFence).trim();
+                    // Find the first '{' within the fenced block
+                    int braceStart = betweenFences.indexOf('{');
+                    if (braceStart >= 0) {
+                        int braceEnd = findMatchingBraceEnd(betweenFences, braceStart);
+                        if (braceEnd > braceStart) {
+                            return betweenFences.substring(braceStart, braceEnd + 1);
+                        }
+                    }
                 }
             }
+            // Fallback for non-fenced JSON
             int firstBrace = s.indexOf('{');
             if (firstBrace >= 0) {
                 int end = findMatchingBraceEnd(s, firstBrace);

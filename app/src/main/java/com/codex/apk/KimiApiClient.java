@@ -84,13 +84,8 @@ public class KimiApiClient implements ApiClient {
                 if (actionListener != null) actionListener.onAiRequestStarted();
                 ensureAuthenticated();
 
-                String conversationId = state != null ? state.getConversationId() : null;
-                if (conversationId == null) {
-                    conversationId = createKimiConversation();
-                    if (state != null) {
-                        state.setConversationId(conversationId);
-                    }
-                }
+                // Always create a new conversation for Kimi to avoid "chat not found" errors.
+                String conversationId = createKimiConversation();
 
                 if (conversationId == null) {
                     if (actionListener != null) actionListener.onAiError("Failed to create conversation");

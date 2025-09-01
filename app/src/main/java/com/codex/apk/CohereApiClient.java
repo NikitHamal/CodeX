@@ -2,6 +2,8 @@ package com.codex.apk;
 
 import android.content.Context;
 import com.codex.apk.ai.AIModel;
+import com.codex.apk.ai.AIProvider;
+import com.codex.apk.ai.ModelCapabilities;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;

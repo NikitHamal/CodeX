@@ -358,11 +358,15 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                 currentStreamingMessagePosition = null;
             }
 
-            try {
-                if (rawAiResponseJson != null && !rawAiResponseJson.isEmpty()) {
-                    String normalized = extractFirstJsonObjectFromText(rawAiResponseJson);
-                    String toParse = normalized != null ? normalized : rawAiResponseJson;
-                    JsonObject maybe = JsonParser.parseString(toParse).getAsJsonObject();
+            // Centralized tool call handling
+            String jsonToParseForTools = extractFirstJsonObjectFromText(explanation);
+            if (jsonToParseForTools == null) {
+                jsonToParseForTools = extractFirstJsonObjectFromText(rawAiResponseJson);
+            }
+
+            if (jsonToParseForTools != null) {
+                try {
+                    JsonObject maybe = JsonParser.parseString(jsonToParseForTools).getAsJsonObject();
                     if (maybe.has("action") && "tool_call".equalsIgnoreCase(maybe.get("action").getAsString()) && maybe.has("tool_calls") && maybe.get("tool_calls").isJsonArray()) {
                         JsonArray calls = maybe.getAsJsonArray("tool_calls");
                         JsonArray results = new JsonArray();
@@ -390,10 +394,12 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                         String continuation = ToolExecutor.buildToolResultContinuation(results);
                         String fenced = "```json\n" + continuation + "\n```\n";
                         sendAiPrompt(fenced, new java.util.ArrayList<>(), activity.getQwenState(), activity.getActiveTab());
-                        return;
+                        return; // Stop further processing
                     }
+                } catch (Exception ignore) {
+                    // Not a valid tool call, proceed with normal processing
                 }
-            } catch (Exception ignore) {}
+            }
 
             List<ChatMessage.FileActionDetail> effectiveProposedFileChanges = proposedFileChanges;
             boolean isPlan = false;

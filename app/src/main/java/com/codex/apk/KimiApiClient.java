@@ -144,9 +144,6 @@ public class KimiApiClient implements ApiClient {
         requestBody.addProperty("use_search", webSearchEnabled);
 
         JsonArray messages = new JsonArray();
-        for (ChatMessage message : history) {
-            messages.add(message.toJsonObject());
-        }
         JsonObject userMsg = new JsonObject();
         userMsg.addProperty("role", "user");
         userMsg.addProperty("content", userMessage);

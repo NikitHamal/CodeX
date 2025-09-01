@@ -158,6 +158,7 @@ public class ZhipuApiClient implements ApiClient {
                 .url(ZHIPU_BASE_URL + "/chat/completions")
                 .post(RequestBody.create(requestBody.toString(), MediaType.parse("application/json")))
                 .addHeader("Authorization", "Bearer " + this.apiKey)
+                .addHeader("x-fe-version", "prod-fe-1.0.57")
                 .build();
 
         try (Response response = httpClient.newCall(request).execute()) {

@@ -413,12 +413,12 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
             QwenResponseParser.ParsedResponse parsed = null;
             try {
                 if (rawAiResponseJson != null) {
-                    String normalized = extractFirstJsonObjectFromText(rawAiResponseJson);
+                    String normalized = extractJsonFromCodeBlock(rawAiResponseJson);
                     String toParse = normalized != null ? normalized : rawAiResponseJson;
                     parsed = QwenResponseParser.parseResponse(toParse);
                 }
                 if (parsed == null && explanation != null && !explanation.isEmpty()) {
-                    String exNorm = extractFirstJsonObjectFromText(explanation);
+                    String exNorm = extractJsonFromCodeBlock(explanation);
                     if (exNorm != null) {
                         try { parsed = QwenResponseParser.parseResponse(exNorm); } catch (Exception ignored) {}
                     }

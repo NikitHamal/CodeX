@@ -43,10 +43,10 @@ public class AnyProviderApiClient implements ApiClient {
     private static final String OPENAI_ENDPOINT = "https://text.pollinations.ai/openai";
 
     private final Context context;
-    private final AIAssistant.AIActionListener actionListener;
-    private final OkHttpClient httpClient;
-    private final Gson gson = new Gson();
-    private final Random random = new Random();
+    protected final AIAssistant.AIActionListener actionListener;
+    protected final OkHttpClient httpClient;
+    protected final Gson gson = new Gson();
+    protected final Random random = new Random();
 
     public AnyProviderApiClient(Context context, AIAssistant.AIActionListener actionListener) {
         this.context = context.getApplicationContext();
@@ -124,7 +124,7 @@ public class AnyProviderApiClient implements ApiClient {
         }).start();
     }
 
-    private JsonObject buildOpenAIStyleBody(String modelId, String userMessage, List<ChatMessage> history, boolean thinkingModeEnabled) {
+    protected JsonObject buildOpenAIStyleBody(String modelId, String userMessage, List<ChatMessage> history, boolean thinkingModeEnabled) {
         JsonArray messages = new JsonArray();
         // Convert existing history (keep it light)
         if (history != null) {
@@ -158,7 +158,7 @@ public class AnyProviderApiClient implements ApiClient {
         return root;
     }
 
-    private void streamOpenAiSse(Response response, StringBuilder finalText, StringBuilder rawAnswer) throws IOException {
+    protected void streamOpenAiSse(Response response, StringBuilder finalText, StringBuilder rawAnswer) throws IOException {
         BufferedSource source = response.body().source();
         try { source.timeout().timeout(60, TimeUnit.SECONDS); } catch (Exception ignore) {}
         StringBuilder eventBuf = new StringBuilder();
@@ -188,7 +188,7 @@ public class AnyProviderApiClient implements ApiClient {
         }
     }
 
-    private void handleOpenAiEvent(String rawEvent, StringBuilder finalText, StringBuilder rawAnswer, long[] lastEmitNs, int[] lastSentLen) {
+    protected void handleOpenAiEvent(String rawEvent, StringBuilder finalText, StringBuilder rawAnswer, long[] lastEmitNs, int[] lastSentLen) {
         String prefix = "data:";
         int idx = rawEvent.indexOf(prefix);
         if (idx < 0) return;
@@ -227,7 +227,7 @@ public class AnyProviderApiClient implements ApiClient {
         }
     }
 
-    private void maybeEmit(StringBuilder buf, long[] lastEmitNs, int[] lastSentLen) {
+    protected void maybeEmit(StringBuilder buf, long[] lastEmitNs, int[] lastSentLen) {
         if (actionListener == null) return;
         int len = buf.length();
         if (len == lastSentLen[0]) return;
@@ -243,7 +243,7 @@ public class AnyProviderApiClient implements ApiClient {
         }
     }
 
-    private String mapToProviderModel(String modelId) {
+    protected String mapToProviderModel(String modelId) {
         if (modelId == null || modelId.isEmpty()) return "openai"; // sensible default
         String lower = modelId.toLowerCase(Locale.ROOT);
         // Pollinations exposes many backends by name; pass through most names.
@@ -335,7 +335,7 @@ public class AnyProviderApiClient implements ApiClient {
         return models;
     }
 
-    private static String toDisplay(String id) {
+    protected static String toDisplay(String id) {
         if (id == null || id.isEmpty()) return "Unnamed Model";
         String s = id.replace('-', ' ').trim();
         if (s.isEmpty()) return id;

@@ -40,7 +40,10 @@ public class OIVSCodeSer0501ApiClient extends AnyProviderApiClient {
 
                 response = httpClient.newCall(request).execute();
                 if (!response.isSuccessful() || response.body() == null) {
-                    handleError(response);
+                    String errBody = null;
+                    try { if (response != null && response.body() != null) errBody = response.body().string(); } catch (Exception ignore) {}
+                    String snippet = errBody != null ? (errBody.length() > 400 ? errBody.substring(0, 400) + "..." : errBody) : null;
+                    if (actionListener != null) actionListener.onAiError("API request failed: " + (response != null ? response.code() : -1) + (snippet != null ? (" | body: " + snippet) : ""));
                     return;
                 }
 

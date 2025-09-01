@@ -58,6 +58,7 @@ public class KimiApiClient implements ApiClient {
         Request request = new Request.Builder()
                 .url(KIMI_BASE_URL + "/device/register")
                 .post(RequestBody.create("{}", MediaType.parse("application/json")))
+                .headers(buildKimiHeaders(null, false))
                 .addHeader("x-msh-device-id", deviceId)
                 .addHeader("x-msh-platform", "web")
                 .addHeader("x-traffic-id", deviceId)
@@ -113,7 +114,7 @@ public class KimiApiClient implements ApiClient {
         Request request = new Request.Builder()
                 .url(KIMI_BASE_URL + "/chat")
                 .post(RequestBody.create(requestBody.toString(), MediaType.parse("application/json")))
-                .addHeader("Authorization", "Bearer " + accessToken)
+                .headers(buildKimiHeaders(null, true))
                 .build();
 
         try (Response response = httpClient.newCall(request).execute()) {
@@ -154,7 +155,7 @@ public class KimiApiClient implements ApiClient {
         Request request = new Request.Builder()
                 .url(KIMI_BASE_URL + "/chat/" + conversationId + "/completion/stream")
                 .post(RequestBody.create(requestBody.toString(), MediaType.parse("application/json")))
-                .addHeader("Authorization", "Bearer " + accessToken)
+                .headers(buildKimiHeaders(conversationId, true))
                 .build();
 
         try (Response response = httpClient.newCall(request).execute()) {
@@ -208,5 +209,28 @@ public class KimiApiClient implements ApiClient {
         ModelCapabilities capabilities = new ModelCapabilities(false, true, false, false, false, false, false, false, false, false, 0, 0, 0, 0, Collections.emptyMap(), Collections.emptyList(), Collections.emptyList(), Collections.emptyList(), Collections.emptyMap());
         models.add(new AIModel("k2", "Kimi K2", AIProvider.KIMI, capabilities));
         return models;
+    }
+
+    private okhttp3.Headers buildKimiHeaders(String conversationId, boolean withAuth) {
+        okhttp3.Headers.Builder builder = new okhttp3.Headers.Builder()
+                .add("Accept", "application/json, text/plain, */*")
+                .add("Accept-Language", "en-US,en;q=0.9")
+                .add("Connection", "keep-alive")
+                .add("Origin", "https://www.kimi.com")
+                .add("Sec-Fetch-Dest", "empty")
+                .add("Sec-Fetch-Mode", "cors")
+                .add("Sec-Fetch-Site", "same-origin")
+                .add("User-Agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36");
+
+        if (withAuth) {
+            builder.add("Authorization", "Bearer " + accessToken);
+        }
+        if (conversationId != null) {
+            builder.add("Referer", "https://www.kimi.com/chat/" + conversationId);
+        } else {
+            builder.add("Referer", "https://www.kimi.com/");
+        }
+
+        return builder.build();
     }
 }

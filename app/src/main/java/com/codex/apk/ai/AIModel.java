@@ -30,14 +30,6 @@ public class AIModel {
             new AIModel("gemini-2.0-flash-exp", "Gemini 2.0 Flash Experimental", AIProvider.GOOGLE, new ModelCapabilities(true, true, true, true, true, true, true, 1048576, 8192)),
             new AIModel("gemini-2.0-flash-lite", "Gemini 2.0 Flash Lite", AIProvider.GOOGLE, new ModelCapabilities(false, false, true, true, false, false, false, 1048576, 8192)),
             new AIModel("gemini-2.0-flash-thinking", "Gemini 2.0 Flash Thinking", AIProvider.GOOGLE, new ModelCapabilities(true, false, true, true, true, true, true, 1048576, 8192)),
-            new AIModel("gemini-1.5-flash", "Gemini 1.5 Flash", AIProvider.GOOGLE, new ModelCapabilities(false, false, true, true, true, true, true, 1048576, 8192)),
-            new AIModel("gemini-1.5-flash-8b", "Gemini 1.5 Flash 8B", AIProvider.GOOGLE, new ModelCapabilities(false, false, true, true, false, false, false, 1048576, 8192)),
-            new AIModel("gemini-1.5-flash-002", "Gemini 1.5 Flash 002", AIProvider.GOOGLE, new ModelCapabilities(false, false, true, true, true, true, true, 1048576, 8192)),
-            new AIModel("gemini-1.5-pro", "Gemini 1.5 Pro", AIProvider.GOOGLE, new ModelCapabilities(false, false, true, true, true, true, true, 2097152, 8192)),
-            new AIModel("gemini-1.5-pro-002", "Gemini 1.5 Pro 002", AIProvider.GOOGLE, new ModelCapabilities(false, false, true, true, true, true, true, 2097152, 8192)),
-            new AIModel("gemini-1.0-pro", "Gemini 1.0 Pro", AIProvider.GOOGLE, new ModelCapabilities(false, false, false, true, false, false, false, 32768, 8192)),
-            new AIModel("gemini-1.0-pro-vision", "Gemini 1.0 Pro Vision", AIProvider.GOOGLE, new ModelCapabilities(false, false, true, true, false, false, false, 16384, 8192)),
-
             // Updated Alibaba/Qwen Models (from the new JSON data)
             new AIModel("qwen3-235b-a22b", "Qwen3-235B-A22B-2507", AIProvider.ALIBABA, new ModelCapabilities(true, true, true, true, true, true, true, 131072, 81920)),
             new AIModel("qwen3-coder-plus", "Qwen3-Coder", AIProvider.ALIBABA, new ModelCapabilities(false, true, true, true, true, true, true, 1048576, 65536)),
@@ -57,8 +49,46 @@ public class AIModel {
             // Api.Airforce Provider (OpenAI-compatible free endpoint)
             new AIModel("openai", "Api.Airforce OpenAI", AIProvider.AIRFORCE, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)),
 
-            // Cloudflare AI (Playground)
-            new AIModel("llama-3.3-70b", "Cloudflare Llama 3.3 70B", AIProvider.CLOUDFLARE, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)),
+            // Cloudflare AI (Playground) - Replaced with hardcoded list from python script
+            new AIModel("@hf/thebloke/deepseek-coder-6.7b-base-awq", "deepseek-coder-6.7b-base", AIProvider.CLOUDFLARE, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)),
+            new AIModel("@hf/thebloke/deepseek-coder-6.7b-instruct-awq", "deepseek-coder-6.7b", AIProvider.CLOUDFLARE, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)),
+            new AIModel("@cf/deepseek-ai/deepseek-math-7b-instruct", "deepseek-math-7b", AIProvider.CLOUDFLARE, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)),
+            new AIModel("@cf/deepseek-ai/deepseek-r1-distill-qwen-32b", "deepseek-distill-qwen-32b", AIProvider.CLOUDFLARE, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)),
+            new AIModel("@cf/thebloke/discolm-german-7b-v1-awq", "discolm-german-7b-v1", AIProvider.CLOUDFLARE, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)),
+            new AIModel("@cf/tiiuae/falcon-7b-instruct", "falcon-7b", AIProvider.CLOUDFLARE, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)),
+            new AIModel("@cf/google/gemma-3-12b-it", "gemma-3-12b", AIProvider.CLOUDFLARE, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)),
+            new AIModel("@hf/google/gemma-7b-it", "gemma-7b", AIProvider.CLOUDFLARE, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)),
+            new AIModel("@hf/nousresearch/hermes-2-pro-mistral-7b", "hermes-2-pro-mistral-7b", AIProvider.CLOUDFLARE, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)),
+            new AIModel("@hf/thebloke/llama-2-13b-chat-awq", "llama-2-13b", AIProvider.CLOUDFLARE, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)),
+            new AIModel("@cf/meta/llama-2-7b-chat-fp16", "llama-2-7b-fp16", AIProvider.CLOUDFLARE, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)),
+            new AIModel("@cf/meta/llama-2-7b-chat-int8", "llama-2-7b", AIProvider.CLOUDFLARE, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)),
+            new AIModel("@hf/meta-llama/meta-llama-3-8b-instruct", "llama-3-8b", AIProvider.CLOUDFLARE, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)),
+            new AIModel("@cf/meta/llama-3.1-8b-instruct-fp8", "llama-3.1-8b", AIProvider.CLOUDFLARE, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)),
+            new AIModel("@cf/meta/llama-3.2-11b-vision-instruct", "llama-3.2-11b-vision", AIProvider.CLOUDFLARE, new ModelCapabilities(true, true, true, true, false, false, false, 131072, 8192)),
+            new AIModel("@cf/meta/llama-3.2-1b-instruct", "llama-3.2-1b", AIProvider.CLOUDFLARE, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)),
+            new AIModel("@cf/meta/llama-3.2-3b-instruct", "llama-3.2-3b", AIProvider.CLOUDFLARE, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)),
+            new AIModel("@cf/meta/llama-3.3-70b-instruct-fp8-fast", "llama-3.3-70b", AIProvider.CLOUDFLARE, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)),
+            new AIModel("@cf/meta/llama-4-scout-17b-16e-instruct", "llama-4-scout", AIProvider.CLOUDFLARE, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)),
+            new AIModel("@cf/meta/llama-guard-3-8b", "llama-guard-3-8b", AIProvider.CLOUDFLARE, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)),
+            new AIModel("@hf/thebloke/llamaguard-7b-awq", "llamaguard-7b", AIProvider.CLOUDFLARE, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)),
+            new AIModel("@hf/thebloke/mistral-7b-instruct-v0.1-awq", "mistral-7b-v0.1", AIProvider.CLOUDFLARE, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)),
+            new AIModel("@hf/mistral/mistral-7b-instruct-v0.2", "mistral-7b-v0.2", AIProvider.CLOUDFLARE, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)),
+            new AIModel("@cf/mistralai/mistral-small-3.1-24b-instruct", "mistral-small-3.1-24b", AIProvider.CLOUDFLARE, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)),
+            new AIModel("@hf/thebloke/neural-chat-7b-v3-1-awq", "neural-7b-v3-1", AIProvider.CLOUDFLARE, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)),
+            new AIModel("@cf/openchat/openchat-3.5-0106", "openchat-3.5-0106", AIProvider.CLOUDFLARE, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)),
+            new AIModel("@hf/thebloke/openhermes-2.5-mistral-7b-awq", "openhermes-2.5-mistral-7b", AIProvider.CLOUDFLARE, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)),
+            new AIModel("@cf/microsoft/phi-2", "phi-2", AIProvider.CLOUDFLARE, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)),
+            new AIModel("@cf/qwen/qwen1.5-0.5b-chat", "qwen1.5-0.5b", AIProvider.CLOUDFLARE, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)),
+            new AIModel("@cf/qwen/qwen1.5-1.8b-chat", "qwen-1.5-1.8b", AIProvider.CLOUDFLARE, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)),
+            new AIModel("@cf/qwen/qwen1.5-14b-chat-awq", "qwen-1.5-14b", AIProvider.CLOUDFLARE, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)),
+            new AIModel("@cf/qwen/qwen1.5-7b-chat-awq", "qwen-1.5-7b", AIProvider.CLOUDFLARE, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)),
+            new AIModel("@cf/qwen/qwen2.5-coder-32b-instruct", "qwen-2.5-coder-32b", AIProvider.CLOUDFLARE, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)),
+            new AIModel("@cf/qwen/qwq-32b", "qwq-32b", AIProvider.CLOUDFLARE, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)),
+            new AIModel("@cf/defog/sqlcoder-7b-2", "sqlcoder-7b-2", AIProvider.CLOUDFLARE, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)),
+            new AIModel("@hf/nexusflow/starling-lm-7b-beta", "starling-lm-7b-beta", AIProvider.CLOUDFLARE, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)),
+            new AIModel("@cf/tinyllama/tinyllama-1.1b-chat-v1.0", "tinyllama-1.1b-v1.0", AIProvider.CLOUDFLARE, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)),
+            new AIModel("@cf/fblgit/una-cybertron-7b-v2-bf16", "una-cybertron-7b-v2-bf16", AIProvider.CLOUDFLARE, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)),
+            new AIModel("@hf/thebloke/zephyr-7b-beta-awq", "zephyr-7b-beta", AIProvider.CLOUDFLARE, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)),
 
             // DeepInfra (OpenAI-compatible chat)
             new AIModel("deepseek-v3", "DeepInfra DeepSeek V3", AIProvider.DEEPINFRA, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)),
@@ -67,10 +97,6 @@ public class AIModel {
             new AIModel("gemini-2.5-flash", "Gemini 2.5 Flash", AIProvider.COOKIES, new ModelCapabilities(true, true, true, true, true, true, true, 1048576, 8192)),
             new AIModel("gemini-2.5-pro", "Gemini 2.5 Pro", AIProvider.COOKIES, new ModelCapabilities(true, true, true, true, true, true, true, 2097152, 8192)),
             new AIModel("gemini-2.0-flash", "Gemini 2.0 Flash", AIProvider.COOKIES, new ModelCapabilities(true, true, true, true, true, true, true, 1048576, 8192)),
-
-            // GPT OSS Provider
-            new AIModel("gpt-oss-120b", "GPT OSS 120B", AIProvider.GPT_OSS, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)),
-            new AIModel("gpt-oss-20b", "GPT OSS 20B", AIProvider.GPT_OSS, new ModelCapabilities(true, false, false, true, false, false, false, 65536, 4096)),
 
             // Kimi Provider
             new AIModel("k2", "Kimi K2", AIProvider.KIMI, new ModelCapabilities(false, true, false, false, false, false, false, false, false, false, 0, 0, 0, 0, new HashMap<>(), new ArrayList<>(), new ArrayList<>(), new ArrayList<>(), new HashMap<>())),

@@ -62,11 +62,11 @@ public class LambdaChatApiClient implements ApiClient {
     public List<AIModel> fetchModels() {
         // Models are hardcoded as per the python script
         java.util.List<AIModel> models = new java.util.ArrayList<>();
-        models.add(new AIModel("deepseek-llama3.3-70b", "deepseek-llama3.3-70b", AIProvider.LAMBDA, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)));
-        models.add(new AIModel("apriel-5b-instruct", "apriel-5b-instruct", AIProvider.LAMBDA, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)));
-        models.add(new AIModel("hermes-3-llama-3.1-405b-fp8", "hermes-3-llama-3.1-405b-fp8", AIProvider.LAMBDA, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)));
-        models.add(new AIModel("llama3.3-70b-instruct-fp8", "llama3.3-70b-instruct-fp8", AIProvider.LAMBDA, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)));
-        models.add(new AIModel("qwen3-32b-fp8", "qwen3-32b-fp8", AIProvider.LAMBDA, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)));
+        models.add(new AIModel("deepseek-llama3.3-70b", "LambdaChat deepseek-llama3.3-70b", AIProvider.LAMBDA, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)));
+        models.add(new AIModel("apriel-5b-instruct", "LambdaChat apriel-5b-instruct", AIProvider.LAMBDA, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)));
+        models.add(new AIModel("hermes-3-llama-3.1-405b-fp8", "LambdaChat hermes-3-llama-3.1-405b-fp8", AIProvider.LAMBDA, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)));
+        models.add(new AIModel("llama3.3-70b-instruct-fp8", "LambdaChat llama3.3-70b-instruct-fp8", AIProvider.LAMBDA, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)));
+        models.add(new AIModel("qwen3-32b-fp8", "LambdaChat qwen3-32b-fp8", AIProvider.LAMBDA, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)));
         return models;
     }
 
@@ -90,7 +90,8 @@ public class LambdaChatApiClient implements ApiClient {
                 String conversationId;
                 try (Response convResponse = httpClient.newCall(convRequest).execute()) {
                     if (!convResponse.isSuccessful()) {
-                        throw new IOException("Failed to create Lambda conversation: " + convResponse);
+                        String errorBody = convResponse.body() != null ? convResponse.body().string() : "";
+                        throw new IOException("Failed to create Lambda conversation: " + convResponse.code() + " " + errorBody);
                     }
                     String convResponseBody = convResponse.body().string();
                     JsonObject convJson = JsonParser.parseString(convResponseBody).getAsJsonObject();
@@ -106,7 +107,8 @@ public class LambdaChatApiClient implements ApiClient {
                 String messageId;
                 try (Response dataResponse = httpClient.newCall(dataRequest).execute()) {
                     if (!dataResponse.isSuccessful()) {
-                        throw new IOException("Failed to get Lambda message ID: " + dataResponse);
+                        String errorBody = dataResponse.body() != null ? dataResponse.body().string() : "";
+                        throw new IOException("Failed to get Lambda message ID: " + dataResponse.code() + " " + errorBody);
                     }
                     String dataResponseBody = dataResponse.body().string();
                     // This parsing is complex and brittle, based on the python script's logic
@@ -137,7 +139,8 @@ public class LambdaChatApiClient implements ApiClient {
 
                 try (Response msgResponse = httpClient.newCall(msgRequest).execute()) {
                     if (!msgResponse.isSuccessful()) {
-                        throw new IOException("Failed to send Lambda message: " + msgResponse);
+                        String errorBody = msgResponse.body() != null ? msgResponse.body().string() : "";
+                        throw new IOException("Failed to send Lambda message: " + msgResponse.code() + " " + errorBody);
                     }
 
                     // Process stream

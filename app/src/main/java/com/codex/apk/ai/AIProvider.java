@@ -8,7 +8,6 @@ public enum AIProvider {
     DEEPINFRA("DeepInfra"),
     FREE("Free"),
     COOKIES("Cookies"),
-    GPT_OSS("GPT OSS"),
     KIMI("Kimi"),
     ZHIPU("Zhipu"),
     OIVSCodeSer0501("OIVSCodeSer0501"),

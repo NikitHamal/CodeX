@@ -57,8 +57,20 @@ public class WeWordleApiClient extends AnyProviderApiClient {
                 }
 
                 String responseBody = response.body().string();
+                String content = responseBody;
+                try {
+                    com.google.gson.JsonObject json = com.google.gson.JsonParser.parseString(responseBody).getAsJsonObject();
+                    if (json.has("message") && json.get("message").isJsonObject()) {
+                        com.google.gson.JsonObject messageObj = json.getAsJsonObject("message");
+                        if (messageObj.has("content")) {
+                            content = messageObj.get("content").getAsString();
+                        }
+                    }
+                } catch (Exception e) {
+                    // Not a JSON response, or not in the expected format. Use the raw body.
+                }
                 if (actionListener != null) {
-                    actionListener.onAiActionsProcessed(responseBody, responseBody, new java.util.ArrayList<>(), new java.util.ArrayList<>(), model.getDisplayName());
+                    actionListener.onAiActionsProcessed(responseBody, content, new java.util.ArrayList<>(), new java.util.ArrayList<>(), model.getDisplayName());
                 }
 
             } catch (Exception e) {

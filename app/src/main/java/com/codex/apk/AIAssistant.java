@@ -46,7 +46,6 @@ public class AIAssistant {
         apiClients.put(AIProvider.DEEPINFRA, new DeepInfraApiClient(context, actionListener));
         apiClients.put(AIProvider.FREE, new AnyProviderApiClient(context, actionListener));
         apiClients.put(AIProvider.COOKIES, new GeminiFreeApiClient(context, actionListener));
-        apiClients.put(AIProvider.GPT_OSS, new GptOssApiClient(context, actionListener));
         String initialKey = SettingsActivity.getGeminiApiKey(context);
         this.apiKey = initialKey != null ? initialKey : "";
         apiClients.put(AIProvider.GOOGLE, new GeminiOfficialApiClient(context, actionListener, this.apiKey));

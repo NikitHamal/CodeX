@@ -47,12 +47,39 @@ public class WeWordleApiClient extends AnyProviderApiClient {
                         .addHeader("user-agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36")
                         .build();
 
-                response = httpClient.newCall(request).execute();
-                if (!response.isSuccessful() || response.body() == null) {
+                int maxRetries = 5;
+                long backoff = 1000; // 1 second
+
+                for (int i = 0; i < maxRetries; i++) {
+                    response = httpClient.newCall(request).execute();
+                    if (response.isSuccessful() && response.body() != null) {
+                        break; // Success
+                    }
+
+                    // Handle rate limiting with backoff
+                    if (response.code() == 429) {
+                        android.util.Log.w("WeWordleApiClient", "Rate limited. Retrying in " + backoff + "ms... (Attempt " + (i + 1) + ")");
+                        try { response.close(); } catch (Exception ignore) {}
+
+                        try { Thread.sleep(backoff); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+                        backoff *= 2; // Exponential backoff
+
+                        if (i < maxRetries - 1) {
+                            response = null; // Ensure we don't process a failed response
+                            continue;
+                        }
+                    }
+
+                    // If not rate-limited or retries exhausted, fail permanently
                     String errBody = null;
                     try { if (response != null && response.body() != null) errBody = response.body().string(); } catch (Exception ignore) {}
                     String snippet = errBody != null ? (errBody.length() > 400 ? errBody.substring(0, 400) + "..." : errBody) : null;
                     if (actionListener != null) actionListener.onAiError("API request failed: " + (response != null ? response.code() : -1) + (snippet != null ? (" | body: " + snippet) : ""));
+                    return;
+                }
+
+                if (response == null || !response.isSuccessful() || response.body() == null) {
+                    if (actionListener != null) actionListener.onAiError("API request failed after " + maxRetries + " retries.");
                     return;
                 }
 

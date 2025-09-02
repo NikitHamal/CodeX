@@ -268,13 +268,11 @@ public class AIChatUIManager {
             else if (btnEffortHigh != null) effortGroup.check(btnEffortHigh.getId());
 
             // Enable group based on capability and current thinking toggle
-            if (true) {
-                boolean enableEffort = supportsThinking && switchThinking.isChecked();
-                effortGroup.setEnabled(enableEffort);
-                if (btnEffortLow != null) btnEffortLow.setEnabled(enableEffort);
-                if (btnEffortMedium != null) btnEffortMedium.setEnabled(enableEffort);
-                if (btnEffortHigh != null) btnEffortHigh.setEnabled(enableEffort);
-            }
+            boolean enableEffort = supportsThinking && switchThinking.isChecked();
+            effortGroup.setEnabled(enableEffort);
+            if (btnEffortLow != null) btnEffortLow.setEnabled(enableEffort);
+            if (btnEffortMedium != null) btnEffortMedium.setEnabled(enableEffort);
+            if (btnEffortHigh != null) btnEffortHigh.setEnabled(enableEffort);
 
             effortGroup.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
                 if (!isChecked) return;

@@ -10,6 +10,11 @@ import okhttp3.MediaType;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
+import java.io.EOFException;
+import java.io.IOException;
+import java.util.concurrent.TimeUnit;
+import android.util.Log;
+import okio.BufferedSource;
 
 public class YqcloudApiClient extends AnyProviderApiClient {
     private static final String API_ENDPOINT = "https://api.binjie.fun/api/generateStream";
@@ -79,7 +84,7 @@ public class YqcloudApiClient extends AnyProviderApiClient {
 
                 StringBuilder finalText = new StringBuilder();
                 StringBuilder rawSse = new StringBuilder();
-                streamOpenAiSse(response, finalText, rawSse);
+                streamYqcloudResponse(response, finalText, rawSse);
 
                 if (finalText.length() > 0) {
                     if (actionListener != null) {
@@ -95,5 +100,33 @@ public class YqcloudApiClient extends AnyProviderApiClient {
                 if (actionListener != null) actionListener.onAiRequestCompleted();
             }
         }).start();
+    }
+
+    private void streamYqcloudResponse(Response response, StringBuilder finalText, StringBuilder rawAnswer) throws IOException {
+        if (response.body() == null) return;
+        BufferedSource source = response.body().source();
+        try { source.timeout().timeout(60, TimeUnit.SECONDS); } catch (Exception ignore) {}
+
+        while (true) {
+            String line;
+            try {
+                line = source.readUtf8LineStrict();
+            } catch (EOFException eof) { break; }
+            catch (java.io.InterruptedIOException timeout) { Log.w("YqcloudApiClient", "Yqcloud read timed out"); break; }
+            if (line == null || line.isEmpty()) continue;
+
+            // The response is not SSE, it's just a stream of strings.
+            // The python script just yields the line.
+            finalText.append(line);
+            if (rawAnswer != null) rawAnswer.append(line).append("\n");
+
+            if (actionListener != null) {
+                actionListener.onAiStreamUpdate(finalText.toString(), false);
+            }
+        }
+        // Final update
+        if (actionListener != null) {
+            actionListener.onAiStreamUpdate(finalText.toString(), false);
+        }
     }
 }

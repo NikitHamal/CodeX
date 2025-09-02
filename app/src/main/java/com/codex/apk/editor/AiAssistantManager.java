@@ -239,7 +239,15 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
     private boolean looksLikeJson(String text) {
         if (text == null) return false;
         String trimmed = text.trim();
-        return (trimmed.startsWith("{") && trimmed.endsWith("}")) || (trimmed.startsWith("[") && trimmed.endsWith("]"));
+        if (!((trimmed.startsWith("{") && trimmed.endsWith("}")) || (trimmed.startsWith("[") && trimmed.endsWith("]")))) {
+            return false;
+        }
+        try {
+            JsonParser.parseString(trimmed);
+            return true;
+        } catch (com.google.gson.JsonSyntaxException e) {
+            return false;
+        }
     }
 
     private int findMatchingBraceEnd(String s, int startIdx) {
@@ -367,8 +375,8 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
             }
 
             if (jsonToParseForTools != null) {
-                // For debugging, show the user what JSON we're about to process
-                sendSystemMessage("Detected tool call JSON:\n```json\n" + jsonToParseForTools + "\n```");
+                // Log the JSON for debugging instead of showing in UI
+                Log.d(TAG, "Detected tool call JSON: " + jsonToParseForTools);
                 try {
                     JsonObject maybe = JsonParser.parseString(jsonToParseForTools).getAsJsonObject();
                     if (maybe.has("action") && "tool_call".equalsIgnoreCase(maybe.get("action").getAsString()) && maybe.has("tool_calls") && maybe.get("tool_calls").isJsonArray()) {
@@ -393,19 +401,18 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                                 err.addProperty("error", inner.getMessage());
                                 res.add("result", err);
                                 results.add(res);
-                                sendSystemMessage("Error executing tool: " + inner.getMessage());
+                                Log.w(TAG, "Error executing tool", inner);
                             }
                         }
                         String continuation = ToolExecutor.buildToolResultContinuation(results);
                         String fenced = "```json\n" + continuation + "\n```\n";
-                        sendSystemMessage("Sending tool results back to AI:\n" + fenced);
+                        Log.d(TAG, "Sending tool results back to AI: " + fenced);
                         sendAiPrompt(fenced, new java.util.ArrayList<>(), activity.getQwenState(), activity.getActiveTab());
-                        sendSystemMessage("Continuation prompt sent.");
                         return; // Stop further processing
                     }
                 } catch (Exception e) {
-                    // Not a valid tool call, proceed with normal processing, but inform the user for debugging
-                    sendSystemMessage("Could not execute tool call. Error parsing JSON: " + e.getMessage());
+                    // Not a valid tool call, proceed with normal processing.
+                    Log.w(TAG, "Could not execute tool call. Error parsing JSON.", e);
                 }
             }
 

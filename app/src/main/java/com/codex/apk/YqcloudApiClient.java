@@ -54,8 +54,12 @@ public class YqcloudApiClient extends AnyProviderApiClient {
                     promptBuilder.append(msg.get("role").getAsString()).append(": ").append(msg.get("content").getAsString()).append("\n");
                 }
 
+                String prompt = promptBuilder.toString();
+                if (prompt.length() > 4000) {
+                    prompt = prompt.substring(prompt.length() - 4000);
+                }
                 JsonObject body = new JsonObject();
-                body.addProperty("prompt", promptBuilder.toString());
+                body.addProperty("prompt", prompt);
                 body.addProperty("userId", "#/chat/" + System.currentTimeMillis());
                 body.addProperty("network", true);
                 body.addProperty("system", systemMessage);

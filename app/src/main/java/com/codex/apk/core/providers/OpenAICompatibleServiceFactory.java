@@ -63,11 +63,6 @@ public class OpenAICompatibleServiceFactory implements AIServiceFactory {
             case AIRFORCE:
                 // API Airforce might not require API key for some endpoints
                 break;
-            case GPT_OSS:
-                if (!config.hasApiKey()) {
-                    result.addWarning("GPT OSS typically requires an API key");
-                }
-                break;
             case FREE:
                 // Free endpoints typically don't require API keys
                 break;
@@ -102,13 +97,6 @@ public class OpenAICompatibleServiceFactory implements AIServiceFactory {
                     provider,
                     "API Airforce",
                     "Free OpenAI-compatible API aggregator service",
-                    capabilities
-                );
-            case GPT_OSS:
-                return new ProviderInfo(
-                    provider,
-                    "GPT OSS",
-                    "Open source GPT models with OpenAI-compatible API",
                     capabilities
                 );
             case FREE:
@@ -155,17 +143,6 @@ public class OpenAICompatibleServiceFactory implements AIServiceFactory {
                     131072, // max tokens
                     supportedFormats
                 );
-            case GPT_OSS:
-                return new ProviderCapabilities(
-                    true,  // streaming
-                    false, // vision
-                    true,  // tools
-                    false, // web search
-                    false, // thinking
-                    false, // multimodal
-                    131072, // max tokens
-                    supportedFormats
-                );
             case FREE:
                 return new ProviderCapabilities(
                     true,  // streaming
@@ -202,7 +179,6 @@ public class OpenAICompatibleServiceFactory implements AIServiceFactory {
         switch (provider) {
             case DEEPINFRA:
             case AIRFORCE:
-            case GPT_OSS:
             case FREE:
                 return new OpenAICompatibleServiceFactory(provider);
             default:
@@ -219,7 +195,6 @@ public class OpenAICompatibleServiceFactory implements AIServiceFactory {
         Set<AIProvider> supported = new HashSet<>();
         supported.add(AIProvider.DEEPINFRA);
         supported.add(AIProvider.AIRFORCE);
-        supported.add(AIProvider.GPT_OSS);
         supported.add(AIProvider.FREE);
         return supported;
     }

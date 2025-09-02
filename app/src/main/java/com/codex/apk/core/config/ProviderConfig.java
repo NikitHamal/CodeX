@@ -125,7 +125,6 @@ public class ProviderConfig {
                 break;
             case DEEPINFRA:
             case AIRFORCE:
-            case GPT_OSS:
                 if (!hasBaseUrl()) {
                     result.addError("OpenAI-compatible providers require base URL");
                 }
@@ -281,9 +280,6 @@ public class ProviderConfig {
                 break;
             case AIRFORCE:
                 builder.withBaseUrl("https://api.airforce.com/v1/chat/completions");
-                break;
-            case GPT_OSS:
-                builder.withBaseUrl("https://gpt-oss.com/v1/chat/completions");
                 break;
             case FREE:
                 builder.withBaseUrl("https://text.pollinations.ai/openai");

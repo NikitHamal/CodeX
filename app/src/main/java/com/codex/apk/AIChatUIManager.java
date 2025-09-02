@@ -224,7 +224,6 @@ public class AIChatUIManager {
         com.google.android.material.button.MaterialButton btnEffortHigh = dialogView.findViewById(R.id.btn_effort_high);
 
         ModelCapabilities capabilities = aiAssistant.getCurrentModel().getCapabilities();
-        boolean isGptOss = aiAssistant.getCurrentModel().getProvider() == AIProvider.GPT_OSS;
         boolean supportsThinking = capabilities.supportsThinking;
 
         // Hide entire Thinking row if model doesn't support thinking
@@ -236,8 +235,8 @@ public class AIChatUIManager {
         switchThinking.setEnabled(supportsThinking);
         switchThinking.setOnCheckedChangeListener((buttonView, isChecked) -> {
             aiAssistant.setThinkingModeEnabled(isChecked);
-            // Enable/disable effort group with the thinking toggle (GPT OSS only)
-            if (effortGroup != null && isGptOss) {
+            // Enable/disable effort group with the thinking toggle
+            if (effortGroup != null) {
                 boolean enableEffort = supportsThinking && isChecked;
                 effortGroup.setEnabled(enableEffort);
                 if (btnEffortLow != null) btnEffortLow.setEnabled(enableEffort);
@@ -258,18 +257,18 @@ public class AIChatUIManager {
         android.content.SharedPreferences sp = context.getSharedPreferences("settings", Context.MODE_PRIVATE);
         String effort = sp.getString("thinking_effort", "high");
         if (effortGroup != null) {
-            // Show effort only for GPT OSS models that support thinking; hide otherwise, including the texts container
+            // Show effort only for models that support thinking; hide otherwise, including the texts container
             if (containerEffort != null) {
-                containerEffort.setVisibility(isGptOss && supportsThinking ? View.VISIBLE : View.GONE);
+                containerEffort.setVisibility(supportsThinking ? View.VISIBLE : View.GONE);
             } else {
-                effortGroup.setVisibility(isGptOss && supportsThinking ? View.VISIBLE : View.GONE);
+                effortGroup.setVisibility(supportsThinking ? View.VISIBLE : View.GONE);
             }
             if ("low".equalsIgnoreCase(effort) && btnEffortLow != null) effortGroup.check(btnEffortLow.getId());
             else if ("medium".equalsIgnoreCase(effort) && btnEffortMedium != null) effortGroup.check(btnEffortMedium.getId());
             else if (btnEffortHigh != null) effortGroup.check(btnEffortHigh.getId());
 
-            // Enable group based on capability and current thinking toggle (GPT OSS only)
-            if (isGptOss) {
+            // Enable group based on capability and current thinking toggle
+            if (true) {
                 boolean enableEffort = supportsThinking && switchThinking.isChecked();
                 effortGroup.setEnabled(enableEffort);
                 if (btnEffortLow != null) btnEffortLow.setEnabled(enableEffort);

@@ -118,11 +118,6 @@ public class ProviderConfig {
             case ALIBABA:
                 // Qwen might require specific configuration
                 break;
-            case CLOUDFLARE:
-                if (!hasBaseUrl()) {
-                    result.addWarning("Cloudflare provider should have base URL configured");
-                }
-                break;
             case DEEPINFRA:
             case AIRFORCE:
                 if (!hasBaseUrl()) {
@@ -271,9 +266,6 @@ public class ProviderConfig {
                 break;
             case ALIBABA:
                 builder.withBaseUrl("https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation");
-                break;
-            case CLOUDFLARE:
-                builder.withBaseUrl("https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/run/");
                 break;
             case DEEPINFRA:
                 builder.withBaseUrl("https://api.deepinfra.com/v1/openai/chat/completions");

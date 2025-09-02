@@ -63,19 +63,14 @@ public class ModelsActivity extends AppCompatActivity {
         };
         // Long-press on FREE provider header refreshes Pollinations models
         adapter.setOnProviderHeaderLongClickListener(provider -> {
-            if (provider == AIProvider.FREE || provider == AIProvider.AIRFORCE || provider == AIProvider.CLOUDFLARE || provider == AIProvider.DEEPINFRA || provider == AIProvider.KIMI || provider == AIProvider.ZHIPU || provider == AIProvider.OIVSCodeSer0501 || provider == AIProvider.OIVSCodeSer2 || provider == AIProvider.WEWORDLE || provider == AIProvider.YQCLOUD || provider == AIProvider.COHERE || provider == AIProvider.LAMBDA) {
+            if (provider == AIProvider.FREE || provider == AIProvider.AIRFORCE || provider == AIProvider.DEEPINFRA || provider == AIProvider.ZHIPU || provider == AIProvider.OIVSCodeSer0501 || provider == AIProvider.OIVSCodeSer2 || provider == AIProvider.WEWORDLE) {
                 String nice;
                 if (provider == AIProvider.FREE) nice = "Free";
                 else if (provider == AIProvider.AIRFORCE) nice = "Api.Airforce";
-                else if (provider == AIProvider.CLOUDFLARE) nice = "Cloudflare AI";
-                else if (provider == AIProvider.KIMI) nice = "Kimi";
                 else if (provider == AIProvider.ZHIPU) nice = "Zhipu";
                 else if (provider == AIProvider.OIVSCodeSer0501) nice = "OIVSCodeSer0501";
                 else if (provider == AIProvider.OIVSCodeSer2) nice = "OIVSCodeSer2";
                 else if (provider == AIProvider.WEWORDLE) nice = "WeWordle";
-                else if (provider == AIProvider.YQCLOUD) nice = "Yqcloud";
-                else if (provider == AIProvider.COHERE) nice = "Cohere";
-                else if (provider == AIProvider.LAMBDA) nice = "LambdaChat";
                 else nice = "DeepInfra";
                 Toast.makeText(this, "Refreshing " + nice + " models...", Toast.LENGTH_SHORT).show();
                 java.util.concurrent.ExecutorService exec = java.util.concurrent.Executors.newSingleThreadExecutor();

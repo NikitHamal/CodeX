@@ -4,18 +4,13 @@ public enum AIProvider {
     GOOGLE("Google"),
     ALIBABA("Alibaba"),
     AIRFORCE("Api.Airforce"),
-    CLOUDFLARE("Cloudflare AI"),
     DEEPINFRA("DeepInfra"),
     FREE("Free"),
     COOKIES("Cookies"),
-    KIMI("Kimi"),
     ZHIPU("Zhipu"),
     OIVSCodeSer0501("OIVSCodeSer0501"),
     OIVSCodeSer2("OIVSCodeSer2"),
-    WEWORDLE("WeWordle"),
-    YQCLOUD("Yqcloud"),
-    COHERE("Cohere"),
-    LAMBDA("LambdaChat");
+    WEWORDLE("WeWordle");
 
     private final String displayName;
 

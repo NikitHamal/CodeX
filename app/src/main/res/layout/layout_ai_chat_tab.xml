@@ -190,7 +190,8 @@
                         android:textColor="@color/secondary_text"
                         android:maxLines="1"
                         android:ellipsize="end"
-                        android:textSize="12sp" />
+                        android:textSize="12sp"
+                        android:maxWidth="120dp" />
                 </LinearLayout>
 
                 <!-- Spacer -->

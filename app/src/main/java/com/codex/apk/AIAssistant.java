@@ -42,21 +42,16 @@ public class AIAssistant {
     private void initializeApiClients(Context context, File projectDir) {
         apiClients.put(AIProvider.ALIBABA, new QwenApiClient(context, actionListener, projectDir));
         apiClients.put(AIProvider.AIRFORCE, new ApiAirforceApiClient(context, actionListener));
-        apiClients.put(AIProvider.CLOUDFLARE, new CloudflareApiClient(context, actionListener));
         apiClients.put(AIProvider.DEEPINFRA, new DeepInfraApiClient(context, actionListener));
         apiClients.put(AIProvider.FREE, new AnyProviderApiClient(context, actionListener));
         apiClients.put(AIProvider.COOKIES, new GeminiFreeApiClient(context, actionListener));
         String initialKey = SettingsActivity.getGeminiApiKey(context);
         this.apiKey = initialKey != null ? initialKey : "";
         apiClients.put(AIProvider.GOOGLE, new GeminiOfficialApiClient(context, actionListener, this.apiKey));
-        apiClients.put(AIProvider.KIMI, new KimiApiClient(context, actionListener, projectDir));
         apiClients.put(AIProvider.ZHIPU, new ZhipuApiClient(context, actionListener, projectDir));
         apiClients.put(AIProvider.OIVSCodeSer0501, new OIVSCodeSer0501ApiClient(context, actionListener));
         apiClients.put(AIProvider.OIVSCodeSer2, new OIVSCodeSer2ApiClient(context, actionListener));
         apiClients.put(AIProvider.WEWORDLE, new WeWordleApiClient(context, actionListener));
-        apiClients.put(AIProvider.YQCLOUD, new YqcloudApiClient(context, actionListener));
-        apiClients.put(AIProvider.COHERE, new CohereApiClient(context, actionListener));
-        apiClients.put(AIProvider.LAMBDA, new LambdaChatApiClient(context, actionListener));
     }
 
     public void sendPrompt(String userPrompt, List<ChatMessage> chatHistory, QwenConversationState qwenState, String fileName, String fileContent) {

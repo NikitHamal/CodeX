@@ -94,7 +94,7 @@ public class CohereApiClient implements ApiClient {
                         throw new IOException("Failed to get Cohere message ID: " + dataResponse);
                     }
                     String dataResponseBody = dataResponse.body().string();
-                    String messageId = null; // Initialize to null
+                    messageId = null; // Initialize to null
                     try {
                         // More robust parsing with checks at each level
                         JsonObject dataJson = JsonParser.parseString(dataResponseBody.split("\n")[0]).getAsJsonObject();

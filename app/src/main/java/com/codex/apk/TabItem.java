@@ -24,7 +24,7 @@ public class TabItem {
      */
     public boolean reloadContent(FileManager fileManager) {
         try {
-            String newContent = fileManager.readFile(file);
+            String newContent = fileManager.readFileContent(file);
             setContent(newContent);
             setModified(false); // After reloading, it's no longer modified
             setLastNotifiedModifiedState(false);

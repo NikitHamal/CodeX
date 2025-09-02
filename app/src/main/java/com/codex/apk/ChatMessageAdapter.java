@@ -257,7 +257,7 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
     }
 
     static class AiMessageViewHolder extends RecyclerView.ViewHolder {
-        TextView textMessage; TextView textAiModelName; RecyclerView fileChangesContainer; LinearLayout layoutThinkingSection; TextView textThinkingContent; ImageView iconThinkingExpand; LinearLayout layoutWebSources; TextView buttonWebSources; LinearLayout layoutTypingIndicator; TextView textTypingIndicator; LinearLayout layoutPlanSteps; RecyclerView recyclerPlanSteps; TextView textAgentThinking;
+        TextView textMessage; TextView textAiModelName; RecyclerView fileChangesContainer; LinearLayout layoutThinkingSection; TextView textThinkingContent; TextView textThinkingHeaderTitle; LinearLayout layoutWebSources; TextView buttonWebSources; LinearLayout layoutTypingIndicator; TextView textTypingIndicator; LinearLayout layoutPlanSteps; RecyclerView recyclerPlanSteps; TextView textAgentThinking;
         LinearLayout layoutPlanActions; MaterialButton buttonAcceptPlan; MaterialButton buttonDiscardPlan;
         private final OnAiActionInteractionListener listener; private final Context context; private MarkdownFormatter markdownFormatter;
         AiMessageViewHolder(View itemView, OnAiActionInteractionListener listener) {
@@ -267,7 +267,7 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
             fileChangesContainer = itemView.findViewById(R.id.file_changes_container);
             layoutThinkingSection = itemView.findViewById(R.id.layout_thinking_section);
             textThinkingContent = itemView.findViewById(R.id.text_thinking_content);
-            iconThinkingExpand = itemView.findViewById(R.id.icon_thinking_expand);
+            textThinkingHeaderTitle = itemView.findViewById(R.id.text_thinking_header_title);
             layoutWebSources = itemView.findViewById(R.id.layout_web_sources);
             buttonWebSources = itemView.findViewById(R.id.button_web_sources);
             layoutTypingIndicator = itemView.findViewById(R.id.layout_typing_indicator);
@@ -400,13 +400,20 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
                 markdownFormatter.setThinkingMarkdown(textThinkingContent, processedThinking);
                 // Default to collapsed on bind
                 textThinkingContent.setVisibility(View.GONE);
-                iconThinkingExpand.setRotation(0f);
+                textThinkingHeaderTitle.setRotation(0f);
                 View thinkingHeader = layoutThinkingSection.findViewById(R.id.layout_thinking_header);
                 if (thinkingHeader != null) {
                     thinkingHeader.setOnClickListener(v -> {
                         boolean expanded = textThinkingContent.getVisibility() == View.VISIBLE;
                         textThinkingContent.setVisibility(expanded ? View.GONE : View.VISIBLE);
-                        iconThinkingExpand.animate().rotation(expanded ? 0f : 180f).setDuration(200).start();
+                        // Animate the drawable rotation
+                        android.graphics.drawable.Drawable[] drawables = textThinkingHeaderTitle.getCompoundDrawables();
+                        android.graphics.drawable.Drawable endDrawable = drawables[2]; // 0:left, 1:top, 2:right, 3:bottom
+                        if (endDrawable != null) {
+                            android.animation.ObjectAnimator.ofInt(endDrawable, "level", expanded ? 10000 : 0, expanded ? 0 : 10000)
+                                .setDuration(200)
+                                .start();
+                        }
                     });
                 }
             }

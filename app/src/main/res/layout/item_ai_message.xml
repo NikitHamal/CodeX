@@ -68,20 +68,16 @@
                 android:paddingVertical="8dp">
 
                 <TextView
+                    android:id="@+id/text_thinking_header_title"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Thoughts"
                     android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
                     android:textColor="@color/on_surface"
-                    android:textSize="12sp" />
-
-                <ImageView
-                    android:id="@+id/icon_thinking_expand"
-                    android:layout_width="16dp"
-                    android:layout_height="16dp"
-                    android:layout_marginStart="6dp"
-                    android:src="@drawable/icon_expand_more_round"
-                    app:tint="@color/on_surface_variant" />
+                    android:textSize="12sp"
+                    android:drawableEnd="@drawable/icon_expand_more_round"
+                    android:drawablePadding="6dp"
+                    app:drawableTint="@color/on_surface_variant" />
 
             </LinearLayout>
 

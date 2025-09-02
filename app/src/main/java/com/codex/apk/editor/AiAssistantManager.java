@@ -573,13 +573,17 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
             if (chatFragment == null || currentStreamingMessagePosition == null) return;
             ChatMessage msg = chatFragment.getMessageAt(currentStreamingMessagePosition);
             if (msg == null) return;
+
             if (isThinking) {
-                if (partialResponse != null && !partialResponse.isEmpty()) {
+                msg.setThinkingContent(partialResponse);
+                // When thinking, the main content should be blank or a placeholder
+                if (msg.getContent() == null || !msg.getContent().equals(activity.getString(com.codex.apk.R.string.ai_is_thinking))) {
                     msg.setContent("");
-                    msg.setThinkingContent(partialResponse);
                 }
             } else {
                 msg.setContent(partialResponse != null ? partialResponse : "");
+                // Clear thinking content when we get a final response
+                msg.setThinkingContent(null);
             }
             chatFragment.updateMessage(currentStreamingMessagePosition, msg);
         });

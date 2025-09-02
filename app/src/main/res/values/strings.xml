@@ -93,7 +93,8 @@
     <string name="failed_to_rename_project">Failed to rename project: %1$s</string>
     <string name="delete_project">Delete Project</string>
     <string name="are_you_sure_you_want_to_delete_project">Are you sure you want to delete \'%1$s\'? This cannot be undone.</string>
-    
+    <string name="file_refreshed">File %1$s has been refreshed.</string>
+
     <!-- New strings for enhanced functionality -->
     <string name="git_clone">Git Clone</string>
     <string name="enter_repository_url">Enter Repository URL</string>

@@ -133,8 +133,7 @@ public class ZhipuApiClient implements ApiClient {
     }
 
     private void performCompletion(String userMessage, AIModel model, List<ChatMessage> history) throws IOException {
-        // If the history is empty or just contains a system prompt, start a new conversation
-        if (history.isEmpty() || (history.size() == 1 && "system".equals(history.get(0).getRole()))) {
+        if (history.isEmpty()) {
             this.conversationId = UUID.randomUUID().toString();
             Log.d(TAG, "New conversation started with ID: " + this.conversationId);
         }

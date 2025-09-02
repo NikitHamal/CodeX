@@ -4,17 +4,35 @@ import java.io.File;
 
 public class TabItem {
     private File file;
-    private String content; 
+    private String content;
     private boolean modified;
     private boolean lastNotifiedModifiedState;
     private boolean wrapEnabled = false;
     private boolean readOnly = false;
-    
+
     public TabItem(File file, String initialContent) {
         this.file = file;
         this.content = initialContent;
         this.modified = false;
         this.lastNotifiedModifiedState = false;
+    }
+
+    /**
+     * Reloads the content of the tab from the file system.
+     * @param fileManager The FileManager instance to use for reading the file.
+     * @return True if the content was reloaded successfully, false otherwise.
+     */
+    public boolean reloadContent(FileManager fileManager) {
+        try {
+            String newContent = fileManager.readFile(file);
+            setContent(newContent);
+            setModified(false); // After reloading, it's no longer modified
+            setLastNotifiedModifiedState(false);
+            return true;
+        } catch (Exception e) {
+            // Log the error or handle it as needed
+            return false;
+        }
     }
     
     public File getFile() { return file; }

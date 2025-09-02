@@ -465,6 +465,40 @@ public class EditorActivity extends AppCompatActivity implements
         fileTreeManager.deleteFileByPath(fileOrDirectory);
     }
 
+    /**
+     * Refreshes the content of a specific tab from the file system.
+     * @param file The file whose tab needs to be refreshed.
+     */
+    public void refreshFile(File file) {
+        if (tabManager == null || codeEditorFragment == null || file == null) {
+            return;
+        }
+
+        runOnUiThread(() -> {
+            TabItem tabToRefresh = null;
+            int position = -1;
+            List<TabItem> openTabs = tabManager.getOpenTabs();
+            for (int i = 0; i < openTabs.size(); i++) {
+                if (openTabs.get(i).getFile().equals(file)) {
+                    tabToRefresh = openTabs.get(i);
+                    position = i;
+                    break;
+                }
+            }
+
+            if (tabToRefresh != null) {
+                boolean reloaded = tabToRefresh.reloadContent(fileManager);
+                if (reloaded) {
+                    SimpleSoraTabAdapter adapter = codeEditorFragment.getFileTabAdapter();
+                    if (adapter != null) {
+                        adapter.notifyItemChanged(position);
+                        showToast(getString(R.string.file_refreshed, file.getName()));
+                    }
+                }
+            }
+        });
+    }
+
     // Launch the new PreviewActivity
     private void launchPreviewActivity() {
         Intent previewIntent = new Intent(this, PreviewActivity.class);

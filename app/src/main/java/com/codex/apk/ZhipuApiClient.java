@@ -40,6 +40,7 @@ public class ZhipuApiClient implements ApiClient {
     private String apiKey;
     private List<AIModel> models;
     private Map<String, String> modelAliases;
+    private String conversationId;
 
     public ZhipuApiClient(Context context, AIAssistant.AIActionListener actionListener, File projectDir) {
         this.actionListener = actionListener;
@@ -132,8 +133,14 @@ public class ZhipuApiClient implements ApiClient {
     }
 
     private void performCompletion(String userMessage, AIModel model, List<ChatMessage> history) throws IOException {
+        // If the history is empty or just contains a system prompt, start a new conversation
+        if (history.isEmpty() || (history.size() == 1 && "system".equals(history.get(0).getRole()))) {
+            this.conversationId = UUID.randomUUID().toString();
+            Log.d(TAG, "New conversation started with ID: " + this.conversationId);
+        }
+
         JsonObject requestBody = new JsonObject();
-        requestBody.addProperty("chat_id", "local");
+        requestBody.addProperty("chat_id", this.conversationId != null ? this.conversationId : "local");
         requestBody.addProperty("id", UUID.randomUUID().toString());
         requestBody.addProperty("stream", true);
         requestBody.addProperty("model", model.getModelId());

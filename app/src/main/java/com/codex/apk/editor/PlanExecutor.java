@@ -117,11 +117,17 @@ public class PlanExecutor {
             } catch (Exception ignored) {}
             planStepRetryCount++;
             if (planStepRetryCount > 2) {
-                Log.e(TAG, "AI did not produce file ops after 3 prompts; auto-advancing and marking step completed.");
-                setCurrentRunningPlanStepStatus("completed");
+                Log.e(TAG, "AI did not produce file ops after 3 prompts; marking step failed and halting.");
+                setCurrentRunningPlanStepStatus("failed");
                 cancelPlanWatchdog();
                 planStepRetryCount = 0;
-                sendNextPlanStepFollowUp();
+                // We must update the UI to show the failed state
+                AIChatFragment frag = activity.getAiChatFragment();
+                if (lastPlanMessagePosition != null && frag != null) {
+                    ChatMessage planMsg = frag.getMessageAt(lastPlanMessagePosition);
+                    if (planMsg != null) frag.updateMessage(lastPlanMessagePosition, planMsg);
+                }
+                finalizePlanExecution("Plan failed: AI was unable to produce a valid action.", true);
             } else {
                 Log.w(TAG, "AI did not return file operations. Retrying step (attempt " + planStepRetryCount + ")");
                 sendNextPlanStepFollowUp();
@@ -194,11 +200,10 @@ public class PlanExecutor {
                 if (planProgressIndex == indexFor && indexFor < pm.getPlanSteps().size()) {
                     ChatMessage.PlanStep ps = pm.getPlanSteps().get(indexFor);
                     if (ps != null && "running".equals(ps.status)) {
-                        Log.w(TAG, "Watchdog timeout for step index=" + indexFor + "; auto-marking completed and advancing.");
-                        ps.status = "completed";
+                        Log.w(TAG, "Watchdog timeout for step index=" + indexFor + "; marking failed and halting.");
+                        ps.status = "failed";
                         frag.updateMessage(lastPlanMessagePosition, pm);
-                        planProgressIndex = indexFor + 1;
-                        sendNextPlanStepFollowUp();
+                        finalizePlanExecution("Plan failed: Step timed out.", true);
                     }
                 }
             } catch (Exception e) {

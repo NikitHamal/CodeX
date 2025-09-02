@@ -142,9 +142,21 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
             executorService.execute(() -> {
                 try {
                     List<String> appliedSummaries = new ArrayList<>();
+                    List<File> changedFiles = new ArrayList<>();
                     for (ChatMessage.FileActionDetail detail : message.getProposedFileChanges()) {
                         String summary = aiProcessor.applyFileAction(detail);
                         appliedSummaries.add(summary);
+                        // Track changed files to refresh them
+                        File fileToRefresh = new File(activity.getProjectDirectory(), detail.path);
+                        if (fileToRefresh.exists()) {
+                            changedFiles.add(fileToRefresh);
+                        }
+                        if ("renameFile".equalsIgnoreCase(detail.type) && detail.newPath != null) {
+                             File newFile = new File(activity.getProjectDirectory(), detail.newPath);
+                             if (newFile.exists()) {
+                                 changedFiles.add(newFile);
+                             }
+                        }
                     }
                     activity.runOnUiThread(() -> {
                         activity.showToast("AI actions applied successfully!");
@@ -154,7 +166,10 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                         if (aiChatFragment != null) {
                             aiChatFragment.updateMessage(messagePosition, message);
                         }
-                        activity.tabManager.refreshOpenTabsAfterAi();
+                        // Refresh each changed file
+                        for (File f : changedFiles) {
+                            activity.refreshFile(f);
+                        }
                         activity.loadFileTree();
                     });
                 } catch (Exception e) {

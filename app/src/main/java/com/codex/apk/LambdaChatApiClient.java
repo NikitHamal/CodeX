@@ -135,6 +135,7 @@ public class LambdaChatApiClient implements ApiClient {
                 Request msgRequest = new Request.Builder()
                         .url(CONVERSATION_URL + "/" + conversationId)
                         .post(requestBody)
+                        .addHeader("Origin", BASE_URL)
                         .build();
 
                 try (Response msgResponse = httpClient.newCall(msgRequest).execute()) {

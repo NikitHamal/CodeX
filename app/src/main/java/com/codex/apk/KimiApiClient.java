@@ -1,7 +1,6 @@
 package com.codex.apk;
 
 import android.content.Context;
-import android.provider.Settings;
 import android.util.Log;
 
 import com.google.gson.Gson;
@@ -59,7 +58,15 @@ public class KimiApiClient implements ApiClient {
                 .readTimeout(60, TimeUnit.SECONDS)
                 .cookieJar(cookieJar)
                 .build();
-        this.deviceId = Settings.Secure.getString(context.getContentResolver(), Settings.Secure.ANDROID_ID);
+        this.deviceId = generateRandomDeviceId();
+    }
+
+    private String generateRandomDeviceId() {
+        Random random = new Random();
+        long min = 1000000000000000L;
+        long max = 9999999999999999L;
+        long randomLong = min + ((long)(random.nextDouble()*(max - min)));
+        return String.valueOf(randomLong);
     }
 
     /**

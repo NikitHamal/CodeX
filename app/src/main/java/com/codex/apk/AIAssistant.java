@@ -53,8 +53,6 @@ public class AIAssistant {
         apiClients.put(AIProvider.ZHIPU, new ZhipuApiClient(context, actionListener, projectDir));
         apiClients.put(AIProvider.OIVSCodeSer0501, new OIVSCodeSer0501ApiClient(context, actionListener));
         apiClients.put(AIProvider.OIVSCodeSer2, new OIVSCodeSer2ApiClient(context, actionListener));
-        apiClients.put(AIProvider.CHATAI, new ChataiApiClient(context, actionListener));
-        apiClients.put(AIProvider.MINTLIFY, new MintlifyApiClient(context, actionListener));
         apiClients.put(AIProvider.WEWORDLE, new WeWordleApiClient(context, actionListener));
         apiClients.put(AIProvider.YQCLOUD, new YqcloudApiClient(context, actionListener));
         apiClients.put(AIProvider.COHERE, new CohereApiClient(context, actionListener));

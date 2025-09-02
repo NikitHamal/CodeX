@@ -94,7 +94,22 @@ public class CohereApiClient implements ApiClient {
                     // This parsing is complex and brittle, based on the python script's logic
                     try {
                         JsonObject dataJson = JsonParser.parseString(dataResponseBody.split("\n")[0]).getAsJsonObject();
-                        messageId = dataJson.getAsJsonArray("nodes").get(1).getAsJsonObject().get("data").getAsJsonArray().get(0).getAsJsonObject().get("id").getAsString();
+                        JsonArray nodes = dataJson.getAsJsonArray("nodes");
+                        if (nodes != null && nodes.size() > 1) {
+                            JsonObject node = nodes.get(1).getAsJsonObject();
+                            if (node != null && node.has("data")) {
+                                JsonArray dataArray = node.getAsJsonArray("data");
+                                if (dataArray != null && dataArray.size() > 0) {
+                                    JsonObject firstElement = dataArray.get(0).getAsJsonObject();
+                                    if (firstElement != null && firstElement.has("id")) {
+                                        messageId = firstElement.get("id").getAsString();
+                                    }
+                                }
+                            }
+                        }
+                        if (messageId == null) {
+                            throw new IOException("Could not find message ID in Cohere response structure.");
+                        }
                     } catch (Exception e) {
                         throw new IOException("Failed to parse message ID from Cohere response: " + e.getMessage(), e);
                     }

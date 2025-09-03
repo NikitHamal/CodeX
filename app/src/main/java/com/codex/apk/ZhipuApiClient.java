@@ -155,7 +155,12 @@ public class ZhipuApiClient implements ApiClient {
         requestBody.add("messages", messages);
 
         requestBody.add("params", new JsonObject());
-        requestBody.add("tool_servers", new JsonArray());
+        if (model.getModelId().contains("glm-4") && enabledTools != null && !enabledTools.isEmpty()) {
+            requestBody.add("tools", ToolSpec.toJsonArray(enabledTools));
+            requestBody.addProperty("tool_choice", "auto");
+        } else {
+            requestBody.add("tool_servers", new JsonArray());
+        }
         JsonObject features = new JsonObject();
         features.addProperty("enable_thinking", true);
         requestBody.add("features", features);
@@ -169,17 +174,19 @@ public class ZhipuApiClient implements ApiClient {
 
         try (Response response = httpClient.newCall(request).execute()) {
             if (response.isSuccessful() && response.body() != null) {
-                processZhipuStreamResponse(response, model);
+                processZhipuStreamResponse(response, model, enabledTools);
             } else {
                 if (actionListener != null) actionListener.onAiError("Failed to send message: " + response.message());
             }
         }
     }
 
-    private void processZhipuStreamResponse(Response response, AIModel model) throws IOException {
+    private void processZhipuStreamResponse(Response response, AIModel model, List<ToolSpec> enabledTools) throws IOException {
         StringBuilder answerContent = new StringBuilder();
         StringBuilder thinkingContent = new StringBuilder();
         StringBuilder rawResponse = new StringBuilder();
+        List<ChatMessage.FileActionDetail> proposedFileChanges = new ArrayList<>();
+        StringBuilder toolCallsJson = new StringBuilder();
 
         String line;
         while ((line = response.body().source().readUtf8Line()) != null) {
@@ -194,7 +201,9 @@ public class ZhipuApiClient implements ApiClient {
                         JsonObject dataObj = json.getAsJsonObject("data");
                         String phase = dataObj.has("phase") ? dataObj.get("phase").getAsString() : "";
 
-                        if ("thinking".equals(phase)) {
+                        if (dataObj.has("tool_calls")) {
+                            toolCallsJson.append(dataObj.get("tool_calls").getAsString());
+                        } else if ("thinking".equals(phase)) {
                             if (dataObj.has("delta_content")) {
                                 String delta = dataObj.get("delta_content").getAsString();
                                 thinkingContent.append(extractContentFromHtml(delta));
@@ -207,7 +216,20 @@ public class ZhipuApiClient implements ApiClient {
                                 String editContent = dataObj.get("edit_content").getAsString();
                                 answerContent.append(extractContentFromHtml(editContent));
                             } else if (dataObj.has("delta_content")) {
-                                answerContent.append(dataObj.get("delta_content").getAsString());
+                                String deltaContent = dataObj.get("delta_content").getAsString();
+                                boolean isJsonObject = false;
+                                try {
+                                    com.google.gson.JsonElement element = com.google.gson.JsonParser.parseString(deltaContent);
+                                    if (element.isJsonObject()) {
+                                        isJsonObject = true;
+                                    }
+                                } catch (Exception e) {
+                                    // Not a JSON object.
+                                }
+
+                                if (!isJsonObject) {
+                                    answerContent.append(deltaContent);
+                                }
                             }
                             if (actionListener != null) {
                                 actionListener.onAiStreamUpdate(answerContent.toString(), false);
@@ -219,8 +241,35 @@ public class ZhipuApiClient implements ApiClient {
                 }
             }
         }
+
+        if (toolCallsJson.length() > 0) {
+            try {
+                JsonArray toolCalls = JsonParser.parseString(toolCallsJson.toString()).getAsJsonArray();
+                for (JsonElement toolCallElement : toolCalls) {
+                    JsonObject toolCall = toolCallElement.getAsJsonObject();
+                    if ("function".equals(toolCall.get("type").getAsString())) {
+                        JsonObject function = toolCall.getAsJsonObject("function");
+                        String functionName = function.get("name").getAsString();
+                        JsonObject arguments = new Gson().fromJson(function.get("arguments").getAsString(), JsonObject.class);
+
+                        ChatMessage.FileActionDetail detail = new ChatMessage.FileActionDetail(functionName, null, null, null, null, null, 0, 0, null, null, null);
+                        if (arguments.has("path")) detail.path = arguments.get("path").getAsString();
+                        if (arguments.has("oldPath")) detail.oldPath = arguments.get("oldPath").getAsString();
+                        if (arguments.has("newPath")) detail.newPath = arguments.get("newPath").getAsString();
+                        if (arguments.has("content")) detail.newContent = arguments.get("content").getAsString();
+                        if (arguments.has("search")) detail.search = arguments.get("search").getAsString();
+                        if (arguments.has("replace")) detail.replace = arguments.get("replace").getAsString();
+
+                        proposedFileChanges.add(detail);
+                    }
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Error parsing tool calls: " + toolCallsJson.toString(), e);
+            }
+        }
+
         if (actionListener != null) {
-            actionListener.onAiActionsProcessed(rawResponse.toString(), answerContent.toString(), new ArrayList<>(), new ArrayList<>(), model.getDisplayName());
+            actionListener.onAiActionsProcessed(rawResponse.toString(), answerContent.toString(), new ArrayList<>(), proposedFileChanges, model.getDisplayName());
         }
     }
 

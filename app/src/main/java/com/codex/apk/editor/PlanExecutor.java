@@ -32,10 +32,6 @@ public class PlanExecutor {
     private boolean isExecutingPlan = false;
     private final Deque<String> executedStepSummaries = new ArrayDeque<>();
 
-    private final Handler planWatchdogHandler = new Handler(Looper.getMainLooper());
-    private Runnable planWatchdogRunnable = null;
-    private int planWatchdogForIndex = -1;
-
     public PlanExecutor(EditorActivity activity, AiAssistantManager aiAssistantManager) {
         this.activity = activity;
         this.aiAssistantManager = aiAssistantManager;
@@ -94,7 +90,6 @@ public class PlanExecutor {
                 merged.addAll(fileActions);
                 planMsg.setProposedFileChanges(merged);
                 frag.updateMessage(lastPlanMessagePosition, planMsg);
-                cancelPlanWatchdog();
                 aiAssistantManager.onAiAcceptActions(lastPlanMessagePosition, planMsg);
                 return;
             }
@@ -116,10 +111,9 @@ public class PlanExecutor {
                 }
             } catch (Exception ignored) {}
             planStepRetryCount++;
-            if (planStepRetryCount > 2) {
-                Log.e(TAG, "AI did not produce file ops after 3 prompts; marking step failed and halting.");
+            if (planStepRetryCount > 4) {
+                Log.e(TAG, "AI did not produce file ops after 5 prompts; marking step failed and continuing.");
                 setCurrentRunningPlanStepStatus("failed");
-                cancelPlanWatchdog();
                 planStepRetryCount = 0;
                 // We must update the UI to show the failed state
                 AIChatFragment frag = activity.getAiChatFragment();
@@ -127,7 +121,8 @@ public class PlanExecutor {
                     ChatMessage planMsg = frag.getMessageAt(lastPlanMessagePosition);
                     if (planMsg != null) frag.updateMessage(lastPlanMessagePosition, planMsg);
                 }
-                finalizePlanExecution("Plan failed: AI was unable to produce a valid action.", true);
+                // Don't halt, just move to the next step
+                sendNextPlanStepFollowUp();
             } else {
                 Log.w(TAG, "AI did not return file operations. Retrying step (attempt " + planStepRetryCount + ")");
                 sendNextPlanStepFollowUp();
@@ -142,7 +137,6 @@ public class PlanExecutor {
             ChatMessage planMsg = frag.getMessageAt(lastPlanMessagePosition);
             if (planMsg != null) frag.updateMessage(lastPlanMessagePosition, planMsg);
         }
-        cancelPlanWatchdog();
         sendNextPlanStepFollowUp();
     }
 
@@ -186,41 +180,6 @@ public class PlanExecutor {
         }
     }
 
-    private void schedulePlanWatchdog(final int indexFor, long timeoutMs) {
-        cancelPlanWatchdog();
-        planWatchdogForIndex = indexFor;
-        planWatchdogRunnable = () -> {
-            if (!isExecutingPlan) return;
-            if (lastPlanMessagePosition == null) return;
-            try {
-                AIChatFragment frag = activity.getAiChatFragment();
-                if (frag == null) return;
-                ChatMessage pm = frag.getMessageAt(lastPlanMessagePosition);
-                if (pm == null || pm.getPlanSteps() == null) return;
-                if (planProgressIndex == indexFor && indexFor < pm.getPlanSteps().size()) {
-                    ChatMessage.PlanStep ps = pm.getPlanSteps().get(indexFor);
-                    if (ps != null && "running".equals(ps.status)) {
-                        Log.w(TAG, "Watchdog timeout for step index=" + indexFor + "; marking failed and halting.");
-                        ps.status = "failed";
-                        frag.updateMessage(lastPlanMessagePosition, pm);
-                        finalizePlanExecution("Plan failed: Step timed out.", true);
-                    }
-                }
-            } catch (Exception e) {
-                Log.e(TAG, "Watchdog error", e);
-            }
-        };
-        planWatchdogHandler.postDelayed(planWatchdogRunnable, Math.max(1, timeoutMs));
-    }
-
-    private void cancelPlanWatchdog() {
-        if (planWatchdogRunnable != null) {
-            planWatchdogHandler.removeCallbacks(planWatchdogRunnable);
-            planWatchdogRunnable = null;
-        }
-        planWatchdogForIndex = -1;
-    }
-
     public void finalizePlanExecution(String toastMessage, boolean sanitizeDanglingRunning) {
         AIChatFragment frag = activity.getAiChatFragment();
         if (sanitizeDanglingRunning && frag != null && lastPlanMessagePosition != null) {
@@ -233,7 +192,6 @@ public class PlanExecutor {
                 if (changed) { frag.updateMessage(lastPlanMessagePosition, pm); }
             }
         }
-        cancelPlanWatchdog();
         isExecutingPlan = false;
         if (frag != null) { frag.hideThinkingMessage(); }
         aiAssistantManager.setCurrentStreamingMessagePosition(null);
@@ -284,10 +242,6 @@ public class PlanExecutor {
                 if (pm != null) activity.getAiChatFragment().updateMessage(lastPlanMessagePosition, pm);
             }
         });
-
-        cancelPlanWatchdog();
-        final int runningIndex = planProgressIndex;
-        schedulePlanWatchdog(runningIndex, 30_000);
 
         aiAssistantManager.sendAiPrompt(prompt.toString(), new ArrayList<>(), activity.getQwenState(), activity.getActiveTab());
     }

@@ -21,18 +21,18 @@
     </style>
 
     <!-- MainActivity Specific Styles (Dark) -->
-    <style name="MainActivity.Background">
-        <item name="android:background">@color/surface_container_lowest</item>
-    </style>
-
-    <style name="Widget.App.CardView.Project" parent="Widget.Material3.CardView.Outlined">
+    <style name="Widget_App_CardView_Project" parent="Widget.Material3.CardView.Outlined">
         <item name="cardBackgroundColor">@color/surface_container_low</item>
         <item name="strokeColor">@color/outline</item>
         <item name="strokeWidth">1dp</item>
     </style>
 
-    <style name="Widget.App.ProjectIcon">
+    <style name="Widget_App_ProjectIcon">
         <item name="android:background">@drawable/circular_button_background</item>
         <item name="android:backgroundTint">@color/primary_container</item>
+    </style>
+
+    <style name="AppTheme.MainActivity" parent="AppTheme">
+        <item name="android:colorBackground">@color/surface_container_lowest</item>
     </style>
 </resources>

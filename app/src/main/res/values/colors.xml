@@ -99,4 +99,5 @@
     <color name="chip_background_selected">#007FAC</color>
     <color name="chip_text_selected">#FFFFFF</color>
 
+    <color name="main_activity_background">#F8F9FA</color>
 </resources>

@@ -38,45 +38,31 @@
             android:orientation="vertical"
             android:padding="16dp">
 
-            <!-- Welcome Section -->
-            <com.google.android.material.card.MaterialCardView
+            <!-- Recent Projects Section -->
+            <LinearLayout
+                android:id="@+id/layout_recent_projects"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="24dp"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="2dp"
-                app:strokeColor="@color/outline"
-                app:strokeWidth="1dp"
-                app:cardBackgroundColor="@color/surface">
+                android:orientation="vertical"
+                android:layout_marginBottom="24dp">
 
-                <LinearLayout
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Recent Projects"
+                    android:textAppearance="@style/TextAppearance.Material3.TitleLarge"
+                    android:textColor="@color/on_surface"
+                    android:layout_marginBottom="16dp"/>
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/listview_recent_projects"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="20dp">
+                    android:clipToPadding="false"
+                    android:orientation="horizontal"/>
+            </LinearLayout>
 
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:text="Welcome to CodeX"
-                        android:textAppearance="@style/TextAppearance.Material3.HeadlineMedium"
-                        android:textColor="@color/on_surface"
-                        android:gravity="center"
-                        android:layout_marginBottom="8dp" />
-
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:text="AI-Powered Code Editor • Create, Import, and Manage Projects"
-                        android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
-                        android:textColor="@color/secondary_text"
-                        android:gravity="center" />
-
-                </LinearLayout>
-
-            </com.google.android.material.card.MaterialCardView>
-
-            <!-- Projects Section -->
+            <!-- All Projects Section -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -94,19 +80,19 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Recent Projects"
+                        android:text="All Projects"
                         android:textAppearance="@style/TextAppearance.Material3.TitleLarge"
                         android:textColor="@color/on_surface" />
 
                     <com.google.android.material.button.MaterialButton
-                        android:id="@+id/button_refresh_projects"
+                        android:id="@+id/button_filter_projects"
                         android:layout_width="wrap_content"
                         android:layout_height="40dp"
                         android:minWidth="0dp"
-                        app:icon="@drawable/icon_refresh_round"
+                        app:icon="@drawable/ic_filter"
                         app:iconSize="18dp"
                         app:cornerRadius="20dp"
-                        android:contentDescription="Refresh projects"
+                        android:contentDescription="Filter projects"
                         style="@style/Widget.Material3.Button.TextButton.Icon" />
 
                 </LinearLayout>

@@ -98,4 +98,8 @@
     <!-- Chip colors for file tree filters -->
     <color name="chip_background_selected">#007FAC</color>
     <color name="chip_text_selected">#FFFFFF</color>
+
+    <!-- New UI Colors -->
+    <color name="project_icon_bg">#E0E8F0</color>
+    <color name="project_card_bg">#F8F9FA</color>
 </resources>

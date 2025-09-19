@@ -22,15 +22,20 @@ import com.google.android.material.textfield.TextInputEditText;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.stream.Collectors;
 
 public class MainActivity extends AppCompatActivity {
 
     private RecyclerView projectsRecyclerView;
+    private RecyclerView recentProjectsRecyclerView;
     private TextView textEmptyProjects;
     private LinearLayout layoutEmptyState;
+    private LinearLayout layoutRecentProjects;
 
     private ArrayList<HashMap<String, Object>> projectsList;
+    private ArrayList<HashMap<String, Object>> recentProjectsList;
     private ProjectsAdapter projectsAdapter;
+    private RecentProjectsAdapter recentProjectsAdapter;
     private ExtendedFloatingActionButton fabQuickActions;
     private ExtendedFloatingActionButton fabDeleteSelection;
 
@@ -49,12 +54,16 @@ public class MainActivity extends AppCompatActivity {
         MaterialToolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
         projectsRecyclerView = findViewById(R.id.listview_projects);
+        recentProjectsRecyclerView = findViewById(R.id.listview_recent_projects);
         textEmptyProjects = findViewById(R.id.text_empty_projects);
         layoutEmptyState = findViewById(R.id.layout_empty_state);
+        layoutRecentProjects = findViewById(R.id.layout_recent_projects);
 
         // Initialize Managers
         projectsList = new ArrayList<>();
+        recentProjectsList = new ArrayList<>();
         projectsAdapter = new ProjectsAdapter(this, projectsList, this);
+        recentProjectsAdapter = new RecentProjectsAdapter(this, recentProjectsList, this);
         projectManager = new ProjectManager(this, projectsList, projectsAdapter);
         permissionManager = new PermissionManager(this);
         importExportManager = new ProjectImportExportManager(this);
@@ -65,8 +74,11 @@ public class MainActivity extends AppCompatActivity {
         projectsRecyclerView.setAdapter(projectsAdapter);
         projectsRecyclerView.setNestedScrollingEnabled(false);
 
+        recentProjectsRecyclerView.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false));
+        recentProjectsRecyclerView.setAdapter(recentProjectsAdapter);
+
         // Setup Listeners
-        findViewById(R.id.button_refresh_projects).setOnClickListener(v -> refreshProjectsList());
+        findViewById(R.id.button_filter_projects).setOnClickListener(v -> showFilterDialog());
         fabQuickActions = findViewById(R.id.fab_quick_actions);
         fabDeleteSelection = findViewById(R.id.fab_delete_selection);
         fabQuickActions.setOnClickListener(v -> showQuickActionsMenu());
@@ -91,7 +103,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        projectManager.loadProjectsList();
+        loadProjects();
     }
 
     @Override
@@ -176,18 +188,36 @@ public class MainActivity extends AppCompatActivity {
         if (projectsList.isEmpty() && hasPermission) {
             projectsRecyclerView.setVisibility(View.GONE);
             layoutEmptyState.setVisibility(View.VISIBLE);
+            layoutRecentProjects.setVisibility(View.GONE);
         } else if (!hasPermission) {
             projectsRecyclerView.setVisibility(View.GONE);
             layoutEmptyState.setVisibility(View.VISIBLE);
             textEmptyProjects.setText(getString(R.string.storage_permission_required));
+            layoutRecentProjects.setVisibility(View.GONE);
         } else {
             projectsRecyclerView.setVisibility(View.VISIBLE);
             layoutEmptyState.setVisibility(View.GONE);
+            if (recentProjectsList.isEmpty()) {
+                layoutRecentProjects.setVisibility(View.GONE);
+            } else {
+                layoutRecentProjects.setVisibility(View.VISIBLE);
+            }
         }
     }
 
-    private void refreshProjectsList() {
+    private void loadProjects() {
         projectManager.loadProjectsList();
+        recentProjectsList.clear();
+        if (projectsList.size() > 5) {
+            recentProjectsList.addAll(projectsList.subList(0, 5));
+        } else {
+            recentProjectsList.addAll(projectsList);
+        }
+        recentProjectsAdapter.notifyDataSetChanged();
+    }
+
+    private void showFilterDialog() {
+        Toast.makeText(this, "Filter button clicked", Toast.LENGTH_SHORT).show();
     }
 
     private void showQuickActionsMenu() {
@@ -302,6 +332,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void onPermissionsGranted() {
-        projectManager.loadProjectsList();
+        loadProjects();
     }
 }

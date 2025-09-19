@@ -5,9 +5,12 @@
     android:id="@+id/card_project"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginBottom="8dp"
-    app:cardCornerRadius="8dp"
-    app:cardBackgroundColor="@color/surface_container">
+    android:layout_marginBottom="12dp"
+    app:cardCornerRadius="12dp"
+    app:cardElevation="0dp"
+    app:cardBackgroundColor="@color/project_card_bg"
+    app:strokeWidth="1dp"
+    app:strokeColor="@color/outline">
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
@@ -16,21 +19,21 @@
 
         <ImageView
             android:id="@+id/image_project_icon"
-            android:layout_width="32dp"
-            android:layout_height="32dp"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
             android:src="@drawable/ic_folder_code"
-            android:contentDescription="Project folder"
+            android:background="@drawable/circular_button_background"
+            app:tint="@color/primary"
+            android:padding="8dp"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:tint="@color/primary" />
+            app:layout_constraintBottom_toBottomOf="parent"/>
 
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:orientation="vertical"
             android:layout_marginStart="16dp"
-            android:layout_marginEnd="16dp"
             app:layout_constraintStart_toEndOf="@id/image_project_icon"
             app:layout_constraintEnd_toStartOf="@id/end_action_container"
             app:layout_constraintTop_toTopOf="parent"
@@ -38,55 +41,49 @@
 
             <TextView
                 android:id="@+id/text_project_name"
-                android:layout_width="match_parent"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Project Name"
-                android:textSize="14sp"
-                android:textColor="@color/on_surface"
-                android:textStyle="bold"
+                android:textAppearance="?attr/textAppearanceTitleMedium"
+                android:textColor="?attr/colorOnSurface"
                 android:maxLines="1"
                 android:ellipsize="end" />
 
             <TextView
                 android:id="@+id/text_project_date"
-                android:layout_width="match_parent"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Last modified: May 19, 2025"
-                android:textSize="12sp"
-                android:textColor="@color/on_surface_variant"
+                android:textAppearance="?attr/textAppearanceBodyMedium"
+                android:textColor="?attr/colorOnSurfaceVariant"
                 android:maxLines="1"
                 android:ellipsize="end" />
 
         </LinearLayout>
 
-        <!-- End action container hosts either the more icon or the checkbox in the same slot -->
         <FrameLayout
             android:id="@+id/end_action_container"
-            android:layout_width="24dp"
-            android:layout_height="24dp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintBottom_toBottomOf="parent">
 
             <ImageView
                 android:id="@+id/image_more"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
                 android:src="@drawable/ic_more_vert"
                 android:contentDescription="More options"
-                android:background="@android:color/transparent"
-                android:padding="4dp"
-                android:tint="@color/on_surface_variant" />
+                android:tint="?attr/colorOnSurfaceVariant"/>
 
             <com.google.android.material.checkbox.MaterialCheckBox
                 android:id="@+id/checkbox_select"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:visibility="gone"
-                app:useMaterialThemeColors="true" />
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:visibility="gone"/>
 
         </FrameLayout>
 
     </androidx.constraintlayout.widget.ConstraintLayout>
-
 </com.google.android.material.card.MaterialCardView>

@@ -21,8 +21,11 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.textfield.TextInputEditText;
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.stream.Collectors;
+import android.widget.RadioGroup;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -125,7 +128,7 @@ public class MainActivity extends AppCompatActivity {
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == PermissionManager.REQUEST_CODE_STORAGE_PERMISSION) {
-            projectManager.loadProjectsList();
+            loadProjects();
         }
     }
 
@@ -143,7 +146,7 @@ public class MainActivity extends AppCompatActivity {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == PermissionManager.REQUEST_CODE_MANAGE_EXTERNAL_STORAGE) {
             if (permissionManager.hasStoragePermission()) {
-                projectManager.loadProjectsList();
+                loadProjects();
             }
         } else if (requestCode == ProjectImportExportManager.REQUEST_CODE_PICK_ZIP_FILE && resultCode == RESULT_OK && data != null) {
             Uri uri = data.getData();
@@ -166,7 +169,7 @@ public class MainActivity extends AppCompatActivity {
                         }
                     }
                     projectsAdapter.exitSelectionMode();
-                    projectManager.loadProjectsList();
+                    loadProjects();
                 })
                 .setNegativeButton(getString(R.string.cancel), null)
                 .show();
@@ -205,19 +208,51 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    private int currentSortOption = R.id.radio_date_newest;
+
     private void loadProjects() {
         projectManager.loadProjectsList();
+        sortProjects();
         recentProjectsList.clear();
         if (projectsList.size() > 5) {
             recentProjectsList.addAll(projectsList.subList(0, 5));
         } else {
             recentProjectsList.addAll(projectsList);
         }
+        projectsAdapter.notifyDataSetChanged();
         recentProjectsAdapter.notifyDataSetChanged();
+        updateEmptyStateVisibility();
     }
 
     private void showFilterDialog() {
-        Toast.makeText(this, "Filter button clicked", Toast.LENGTH_SHORT).show();
+        View dialogView = getLayoutInflater().inflate(R.layout.dialog_filter_projects, null);
+        RadioGroup radioGroup = dialogView.findViewById(R.id.radiogroup_sort_options);
+        radioGroup.check(currentSortOption);
+
+        new MaterialAlertDialogBuilder(this)
+                .setTitle("Sort Projects")
+                .setView(dialogView)
+                .setPositiveButton("Apply", (dialog, which) -> {
+                    int selectedId = radioGroup.getCheckedRadioButtonId();
+                    currentSortOption = selectedId;
+                    loadProjects();
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void sortProjects() {
+        Comparator<HashMap<String, Object>> comparator = null;
+        if (currentSortOption == R.id.radio_name_asc) {
+            comparator = (p1, p2) -> ((String) p1.get("name")).compareToIgnoreCase((String) p2.get("name"));
+        } else if (currentSortOption == R.id.radio_name_desc) {
+            comparator = (p1, p2) -> ((String) p2.get("name")).compareToIgnoreCase((String) p1.get("name"));
+        } else if (currentSortOption == R.id.radio_date_oldest) {
+            comparator = Comparator.comparing(p -> (String) p.get("lastModified"));
+        } else { // Default to newest
+            comparator = (p1, p2) -> ((String) p2.get("lastModified")).compareTo((String) p1.get("lastModified"));
+        }
+        Collections.sort(projectsList, comparator);
     }
 
     private void showQuickActionsMenu() {
@@ -297,7 +332,7 @@ public class MainActivity extends AppCompatActivity {
                         Toast.makeText(MainActivity.this, 
                             "Repository cloned successfully: " + projectName, Toast.LENGTH_LONG).show();
                         dialog.dismiss();
-                        projectManager.loadProjectsList();
+                        loadProjects();
                     });
                 }
 

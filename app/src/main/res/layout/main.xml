@@ -90,7 +90,7 @@
                         android:layout_height="40dp"
                         android:minWidth="0dp"
                         app:icon="@drawable/ic_filter"
-                        app:iconSize="18dp"
+                        app:iconSize="24dp"
                         app:cornerRadius="20dp"
                         android:contentDescription="Filter projects"
                         style="@style/Widget.Material3.Button.TextButton.Icon" />

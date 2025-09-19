@@ -17,16 +17,22 @@
         android:orientation="vertical"
         android:padding="16dp">
 
-        <ImageView
-            android:id="@+id/image_project_icon"
+        <FrameLayout
             android:layout_width="40dp"
             android:layout_height="40dp"
-            android:src="@drawable/ic_folder_code"
             android:background="@drawable/circular_button_background"
-            app:tint="@color/primary"
-            android:padding="8dp"
+            android:backgroundTint="@color/project_icon_bg"
             android:layout_gravity="center_horizontal"
-            android:layout_marginBottom="8dp"/>
+            android:layout_marginBottom="8dp">
+
+            <ImageView
+                android:id="@+id/image_project_icon"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:src="@drawable/ic_folder_code"
+                android:layout_gravity="center"
+                android:tint="@color/primary"/>
+        </FrameLayout>
 
         <TextView
             android:id="@+id/text_project_name"

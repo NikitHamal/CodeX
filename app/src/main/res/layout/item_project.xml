@@ -3,14 +3,10 @@
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/card_project"
+    style="@style/Widget.App.CardView.Project"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginBottom="12dp"
-    app:cardCornerRadius="12dp"
-    app:cardElevation="0dp"
-    app:cardBackgroundColor="@color/project_card_bg"
-    app:strokeWidth="1dp"
-    app:strokeColor="@color/outline">
+    android:layout_marginBottom="12dp">
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
@@ -19,10 +15,9 @@
 
         <FrameLayout
             android:id="@+id/icon_container"
+            style="@style/Widget.App.ProjectIcon"
             android:layout_width="40dp"
             android:layout_height="40dp"
-            android:background="@drawable/circular_button_background"
-            android:backgroundTint="@color/project_icon_bg"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintBottom_toBottomOf="parent">

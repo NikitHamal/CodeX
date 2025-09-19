@@ -124,5 +124,21 @@
     <style name="TextAppearance.App.Chip" parent="TextAppearance.Material3.LabelLarge">
         <item name="android:fontFamily">@font/poppins_reg</item>
     </style>
+
+    <!-- MainActivity Specific Styles -->
+    <style name="MainActivity.Background">
+        <item name="android:background">#F8F9FA</item>
+    </style>
+
+    <style name="Widget.App.CardView.Project" parent="Widget.App.CardView.Outlined">
+        <item name="cardBackgroundColor">#FFFFFF</item>
+        <item name="strokeColor">#E0E0E0</item>
+        <item name="strokeWidth">1dp</item>
+    </style>
+
+    <style name="Widget.App.ProjectIcon">
+        <item name="android:background">@drawable/circular_button_background</item>
+        <item name="android:backgroundTint">#DDEBFF</item>
+    </style>
     
 </resources>

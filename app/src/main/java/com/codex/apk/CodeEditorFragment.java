@@ -105,6 +105,11 @@ public class CodeEditorFragment extends Fragment implements SimpleSoraTabAdapter
 
         new TabLayoutMediator(tabLayout, fileViewPager, (tab, position) -> {
             tab.setText(openTabs.get(position).getFileName());
+            tab.view.setOnClickListener(v -> {
+                if (listener != null) {
+                    listener.showTabOptionsMenu(v, position);
+                }
+            });
             // This is a workaround to get the TextView and set its properties,
             // as the default tab layout doesn't expose it directly.
             tab.view.addOnLayoutChangeListener(new View.OnLayoutChangeListener() {
@@ -189,6 +194,16 @@ public class CodeEditorFragment extends Fragment implements SimpleSoraTabAdapter
         if (tabAdapter != null) {
             tabAdapter.notifyItemRemoved(position);
             tabAdapter.notifyItemRangeChanged(position, listener.getOpenTabsList().size());
+        }
+    }
+
+    /**
+     * Notifies the TabAdapter that an item at a specific position needs to be refreshed.
+     * @param position The position of the tab to refresh.
+     */
+    public void refreshFileTab(int position) {
+        if (tabAdapter != null) {
+            tabAdapter.notifyItemChanged(position);
         }
     }
 

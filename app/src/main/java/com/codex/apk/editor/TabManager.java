@@ -176,6 +176,43 @@ public class TabManager {
         }
     }
 
+    /**
+     * Refreshes the content of a single tab from the file system.
+     * @param position The position of the tab to refresh.
+     */
+    public void refreshTab(int position) {
+        if (position < 0 || position >= openTabs.size()) {
+            return;
+        }
+
+        TabItem tabItem = openTabs.get(position);
+        File file = tabItem.getFile();
+
+        // Don't refresh diff tabs
+        if (file.getName().startsWith("DIFF_")) {
+            activity.showToast("Cannot refresh a diff tab.");
+            return;
+        }
+
+        if (!file.exists()) {
+            activity.showToast("File no longer exists.");
+            // Optionally, close the tab
+            removeTabAtPosition(position);
+            return;
+        }
+
+        try {
+            String newContent = fileManager.readFileContent(file);
+            tabItem.setContent(newContent);
+            tabItem.setModified(false); // Content is now synced with the file
+            activity.getCodeEditorFragment().refreshFileTab(position); // Refresh the specific tab in the adapter
+            activity.showToast("Tab refreshed.");
+        } catch (IOException e) {
+            Log.e(TAG, "Error refreshing tab: " + file.getAbsolutePath(), e);
+            activity.showToast("Error refreshing tab: " + e.getMessage());
+        }
+    }
+
     public void saveFile(TabItem tabItem, boolean showToast) {
         if (tabItem == null || tabItem.getFile() == null) {
             Log.e(TAG, "Cannot save, TabItem or its file is null");
@@ -389,7 +426,10 @@ public class TabManager {
 
         popup.setOnMenuItemClickListener(item -> {
             int id = item.getItemId();
-            if (id == R.id.action_close_tab) {
+            if (id == R.id.action_refresh_tab) {
+                refreshTab(position);
+                return true;
+            } else if (id == R.id.action_close_tab) {
                 closeTab(position, true);
                 return true;
             } else if (id == R.id.action_close_other_tabs) {

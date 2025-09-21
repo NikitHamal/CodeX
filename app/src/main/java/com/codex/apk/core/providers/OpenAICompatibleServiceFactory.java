@@ -60,9 +60,6 @@ public class OpenAICompatibleServiceFactory implements AIServiceFactory {
                     result.addError("API key is required for DeepInfra");
                 }
                 break;
-            case AIRFORCE:
-                // API Airforce might not require API key for some endpoints
-                break;
             case FREE:
                 // Free endpoints typically don't require API keys
                 break;
@@ -92,13 +89,6 @@ public class OpenAICompatibleServiceFactory implements AIServiceFactory {
                     "High-performance AI inference platform with OpenAI-compatible API",
                     capabilities
                 );
-            case AIRFORCE:
-                return new ProviderInfo(
-                    provider,
-                    "API Airforce",
-                    "Free OpenAI-compatible API aggregator service",
-                    capabilities
-                );
             case FREE:
                 return new ProviderInfo(
                     provider,
@@ -126,17 +116,6 @@ public class OpenAICompatibleServiceFactory implements AIServiceFactory {
                     true,  // streaming
                     false, // vision
                     true,  // tools
-                    false, // web search
-                    false, // thinking
-                    false, // multimodal
-                    131072, // max tokens
-                    supportedFormats
-                );
-            case AIRFORCE:
-                return new ProviderCapabilities(
-                    true,  // streaming
-                    false, // vision
-                    false, // tools
                     false, // web search
                     false, // thinking
                     false, // multimodal
@@ -178,7 +157,6 @@ public class OpenAICompatibleServiceFactory implements AIServiceFactory {
     public static OpenAICompatibleServiceFactory create(AIProvider provider) {
         switch (provider) {
             case DEEPINFRA:
-            case AIRFORCE:
             case FREE:
                 return new OpenAICompatibleServiceFactory(provider);
             default:
@@ -194,7 +172,6 @@ public class OpenAICompatibleServiceFactory implements AIServiceFactory {
     public static Set<AIProvider> getSupportedProviders() {
         Set<AIProvider> supported = new HashSet<>();
         supported.add(AIProvider.DEEPINFRA);
-        supported.add(AIProvider.AIRFORCE);
         supported.add(AIProvider.FREE);
         return supported;
     }

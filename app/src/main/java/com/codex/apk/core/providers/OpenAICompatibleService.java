@@ -244,9 +244,6 @@ public class OpenAICompatibleService extends BaseAIService {
         AIProvider provider = configuration.getProviderType();
         
         switch (provider) {
-            case AIRFORCE:
-                builder.addHeader("User-Agent", "CodeX-Android/1.0");
-                break;
             case DEEPINFRA:
                 builder.addHeader("User-Agent", "CodeX-Android/1.0");
                 break;

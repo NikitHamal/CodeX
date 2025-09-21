@@ -119,7 +119,6 @@ public class ProviderConfig {
                 // Qwen might require specific configuration
                 break;
             case DEEPINFRA:
-            case AIRFORCE:
                 if (!hasBaseUrl()) {
                     result.addError("OpenAI-compatible providers require base URL");
                 }
@@ -269,9 +268,6 @@ public class ProviderConfig {
                 break;
             case DEEPINFRA:
                 builder.withBaseUrl("https://api.deepinfra.com/v1/openai/chat/completions");
-                break;
-            case AIRFORCE:
-                builder.withBaseUrl("https://api.airforce.com/v1/chat/completions");
                 break;
             case FREE:
                 builder.withBaseUrl("https://text.pollinations.ai/openai");

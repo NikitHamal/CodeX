@@ -416,14 +416,6 @@ public class TabManager {
         PopupMenu popup = new PopupMenu(new android.view.ContextThemeWrapper(activity, R.style.TabPopupMenu), anchorView);
         popup.getMenuInflater().inflate(R.menu.menu_tab_options, popup.getMenu());
 
-        // Disable save option for diff tabs
-        if (openTabs.get(position).getFile().getName().startsWith("DIFF_")) {
-            MenuItem saveItem = popup.getMenu().findItem(R.id.action_save_tab);
-            if (saveItem != null) {
-                saveItem.setVisible(false);
-            }
-        }
-
         popup.setOnMenuItemClickListener(item -> {
             int id = item.getItemId();
             if (id == R.id.action_refresh_tab) {
@@ -437,9 +429,6 @@ public class TabManager {
                 return true;
             } else if (id == R.id.action_close_all_tabs) {
                 closeAllTabs(true);
-                return true;
-            } else if (id == R.id.action_save_tab) {
-                saveFile(openTabs.get(position));
                 return true;
             }
             return false;
@@ -512,6 +501,75 @@ public class TabManager {
         if (tabsChanged) {
             activity.getCodeEditorFragment().refreshAllFileTabs();
             activity.getCodeEditorFragment().refreshFileTabLayout();
+        }
+    }
+    /**
+     * Refreshes the content of open tabs after an AI action,
+     * checking for file existence, content changes, and path updates.
+     * This method is now called *after* user approval.
+     */
+    public void refreshOpenTabsAfterAi() {
+        boolean tabsChanged = false;
+        List<TabItem> toRemove = new ArrayList<>();
+        List<TabItem> currentOpenTabs = new ArrayList<>(openTabs);
+
+        if (fileManager == null || activity.getProjectDirectory() == null) {
+            Log.e(TAG, "refreshOpenTabsAfterAi: FileManager or projectDir not initialized!");
+            activity.showToast("Error refreshing tabs after AI.");
+            return;
+        }
+
+        for (TabItem tab : currentOpenTabs) {
+            // Skip diff tabs as they are not real files and don't need content refresh from disk
+            if (tab.getFile().getName().startsWith("DIFF_")) {
+                continue;
+            }
+
+            File tabFile = tab.getFile();
+            String relativePath = fileManager.getRelativePath(tabFile, activity.getProjectDirectory());
+            if (relativePath == null) {
+                Log.e(TAG, "Could not determine relative path for tab: " + tabFile.getAbsolutePath());
+                toRemove.add(tab);
+                tabsChanged = true;
+                continue;
+            }
+            File currentFileInProjectDir = new File(activity.getProjectDirectory(), relativePath);
+
+            if (!currentFileInProjectDir.exists()) {
+                Log.d(TAG, "Tab file " + currentFileInProjectDir.getPath() + " no longer exists. Removing tab.");
+                toRemove.add(tab);
+                tabsChanged = true;
+            } else {
+                try {
+                    String newContent = fileManager.readFileContent(currentFileInProjectDir);
+                    if (!newContent.equals(tab.getContent())) {
+                        tab.setContent(newContent);
+                        tab.setModified(false); // Mark as not modified as content is synced
+                        tabsChanged = true;
+                        Log.d(TAG, "Tab content for " + tab.getFileName() + " updated by AI.");
+                    }
+                    // Check if the file path itself changed (e.g., due to rename)
+                    if (!tab.getFile().getAbsolutePath().equals(currentFileInProjectDir.getAbsolutePath())) {
+                        Log.d(TAG, "Tab file path updated for " + tab.getFileName() + " from " + tab.getFile().getAbsolutePath() + " to " + currentFileInProjectDir.getAbsolutePath());
+                        tab.setFile(currentFileInProjectDir);
+                        tabsChanged = true;
+                    }
+
+                } catch (IOException e) {
+                    Log.e(TAG, "Error reloading tab content after AI action: " + currentFileInProjectDir.getName(), e);
+                    toRemove.add(tab); // Remove tab if content cannot be reloaded
+                    tabsChanged = true;
+                }
+            }
+        }
+
+        openTabs.removeAll(toRemove);
+
+        if (tabsChanged) {
+            if (activity.getCodeEditorFragment() != null) {
+                activity.getCodeEditorFragment().refreshAllFileTabs();
+                activity.getCodeEditorFragment().refreshFileTabLayout();
+            }
         }
     }
 }

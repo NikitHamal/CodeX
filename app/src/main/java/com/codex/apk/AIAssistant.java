@@ -41,7 +41,6 @@ public class AIAssistant {
 
     private void initializeApiClients(Context context, File projectDir) {
         apiClients.put(AIProvider.ALIBABA, new QwenApiClient(context, actionListener, projectDir));
-        apiClients.put(AIProvider.AIRFORCE, new ApiAirforceApiClient(context, actionListener));
         apiClients.put(AIProvider.DEEPINFRA, new DeepInfraApiClient(context, actionListener));
         apiClients.put(AIProvider.FREE, new AnyProviderApiClient(context, actionListener));
         apiClients.put(AIProvider.COOKIES, new GeminiFreeApiClient(context, actionListener));

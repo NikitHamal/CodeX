@@ -140,5 +140,9 @@
     <style name="AppTheme.MainActivity" parent="AppTheme">
         <item name="android:colorBackground">@color/main_activity_background</item>
     </style>
+
+    <style name="TabPopupMenu" parent="Widget.Material3.PopupMenu">
+        <item name="android:textAppearance">@style/TextAppearance.Material3.BodySmall</item>
+    </style>
     
 </resources>

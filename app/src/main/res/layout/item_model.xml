@@ -27,7 +27,7 @@
                 android:id="@+id/text_model_name"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textAppearance="@style/TextAppearance.Material3.BodyLarge"
+                android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
                 android:textColor="@color/on_surface"
                 tools:text="Gemini Pro" />
 
@@ -58,6 +58,8 @@
     <CheckBox
         android:id="@+id/checkbox_model_enabled"
         android:layout_width="wrap_content"
-        android:layout_height="wrap_content" />
+        android:layout_height="wrap_content"
+        android:scaleX="0.8"
+        android:scaleY="0.8" />
 
 </LinearLayout>

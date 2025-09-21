@@ -46,9 +46,6 @@ public class AIModel {
             new AIModel("qwen2.5-coder-32b-instruct", "Qwen2.5-Coder-32B-Instruct", AIProvider.ALIBABA, new ModelCapabilities(true, true, true, true, true, false, true, 131072, 8192)),
             new AIModel("qwen2.5-72b-instruct", "Qwen2.5-72B-Instruct", AIProvider.ALIBABA, new ModelCapabilities(true, true, true, true, true, false, true, 131072, 8192)),
 
-            // Api.Airforce Provider (OpenAI-compatible free endpoint)
-            new AIModel("openai", "Api.Airforce OpenAI", AIProvider.AIRFORCE, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)),
-
             // DeepInfra (OpenAI-compatible chat)
             new AIModel("deepseek-v3", "DeepInfra DeepSeek V3", AIProvider.DEEPINFRA, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)),
 

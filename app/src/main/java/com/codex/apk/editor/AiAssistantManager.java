@@ -166,10 +166,8 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                         if (aiChatFragment != null) {
                             aiChatFragment.updateMessage(messagePosition, message);
                         }
-                        // Refresh each changed file
-                        for (File f : changedFiles) {
-                            activity.refreshFile(f);
-                        }
+                        // Refresh tabs and file tree
+                        activity.tabManager.refreshOpenTabsAfterAi();
                         activity.loadFileTree();
                     });
                 } catch (Exception e) {

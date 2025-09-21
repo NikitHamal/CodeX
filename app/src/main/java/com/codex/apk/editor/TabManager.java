@@ -413,7 +413,7 @@ public class TabManager {
     public void showTabOptionsMenu(View anchorView, int position) {
         if (position < 0 || position >= openTabs.size()) return;
 
-        PopupMenu popup = new PopupMenu(activity, anchorView);
+        PopupMenu popup = new PopupMenu(new android.view.ContextThemeWrapper(activity, R.style.TabPopupMenu), anchorView);
         popup.getMenuInflater().inflate(R.menu.menu_tab_options, popup.getMenu());
 
         // Disable save option for diff tabs

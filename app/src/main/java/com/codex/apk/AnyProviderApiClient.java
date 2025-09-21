@@ -252,87 +252,8 @@ public class AnyProviderApiClient implements ApiClient {
 
     @Override
     public List<AIModel> fetchModels() {
-        List<AIModel> models = new ArrayList<>();
-        // Try to fetch text models from Pollinations; fall back to a minimal set
-        try {
-            OkHttpClient client = httpClient.newBuilder().readTimeout(30, TimeUnit.SECONDS).build();
-            Request req = new Request.Builder().url("https://text.pollinations.ai/models")
-                    .addHeader("user-agent", "Mozilla/5.0 (Linux; Android) CodeX-Android/1.0")
-                    .build();
-            try (Response r = client.newCall(req).execute()) {
-                if (r.isSuccessful() && r.body() != null) {
-                    String body = new String(r.body().bytes(), StandardCharsets.UTF_8);
-                    // Persist raw models JSON for FREE in SharedPreferences for quick reuse
-                    try {
-                        SharedPreferences sp = context.getSharedPreferences("ai_free_models", Context.MODE_PRIVATE);
-                        sp.edit()
-                          .putString("pollinations_models_json", body)
-                          .putLong("pollinations_models_ts", System.currentTimeMillis())
-                          .apply();
-                    } catch (Exception ignore) {}
-                    JsonElement el = JsonParser.parseString(body);
-                    if (el.isJsonArray()) {
-                        for (JsonElement e : el.getAsJsonArray()) {
-                            if (!e.isJsonObject()) continue;
-                            JsonObject obj = e.getAsJsonObject();
-                            String name = obj.has("name") && !obj.get("name").isJsonNull() ? obj.get("name").getAsString() : null;
-                            if (name == null || name.isEmpty()) continue;
-                            String display = toDisplay(name);
-
-                            boolean reasoning = obj.has("reasoning") && !obj.get("reasoning").isJsonNull() && obj.get("reasoning").getAsBoolean();
-                            boolean tools = obj.has("tools") && !obj.get("tools").isJsonNull() && obj.get("tools").getAsBoolean();
-                            boolean vision = obj.has("vision") && !obj.get("vision").isJsonNull() && obj.get("vision").getAsBoolean();
-                            boolean audio = obj.has("audio") && !obj.get("audio").isJsonNull() && obj.get("audio").getAsBoolean();
-
-                            // Derive vision/audio from input_modalities if flags are missing
-                            if (!vision && obj.has("input_modalities") && obj.get("input_modalities").isJsonArray()) {
-                                for (JsonElement im : obj.getAsJsonArray("input_modalities")) {
-                                    if (im.isJsonPrimitive()) {
-                                        String s = im.getAsString();
-                                        if ("image".equalsIgnoreCase(s)) { vision = true; }
-                                        if ("audio".equalsIgnoreCase(s)) { audio = true; }
-                                    }
-                                }
-                            }
-
-                            // supportsText=true, supportsImagesIn=vision, supportsFiles=false (FREE doesn't accept attachments),
-                            // supportsWebSearch=false, supportsThinking=reasoning, supportsVision=vision, supportsAudio=audio
-                            int maxInputTokens = 131072;
-                            try {
-                                if (obj.has("maxInputChars") && !obj.get("maxInputChars").isJsonNull()) {
-                                    int chars = obj.get("maxInputChars").getAsInt();
-                                    // rough heuristic: ~4 chars per token
-                                    maxInputTokens = Math.max(2048, Math.min(262144, chars / 4));
-                                }
-                            } catch (Exception ignore) {}
-
-                            ModelCapabilities caps = new ModelCapabilities(
-                                    true,
-                                    vision,
-                                    false,
-                                    false,
-                                    reasoning,
-                                    vision,
-                                    audio,
-                                    maxInputTokens,
-                                    8192
-                            );
-
-                            models.add(new AIModel(name, display, AIProvider.FREE, caps));
-                        }
-                    }
-                }
-            }
-        } catch (Exception ex) {
-            Log.w(TAG, "Failed to fetch pollinations text models: " + ex.getMessage());
-        }
-        if (models.isEmpty()) {
-            models.add(new AIModel("openai", "Pollinations OpenAI", AIProvider.FREE,
-                    new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)));
-            models.add(new AIModel("deepseek", "Pollinations DeepSeek", AIProvider.FREE,
-                    new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)));
-        }
-        return models;
+        // Return an empty list to effectively disable this feature.
+        return new ArrayList<>();
     }
 
     protected static String toDisplay(String id) {

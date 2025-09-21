@@ -4,9 +4,6 @@
         android:id="@+id/action_refresh_tab"
         android:title="Refresh" />
     <item
-        android:id="@+id/action_save_tab"
-        android:title="Save Tab" />
-    <item
         android:id="@+id/action_close_tab"
         android:title="Close Tab" />
     <item

@@ -183,8 +183,6 @@ public class SimpleSoraTabAdapter extends RecyclerView.Adapter<RecyclerView.View
             // Configure the editor only for new tabs (skip heavy setup for DIFF_ tabs)
             if (!isDiffTab) {
                 configureEditor(codeEditor, tabItem);
-                // Set content without triggering change events
-                codeEditor.setText(tabItem.getContent());
                 // Apply persistent flags
                 codeEditor.setWordwrap(tabItem.isWrapEnabled());
                 codeEditor.setEditable(!tabItem.isReadOnly());
@@ -215,6 +213,12 @@ public class SimpleSoraTabAdapter extends RecyclerView.Adapter<RecyclerView.View
                     }
                 });
                 editorViewHolder.isListenerAttached = true;
+            }
+        }
+
+        if (!isDiffTab) {
+            if (!codeEditor.getText().toString().equals(tabItem.getContent())) {
+                codeEditor.setText(tabItem.getContent());
             }
         }
 

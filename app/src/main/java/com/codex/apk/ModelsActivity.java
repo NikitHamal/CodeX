@@ -61,34 +61,6 @@ public class ModelsActivity extends AppCompatActivity {
             }
             public java.util.List<?> getItems() { try { java.lang.reflect.Field f = ModelAdapter.class.getDeclaredField("items"); f.setAccessible(true); return (java.util.List<?>) f.get(this);} catch(Exception e){ return java.util.Collections.emptyList(); } }
         };
-        // Long-press on FREE provider header refreshes Pollinations models
-        adapter.setOnProviderHeaderLongClickListener(provider -> {
-            if (provider == AIProvider.FREE || provider == AIProvider.DEEPINFRA || provider == AIProvider.ZHIPU || provider == AIProvider.OIVSCodeSer0501 || provider == AIProvider.OIVSCodeSer2 || provider == AIProvider.WEWORDLE) {
-                String nice;
-                if (provider == AIProvider.FREE) nice = "Free";
-                else if (provider == AIProvider.ZHIPU) nice = "Zhipu";
-                else if (provider == AIProvider.OIVSCodeSer0501) nice = "OIVSCodeSer0501";
-                else if (provider == AIProvider.OIVSCodeSer2) nice = "OIVSCodeSer2";
-                else if (provider == AIProvider.WEWORDLE) nice = "WeWordle";
-                else nice = "DeepInfra";
-                Toast.makeText(this, "Refreshing " + nice + " models...", Toast.LENGTH_SHORT).show();
-                java.util.concurrent.ExecutorService exec = java.util.concurrent.Executors.newSingleThreadExecutor();
-                AIAssistant assistant = new AIAssistant(this, exec, new AIAssistant.AIActionListener() {
-                    public void onAiActionsProcessed(String a, String b, java.util.List<String> c, java.util.List<ChatMessage.FileActionDetail> d, String e) {}
-                    public void onAiError(String errorMessage) {}
-                    public void onAiRequestStarted() {}
-                    public void onAiStreamUpdate(String partialResponse, boolean isThinking) {}
-                    public void onAiRequestCompleted() {}
-                    public void onQwenConversationStateUpdated(QwenConversationState state) {}
-                });
-                assistant.refreshModelsForProvider(provider, (success, message) -> {
-                    runOnUiThread(() -> {
-                        setupAdapter();
-                        Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
-                    });
-                });
-            }
-        });
         recyclerView.setAdapter(adapter);
     }
 

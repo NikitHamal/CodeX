@@ -252,7 +252,6 @@ public class AnyProviderApiClient implements ApiClient {
 
     @Override
     public List<AIModel> fetchModels() {
-        // Return an empty list to effectively disable this feature.
         return new ArrayList<>();
     }
 

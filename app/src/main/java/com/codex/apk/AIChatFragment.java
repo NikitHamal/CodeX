@@ -141,10 +141,28 @@ public class AIChatFragment extends Fragment implements ChatMessageAdapter.OnAiA
         aiAssistant = listener.getAIAssistant();
         uiManager.updateUiVisibility(chatHistory.isEmpty());
         uiManager.setListeners();
-        if (aiAssistant != null && aiAssistant.getCurrentModel() != null) {
-            uiManager.textSelectedModel.setText(aiAssistant.getCurrentModel().getDisplayName());
+
+        if (aiAssistant != null) {
+            com.codex.apk.ai.AIModel currentModel = aiAssistant.getCurrentModel();
+            if (currentModel != null) {
+                // Verify that the current model is still enabled
+                android.content.SharedPreferences prefs = requireContext().getSharedPreferences("model_settings", Context.MODE_PRIVATE);
+                String key = "model_" + currentModel.getProvider().name() + "_" + currentModel.getModelId() + "_enabled";
+                boolean isEnabled = prefs.getBoolean(key, true);
+
+                if (isEnabled) {
+                    uiManager.textSelectedModel.setText(currentModel.getDisplayName());
+                } else {
+                    // The previously selected model is now disabled.
+                    aiAssistant.setCurrentModel(null);
+                    uiManager.textSelectedModel.setText("Select a model");
+                }
+            } else {
+                uiManager.textSelectedModel.setText("Select a model");
+            }
             uiManager.updateSettingsButtonState(aiAssistant);
         }
+
         // Scroll to last message when chat opens
         uiManager.scrollToBottom();
     }
@@ -161,6 +179,11 @@ public class AIChatFragment extends Fragment implements ChatMessageAdapter.OnAiA
     }
 
     public void sendPrompt() {
+        if (aiAssistant == null || aiAssistant.getCurrentModel() == null) {
+            Toast.makeText(requireContext(), "Please select an AI model first.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
         String prompt = uiManager.getText().trim();
         if (prompt.isEmpty() || isAiProcessing) {
             if(isAiProcessing) Toast.makeText(requireContext(), "AI is processing...", Toast.LENGTH_SHORT).show();

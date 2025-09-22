@@ -589,7 +589,13 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
 
     @Override
     public void onAiRequestCompleted() {
-        // No-op: we finalize/replace the streaming message in onAiActionsProcessed
+        activity.runOnUiThread(() -> {
+            AIChatFragment chatFragment = activity.getAiChatFragment();
+            if (chatFragment != null) {
+                chatFragment.hideThinkingMessage();
+            }
+            currentStreamingMessagePosition = null;
+        });
     }
 
     @Override

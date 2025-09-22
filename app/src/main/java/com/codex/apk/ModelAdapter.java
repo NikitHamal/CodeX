@@ -38,8 +38,8 @@ public class ModelAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
 
         // Initialize checked states from SharedPreferences
         for (AIModel model : models) {
-            String key = "model_" + model.getDisplayName() + "_enabled";
-            checkedStates.put(model.getDisplayName(), prefs.getBoolean(key, true));
+            String key = "model_" + model.getProvider().name() + "_" + model.getModelId() + "_enabled";
+            checkedStates.put(model.getProvider().name() + "_" + model.getModelId(), prefs.getBoolean(key, true));
         }
 
 
@@ -117,7 +117,7 @@ public class ModelAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
             boolean allChecked = true;
             if (providerModels != null && !providerModels.isEmpty()) {
                 for (AIModel model : providerModels) {
-                    if (!checkedStates.getOrDefault(model.getDisplayName(), true)) {
+                    if (!checkedStates.getOrDefault(model.getProvider().name() + "_" + model.getModelId(), true)) {
                         allChecked = false;
                         break;
                     }
@@ -133,9 +133,10 @@ public class ModelAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
                 if (providerModels != null) {
                     SharedPreferences.Editor editor = prefs.edit();
                     for (AIModel model : providerModels) {
-                        checkedStates.put(model.getDisplayName(), isChecked);
-                        String key = "model_" + model.getDisplayName() + "_enabled";
-                        editor.putBoolean(key, isChecked);
+                        String uniqueKey = model.getProvider().name() + "_" + model.getModelId();
+                        checkedStates.put(uniqueKey, isChecked);
+                        String prefKey = "model_" + uniqueKey + "_enabled";
+                        editor.putBoolean(prefKey, isChecked);
                     }
                     editor.apply();
                     notifyDataSetChanged();
@@ -175,12 +176,13 @@ public class ModelAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
             modelId.setText(model.getModelId());
 
             modelEnabledCheckbox.setOnCheckedChangeListener(null);
-            modelEnabledCheckbox.setChecked(checkedStates.getOrDefault(model.getDisplayName(), true));
+            String uniqueKey = model.getProvider().name() + "_" + model.getModelId();
+            modelEnabledCheckbox.setChecked(checkedStates.getOrDefault(uniqueKey, true));
 
             modelEnabledCheckbox.setOnCheckedChangeListener((buttonView, isChecked) -> {
-                checkedStates.put(model.getDisplayName(), isChecked);
-                String key = "model_" + model.getDisplayName() + "_enabled";
-                prefs.edit().putBoolean(key, isChecked).apply();
+                checkedStates.put(uniqueKey, isChecked);
+                String prefKey = "model_" + uniqueKey + "_enabled";
+                prefs.edit().putBoolean(prefKey, isChecked).apply();
                 notifyDataSetChanged(); // To update the header checkbox
             });
         }

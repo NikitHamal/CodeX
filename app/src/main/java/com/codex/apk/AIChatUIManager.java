@@ -107,19 +107,28 @@ public class AIChatUIManager {
         if (aiAssistant == null) return;
 
         android.content.SharedPreferences prefs = context.getSharedPreferences("model_settings", Context.MODE_PRIVATE);
-        List<String> modelNamesList = new java.util.ArrayList<>();
+        List<AIModel> enabledModels = new java.util.ArrayList<>();
         for (AIModel model : AIModel.getAllModels()) {
-            String key = "model_" + model.getDisplayName() + "_enabled";
+            String key = "model_" + model.getProvider().name() + "_" + model.getModelId() + "_enabled";
             if (prefs.getBoolean(key, true)) {
-                modelNamesList.add(model.getDisplayName());
+                enabledModels.add(model);
             }
         }
-        String[] modelNames = modelNamesList.toArray(new String[0]);
-        String currentModel = aiAssistant.getCurrentModel().getDisplayName();
-        int selectedIndex = -1;
 
+        if (enabledModels.isEmpty()) {
+            Toast.makeText(context, "No enabled models. Please enable models in Settings.", Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        String[] modelNames = new String[enabledModels.size()];
+        for (int i = 0; i < enabledModels.size(); i++) {
+            modelNames[i] = enabledModels.get(i).getDisplayName();
+        }
+
+        String currentModelName = (aiAssistant.getCurrentModel() != null) ? aiAssistant.getCurrentModel().getDisplayName() : "";
+        int selectedIndex = -1;
         for (int i = 0; i < modelNames.length; i++) {
-            if (modelNames[i].equals(currentModel)) {
+            if (modelNames[i].equals(currentModelName)) {
                 selectedIndex = i;
                 break;
             }
@@ -128,25 +137,22 @@ public class AIChatUIManager {
         new com.google.android.material.dialog.MaterialAlertDialogBuilder(context)
                 .setTitle("Select AI Model")
                 .setSingleChoiceItems(modelNames, selectedIndex, (dialog, which) -> {
-                    String selectedModelName = modelNames[which];
-                    AIModel selectedModel = AIModel.fromDisplayName(selectedModelName);
-                    if (selectedModel != null) {
-                        aiAssistant.setCurrentModel(selectedModel);
-                        textSelectedModel.setText(selectedModelName);
-                        // Ensure selector width recalculates after text change
-                        if (layoutModelSelectorCustom != null) {
-                            layoutModelSelectorCustom.requestLayout();
-                        }
-                        if (textSelectedModel != null) {
-                            textSelectedModel.post(() -> {
-                                if (layoutModelSelectorCustom != null) layoutModelSelectorCustom.requestLayout();
-                            });
-                        }
-                        updateSettingsButtonState(aiAssistant);
-                        // Persist last used model per project
-                        android.content.SharedPreferences sp = context.getSharedPreferences("settings", Context.MODE_PRIVATE);
-                        sp.edit().putString("selected_model", selectedModelName).apply();
+                    AIModel selectedModel = enabledModels.get(which);
+                    aiAssistant.setCurrentModel(selectedModel);
+                    textSelectedModel.setText(selectedModel.getDisplayName());
+                    // Ensure selector width recalculates after text change
+                    if (layoutModelSelectorCustom != null) {
+                        layoutModelSelectorCustom.requestLayout();
                     }
+                    if (textSelectedModel != null) {
+                        textSelectedModel.post(() -> {
+                            if (layoutModelSelectorCustom != null) layoutModelSelectorCustom.requestLayout();
+                        });
+                    }
+                    updateSettingsButtonState(aiAssistant);
+                    // Persist last used model per project
+                    android.content.SharedPreferences sp = context.getSharedPreferences("settings", Context.MODE_PRIVATE);
+                    sp.edit().putString("selected_model", selectedModel.getDisplayName()).apply();
                     dialog.dismiss();
                 })
                 .setNegativeButton("Cancel", null)
@@ -216,12 +222,6 @@ public class AIChatUIManager {
         MaterialSwitch switchWebSearch = dialogView.findViewById(R.id.switch_web_search);
         MaterialSwitch switchAgent = dialogView.findViewById(R.id.switch_agent_mode);
         View rowThinking = dialogView.findViewById(R.id.row_thinking_mode);
-        View containerEffort = dialogView.findViewById(R.id.container_thinking_effort);
-
-        com.google.android.material.button.MaterialButtonToggleGroup effortGroup = dialogView.findViewById(R.id.thinking_effort_group);
-        com.google.android.material.button.MaterialButton btnEffortLow = dialogView.findViewById(R.id.btn_effort_low);
-        com.google.android.material.button.MaterialButton btnEffortMedium = dialogView.findViewById(R.id.btn_effort_medium);
-        com.google.android.material.button.MaterialButton btnEffortHigh = dialogView.findViewById(R.id.btn_effort_high);
 
         ModelCapabilities capabilities = aiAssistant.getCurrentModel().getCapabilities();
         boolean supportsThinking = capabilities.supportsThinking;
@@ -235,14 +235,6 @@ public class AIChatUIManager {
         switchThinking.setEnabled(supportsThinking);
         switchThinking.setOnCheckedChangeListener((buttonView, isChecked) -> {
             aiAssistant.setThinkingModeEnabled(isChecked);
-            // Enable/disable effort group with the thinking toggle
-            if (effortGroup != null) {
-                boolean enableEffort = supportsThinking && isChecked;
-                effortGroup.setEnabled(enableEffort);
-                if (btnEffortLow != null) btnEffortLow.setEnabled(enableEffort);
-                if (btnEffortMedium != null) btnEffortMedium.setEnabled(enableEffort);
-                if (btnEffortHigh != null) btnEffortHigh.setEnabled(enableEffort);
-            }
         });
 
         switchWebSearch.setChecked(aiAssistant.isWebSearchEnabled());
@@ -253,36 +245,6 @@ public class AIChatUIManager {
         switchAgent.setChecked(aiAssistant.isAgentModeEnabled());
         switchAgent.setOnCheckedChangeListener((buttonView, isChecked) -> aiAssistant.setAgentModeEnabled(isChecked));
 
-        // Initialize Thinking Effort selection from preferences
-        android.content.SharedPreferences sp = context.getSharedPreferences("settings", Context.MODE_PRIVATE);
-        String effort = sp.getString("thinking_effort", "high");
-        if (effortGroup != null) {
-            // Show effort only for models that support thinking; hide otherwise, including the texts container
-            if (containerEffort != null) {
-                containerEffort.setVisibility(supportsThinking ? View.VISIBLE : View.GONE);
-            } else {
-                effortGroup.setVisibility(supportsThinking ? View.VISIBLE : View.GONE);
-            }
-            if ("low".equalsIgnoreCase(effort) && btnEffortLow != null) effortGroup.check(btnEffortLow.getId());
-            else if ("medium".equalsIgnoreCase(effort) && btnEffortMedium != null) effortGroup.check(btnEffortMedium.getId());
-            else if (btnEffortHigh != null) effortGroup.check(btnEffortHigh.getId());
-
-            // Enable group based on capability and current thinking toggle
-            boolean enableEffort = supportsThinking && switchThinking.isChecked();
-            effortGroup.setEnabled(enableEffort);
-            if (btnEffortLow != null) btnEffortLow.setEnabled(enableEffort);
-            if (btnEffortMedium != null) btnEffortMedium.setEnabled(enableEffort);
-            if (btnEffortHigh != null) btnEffortHigh.setEnabled(enableEffort);
-
-            effortGroup.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
-                if (!isChecked) return;
-                String val = "high";
-                if (btnEffortLow != null && checkedId == btnEffortLow.getId()) val = "low";
-                else if (btnEffortMedium != null && checkedId == btnEffortMedium.getId()) val = "medium";
-                else if (btnEffortHigh != null && checkedId == btnEffortHigh.getId()) val = "high";
-                sp.edit().putString("thinking_effort", val).apply();
-            });
-        }
 
         aiSettingsDialog.show();
     }

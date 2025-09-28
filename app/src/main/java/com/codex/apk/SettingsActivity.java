@@ -211,6 +211,10 @@ public class SettingsActivity extends AppCompatActivity {
 	public static String getGeminiApiKey(android.content.Context context) {
 		return getPreferences(context).getString("gemini_api_key", "");
 	}
+
+	public static String getOpenRouterApiKey(android.content.Context context) {
+		return getPreferences(context).getString("openrouter_api_key", "");
+	}
 	
 	public static String getAppTheme(android.content.Context context) {
 		return getPreferences(context).getString("app_theme", "light");

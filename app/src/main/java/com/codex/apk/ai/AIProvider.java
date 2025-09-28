@@ -9,7 +9,8 @@ public enum AIProvider {
     ZHIPU("Zhipu"),
     OIVSCodeSer0501("OIVSCodeSer0501"),
     OIVSCodeSer2("OIVSCodeSer2"),
-    WEWORDLE("WeWordle");
+    WEWORDLE("WeWordle"),
+    OPENROUTER("OpenRouter");
 
     private final String displayName;
 

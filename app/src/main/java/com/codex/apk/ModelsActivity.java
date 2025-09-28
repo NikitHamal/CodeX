@@ -21,6 +21,7 @@ public class ModelsActivity extends AppCompatActivity {
     private MaterialToolbar toolbar;
     private RecyclerView recyclerView;
     private ExtendedFloatingActionButton fab;
+    private AIAssistant aiAssistant;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -41,13 +42,16 @@ public class ModelsActivity extends AppCompatActivity {
             showAddModelDialog();
         });
 
+        aiAssistant = new AIAssistant(this, null, null);
+
         setupAdapter();
     }
+
 
     private void setupAdapter() {
         ModelAdapter adapter = new ModelAdapter(this, AIModel.getAllModels()) {
             @Override
-            public void onBindViewHolder(RecyclerView.ViewHolder holder, int position) {
+            public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
                 super.onBindViewHolder(holder, position);
                 if (holder.getItemViewType() != 0) {
                     holder.itemView.setOnLongClickListener(view -> {
@@ -61,6 +65,17 @@ public class ModelsActivity extends AppCompatActivity {
             }
             public java.util.List<?> getItems() { try { java.lang.reflect.Field f = ModelAdapter.class.getDeclaredField("items"); f.setAccessible(true); return (java.util.List<?>) f.get(this);} catch(Exception e){ return java.util.Collections.emptyList(); } }
         };
+        adapter.setOnRefreshClickListener(provider -> {
+            Toast.makeText(this, "Refreshing " + provider.getDisplayName() + " models...", Toast.LENGTH_SHORT).show();
+            aiAssistant.refreshModelsForProvider(provider, (success, message) -> {
+                runOnUiThread(() -> {
+                    Toast.makeText(ModelsActivity.this, message, Toast.LENGTH_SHORT).show();
+                    if (success) {
+                        setupAdapter();
+                    }
+                });
+            });
+        });
         recyclerView.setAdapter(adapter);
     }
 

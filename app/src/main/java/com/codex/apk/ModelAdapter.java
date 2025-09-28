@@ -62,8 +62,18 @@ public class ModelAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
         void onProviderHeaderLongClick(AIProvider provider);
     }
 
+    public interface OnRefreshClickListener {
+        void onRefreshClicked(AIProvider provider);
+    }
+
+    private OnRefreshClickListener refreshClickListener;
+
     public void setOnProviderHeaderLongClickListener(OnProviderHeaderLongClickListener l) {
         this.headerLongClickListener = l;
+    }
+
+    public void setOnRefreshClickListener(OnRefreshClickListener listener) {
+        this.refreshClickListener = listener;
     }
 
     @Override
@@ -103,15 +113,33 @@ public class ModelAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
     class HeaderViewHolder extends RecyclerView.ViewHolder {
         private final TextView providerName;
         private final CheckBox selectAllCheckbox;
+        private final ImageView refreshIcon;
 
         public HeaderViewHolder(@NonNull View itemView) {
             super(itemView);
             providerName = itemView.findViewById(R.id.text_provider_name);
             selectAllCheckbox = itemView.findViewById(R.id.checkbox_select_all);
+            refreshIcon = itemView.findViewById(R.id.image_refresh_provider);
         }
 
         public void bind(AIProvider provider) {
-            providerName.setText(provider.name());
+            providerName.setText(provider.getDisplayName());
+
+            boolean supportsRefresh = provider == AIProvider.OPENROUTER ||
+                                      provider == AIProvider.DEEPINFRA ||
+                                      provider == AIProvider.ZHIPU ||
+                                      provider == AIProvider.GOOGLE;
+
+            if (supportsRefresh) {
+                refreshIcon.setVisibility(View.VISIBLE);
+                refreshIcon.setOnClickListener(v -> {
+                    if (refreshClickListener != null) {
+                        refreshClickListener.onRefreshClicked(provider);
+                    }
+                });
+            } else {
+                refreshIcon.setVisibility(View.GONE);
+            }
 
             List<AIModel> providerModels = modelsByProvider.get(provider);
             boolean allChecked = true;

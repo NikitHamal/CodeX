@@ -26,6 +26,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.stream.Collectors;
 import android.widget.RadioGroup;
+import com.codex.apk.ai.AIProvider;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -46,6 +47,7 @@ public class MainActivity extends AppCompatActivity {
     public PermissionManager permissionManager;
     public ProjectImportExportManager importExportManager;
     public GitManager gitManager;
+    private AIAssistant aiAssistant;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -101,6 +103,13 @@ public class MainActivity extends AppCompatActivity {
         fabDeleteSelection.setOnClickListener(v -> onDeleteSelectionRequested());
 
         permissionManager.checkAndRequestPermissions();
+
+        aiAssistant = new AIAssistant(this, null, null);
+        if (SettingsActivity.getOpenRouterApiKey(this) != null && !SettingsActivity.getOpenRouterApiKey(this).isEmpty()) {
+            aiAssistant.refreshModelsForProvider(AIProvider.OPENROUTER, (success, message) -> {
+                // Do nothing, this is a background refresh
+            });
+        }
     }
 
     @Override
@@ -212,15 +221,22 @@ public class MainActivity extends AppCompatActivity {
 
     private void loadProjects() {
         projectManager.loadProjectsList();
-        sortProjects();
+
+        // First, populate recent projects, always sorted by date
+        ArrayList<HashMap<String, Object>> sortedForRecent = new ArrayList<>(projectsList);
+        Collections.sort(sortedForRecent, (p1, p2) -> ((String) p2.get("lastModified")).compareTo((String) p1.get("lastModified")));
         recentProjectsList.clear();
-        if (projectsList.size() > 5) {
-            recentProjectsList.addAll(projectsList.subList(0, 5));
+        if (sortedForRecent.size() > 5) {
+            recentProjectsList.addAll(sortedForRecent.subList(0, 5));
         } else {
-            recentProjectsList.addAll(projectsList);
+            recentProjectsList.addAll(sortedForRecent);
         }
-        projectsAdapter.notifyDataSetChanged();
         recentProjectsAdapter.notifyDataSetChanged();
+
+        // Now, sort the main list according to the user's preference
+        sortProjects();
+        projectsAdapter.notifyDataSetChanged();
+
         updateEmptyStateVisibility();
     }
 

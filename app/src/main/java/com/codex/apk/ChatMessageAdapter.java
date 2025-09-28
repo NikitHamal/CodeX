@@ -377,8 +377,11 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
                 }
                 if (planTitle != null) {
                     displayContent = planTitle;
-                } else if (content != null && content.trim().startsWith("{")) {
+                } else if (content != null && content.trim().startsWith("{") && (raw != null && raw.contains("\"action\"") && raw.contains("\"plan\""))) {
                     // Suppress raw JSON echo when plan UI is present
+                    displayContent = "";
+                } else if (content != null && content.trim().startsWith("{") && com.codex.apk.QwenResponseParser.looksLikeJson(content)) {
+                    // Suppress any other JSON content
                     displayContent = "";
                 }
             }

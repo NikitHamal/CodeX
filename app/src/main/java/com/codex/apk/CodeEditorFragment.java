@@ -106,8 +106,12 @@ public class CodeEditorFragment extends Fragment implements SimpleSoraTabAdapter
         new TabLayoutMediator(tabLayout, fileViewPager, (tab, position) -> {
             tab.setText(openTabs.get(position).getFileName());
             tab.view.setOnClickListener(v -> {
-                if (listener != null) {
-                    listener.showTabOptionsMenu(v, position);
+                if (fileViewPager.getCurrentItem() == position) {
+                    if (listener != null) {
+                        listener.showTabOptionsMenu(v, position);
+                    }
+                } else {
+                    fileViewPager.setCurrentItem(position, true);
                 }
             });
             // This is a workaround to get the TextView and set its properties,

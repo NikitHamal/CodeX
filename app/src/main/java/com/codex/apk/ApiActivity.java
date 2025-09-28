@@ -21,19 +21,23 @@ public class ApiActivity extends AppCompatActivity {
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
 
         com.google.android.material.textfield.TextInputEditText apiKeyEditText = findViewById(R.id.edit_text_api_key);
+        com.google.android.material.textfield.TextInputEditText openRouterApiKeyEditText = findViewById(R.id.edit_text_openrouter_api_key);
         com.google.android.material.textfield.TextInputEditText cookie1psidEditText = findViewById(R.id.edit_text_secure_1psid);
         com.google.android.material.textfield.TextInputEditText cookie1psidtsEditText = findViewById(R.id.edit_text_secure_1psidts);
 
         SharedPreferences prefs = getSharedPreferences("settings", MODE_PRIVATE);
         String savedApiKey = prefs.getString("gemini_api_key", "");
+        String savedOpenRouterApiKey = prefs.getString("openrouter_api_key", "");
         String saved1psid = prefs.getString("secure_1psid", "");
         String saved1psidts = prefs.getString("secure_1psidts", "");
 
         if (apiKeyEditText != null) apiKeyEditText.setText(savedApiKey);
+        if (openRouterApiKeyEditText != null) openRouterApiKeyEditText.setText(savedOpenRouterApiKey);
         if (cookie1psidEditText != null) cookie1psidEditText.setText(saved1psid);
         if (cookie1psidtsEditText != null) cookie1psidtsEditText.setText(saved1psidts);
 
         setupDebouncedSaver(apiKeyEditText, s -> prefs.edit().putString("gemini_api_key", s).apply());
+        setupDebouncedSaver(openRouterApiKeyEditText, s -> prefs.edit().putString("openrouter_api_key", s).apply());
         setupDebouncedSaver(cookie1psidEditText, s -> prefs.edit().putString("secure_1psid", s).apply());
         setupDebouncedSaver(cookie1psidtsEditText, s -> prefs.edit().putString("secure_1psidts", s).apply());
     }

@@ -19,6 +19,16 @@
         android:textColor="?attr/colorPrimary"
         tools:text="Google" />
 
+    <ImageView
+        android:id="@+id/image_refresh_provider"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:layout_marginEnd="8dp"
+        android:src="@drawable/ic_refresh"
+        android:tint="?attr/colorPrimary"
+        android:visibility="gone"
+        tools:visibility="visible" />
+
     <CheckBox
         android:id="@+id/checkbox_select_all"
         android:layout_width="wrap_content"

@@ -51,6 +51,7 @@ public class AIAssistant {
         apiClients.put(AIProvider.OIVSCodeSer0501, new OIVSCodeSer0501ApiClient(context, actionListener));
         apiClients.put(AIProvider.OIVSCodeSer2, new OIVSCodeSer2ApiClient(context, actionListener));
         apiClients.put(AIProvider.WEWORDLE, new WeWordleApiClient(context, actionListener));
+        apiClients.put(AIProvider.OPENROUTER, new OpenRouterApiClient(context, actionListener));
     }
 
     public void sendPrompt(String userPrompt, List<ChatMessage> chatHistory, QwenConversationState qwenState, String fileName, String fileContent) {

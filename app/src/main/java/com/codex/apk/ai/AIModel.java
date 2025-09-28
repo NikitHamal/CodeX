@@ -63,7 +63,13 @@ public class AIModel {
             new AIModel("gpt-4o-mini", "OIVSCodeSer2 gpt-4o-mini", AIProvider.OIVSCodeSer2, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)),
 
             // WeWordle Provider
-            new AIModel("gpt-4", "WeWordle GPT-4", AIProvider.WEWORDLE, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192))
+            new AIModel("gpt-4", "WeWordle GPT-4", AIProvider.WEWORDLE, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)),
+
+            // OpenRouter Models
+            new AIModel("deepseek/deepseek-v3.1", "DeepSeek V3.1", AIProvider.OPENROUTER, new ModelCapabilities(true, false, false, true, false, false, false, 128000, 8192)),
+            new AIModel("deepseek/deepseek-r1", "DeepSeek R1", AIProvider.OPENROUTER, new ModelCapabilities(true, false, false, true, false, false, false, 128000, 8192)),
+            new AIModel("deepseek/deepseek-v3", "DeepSeek V3", AIProvider.OPENROUTER, new ModelCapabilities(true, false, false, true, false, false, false, 128000, 8192)),
+            new AIModel("x-ai/grok-4-fast", "Grok 4 Fast", AIProvider.OPENROUTER, new ModelCapabilities(true, false, false, true, false, false, false, 2000000, 8192))
         ));
         for (AIModel model : initialModels) {
             modelsByProvider.computeIfAbsent(model.getProvider(), k -> new ArrayList<>()).add(model);

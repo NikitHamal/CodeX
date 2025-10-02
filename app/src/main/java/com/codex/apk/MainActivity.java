@@ -225,7 +225,7 @@ public class MainActivity extends AppCompatActivity {
 
         // First, populate recent projects, always sorted by date
         ArrayList<HashMap<String, Object>> sortedForRecent = new ArrayList<>(projectsList);
-        Collections.sort(sortedForRecent, (p1, p2) -> ((String) p2.get("lastModified")).compareTo((String) p1.get("lastModified")));
+        Collections.sort(sortedForRecent, (p1, p2) -> Long.compare((long) p2.get("lastModifiedTimestamp"), (long) p1.get("lastModifiedTimestamp")));
         recentProjectsList.clear();
         if (sortedForRecent.size() > 5) {
             recentProjectsList.addAll(sortedForRecent.subList(0, 5));
@@ -265,9 +265,9 @@ public class MainActivity extends AppCompatActivity {
         } else if (currentSortOption == R.id.radio_name_desc) {
             comparator = (p1, p2) -> ((String) p2.get("name")).compareToIgnoreCase((String) p1.get("name"));
         } else if (currentSortOption == R.id.radio_date_oldest) {
-            comparator = Comparator.comparing(p -> (String) p.get("lastModified"));
+            comparator = (p1, p2) -> Long.compare((long) p1.get("lastModifiedTimestamp"), (long) p2.get("lastModifiedTimestamp"));
         } else { // Default to newest
-            comparator = (p1, p2) -> ((String) p2.get("lastModified")).compareTo((String) p1.get("lastModified"));
+            comparator = (p1, p2) -> Long.compare((long) p2.get("lastModifiedTimestamp"), (long) p1.get("lastModifiedTimestamp"));
         }
         Collections.sort(projectsList, comparator);
     }

@@ -47,6 +47,14 @@ public class PromptManager {
                "- Prefer semantic HTML, ARIA attributes, keyboard navigation, color contrast.\n" +
                "- Ensure responsive layouts (mobile-first) and performance (defer, lazy-load, minify where reasonable).\n" +
                "- Separate concerns: HTML structure, JS behavior, CSS styling (or Tailwind utility classes).\n\n" +
+               "GUIDELINES FOR FILE EDITS:\n" +
+               "- The IDE will provide the full content of the file being edited. Use this context to generate precise changes.\n" +
+               "- To modify a file, use the `updateFile` operation with the `modifyLines` field.\n" +
+               "- Each item in `modifyLines` is a search-and-replace operation.\n" +
+               "- CRITICAL: The `search` pattern must be unique and specific. The `replace` value should NOT contain the `search` pattern. This avoids duplication.\n" +
+               "- BAD: `\"search\": \"<head>\", \"replace\": \"<head>...\"` (Causes duplicated `<head>` tags).\n" +
+               "- BETTER: To insert content, search for the line *after which* you want to insert. `\"search\": \"<meta.../>\", \"replace\": \"<meta.../>\\n<link.../>\"`.\n" +
+               "- BEST: To insert into a tag, search for the closing tag and insert before it. `\"search\": \"</head>\", \"replace\": \"    <link.../>\\n</head>\"`.\n\n" +
                "OPERATING MODE: Planner-Executor + Tool Calling\n" +
                "1) Plan medium-grained steps before edits.\n" +
                "2) Use tools to inspect before writing (read/search) and to make minimal, safe changes.\n" +
@@ -75,7 +83,7 @@ public class PromptManager {
                "  \"action\": \"file_operation\",\n" +
                "  \"operations\": [\n" +
                "    { \"type\": \"createFile\", \"path\": \"index.html\", \"content\": \"...\" },\n" +
-               "    { \"type\": \"updateFile\", \"path\": \"index.html\", \"modifyLines\": [ { \"search\": \"<title>.*<\\/title>\", \"replace\": \"<title>App<\\/title>\" } ] }\n" +
+               "    { \"type\": \"updateFile\", \"path\": \"index.html\", \"modifyLines\": [ { \"search\": \"</title>\", \"replace\": \"</title>\\n    <link rel=\\\"stylesheet\\\" href=\\\"style.css\\\">\" } ] }\n" +
                "  ],\n" +
                "  \"explanation\": \"What and why\"\n" +
                "}\n\n" +

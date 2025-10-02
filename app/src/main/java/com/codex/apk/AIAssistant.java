@@ -57,13 +57,22 @@ public class AIAssistant {
     public void sendPrompt(String userPrompt, List<ChatMessage> chatHistory, QwenConversationState qwenState, String fileName, String fileContent) {
         // For now, attachments are not handled in this refactored version.
         // This would need to be threaded through if a model that uses them is selected.
-        sendMessage(userPrompt, chatHistory, qwenState, new ArrayList<>());
+        sendMessage(userPrompt, chatHistory, qwenState, new ArrayList<>(), fileName, fileContent);
     }
 
     public void sendMessage(String message, List<ChatMessage> chatHistory, QwenConversationState qwenState, List<File> attachments) {
+        sendMessage(message, chatHistory, qwenState, attachments, null, null);
+    }
+
+    public void sendMessage(String message, List<ChatMessage> chatHistory, QwenConversationState qwenState, List<File> attachments, String fileName, String fileContent) {
         ApiClient client = apiClients.get(currentModel.getProvider());
         if (client != null) {
             String finalMessage = message;
+
+            if (fileContent != null && !fileContent.isEmpty()) {
+                finalMessage = "Here is the content of the file `" + fileName + "`:\n\n```\n" + fileContent + "\n```\n\nNow, please perform the following task: " + message;
+            }
+
             // Choose system prompt based on agent mode
             String system = null;
             if (agentModeEnabled && enabledTools != null && !enabledTools.isEmpty()) {
@@ -72,7 +81,7 @@ public class AIAssistant {
                 system = PromptManager.getDefaultGeneralPrompt();
             }
             if (system != null && !system.isEmpty()) {
-                finalMessage = system + "\n\n" + message;
+                finalMessage = system + "\n\n" + finalMessage;
             }
             // Note: Gemini Free context is maintained via server-side conversation metadata (cid,rid,rcid)
             List<File> safeAttachments = attachments;

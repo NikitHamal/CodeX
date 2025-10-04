@@ -203,6 +203,7 @@ public class QwenApiClient implements ApiClient {
     private void processQwenStreamResponse(Response response, QwenConversationState state, AIModel model) throws IOException {
         StringBuilder thinkingContent = new StringBuilder();
         StringBuilder answerContent = new StringBuilder();
+        StringBuilder completeRawResponse = new StringBuilder();
         List<WebSource> webSources = new ArrayList<>();
         Set<String> seenWebUrls = new HashSet<>();
 
@@ -218,6 +219,13 @@ public class QwenApiClient implements ApiClient {
             }
             if (jsonData != null) {
                 if (jsonData.trim().isEmpty()) continue;
+
+                // Capture complete raw response for raw API response dialog
+                if (t.startsWith("data: ")) {
+                    completeRawResponse.append(line).append("\n");
+                } else {
+                    completeRawResponse.append(t).append("\n");
+                }
 
                 try {
                     JsonObject data = JsonParser.parseString(jsonData).getAsJsonObject();
@@ -319,14 +327,14 @@ public class QwenApiClient implements ApiClient {
                                                 if (actionListener != null) notifyAiActionsProcessed(jsonToParse, parsed.explanation, new ArrayList<>(), new ArrayList<>(), model.getDisplayName(), thinkingContent.toString(), webSources);
                                             }
                                         } else {
-                                            if (actionListener != null) notifyAiActionsProcessed(finalContent, finalContent, new ArrayList<>(), new ArrayList<>(), model.getDisplayName(), thinkingContent.toString(), webSources);
+                                            if (actionListener != null) notifyAiActionsProcessed(completeRawResponse.toString(), finalContent, new ArrayList<>(), new ArrayList<>(), model.getDisplayName(), thinkingContent.toString(), webSources);
                                         }
                                     } catch (Exception e) {
                                         Log.e(TAG, "Failed to parse extracted JSON, treating as text.", e);
-                                        if (actionListener != null) notifyAiActionsProcessed(finalContent, finalContent, new ArrayList<>(), new ArrayList<>(), model.getDisplayName(), thinkingContent.toString(), webSources);
+                                        if (actionListener != null) notifyAiActionsProcessed(completeRawResponse.toString(), finalContent, new ArrayList<>(), new ArrayList<>(), model.getDisplayName(), thinkingContent.toString(), webSources);
                                     }
                                 } else {
-                                    if (actionListener != null) notifyAiActionsProcessed(finalContent, finalContent, new ArrayList<>(), new ArrayList<>(), model.getDisplayName(), thinkingContent.toString(), webSources);
+                                    if (actionListener != null) notifyAiActionsProcessed(completeRawResponse.toString(), finalContent, new ArrayList<>(), new ArrayList<>(), model.getDisplayName(), thinkingContent.toString(), webSources);
                                 }
 
                                 // Notify listener to save the updated state (final)

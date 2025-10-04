@@ -127,7 +127,10 @@ public class ZhipuApiClient implements ApiClient {
 
             } catch (IOException e) {
                 Log.e(TAG, "Error sending Zhipu message", e);
-                if (actionListener != null) actionListener.onAiError("Error: " + e.getMessage());
+                if (actionListener != null) {
+                    actionListener.onAiError("Error: " + e.getMessage());
+                    // The onAiRequestCompleted() call is now in the finally block of processZhipuStreamResponse
+                }
             }
         }).start();
     }
@@ -181,46 +184,52 @@ public class ZhipuApiClient implements ApiClient {
         StringBuilder thinkingContent = new StringBuilder();
         StringBuilder rawResponse = new StringBuilder();
 
-        String line;
-        while ((line = response.body().source().readUtf8Line()) != null) {
-            rawResponse.append(line).append("\n");
-            if (line.startsWith("data:")) {
-                String data = line.substring(5).trim();
-                if (data.isEmpty()) continue;
-                Log.d(TAG, "Zhipu SSE chunk: " + data);
-                try {
-                    JsonObject json = JsonParser.parseString(data).getAsJsonObject();
-                    if (json.has("type") && "chat:completion".equals(json.get("type").getAsString())) {
-                        JsonObject dataObj = json.getAsJsonObject("data");
-                        String phase = dataObj.has("phase") ? dataObj.get("phase").getAsString() : "";
+        try {
+            String line;
+            while ((line = response.body().source().readUtf8Line()) != null) {
+                rawResponse.append(line).append("\n");
+                if (line.startsWith("data:")) {
+                    String data = line.substring(5).trim();
+                    if (data.isEmpty()) continue;
+                    Log.d(TAG, "Zhipu SSE chunk: " + data);
+                    try {
+                        JsonObject json = JsonParser.parseString(data).getAsJsonObject();
+                        if (json.has("type") && "chat:completion".equals(json.get("type").getAsString())) {
+                            JsonObject dataObj = json.getAsJsonObject("data");
+                            String phase = dataObj.has("phase") ? dataObj.get("phase").getAsString() : "";
 
-                        if ("thinking".equals(phase)) {
-                            if (dataObj.has("delta_content")) {
-                                String delta = dataObj.get("delta_content").getAsString();
-                                thinkingContent.append(extractContentFromHtml(delta));
+                            if ("thinking".equals(phase)) {
+                                if (dataObj.has("delta_content")) {
+                                    String delta = dataObj.get("delta_content").getAsString();
+                                    thinkingContent.append(extractContentFromHtml(delta));
+                                    if (actionListener != null) {
+                                        actionListener.onAiStreamUpdate(thinkingContent.toString(), true);
+                                    }
+                                }
+                            } else {
+                                if (dataObj.has("edit_content")) {
+                                    String editContent = dataObj.get("edit_content").getAsString();
+                                    answerContent.append(extractContentFromHtml(editContent));
+                                } else if (dataObj.has("delta_content")) {
+                                    answerContent.append(dataObj.get("delta_content").getAsString());
+                                }
                                 if (actionListener != null) {
-                                    actionListener.onAiStreamUpdate(thinkingContent.toString(), true);
+                                    actionListener.onAiStreamUpdate(answerContent.toString(), false);
                                 }
                             }
-                        } else {
-                            if (dataObj.has("edit_content")) {
-                                String editContent = dataObj.get("edit_content").getAsString();
-                                answerContent.append(extractContentFromHtml(editContent));
-                            } else if (dataObj.has("delta_content")) {
-                                answerContent.append(dataObj.get("delta_content").getAsString());
-                            }
-                            if (actionListener != null) {
-                                actionListener.onAiStreamUpdate(answerContent.toString(), false);
-                            }
                         }
+                    } catch (Exception e) {
+                        Log.w(TAG, "Error processing stream data chunk: " + data, e);
                     }
-                } catch (Exception e) {
-                    Log.w(TAG, "Error processing stream data chunk: " + data, e);
                 }
             }
-        }
-        if (actionListener != null) {
-            actionListener.onAiActionsProcessed(answerContent.toString(), rawResponse.toString(), answerContent.toString(), new ArrayList<>(), new ArrayList<>(), model.getDisplayName());
+            if (actionListener != null) {
+                actionListener.onAiActionsProcessed(answerContent.toString(), rawResponse.toString(), answerContent.toString(), new ArrayList<>(), new ArrayList<>(), model.getDisplayName());
+            }
+        } finally {
+            if (actionListener != null) {
+                actionListener.onAiRequestCompleted();
+            }
         }
     }
 

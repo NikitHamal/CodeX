@@ -105,14 +105,20 @@ public class QwenApiClient implements ApiClient {
                 if (actionListener != null) actionListener.onAiRequestStarted();
                 String conversationId = startOrContinueConversation(state, model, webSearchEnabled);
                 if (conversationId == null) {
-                    if (actionListener != null) actionListener.onAiError("Failed to create conversation");
+                    if (actionListener != null) {
+                        actionListener.onAiError("Failed to create conversation");
+                        actionListener.onAiRequestCompleted();
+                    }
                     return;
                 }
                 state.setConversationId(conversationId);
                 performCompletion(state, history, model, thinkingModeEnabled, webSearchEnabled, enabledTools, message);
             } catch (IOException e) {
                 Log.e(TAG, "Error sending Qwen message", e);
-                if (actionListener != null) actionListener.onAiError("Error: " + e.getMessage());
+                if (actionListener != null) {
+                    actionListener.onAiError("Error: " + e.getMessage());
+                }
+                // onAiRequestCompleted() is handled by the finally block in processQwenStreamResponse
             }
         }).start();
     }
@@ -207,140 +213,146 @@ public class QwenApiClient implements ApiClient {
         List<WebSource> webSources = new ArrayList<>();
         Set<String> seenWebUrls = new HashSet<>();
 
-        String line;
-        while ((line = response.body().source().readUtf8Line()) != null) {
-            rawStreamContent.append(line).append("\n"); // Accumulate the raw stream content
-            String t = line.trim();
-            if (t.isEmpty()) continue;
-            String jsonData = null;
-            if (t.startsWith("data: ")) {
-                jsonData = t.substring(6);
-            } else if (t.startsWith("{")) {
-                jsonData = t;
-            }
-            if (jsonData != null) {
-                if (jsonData.trim().isEmpty()) continue;
+        try {
+            String line;
+            while ((line = response.body().source().readUtf8Line()) != null) {
+                rawStreamContent.append(line).append("\n"); // Accumulate the raw stream content
+                String t = line.trim();
+                if (t.isEmpty()) continue;
+                String jsonData = null;
+                if (t.startsWith("data: ")) {
+                    jsonData = t.substring(6);
+                } else if (t.startsWith("{")) {
+                    jsonData = t;
+                }
+                if (jsonData != null) {
+                    if (jsonData.trim().isEmpty()) continue;
 
-                try {
-                    JsonObject data = JsonParser.parseString(jsonData).getAsJsonObject();
+                    try {
+                        JsonObject data = JsonParser.parseString(jsonData).getAsJsonObject();
 
-                    // Check for conversation state updates
-                    if (data.has("response.created")) {
-                        JsonObject created = data.getAsJsonObject("response.created");
-                        if (created.has("chat_id")) state.setConversationId(created.get("chat_id").getAsString());
-                        if (created.has("response_id")) state.setLastParentId(created.get("response_id").getAsString());
-                        // Persist state ASAP
-                        if (actionListener != null) actionListener.onQwenConversationStateUpdated(state);
-                        continue; // This line doesn't contain choices, so we skip to the next
-                    }
+                        // Check for conversation state updates
+                        if (data.has("response.created")) {
+                            JsonObject created = data.getAsJsonObject("response.created");
+                            if (created.has("chat_id")) state.setConversationId(created.get("chat_id").getAsString());
+                            if (created.has("response_id")) state.setLastParentId(created.get("response_id").getAsString());
+                            // Persist state ASAP
+                            if (actionListener != null) actionListener.onQwenConversationStateUpdated(state);
+                            continue; // This line doesn't contain choices, so we skip to the next
+                        }
 
-                    if (data.has("choices")) {
-                        JsonArray choices = data.getAsJsonArray("choices");
-                        if (choices.size() > 0) {
-                            JsonObject choice = choices.get(0).getAsJsonObject();
-                            JsonObject delta = choice.getAsJsonObject("delta");
-                            String status = delta.has("status") ? delta.get("status").getAsString() : "";
-                            String content = delta.has("content") ? delta.get("content").getAsString() : "";
-                            String phase = delta.has("phase") ? delta.get("phase").getAsString() : "";
+                        if (data.has("choices")) {
+                            JsonArray choices = data.getAsJsonArray("choices");
+                            if (choices.size() > 0) {
+                                JsonObject choice = choices.get(0).getAsJsonObject();
+                                JsonObject delta = choice.getAsJsonObject("delta");
+                                String status = delta.has("status") ? delta.get("status").getAsString() : "";
+                                String content = delta.has("content") ? delta.get("content").getAsString() : "";
+                                String phase = delta.has("phase") ? delta.get("phase").getAsString() : "";
 
-                            // Accumulate per-phase content and signals
-                            if ("think".equals(phase)) {
-                                thinkingContent.append(content);
-                                if (actionListener != null) actionListener.onAiStreamUpdate(thinkingContent.toString(), true);
-                            } else if ("answer".equals(phase)) {
-                                answerContent.append(content);
-                                // Stream answer tokens too
-                                if (actionListener != null) actionListener.onAiStreamUpdate(answerContent.toString(), false);
-                            } else if ("web_search".equals(phase)) {
-                                // Harvest web search sources from function delta extras when available
-                                if (delta.has("extra") && delta.get("extra").isJsonObject()) {
-                                    JsonObject extra = delta.getAsJsonObject("extra");
-                                    if (extra.has("web_search_info") && extra.get("web_search_info").isJsonArray()) {
-                                        JsonArray infos = extra.getAsJsonArray("web_search_info");
-                                        for (int i = 0; i < infos.size(); i++) {
-                                            try {
-                                                JsonObject info = infos.get(i).getAsJsonObject();
-                                                String url = info.has("url") ? info.get("url").getAsString() : "";
-                                                if (url == null || url.isEmpty() || seenWebUrls.contains(url)) continue;
-                                                String title = info.has("title") ? info.get("title").getAsString() : url;
-                                                String snippet = info.has("snippet") ? info.get("snippet").getAsString() : "";
-                                                String favicon = info.has("hostlogo") ? info.get("hostlogo").getAsString() : null;
-                                                webSources.add(new WebSource(url, title, snippet, favicon));
-                                                seenWebUrls.add(url);
-                                            } catch (Exception ignored) {}
+                                // Accumulate per-phase content and signals
+                                if ("think".equals(phase)) {
+                                    thinkingContent.append(content);
+                                    if (actionListener != null) actionListener.onAiStreamUpdate(thinkingContent.toString(), true);
+                                } else if ("answer".equals(phase)) {
+                                    answerContent.append(content);
+                                    // Stream answer tokens too
+                                    if (actionListener != null) actionListener.onAiStreamUpdate(answerContent.toString(), false);
+                                } else if ("web_search".equals(phase)) {
+                                    // Harvest web search sources from function delta extras when available
+                                    if (delta.has("extra") && delta.get("extra").isJsonObject()) {
+                                        JsonObject extra = delta.getAsJsonObject("extra");
+                                        if (extra.has("web_search_info") && extra.get("web_search_info").isJsonArray()) {
+                                            JsonArray infos = extra.getAsJsonArray("web_search_info");
+                                            for (int i = 0; i < infos.size(); i++) {
+                                                try {
+                                                    JsonObject info = infos.get(i).getAsJsonObject();
+                                                    String url = info.has("url") ? info.get("url").getAsString() : "";
+                                                    if (url == null || url.isEmpty() || seenWebUrls.contains(url)) continue;
+                                                    String title = info.has("title") ? info.get("title").getAsString() : url;
+                                                    String snippet = info.has("snippet") ? info.get("snippet").getAsString() : "";
+                                                    String favicon = info.has("hostlogo") ? info.get("hostlogo").getAsString() : null;
+                                                    webSources.add(new WebSource(url, title, snippet, favicon));
+                                                    seenWebUrls.add(url);
+                                                } catch (Exception ignored) {}
+                                            }
                                         }
                                     }
                                 }
-                            }
 
-                            // Only finalize when the ANSWER phase reports finished
-                            if ("finished".equals(status) && "answer".equals(phase)) {
-                                String finalContent = answerContent.toString();
-                                String trueRawResponse = rawStreamContent.toString();
-                                String jsonToParse = extractJsonFromCodeBlock(finalContent);
-                                if (jsonToParse == null && QwenResponseParser.looksLikeJson(finalContent)) {
-                                    jsonToParse = finalContent;
-                                }
+                                // Only finalize when the ANSWER phase reports finished
+                                if ("finished".equals(status) && "answer".equals(phase)) {
+                                    String finalContent = answerContent.toString();
+                                    String trueRawResponse = rawStreamContent.toString();
+                                    String jsonToParse = extractJsonFromCodeBlock(finalContent);
+                                    if (jsonToParse == null && QwenResponseParser.looksLikeJson(finalContent)) {
+                                        jsonToParse = finalContent;
+                                    }
 
-                                if (jsonToParse != null) {
-                                    try {
-                                        // Check for tool_call envelope
-                                        JsonObject maybe = JsonParser.parseString(jsonToParse).getAsJsonObject();
-                                        if (maybe.has("action") && "tool_call".equals(maybe.get("action").getAsString())) {
-                                            // Execute tool calls, then continue in-loop by synthesizing a tool_result follow-up content
-                                            JsonArray calls = maybe.getAsJsonArray("tool_calls");
-                                            JsonArray results = new JsonArray();
-                                            for (int i = 0; i < calls.size(); i++) {
-                                                JsonObject c = calls.get(i).getAsJsonObject();
-                                                String name = c.get("name").getAsString();
-                                                JsonObject args = c.getAsJsonObject("args");
-                                                String toolResult = executeToolCall(name, args);
-                                                JsonObject res = new JsonObject();
-                                                res.addProperty("name", name);
-                                                try { res.add("result", JsonParser.parseString(toolResult)); }
-                                                catch (Exception ex) { res.addProperty("result", toolResult); }
-                                                results.add(res);
-                                            }
-                                            // Synthesize a continuation request by posting the tool_result back as a user message
-                                            String continuation = buildToolResultContinuation(results);
-                                            // Swap out answerContent and restart completion using the same chat
-                                            performContinuation(state, model, continuation);
-                                            continue;
-                                        }
-
-                                        QwenResponseParser.ParsedResponse parsed = QwenResponseParser.parseResponse(jsonToParse);
-                                        if (parsed != null && parsed.isValid) {
-                                            if ("plan".equals(parsed.action)) {
-                                                if (actionListener != null) {
-                                                    notifyAiActionsProcessed(jsonToParse, trueRawResponse, parsed.explanation, new ArrayList<>(), new ArrayList<>(), model.getDisplayName(), thinkingContent.toString(), webSources);
+                                    if (jsonToParse != null) {
+                                        try {
+                                            // Check for tool_call envelope
+                                            JsonObject maybe = JsonParser.parseString(jsonToParse).getAsJsonObject();
+                                            if (maybe.has("action") && "tool_call".equals(maybe.get("action").getAsString())) {
+                                                // Execute tool calls, then continue in-loop by synthesizing a tool_result follow-up content
+                                                JsonArray calls = maybe.getAsJsonArray("tool_calls");
+                                                JsonArray results = new JsonArray();
+                                                for (int i = 0; i < calls.size(); i++) {
+                                                    JsonObject c = calls.get(i).getAsJsonObject();
+                                                    String name = c.get("name").getAsString();
+                                                    JsonObject args = c.getAsJsonObject("args");
+                                                    String toolResult = executeToolCall(name, args);
+                                                    JsonObject res = new JsonObject();
+                                                    res.addProperty("name", name);
+                                                    try { res.add("result", JsonParser.parseString(toolResult)); }
+                                                    catch (Exception ex) { res.addProperty("result", toolResult); }
+                                                    results.add(res);
                                                 }
-                                            } else if (parsed.action != null && parsed.action.contains("file")) {
-                                                List<ChatMessage.FileActionDetail> details = QwenResponseParser.toFileActionDetails(parsed);
-                                                enrichFileActionDetails(details);
-                                                if (actionListener != null) notifyAiActionsProcessed(jsonToParse, trueRawResponse, parsed.explanation, new ArrayList<>(), details, model.getDisplayName(), thinkingContent.toString(), webSources);
-                                            } else {
-                                                if (actionListener != null) notifyAiActionsProcessed(jsonToParse, trueRawResponse, parsed.explanation, new ArrayList<>(), new ArrayList<>(), model.getDisplayName(), thinkingContent.toString(), webSources);
+                                                // Synthesize a continuation request by posting the tool_result back as a user message
+                                                String continuation = buildToolResultContinuation(results);
+                                                // Swap out answerContent and restart completion using the same chat
+                                                performContinuation(state, model, continuation);
+                                                continue;
                                             }
-                                        } else {
+
+                                            QwenResponseParser.ParsedResponse parsed = QwenResponseParser.parseResponse(jsonToParse);
+                                            if (parsed != null && parsed.isValid) {
+                                                if ("plan".equals(parsed.action)) {
+                                                    if (actionListener != null) {
+                                                        notifyAiActionsProcessed(jsonToParse, trueRawResponse, parsed.explanation, new ArrayList<>(), new ArrayList<>(), model.getDisplayName(), thinkingContent.toString(), webSources);
+                                                    }
+                                                } else if (parsed.action != null && parsed.action.contains("file")) {
+                                                    List<ChatMessage.FileActionDetail> details = QwenResponseParser.toFileActionDetails(parsed);
+                                                    enrichFileActionDetails(details);
+                                                    if (actionListener != null) notifyAiActionsProcessed(jsonToParse, trueRawResponse, parsed.explanation, new ArrayList<>(), details, model.getDisplayName(), thinkingContent.toString(), webSources);
+                                                } else {
+                                                    if (actionListener != null) notifyAiActionsProcessed(jsonToParse, trueRawResponse, parsed.explanation, new ArrayList<>(), new ArrayList<>(), model.getDisplayName(), thinkingContent.toString(), webSources);
+                                                }
+                                            } else {
+                                                if (actionListener != null) notifyAiActionsProcessed(finalContent, trueRawResponse, finalContent, new ArrayList<>(), new ArrayList<>(), model.getDisplayName(), thinkingContent.toString(), webSources);
+                                            }
+                                        } catch (Exception e) {
+                                            Log.e(TAG, "Failed to parse extracted JSON, treating as text.", e);
                                             if (actionListener != null) notifyAiActionsProcessed(finalContent, trueRawResponse, finalContent, new ArrayList<>(), new ArrayList<>(), model.getDisplayName(), thinkingContent.toString(), webSources);
                                         }
-                                    } catch (Exception e) {
-                                        Log.e(TAG, "Failed to parse extracted JSON, treating as text.", e);
+                                    } else {
                                         if (actionListener != null) notifyAiActionsProcessed(finalContent, trueRawResponse, finalContent, new ArrayList<>(), new ArrayList<>(), model.getDisplayName(), thinkingContent.toString(), webSources);
                                     }
-                                } else {
-                                    if (actionListener != null) notifyAiActionsProcessed(finalContent, trueRawResponse, finalContent, new ArrayList<>(), new ArrayList<>(), model.getDisplayName(), thinkingContent.toString(), webSources);
-                                }
 
-                                // Notify listener to save the updated state (final)
-                                if (actionListener != null) actionListener.onQwenConversationStateUpdated(state);
-                                break;
+                                    // Notify listener to save the updated state (final)
+                                    if (actionListener != null) actionListener.onQwenConversationStateUpdated(state);
+                                    break;
+                                }
                             }
                         }
+                    } catch (Exception e) {
+                        Log.w(TAG, "Error processing stream data chunk", e);
                     }
-                } catch (Exception e) {
-                    Log.w(TAG, "Error processing stream data chunk", e);
                 }
+            }
+        } finally {
+            if (actionListener != null) {
+                actionListener.onAiRequestCompleted();
             }
         }
     }

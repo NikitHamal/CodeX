@@ -109,7 +109,7 @@ public class AnyProviderApiClient implements ApiClient {
                                 finalText.toString(),
                                 new ArrayList<String>(),
                                 new ArrayList<ChatMessage.FileActionDetail>(),
-                                ""
+                                model != null ? model.getDisplayName() : "AnyProvider"
                         );
                     }
                 } else {
@@ -190,13 +190,13 @@ public class AnyProviderApiClient implements ApiClient {
     }
 
     protected void handleOpenAiEvent(String rawEvent, StringBuilder finalText, StringBuilder rawAnswer, long[] lastEmitNs, int[] lastSentLen) {
+        if (rawAnswer != null) rawAnswer.append(rawEvent).append('\n');
         String prefix = "data:";
         int idx = rawEvent.indexOf(prefix);
         if (idx < 0) return;
         String jsonPart = rawEvent.substring(idx + prefix.length()).trim();
         if (jsonPart.isEmpty() || jsonPart.equals("[DONE]")) return;
         try {
-            if (rawAnswer != null) rawAnswer.append(jsonPart).append('\n');
             JsonElement elem = JsonParser.parseString(jsonPart);
             if (!elem.isJsonObject()) return;
             JsonObject obj = elem.getAsJsonObject();

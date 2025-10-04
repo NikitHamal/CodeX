@@ -237,6 +237,8 @@ public class AIChatFragment extends Fragment implements ChatMessageAdapter.OnAiA
                     if (index != -1) {
                         chatHistory.set(index, message);
                         chatMessageAdapter.notifyItemChanged(index);
+                        // Update currentAiStatusMessage to point to the new message
+                        currentAiStatusMessage = message;
                         indexChangedOrAdded = index;
                     } else {
                         chatHistory.add(message);
@@ -279,10 +281,14 @@ public class AIChatFragment extends Fragment implements ChatMessageAdapter.OnAiA
     public void hideThinkingMessage() {
         // Always clear the processing state even if the current status message reference is lost
         if (isAiProcessing && currentAiStatusMessage != null) {
-            int index = chatHistory.indexOf(currentAiStatusMessage);
-            if (index != -1) {
-                chatHistory.remove(index);
-                chatMessageAdapter.notifyItemRemoved(index);
+            // Only remove if it's still the "AI is thinking" message
+            String content = currentAiStatusMessage.getContent();
+            if (content != null && content.equals(getString(R.string.ai_is_thinking))) {
+                int index = chatHistory.indexOf(currentAiStatusMessage);
+                if (index != -1) {
+                    chatHistory.remove(index);
+                    chatMessageAdapter.notifyItemRemoved(index);
+                }
             }
         }
         isAiProcessing = false;
@@ -292,10 +298,16 @@ public class AIChatFragment extends Fragment implements ChatMessageAdapter.OnAiA
 
     public void updateMessage(int position, ChatMessage updatedMessage) {
         if (position >= 0 && position < chatHistory.size()) {
+            ChatMessage oldMessage = chatHistory.get(position);
             chatHistory.set(position, updatedMessage);
             chatMessageAdapter.notifyItemChanged(position);
             if (uiManager != null) uiManager.scrollToBottom();
             historyManager.saveChatState(chatHistory, qwenConversationState);
+
+            // Update currentAiStatusMessage if it was pointing to the old message
+            if (currentAiStatusMessage == oldMessage) {
+                currentAiStatusMessage = updatedMessage;
+            }
         }
     }
 

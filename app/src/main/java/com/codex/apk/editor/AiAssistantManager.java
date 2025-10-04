@@ -495,25 +495,21 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                 aiMessage.setWebSources(webSources);
             }
 
-            Integer targetPos = currentStreamingMessagePosition;
-            if (targetPos != null && uiFrag.getMessageAt(targetPos) != null) {
-                if (isPlan && planSteps != null && !planSteps.isEmpty()) {
-                    aiMessage.setPlanSteps(planSteps);
-                }
-                uiFrag.updateMessage(targetPos, aiMessage);
-                currentStreamingMessagePosition = null;
+            // Instead of trying to update the existing message, always add a new message
+            // and then hide the thinking message
+            int insertedPos = uiFrag.addMessage(aiMessage);
+            if (isPlan && planSteps != null && !planSteps.isEmpty()) {
+                aiMessage.setPlanSteps(planSteps);
+                uiFrag.updateMessage(insertedPos, aiMessage);
+            }
 
-                if (aiAssistant != null && aiAssistant.isAgentModeEnabled() && hasOps) {
-                    onAiAcceptActions(targetPos, aiMessage);
-                }
-            } else {
-                int insertedPos = uiFrag.addMessage(aiMessage);
-                if (isPlan && planSteps != null && !planSteps.isEmpty()) {
-                    aiMessage.setPlanSteps(planSteps);
-                    uiFrag.updateMessage(insertedPos, aiMessage);
-                } else if (aiAssistant != null && aiAssistant.isAgentModeEnabled() && hasOps) {
-                    onAiAcceptActions(insertedPos, aiMessage);
-                }
+            // Hide the thinking message after adding the new message
+            uiFrag.hideThinkingMessage();
+
+            currentStreamingMessagePosition = null;
+
+            if (aiAssistant != null && aiAssistant.isAgentModeEnabled() && hasOps) {
+                onAiAcceptActions(insertedPos, aiMessage);
             }
         });
     }
@@ -597,10 +593,7 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
     @Override
     public void onAiRequestCompleted() {
         activity.runOnUiThread(() -> {
-            AIChatFragment chatFragment = activity.getAiChatFragment();
-            if (chatFragment != null) {
-                chatFragment.hideThinkingMessage();
-            }
+            // Don't call hideThinkingMessage here since we already call it in onAiActionsProcessed
             currentStreamingMessagePosition = null;
         });
     }

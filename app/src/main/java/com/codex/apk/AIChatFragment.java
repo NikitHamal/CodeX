@@ -237,8 +237,6 @@ public class AIChatFragment extends Fragment implements ChatMessageAdapter.OnAiA
                     if (index != -1) {
                         chatHistory.set(index, message);
                         chatMessageAdapter.notifyItemChanged(index);
-                        // Update currentAiStatusMessage to point to the new message
-                        currentAiStatusMessage = message;
                         indexChangedOrAdded = index;
                     } else {
                         chatHistory.add(message);
@@ -298,16 +296,10 @@ public class AIChatFragment extends Fragment implements ChatMessageAdapter.OnAiA
 
     public void updateMessage(int position, ChatMessage updatedMessage) {
         if (position >= 0 && position < chatHistory.size()) {
-            ChatMessage oldMessage = chatHistory.get(position);
             chatHistory.set(position, updatedMessage);
             chatMessageAdapter.notifyItemChanged(position);
             if (uiManager != null) uiManager.scrollToBottom();
             historyManager.saveChatState(chatHistory, qwenConversationState);
-
-            // Update currentAiStatusMessage if it was pointing to the old message
-            if (currentAiStatusMessage == oldMessage) {
-                currentAiStatusMessage = updatedMessage;
-            }
         }
     }
 

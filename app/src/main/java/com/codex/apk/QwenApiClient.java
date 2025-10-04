@@ -164,7 +164,12 @@ public class QwenApiClient implements ApiClient {
         requestBody.addProperty("timestamp", System.currentTimeMillis());
 
         JsonArray messages = new JsonArray();
-        // Only add the current user message (following StormX approach)
+        // If this is the first message of a conversation, add the system prompt.
+        if (state.getLastParentId() == null) {
+            messages.add(createSystemMessage(enabledTools));
+        }
+
+        // Add the current user message
         JsonObject userMsg = createUserMessage(userMessage, model, thinkingModeEnabled, webSearchEnabled);
         // Optional parity: set per-message parentId to match top-level
         userMsg.addProperty("parentId", state.getLastParentId());
@@ -425,7 +430,7 @@ public class QwenApiClient implements ApiClient {
         }
         messageObj.add("feature_config", featureConfig);
         messageObj.addProperty("fid", java.util.UUID.randomUUID().toString());
-        messageObj.add("parentId", null); // This should be set in the main request body, not here
+        // parentId is set at the request level, not in individual messages (following StormX approach)
         messageObj.add("childrenIds", new JsonArray());
         return messageObj;
     }
@@ -444,8 +449,8 @@ public class QwenApiClient implements ApiClient {
                 .add("Sec-Fetch-Mode", "cors")
                 .add("Sec-Fetch-Site", "same-origin")
                 .add("User-Agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36")
-                .add("Source", "web")
-                .add("x-accel-buffering", "no");
+                .add("Source", "web");
+                // Removed x-accel-buffering header as it may interfere with streaming
 
         if (conversationId != null) {
             builder.add("Referer", "https://chat.qwen.ai/c/" + conversationId);

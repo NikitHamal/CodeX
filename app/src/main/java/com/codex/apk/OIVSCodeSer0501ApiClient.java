@@ -53,7 +53,7 @@ public class OIVSCodeSer0501ApiClient extends AnyProviderApiClient {
 
                 if (finalText.length() > 0) {
                     if (actionListener != null) {
-                        actionListener.onAiActionsProcessed(rawSse.toString(), finalText.toString(), new java.util.ArrayList<>(), new java.util.ArrayList<>(), model.getDisplayName());
+                        actionListener.onAiActionsProcessed(finalText.toString(), rawSse.toString(), finalText.toString(), new java.util.ArrayList<>(), new java.util.ArrayList<>(), model.getDisplayName());
                     }
                 } else {
                     if (actionListener != null) actionListener.onAiError("No response from provider");

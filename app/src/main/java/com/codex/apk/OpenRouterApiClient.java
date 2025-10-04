@@ -110,7 +110,7 @@ public class OpenRouterApiClient implements ApiClient {
                     }
 
                     if (actionListener != null) {
-                        actionListener.onAiActionsProcessed(content, content, new ArrayList<>(), new ArrayList<>(), model.getDisplayName());
+                        actionListener.onAiActionsProcessed(content, body, content, new ArrayList<>(), new ArrayList<>(), model.getDisplayName());
                     }
                 }
             } catch (Exception e) {

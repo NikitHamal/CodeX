@@ -322,14 +322,13 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
                         displayText = rawResponse;
                     }
                 } catch (org.json.JSONException e) {
-                    displayText = rawResponse;
+                    displayText = rawResponse; // Fallback to raw string if formatting fails
                 }
             } else {
                 displayText = "No raw API response available.";
             }
 
             textRawResponse.setText(displayText);
-            final String finalResponseToCopy = displayText;
 
             AlertDialog.Builder builder = new AlertDialog.Builder(context);
             builder.setView(dialogView);
@@ -338,7 +337,8 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
             buttonCopy.setOnClickListener(v -> {
                 android.content.ClipboardManager clipboard = (android.content.ClipboardManager) context.getSystemService(Context.CLIPBOARD_SERVICE);
                 if (clipboard != null) {
-                    android.content.ClipData clip = android.content.ClipData.newPlainText("Raw API Response", finalResponseToCopy);
+                    // Always copy the original, unformatted raw response
+                    android.content.ClipData clip = android.content.ClipData.newPlainText("Raw API Response", rawResponse != null ? rawResponse : "");
                     clipboard.setPrimaryClip(clip);
                     android.widget.Toast.makeText(context, "Raw response copied", android.widget.Toast.LENGTH_SHORT).show();
                 }

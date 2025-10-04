@@ -118,7 +118,7 @@ public class AIAssistant {
     }
 
     public interface AIActionListener {
-        void onAiActionsProcessed(String rawAiResponseJson, String explanation, List<String> suggestions,
+        void onAiActionsProcessed(String processedResponse, String trueRawResponse, String explanation, List<String> suggestions,
                                  List<ChatMessage.FileActionDetail> proposedFileChanges, String aiModelDisplayName);
         void onAiError(String errorMessage);
         void onAiRequestStarted();

@@ -220,7 +220,7 @@ public class ZhipuApiClient implements ApiClient {
             }
         }
         if (actionListener != null) {
-            actionListener.onAiActionsProcessed(rawResponse.toString(), answerContent.toString(), new ArrayList<>(), new ArrayList<>(), model.getDisplayName());
+            actionListener.onAiActionsProcessed(answerContent.toString(), rawResponse.toString(), answerContent.toString(), new ArrayList<>(), new ArrayList<>(), model.getDisplayName());
         }
     }
 

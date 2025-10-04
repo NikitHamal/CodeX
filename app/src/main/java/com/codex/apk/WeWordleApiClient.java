@@ -97,7 +97,7 @@ public class WeWordleApiClient extends AnyProviderApiClient {
                     // Not a JSON response, or not in the expected format. Use the raw body.
                 }
                 if (actionListener != null) {
-                    actionListener.onAiActionsProcessed(responseBody, content, new java.util.ArrayList<>(), new java.util.ArrayList<>(), model.getDisplayName());
+                    actionListener.onAiActionsProcessed(content, responseBody, content, new java.util.ArrayList<>(), new java.util.ArrayList<>(), model.getDisplayName());
                 }
 
             } catch (Exception e) {

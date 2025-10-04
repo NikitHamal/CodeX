@@ -109,11 +109,11 @@ public class GeminiOfficialApiClient implements ApiClient {
 
                     if (actionListener instanceof com.codex.apk.editor.AiAssistantManager) {
                         ((com.codex.apk.editor.AiAssistantManager) actionListener)
-                                .onAiActionsProcessed(parsed.text, explanation, suggestions, files,
+                                .onAiActionsProcessed(parsed.text, body, explanation, suggestions, files,
                                         model != null ? model.getDisplayName() : "Gemini", null, new ArrayList<>());
                     } else {
                         String fallback = ResponseUtils.buildExplanationWithThinking(explanation, null);
-                        actionListener.onAiActionsProcessed(parsed.text, fallback, suggestions, files,
+                        actionListener.onAiActionsProcessed(parsed.text, body, fallback, suggestions, files,
                                 model != null ? model.getDisplayName() : "Gemini");
                     }
                 }

@@ -355,16 +355,21 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
 
     // --- Implement AIAssistant.AIActionListener methods ---
     @Override
-    public void onAiActionsProcessed(String rawAiResponseJson, String explanation, List<String> suggestions, List<ChatMessage.FileActionDetail> proposedFileChanges, String aiModelDisplayName) {
-        onAiActionsProcessed(rawAiResponseJson, explanation, suggestions, proposedFileChanges, aiModelDisplayName, null, null);
+    public void onAiActionsProcessed(String processedResponse, String trueRawResponse, String explanation, List<String> suggestions, List<ChatMessage.FileActionDetail> proposedFileChanges, String aiModelDisplayName) {
+        onAiActionsProcessed(processedResponse, trueRawResponse, explanation, suggestions, proposedFileChanges, aiModelDisplayName, null, null);
+    }
+
+    // Overloaded method for backward compatibility with clients that don't provide the true raw response yet.
+    public void onAiActionsProcessed(String processedResponse, String explanation, List<String> suggestions, List<ChatMessage.FileActionDetail> proposedFileChanges, String aiModelDisplayName, String thinkingContent, List<WebSource> webSources) {
+        onAiActionsProcessed(processedResponse, processedResponse, explanation, suggestions, proposedFileChanges, aiModelDisplayName, thinkingContent, webSources);
     }
     
-    public void onAiActionsProcessed(String rawAiResponseJson, String explanation,
+    public void onAiActionsProcessed(String processedResponse, String trueRawResponse, String explanation,
                                    List<String> suggestions,
                                    List<ChatMessage.FileActionDetail> proposedFileChanges, String aiModelDisplayName,
                                    String thinkingContent, List<WebSource> webSources) {
         activity.runOnUiThread(() -> {
-            final String originalRawResponse = rawAiResponseJson; // Preserve the original raw response
+            final String originalRawResponse = trueRawResponse; // Use the true raw response
 
             AIChatFragment uiFrag = activity.getAiChatFragment();
             if (uiFrag == null) {
@@ -383,7 +388,7 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
             String jsonToParseForTools = extractJsonFromCodeBlock(explanation);
             if (jsonToParseForTools == null) {
                 // Fallback to check the raw response if nothing is found in the explanation
-                jsonToParseForTools = extractJsonFromCodeBlock(originalRawResponse);
+                jsonToParseForTools = extractJsonFromCodeBlock(processedResponse);
             }
             if (jsonToParseForTools == null && looksLikeJson(explanation)) {
                 jsonToParseForTools = explanation;
@@ -436,9 +441,9 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
             List<ChatMessage.PlanStep> planSteps = new ArrayList<>();
             QwenResponseParser.ParsedResponse parsed = null;
             try {
-                if (originalRawResponse != null) {
-                    String normalized = extractJsonFromCodeBlock(originalRawResponse);
-                    String toParse = normalized != null ? normalized : originalRawResponse;
+                if (processedResponse != null) {
+                    String normalized = extractJsonFromCodeBlock(processedResponse);
+                    String toParse = normalized != null ? normalized : processedResponse;
                     parsed = QwenResponseParser.parseResponse(toParse);
                 }
                 if (parsed == null && explanation != null && !explanation.isEmpty()) {

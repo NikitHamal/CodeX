@@ -125,6 +125,7 @@ public class DeepInfraApiClient implements ApiClient {
         try { source.timeout().timeout(60, TimeUnit.SECONDS); } catch (Exception ignore) {}
         StringBuilder eventBuf = new StringBuilder();
         StringBuilder finalText = new StringBuilder();
+        StringBuilder rawSse = new StringBuilder();
         long[] lastEmitNs = new long[]{0L};
         int[] lastSentLen = new int[]{0};
         while (true) {
@@ -134,6 +135,7 @@ public class DeepInfraApiClient implements ApiClient {
             } catch (EOFException eof) { break; }
             catch (java.io.InterruptedIOException timeout) { Log.w(TAG, "DeepInfra SSE read timed out"); break; }
             if (line == null) break;
+            rawSse.append(line).append("\n");
             if (line.isEmpty()) {
                 handleOpenAiEvent(eventBuf.toString(), finalText, lastEmitNs, lastSentLen);
                 eventBuf.setLength(0);
@@ -158,18 +160,18 @@ public class DeepInfraApiClient implements ApiClient {
                     QwenResponseParser.ParsedResponse parsed = QwenResponseParser.parseResponse(jsonToParse);
                     if (parsed != null && parsed.isValid) {
                         List<ChatMessage.FileActionDetail> fileActions = QwenResponseParser.toFileActionDetails(parsed);
-                        actionListener.onAiActionsProcessed(jsonToParse, parsed.explanation, new ArrayList<>(), fileActions, modelDisplayName);
+                        actionListener.onAiActionsProcessed(jsonToParse, rawSse.toString(), parsed.explanation, new ArrayList<>(), fileActions, modelDisplayName);
                     } else {
                         // Not a valid plan, treat as text
-                        actionListener.onAiActionsProcessed(finalText.toString(), finalText.toString(), new java.util.ArrayList<>(), new java.util.ArrayList<>(), modelDisplayName);
+                        actionListener.onAiActionsProcessed(finalText.toString(), rawSse.toString(), finalText.toString(), new java.util.ArrayList<>(), new java.util.ArrayList<>(), modelDisplayName);
                     }
                 } catch (Exception e) {
                     Log.w(TAG, "DeepInfra JSON parse failed, treating as text: " + e.getMessage());
-                    actionListener.onAiActionsProcessed(finalText.toString(), finalText.toString(), new java.util.ArrayList<>(), new java.util.ArrayList<>(), modelDisplayName);
+                    actionListener.onAiActionsProcessed(finalText.toString(), rawSse.toString(), finalText.toString(), new java.util.ArrayList<>(), new java.util.ArrayList<>(), modelDisplayName);
                 }
             } else {
                 // No JSON found, treat as plain text
-                actionListener.onAiActionsProcessed(finalText.toString(), finalText.toString(), new java.util.ArrayList<>(), new java.util.ArrayList<>(), modelDisplayName);
+                actionListener.onAiActionsProcessed(finalText.toString(), rawSse.toString(), finalText.toString(), new java.util.ArrayList<>(), new java.util.ArrayList<>(), modelDisplayName);
             }
         }
     }

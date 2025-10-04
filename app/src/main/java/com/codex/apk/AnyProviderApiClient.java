@@ -104,6 +104,7 @@ public class AnyProviderApiClient implements ApiClient {
                 if (finalText.length() > 0) {
                     if (actionListener != null) {
                         actionListener.onAiActionsProcessed(
+                                finalText.toString(),
                                 rawSse.toString(),
                                 finalText.toString(),
                                 new ArrayList<String>(),

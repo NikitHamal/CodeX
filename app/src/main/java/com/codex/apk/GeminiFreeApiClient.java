@@ -174,6 +174,7 @@ public class GeminiFreeApiClient implements ApiClient {
                                 List<ChatMessage.FileActionDetail> files2 = new ArrayList<>();
                                 // Route via richer callback so thinking is separate
                                 notifyAiActionsProcessed(
+                                        normalized2 != null ? normalized2 : parsed2.text,
                                         body2,
                                         explanation2,
                                         suggestions2,
@@ -231,6 +232,7 @@ public class GeminiFreeApiClient implements ApiClient {
                         // Normalize JSON for model-agnostic downstream parsing (plan/file ops)
                         String normalized = normalizeJsonIfPresent(parsed.text);
                         notifyAiActionsProcessed(
+                                normalized != null ? normalized : parsed.text,
                                 body,
                                 explanation,
                                 new ArrayList<>(),
@@ -591,7 +593,8 @@ public class GeminiFreeApiClient implements ApiClient {
         return null;
     }
 
-    private void notifyAiActionsProcessed(String rawAiResponseJson,
+    private void notifyAiActionsProcessed(String processedResponse,
+                                          String trueRawResponse,
                                           String explanation,
                                           List<String> suggestions,
                                           List<ChatMessage.FileActionDetail> fileActions,
@@ -599,10 +602,10 @@ public class GeminiFreeApiClient implements ApiClient {
                                           String thinking,
                                           List<com.codex.apk.ai.WebSource> sources) {
         if (actionListener instanceof com.codex.apk.editor.AiAssistantManager) {
-            ((com.codex.apk.editor.AiAssistantManager) actionListener).onAiActionsProcessed(rawAiResponseJson, explanation, suggestions, fileActions, modelDisplayName, thinking, sources);
+            ((com.codex.apk.editor.AiAssistantManager) actionListener).onAiActionsProcessed(processedResponse, trueRawResponse, explanation, suggestions, fileActions, modelDisplayName, thinking, sources);
         } else {
             String fallback = ResponseUtils.buildExplanationWithThinking(explanation, thinking);
-            actionListener.onAiActionsProcessed(rawAiResponseJson, fallback, suggestions, fileActions, modelDisplayName);
+            actionListener.onAiActionsProcessed(processedResponse, trueRawResponse, fallback, suggestions, fileActions, modelDisplayName);
         }
     }
 

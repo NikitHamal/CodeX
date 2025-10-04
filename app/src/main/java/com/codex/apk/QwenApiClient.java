@@ -203,11 +203,13 @@ public class QwenApiClient implements ApiClient {
     private void processQwenStreamResponse(Response response, QwenConversationState state, AIModel model) throws IOException {
         StringBuilder thinkingContent = new StringBuilder();
         StringBuilder answerContent = new StringBuilder();
+        StringBuilder rawStreamContent = new StringBuilder();
         List<WebSource> webSources = new ArrayList<>();
         Set<String> seenWebUrls = new HashSet<>();
 
         String line;
         while ((line = response.body().source().readUtf8Line()) != null) {
+            rawStreamContent.append(line).append("\n"); // Accumulate the raw stream content
             String t = line.trim();
             if (t.isEmpty()) continue;
             String jsonData = null;
@@ -274,6 +276,7 @@ public class QwenApiClient implements ApiClient {
                             // Only finalize when the ANSWER phase reports finished
                             if ("finished".equals(status) && "answer".equals(phase)) {
                                 String finalContent = answerContent.toString();
+                                String trueRawResponse = rawStreamContent.toString();
                                 String jsonToParse = extractJsonFromCodeBlock(finalContent);
                                 if (jsonToParse == null && QwenResponseParser.looksLikeJson(finalContent)) {
                                     jsonToParse = finalContent;
@@ -309,24 +312,24 @@ public class QwenApiClient implements ApiClient {
                                         if (parsed != null && parsed.isValid) {
                                             if ("plan".equals(parsed.action)) {
                                                 if (actionListener != null) {
-                                                    notifyAiActionsProcessed(jsonToParse, parsed.explanation, new ArrayList<>(), new ArrayList<>(), model.getDisplayName(), thinkingContent.toString(), webSources);
+                                                    notifyAiActionsProcessed(jsonToParse, trueRawResponse, parsed.explanation, new ArrayList<>(), new ArrayList<>(), model.getDisplayName(), thinkingContent.toString(), webSources);
                                                 }
                                             } else if (parsed.action != null && parsed.action.contains("file")) {
                                                 List<ChatMessage.FileActionDetail> details = QwenResponseParser.toFileActionDetails(parsed);
                                                 enrichFileActionDetails(details);
-                                                if (actionListener != null) notifyAiActionsProcessed(jsonToParse, parsed.explanation, new ArrayList<>(), details, model.getDisplayName(), thinkingContent.toString(), webSources);
+                                                if (actionListener != null) notifyAiActionsProcessed(jsonToParse, trueRawResponse, parsed.explanation, new ArrayList<>(), details, model.getDisplayName(), thinkingContent.toString(), webSources);
                                             } else {
-                                                if (actionListener != null) notifyAiActionsProcessed(jsonToParse, parsed.explanation, new ArrayList<>(), new ArrayList<>(), model.getDisplayName(), thinkingContent.toString(), webSources);
+                                                if (actionListener != null) notifyAiActionsProcessed(jsonToParse, trueRawResponse, parsed.explanation, new ArrayList<>(), new ArrayList<>(), model.getDisplayName(), thinkingContent.toString(), webSources);
                                             }
                                         } else {
-                                            if (actionListener != null) notifyAiActionsProcessed(finalContent, finalContent, new ArrayList<>(), new ArrayList<>(), model.getDisplayName(), thinkingContent.toString(), webSources);
+                                            if (actionListener != null) notifyAiActionsProcessed(finalContent, trueRawResponse, finalContent, new ArrayList<>(), new ArrayList<>(), model.getDisplayName(), thinkingContent.toString(), webSources);
                                         }
                                     } catch (Exception e) {
                                         Log.e(TAG, "Failed to parse extracted JSON, treating as text.", e);
-                                        if (actionListener != null) notifyAiActionsProcessed(finalContent, finalContent, new ArrayList<>(), new ArrayList<>(), model.getDisplayName(), thinkingContent.toString(), webSources);
+                                        if (actionListener != null) notifyAiActionsProcessed(finalContent, trueRawResponse, finalContent, new ArrayList<>(), new ArrayList<>(), model.getDisplayName(), thinkingContent.toString(), webSources);
                                     }
                                 } else {
-                                    if (actionListener != null) notifyAiActionsProcessed(finalContent, finalContent, new ArrayList<>(), new ArrayList<>(), model.getDisplayName(), thinkingContent.toString(), webSources);
+                                    if (actionListener != null) notifyAiActionsProcessed(finalContent, trueRawResponse, finalContent, new ArrayList<>(), new ArrayList<>(), model.getDisplayName(), thinkingContent.toString(), webSources);
                                 }
 
                                 // Notify listener to save the updated state (final)
@@ -941,7 +944,8 @@ public class QwenApiClient implements ApiClient {
 
     
 
-    private void notifyAiActionsProcessed(String rawAiResponseJson,
+    private void notifyAiActionsProcessed(String processedResponse,
+                                          String trueRawResponse,
                                           String explanation,
                                           List<String> suggestions,
                                           List<ChatMessage.FileActionDetail> fileActions,
@@ -950,11 +954,11 @@ public class QwenApiClient implements ApiClient {
                                           List<WebSource> sources) {
         // Prefer the richer handler in AiAssistantManager when available
         if (actionListener instanceof AiAssistantManager) {
-            ((AiAssistantManager) actionListener).onAiActionsProcessed(rawAiResponseJson, explanation, suggestions, fileActions, modelDisplayName, thinking, sources);
+            ((AiAssistantManager) actionListener).onAiActionsProcessed(processedResponse, trueRawResponse, explanation, suggestions, fileActions, modelDisplayName, thinking, sources);
         } else {
             // Fallback to legacy interface without separate thinking/sources
             String fallback = ResponseUtils.buildExplanationWithThinking(explanation, thinking);
-            actionListener.onAiActionsProcessed(rawAiResponseJson, fallback, suggestions, fileActions, modelDisplayName);
+            actionListener.onAiActionsProcessed(processedResponse, trueRawResponse, fallback, suggestions, fileActions, modelDisplayName);
         }
     }
 

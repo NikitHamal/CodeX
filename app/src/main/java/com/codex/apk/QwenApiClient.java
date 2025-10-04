@@ -164,12 +164,7 @@ public class QwenApiClient implements ApiClient {
         requestBody.addProperty("timestamp", System.currentTimeMillis());
 
         JsonArray messages = new JsonArray();
-        // If this is the first message of a conversation, add the system prompt.
-        if (state.getLastParentId() == null) {
-            messages.add(createSystemMessage(enabledTools));
-        }
-
-        // Add the current user message
+        // Only add the current user message (following StormX approach)
         JsonObject userMsg = createUserMessage(userMessage, model, thinkingModeEnabled, webSearchEnabled);
         // Optional parity: set per-message parentId to match top-level
         userMsg.addProperty("parentId", state.getLastParentId());

@@ -69,7 +69,9 @@ public class LegacyAIAssistantAdapter extends AIAssistant {
         if (response.isComplete()) {
             // Convert back to legacy format
             LegacyResponse legacyResponse = converter.convertToLegacyResponse(response);
+            // Pass rawJson as both processed and true-raw for compatibility
             listener.onAiActionsProcessed(
+                legacyResponse.rawJson,
                 legacyResponse.rawJson,
                 legacyResponse.explanation,
                 legacyResponse.suggestions,
@@ -209,9 +211,9 @@ public class LegacyAIAssistantAdapter extends AIAssistant {
     }
     
     // Helper methods for accessing private fields from parent class
-    private AIActionListener getActionListener() {
-        // Would need to expose this in parent class or use reflection
-        return null; // Placeholder
+    @Override
+    protected AIActionListener getActionListener() {
+        return super.getActionListener();
     }
     
     private List<ToolSpec> getEnabledTools() {

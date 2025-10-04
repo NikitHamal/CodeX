@@ -138,6 +138,7 @@ public class AIAssistant {
     public void setAgentModeEnabled(boolean enabled) { this.agentModeEnabled = enabled; }
     public void setEnabledTools(List<ToolSpec> tools) { this.enabledTools = tools; }
     public void setActionListener(AIActionListener listener) { this.actionListener = listener; }
+    protected AIActionListener getActionListener() { return this.actionListener; }
     public String getApiKey() { return this.apiKey; }
     public void setApiKey(String apiKey) {
         this.apiKey = apiKey != null ? apiKey : "";

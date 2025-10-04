@@ -774,26 +774,6 @@ public class QwenApiClient implements ApiClient {
         return null;
     }
 
-    private void processFileOperationsFromParsedResponse(QwenResponseParser.ParsedResponse parsedResponse, String modelDisplayName) {
-        try {
-            List<ChatMessage.FileActionDetail> fileActions = QwenResponseParser.toFileActionDetails(parsedResponse);
-            enrichFileActionDetails(fileActions);
-            if (actionListener != null) {
-                actionListener.onAiActionsProcessed(
-                        null,
-                        parsedResponse.explanation,
-                        new ArrayList<>(),
-                        fileActions,
-                        modelDisplayName
-                );
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "Error processing file operations", e);
-            if (actionListener != null) {
-                actionListener.onAiError("Error processing file operations: " + e.getMessage());
-            }
-        }
-    }
 
     private void executeFileOperation(ChatMessage.FileActionDetail actionDetail) throws Exception {
         if (projectDir == null) {

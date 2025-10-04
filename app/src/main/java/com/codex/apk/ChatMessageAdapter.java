@@ -304,11 +304,48 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
         
         private void showRawApiResponseDialog(ChatMessage message) {
             View dialogView = LayoutInflater.from(context).inflate(R.layout.dialog_raw_api_response, null);
-            TextView textRawResponse = dialogView.findViewById(R.id.text_raw_response); MaterialButton buttonCopy = dialogView.findViewById(R.id.button_copy); MaterialButton buttonClose = dialogView.findViewById(R.id.button_close);
-            String rawResponse = message.getRawApiResponse(); textRawResponse.setText(rawResponse != null && !rawResponse.isEmpty() ? rawResponse : "No raw API response available.");
-            AlertDialog.Builder builder = new AlertDialog.Builder(context); builder.setView(dialogView); final AlertDialog dialog = builder.create();
-            buttonCopy.setOnClickListener(v -> { android.content.ClipboardManager clipboard = (android.content.ClipboardManager) context.getSystemService(Context.CLIPBOARD_SERVICE); if (clipboard != null) { android.content.ClipData clip = android.content.ClipData.newPlainText("Raw API Response", rawResponse != null ? rawResponse : ""); clipboard.setPrimaryClip(clip); android.widget.Toast.makeText(context, "Raw response copied", android.widget.Toast.LENGTH_SHORT).show(); } });
-            buttonClose.setOnClickListener(v -> dialog.dismiss()); dialog.show();
+            TextView textRawResponse = dialogView.findViewById(R.id.text_raw_response);
+            MaterialButton buttonCopy = dialogView.findViewById(R.id.button_copy);
+            MaterialButton buttonClose = dialogView.findViewById(R.id.button_close);
+
+            String rawResponse = message.getRawApiResponse();
+            String displayText;
+
+            if (rawResponse != null && !rawResponse.isEmpty()) {
+                try {
+                    String trimmedResponse = rawResponse.trim();
+                    if (trimmedResponse.startsWith("{")) {
+                        displayText = new org.json.JSONObject(trimmedResponse).toString(4);
+                    } else if (trimmedResponse.startsWith("[")) {
+                        displayText = new org.json.JSONArray(trimmedResponse).toString(4);
+                    } else {
+                        displayText = rawResponse;
+                    }
+                } catch (org.json.JSONException e) {
+                    displayText = rawResponse;
+                }
+            } else {
+                displayText = "No raw API response available.";
+            }
+
+            textRawResponse.setText(displayText);
+            final String finalResponseToCopy = displayText;
+
+            AlertDialog.Builder builder = new AlertDialog.Builder(context);
+            builder.setView(dialogView);
+            final AlertDialog dialog = builder.create();
+
+            buttonCopy.setOnClickListener(v -> {
+                android.content.ClipboardManager clipboard = (android.content.ClipboardManager) context.getSystemService(Context.CLIPBOARD_SERVICE);
+                if (clipboard != null) {
+                    android.content.ClipData clip = android.content.ClipData.newPlainText("Raw API Response", finalResponseToCopy);
+                    clipboard.setPrimaryClip(clip);
+                    android.widget.Toast.makeText(context, "Raw response copied", android.widget.Toast.LENGTH_SHORT).show();
+                }
+            });
+
+            buttonClose.setOnClickListener(v -> dialog.dismiss());
+            dialog.show();
         }
 
         private void applyCitationSpans(TextView tv, List<WebSource> sources) {

@@ -364,6 +364,8 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                                    List<ChatMessage.FileActionDetail> proposedFileChanges, String aiModelDisplayName,
                                    String thinkingContent, List<WebSource> webSources) {
         activity.runOnUiThread(() -> {
+            final String originalRawResponse = rawAiResponseJson; // Preserve the original raw response
+
             AIChatFragment uiFrag = activity.getAiChatFragment();
             if (uiFrag == null) {
                 Log.w(TAG, "AiChatFragment is null! Cannot add message to UI.");
@@ -381,7 +383,7 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
             String jsonToParseForTools = extractJsonFromCodeBlock(explanation);
             if (jsonToParseForTools == null) {
                 // Fallback to check the raw response if nothing is found in the explanation
-                jsonToParseForTools = extractJsonFromCodeBlock(rawAiResponseJson);
+                jsonToParseForTools = extractJsonFromCodeBlock(originalRawResponse);
             }
             if (jsonToParseForTools == null && looksLikeJson(explanation)) {
                 jsonToParseForTools = explanation;
@@ -434,9 +436,9 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
             List<ChatMessage.PlanStep> planSteps = new ArrayList<>();
             QwenResponseParser.ParsedResponse parsed = null;
             try {
-                if (rawAiResponseJson != null) {
-                    String normalized = extractJsonFromCodeBlock(rawAiResponseJson);
-                    String toParse = normalized != null ? normalized : rawAiResponseJson;
+                if (originalRawResponse != null) {
+                    String normalized = extractJsonFromCodeBlock(originalRawResponse);
+                    String toParse = normalized != null ? normalized : originalRawResponse;
                     parsed = QwenResponseParser.parseResponse(toParse);
                 }
                 if (parsed == null && explanation != null && !explanation.isEmpty()) {
@@ -465,7 +467,7 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
             }
 
             if (isCurrentlyExecutingPlan) {
-                planExecutor.onStepExecutionResult(effectiveProposedFileChanges, rawAiResponseJson, explanation);
+                planExecutor.onStepExecutionResult(effectiveProposedFileChanges, originalRawResponse, explanation);
                 return;
             }
 
@@ -477,7 +479,7 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                     suggestions != null ? new ArrayList<>(suggestions) : new ArrayList<>(),
                     aiModelDisplayName,
                     System.currentTimeMillis(),
-                    rawAiResponseJson,
+                    originalRawResponse, // Use the preserved original response
                     effectiveProposedFileChanges,
                     ChatMessage.STATUS_PENDING_APPROVAL
             );

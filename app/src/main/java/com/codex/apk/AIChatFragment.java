@@ -191,7 +191,7 @@ public class AIChatFragment extends Fragment implements ChatMessageAdapter.OnAiA
             return;
         }
 
-        uiManager.setSendButtonEnabled(false);
+        // Do not disable here; disabling is driven by the thinking placeholder message
 
         ChatMessage userMsg = new ChatMessage(ChatMessage.SENDER_USER, prompt, System.currentTimeMillis());
         if (!pendingAttachments.isEmpty()) {
@@ -227,6 +227,7 @@ public class AIChatFragment extends Fragment implements ChatMessageAdapter.OnAiA
                     chatHistory.add(message);
                     currentAiStatusMessage = message;
                     isAiProcessing = true;
+                    if (uiManager != null) uiManager.setSendButtonEnabled(false);
                     indexChangedOrAdded = chatHistory.size() - 1;
                     chatMessageAdapter.notifyItemInserted(indexChangedOrAdded);
                     uiManager.scrollToBottom();

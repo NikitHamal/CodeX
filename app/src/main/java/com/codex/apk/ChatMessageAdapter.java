@@ -121,25 +121,10 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
                 // Long-press to show raw response for this step
                 itemView.setOnLongClickListener(v -> {
                     Context ctx = itemView.getContext();
-                    View dialogView = LayoutInflater.from(ctx).inflate(R.layout.dialog_raw_api_response, null);
-                    TextView textRawResponse = dialogView.findViewById(R.id.text_raw_response);
-                    com.google.android.material.button.MaterialButton buttonCopy = dialogView.findViewById(R.id.button_copy);
-                    com.google.android.material.button.MaterialButton buttonClose = dialogView.findViewById(R.id.button_close);
-                    String raw = step.rawResponse;
-                    textRawResponse.setText(raw != null && !raw.isEmpty() ? raw : "No raw response captured for this step yet.");
-                    androidx.appcompat.app.AlertDialog.Builder builder = new androidx.appcompat.app.AlertDialog.Builder(ctx);
-                    builder.setView(dialogView);
-                    final androidx.appcompat.app.AlertDialog dialog = builder.create();
-                    buttonCopy.setOnClickListener(x -> {
-                        android.content.ClipboardManager clipboard = (android.content.ClipboardManager) ctx.getSystemService(Context.CLIPBOARD_SERVICE);
-                        if (clipboard != null) {
-                            android.content.ClipData clip = android.content.ClipData.newPlainText("Plan Step Raw Response", raw != null ? raw : "");
-                            clipboard.setPrimaryClip(clip);
-                            android.widget.Toast.makeText(ctx, "Raw response copied", android.widget.Toast.LENGTH_SHORT).show();
-                        }
-                    });
-                    buttonClose.setOnClickListener(x -> dialog.dismiss());
-                    dialog.show();
+                    String modelTitle = "Plan step raw response";
+                    String subtitle = (step.kind != null ? step.kind : "step") + "  •  " + capitalize(s);
+                    String raw = step.rawResponse != null ? step.rawResponse : "No raw response captured for this step yet.";
+                    AiMessageViewHolder.showRawApiResponseBottomSheet(ctx, modelTitle, subtitle, raw);
                     return true;
                 });
             }
@@ -303,12 +288,89 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
         }
         
         private void showRawApiResponseDialog(ChatMessage message) {
-            View dialogView = LayoutInflater.from(context).inflate(R.layout.dialog_raw_api_response, null);
-            TextView textRawResponse = dialogView.findViewById(R.id.text_raw_response); MaterialButton buttonCopy = dialogView.findViewById(R.id.button_copy); MaterialButton buttonClose = dialogView.findViewById(R.id.button_close);
-            String rawResponse = message.getRawApiResponse(); textRawResponse.setText(rawResponse != null && !rawResponse.isEmpty() ? rawResponse : "No raw API response available.");
-            AlertDialog.Builder builder = new AlertDialog.Builder(context); builder.setView(dialogView); final AlertDialog dialog = builder.create();
-            buttonCopy.setOnClickListener(v -> { android.content.ClipboardManager clipboard = (android.content.ClipboardManager) context.getSystemService(Context.CLIPBOARD_SERVICE); if (clipboard != null) { android.content.ClipData clip = android.content.ClipData.newPlainText("Raw API Response", rawResponse != null ? rawResponse : ""); clipboard.setPrimaryClip(clip); android.widget.Toast.makeText(context, "Raw response copied", android.widget.Toast.LENGTH_SHORT).show(); } });
-            buttonClose.setOnClickListener(v -> dialog.dismiss()); dialog.show();
+            String model = message.getAiModelName() != null ? message.getAiModelName() : context.getString(R.string.app_name);
+            String title = "Raw API response";
+            String subtitle = model + "  •  " + new java.text.SimpleDateFormat("MMM d, HH:mm").format(new java.util.Date(message.getTimestamp()));
+            String rawResponse = message.getRawApiResponse();
+            showRawApiResponseBottomSheet(context, title, subtitle, rawResponse);
+        }
+
+        public static void showRawApiResponseBottomSheet(Context ctx, String title, String subtitle, String rawText) {
+            View dialogView = LayoutInflater.from(ctx).inflate(R.layout.bottom_sheet_raw_api_response, null);
+
+            TextView tvTitle = dialogView.findViewById(R.id.text_title);
+            TextView tvSubtitle = dialogView.findViewById(R.id.text_subtitle);
+            TextView tvContent = dialogView.findViewById(R.id.text_content);
+            com.google.android.material.materialswitch.MaterialSwitch switchPretty = dialogView.findViewById(R.id.switch_pretty_json);
+            com.google.android.material.materialswitch.MaterialSwitch switchWrap = dialogView.findViewById(R.id.switch_wrap_lines);
+            MaterialButton btnCopy = dialogView.findViewById(R.id.button_copy);
+            MaterialButton btnShare = dialogView.findViewById(R.id.button_share);
+            MaterialButton btnClose = dialogView.findViewById(R.id.button_close);
+
+            tvTitle.setText(title != null ? title : "Raw Response");
+            tvSubtitle.setText(subtitle != null ? subtitle : "");
+
+            String safeRaw = rawText != null && !rawText.isEmpty() ? rawText : "No raw response available.";
+            final String[] currentText = new String[]{safeRaw};
+
+            // Initial state: pretty-print if it looks like JSON
+            boolean looksJson = looksLikeJson(safeRaw);
+            switchPretty.setChecked(looksJson);
+            String initial = looksJson ? tryPrettyJson(safeRaw) : safeRaw;
+            currentText[0] = initial;
+            tvContent.setText(initial);
+            // Default: wrap long lines for readability
+            switchWrap.setChecked(true);
+            tvContent.setHorizontallyScrolling(false);
+
+            switchPretty.setOnCheckedChangeListener((button, isChecked) -> {
+                String next = isChecked ? tryPrettyJson(safeRaw) : safeRaw;
+                currentText[0] = next;
+                tvContent.setText(next);
+            });
+
+            switchWrap.setOnCheckedChangeListener((button, isChecked) -> {
+                tvContent.setHorizontallyScrolling(!isChecked);
+            });
+
+            btnCopy.setOnClickListener(v -> {
+                android.content.ClipboardManager clipboard = (android.content.ClipboardManager) ctx.getSystemService(Context.CLIPBOARD_SERVICE);
+                if (clipboard != null) {
+                    android.content.ClipData clip = android.content.ClipData.newPlainText("Raw API Response", currentText[0]);
+                    clipboard.setPrimaryClip(clip);
+                    android.widget.Toast.makeText(ctx, "Raw response copied", android.widget.Toast.LENGTH_SHORT).show();
+                }
+            });
+
+            btnShare.setOnClickListener(v -> {
+                android.content.Intent intent = new android.content.Intent(android.content.Intent.ACTION_SEND);
+                intent.setType("text/plain");
+                intent.putExtra(android.content.Intent.EXTRA_TEXT, currentText[0]);
+                try {
+                    ctx.startActivity(android.content.Intent.createChooser(intent, "Share raw response"));
+                } catch (Exception ignored) { }
+            });
+
+            BottomSheetDialog dialog = new BottomSheetDialog(ctx);
+            dialog.setContentView(dialogView);
+            btnClose.setOnClickListener(v -> dialog.dismiss());
+            dialog.show();
+        }
+
+        private static boolean looksLikeJson(String text) {
+            if (text == null) return false;
+            String t = text.trim();
+            if (!(t.startsWith("{") && t.endsWith("}")) && !(t.startsWith("[") && t.endsWith("]"))) return false;
+            try { com.google.gson.JsonParser.parseString(t); return true; } catch (Exception e) { return false; }
+        }
+
+        private static String tryPrettyJson(String raw) {
+            try {
+                com.google.gson.JsonElement el = com.google.gson.JsonParser.parseString(raw);
+                return new com.google.gson.GsonBuilder().setPrettyPrinting().create().toJson(el);
+            } catch (Exception e) {
+                return raw != null ? raw : "";
+            }
         }
 
         private void applyCitationSpans(TextView tv, List<WebSource> sources) {

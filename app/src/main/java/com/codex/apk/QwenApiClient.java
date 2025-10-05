@@ -84,7 +84,8 @@ public class QwenApiClient implements ApiClient {
         this.httpClient = new OkHttpClient.Builder()
                 .connectTimeout(30, TimeUnit.SECONDS)
                 .writeTimeout(30, TimeUnit.SECONDS)
-                .readTimeout(60, TimeUnit.SECONDS)
+                // Increase read timeout to better handle long server think/stream periods
+                .readTimeout(120, TimeUnit.SECONDS)
                 .cookieJar(cookieJar)
                 .build();
         this.gson = new Gson();
@@ -195,7 +196,12 @@ public class QwenApiClient implements ApiClient {
             if (response.isSuccessful() && response.body() != null) {
                 processQwenStreamResponse(response, state, model);
             } else {
-                if (actionListener != null) actionListener.onAiError("Failed to send message");
+                // Invalidate midtoken on auth/rate limiting to match StormX resilience
+                int code = response.code();
+                if (code == 401 || code == 403 || code == 429) {
+                    invalidateMidToken();
+                }
+                if (actionListener != null) actionListener.onAiError("Failed to send message (" + code + ")");
             }
         }
     }
@@ -208,6 +214,7 @@ public class QwenApiClient implements ApiClient {
         StringBuilder rawStreamData = new StringBuilder();
 
         String line;
+        boolean anyToken = false;
         while ((line = response.body().source().readUtf8Line()) != null) {
             rawStreamData.append(line).append("\n");
             String t = line.trim();
@@ -247,10 +254,12 @@ public class QwenApiClient implements ApiClient {
                             if ("think".equals(phase)) {
                                 thinkingContent.append(content);
                                 if (actionListener != null) actionListener.onAiStreamUpdate(thinkingContent.toString(), true);
+                                anyToken = true;
                             } else if ("answer".equals(phase)) {
                                 answerContent.append(content);
                                 // Stream answer tokens too
                                 if (actionListener != null) actionListener.onAiStreamUpdate(answerContent.toString(), false);
+                                anyToken = true;
                             } else if ("web_search".equals(phase)) {
                                 // Harvest web search sources from function delta extras when available
                                 if (delta.has("extra") && delta.get("extra").isJsonObject()) {
@@ -334,6 +343,7 @@ public class QwenApiClient implements ApiClient {
 
                                 // Notify listener to save the updated state (final)
                                 if (actionListener != null) actionListener.onQwenConversationStateUpdated(state);
+                                if (actionListener != null) actionListener.onAiRequestCompleted();
                                 break;
                             }
                         }
@@ -342,6 +352,12 @@ public class QwenApiClient implements ApiClient {
                     Log.w(TAG, "Error processing stream data chunk", e);
                 }
             }
+        }
+
+        // If stream ended without any token or finish, ensure UI is unstuck
+        if (!anyToken && actionListener != null) {
+            actionListener.onAiError("No response received from server.");
+            actionListener.onAiRequestCompleted();
         }
     }
 

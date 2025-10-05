@@ -54,6 +54,11 @@ public class PlanExecutor {
         if (aiChatFragment != null) {
             aiChatFragment.updateMessage(messagePosition, message);
             aiChatFragment.hideThinkingMessage();
+            // Disable sending while plan is executing
+            if (activity != null && activity.getAiChatFragment() != null) {
+                com.codex.apk.AIChatUIManager ui = activity.getAiChatFragment().uiManager;
+                if (ui != null) ui.setSendButtonEnabled(false);
+            }
         }
 
         aiAssistantManager.setCurrentStreamingMessagePosition(null);
@@ -199,6 +204,11 @@ public class PlanExecutor {
         planProgressIndex = 0;
         planStepRetryCount = 0;
         executedStepSummaries.clear();
+        // Re-enable send button when plan concludes
+        if (activity != null && activity.getAiChatFragment() != null) {
+            com.codex.apk.AIChatUIManager ui = activity.getAiChatFragment().uiManager;
+            if (ui != null) ui.setSendButtonEnabled(true);
+        }
         if (toastMessage != null) activity.showToast(toastMessage);
         Log.i(TAG, "Plan execution finalized. sanitizeDanglingRunning=" + sanitizeDanglingRunning);
     }

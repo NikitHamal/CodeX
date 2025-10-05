@@ -77,9 +77,19 @@ public class AIChatHistoryManager {
     public void saveChatState(List<ChatMessage> chatHistory, QwenConversationState qwenState) {
         SharedPreferences.Editor editor = prefs.edit();
 
-        // Save Chat History
+        // Save Chat History (filter out transient thinking placeholders)
         String historyKey = getProjectSpecificKey(CHAT_HISTORY_KEY_PREFIX);
-        String historyJson = gson.toJson(chatHistory);
+        java.util.List<ChatMessage> toSave = new java.util.ArrayList<>();
+        String thinking = context.getString(R.string.ai_is_thinking);
+        for (ChatMessage m : chatHistory) {
+            if (m == null) continue;
+            if (m.getSender() == ChatMessage.SENDER_AI && thinking.equals(m.getContent())) {
+                // Skip transient placeholder
+                continue;
+            }
+            toSave.add(m);
+        }
+        String historyJson = gson.toJson(toSave);
         editor.putString(historyKey, historyJson);
 
         // Save Qwen Conversation State

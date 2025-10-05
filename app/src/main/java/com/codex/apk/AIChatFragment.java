@@ -191,8 +191,7 @@ public class AIChatFragment extends Fragment implements ChatMessageAdapter.OnAiA
             return;
         }
 
-        uiManager.setSendButtonEnabled(false);
-
+        // Don't disable send button immediately - only disable it when AI request starts
         ChatMessage userMsg = new ChatMessage(ChatMessage.SENDER_USER, prompt, System.currentTimeMillis());
         if (!pendingAttachments.isEmpty()) {
             List<String> names = new ArrayList<>();
@@ -200,7 +199,6 @@ public class AIChatFragment extends Fragment implements ChatMessageAdapter.OnAiA
             userMsg.setUserAttachmentPaths(names);
         }
         addMessage(userMsg);
-
 
         uiManager.setText("");
         if (listener != null) {
@@ -230,6 +228,9 @@ public class AIChatFragment extends Fragment implements ChatMessageAdapter.OnAiA
                     indexChangedOrAdded = chatHistory.size() - 1;
                     chatMessageAdapter.notifyItemInserted(indexChangedOrAdded);
                     uiManager.scrollToBottom();
+
+                    // Start timeout mechanism
+                    startThinkingTimeout();
                 }
             } else {
                 if (isAiProcessing && currentAiStatusMessage != null) {
@@ -251,6 +252,12 @@ public class AIChatFragment extends Fragment implements ChatMessageAdapter.OnAiA
                 isAiProcessing = false;
                 currentAiStatusMessage = null;
                 uiManager.setSendButtonEnabled(true);
+
+                // Cancel timeout since AI request completed
+                if (thinkingTimeoutHandler != null) {
+                    thinkingTimeoutHandler.removeCallbacks(thinkingTimeoutRunnable);
+                }
+
                 uiManager.scrollToBottom();
             }
         } else {
@@ -288,6 +295,34 @@ public class AIChatFragment extends Fragment implements ChatMessageAdapter.OnAiA
         isAiProcessing = false;
         currentAiStatusMessage = null;
         uiManager.setSendButtonEnabled(true);
+
+        // Cancel any pending timeout handler
+        if (thinkingTimeoutHandler != null) {
+            thinkingTimeoutHandler.removeCallbacks(thinkingTimeoutRunnable);
+        }
+    }
+
+    // Add timeout mechanism to prevent stuck "AI is thinking" state
+    private android.os.Handler thinkingTimeoutHandler;
+    private Runnable thinkingTimeoutRunnable;
+
+    public void startThinkingTimeout() {
+        if (thinkingTimeoutHandler != null) {
+            thinkingTimeoutHandler.removeCallbacks(thinkingTimeoutRunnable);
+        }
+
+        thinkingTimeoutHandler = new android.os.Handler();
+        thinkingTimeoutRunnable = () -> {
+            // If AI is still processing after timeout, force hide the thinking message
+            if (isAiProcessing) {
+                android.util.Log.w("AIChatFragment", "AI thinking timeout reached, forcing hide");
+                hideThinkingMessage();
+                Toast.makeText(requireContext(), "AI request timed out", Toast.LENGTH_SHORT).show();
+            }
+        };
+
+        // Set timeout for 60 seconds
+        thinkingTimeoutHandler.postDelayed(thinkingTimeoutRunnable, 60000);
     }
 
     public void updateMessage(int position, ChatMessage updatedMessage) {

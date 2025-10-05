@@ -122,24 +122,81 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
                 itemView.setOnLongClickListener(v -> {
                     Context ctx = itemView.getContext();
                     View dialogView = LayoutInflater.from(ctx).inflate(R.layout.dialog_raw_api_response, null);
+
+                    // Get all view references
                     TextView textRawResponse = dialogView.findViewById(R.id.text_raw_response);
-                    com.google.android.material.button.MaterialButton buttonCopy = dialogView.findViewById(R.id.button_copy);
-                    com.google.android.material.button.MaterialButton buttonClose = dialogView.findViewById(R.id.button_close);
+                    MaterialButton buttonCopy = dialogView.findViewById(R.id.button_copy);
+                    MaterialButton buttonSave = dialogView.findViewById(R.id.button_save);
+                    MaterialButton buttonClose = dialogView.findViewById(R.id.button_close);
+                    MaterialButton buttonFormatJson = dialogView.findViewById(R.id.button_format_json);
+
                     String raw = step.rawResponse;
-                    textRawResponse.setText(raw != null && !raw.isEmpty() ? raw : "No raw response captured for this step yet.");
+                    String displayText = raw != null && !raw.isEmpty() ? raw : "No raw response captured for this step yet.";
+
+                    // Format JSON if it looks like JSON
+                    if (raw != null && isValidJson(raw)) {
+                        try {
+                            com.google.gson.JsonElement element = com.google.gson.JsonParser.parseString(raw);
+                            displayText = formatJson(element);
+                            textRawResponse.setText(displayText);
+                        } catch (Exception e) {
+                            textRawResponse.setText(displayText);
+                        }
+                    } else {
+                        textRawResponse.setText(displayText);
+                    }
+
+                    // Set up dialog
                     androidx.appcompat.app.AlertDialog.Builder builder = new androidx.appcompat.app.AlertDialog.Builder(ctx);
                     builder.setView(dialogView);
                     final androidx.appcompat.app.AlertDialog dialog = builder.create();
+
+                    // Set up button click listeners
                     buttonCopy.setOnClickListener(x -> {
                         android.content.ClipboardManager clipboard = (android.content.ClipboardManager) ctx.getSystemService(Context.CLIPBOARD_SERVICE);
                         if (clipboard != null) {
                             android.content.ClipData clip = android.content.ClipData.newPlainText("Plan Step Raw Response", raw != null ? raw : "");
                             clipboard.setPrimaryClip(clip);
-                            android.widget.Toast.makeText(ctx, "Raw response copied", android.widget.Toast.LENGTH_SHORT).show();
+                            android.widget.Toast.makeText(ctx, "Response copied to clipboard", android.widget.Toast.LENGTH_SHORT).show();
                         }
                     });
+
+                    buttonSave.setOnClickListener(x -> {
+                        if (raw != null && !raw.isEmpty()) {
+                            savePlanStepResponseToFile(raw, dialog);
+                        } else {
+                            android.widget.Toast.makeText(ctx, "No response data to save", android.widget.Toast.LENGTH_SHORT).show();
+                        }
+                    });
+
+                    buttonFormatJson.setOnClickListener(x -> {
+                        if (raw != null && isValidJson(raw)) {
+                            try {
+                                com.google.gson.JsonElement element = com.google.gson.JsonParser.parseString(raw);
+                                String formatted = formatJson(element);
+                                textRawResponse.setText(formatted);
+                                android.widget.Toast.makeText(ctx, "JSON formatted", android.widget.Toast.LENGTH_SHORT).show();
+                            } catch (Exception e) {
+                                android.widget.Toast.makeText(ctx, "Failed to format JSON", android.widget.Toast.LENGTH_SHORT).show();
+                            }
+                        } else {
+                            android.widget.Toast.makeText(ctx, "Response is not valid JSON", android.widget.Toast.LENGTH_SHORT).show();
+                        }
+                    });
+
                     buttonClose.setOnClickListener(x -> dialog.dismiss());
+
                     dialog.show();
+
+                    // Make dialog larger for better viewing
+                    if (dialog.getWindow() != null) {
+                        android.view.WindowManager.LayoutParams lp = new android.view.WindowManager.LayoutParams();
+                        lp.copyFrom(dialog.getWindow().getAttributes());
+                        lp.width = android.view.WindowManager.LayoutParams.MATCH_PARENT;
+                        lp.height = android.view.WindowManager.LayoutParams.WRAP_CONTENT;
+                        lp.gravity = android.view.Gravity.CENTER;
+                        dialog.getWindow().setAttributes(lp);
+                    }
                     return true;
                 });
             }
@@ -304,11 +361,167 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
         
         private void showRawApiResponseDialog(ChatMessage message) {
             View dialogView = LayoutInflater.from(context).inflate(R.layout.dialog_raw_api_response, null);
-            TextView textRawResponse = dialogView.findViewById(R.id.text_raw_response); MaterialButton buttonCopy = dialogView.findViewById(R.id.button_copy); MaterialButton buttonClose = dialogView.findViewById(R.id.button_close);
-            String rawResponse = message.getRawApiResponse(); textRawResponse.setText(rawResponse != null && !rawResponse.isEmpty() ? rawResponse : "No raw API response available.");
-            AlertDialog.Builder builder = new AlertDialog.Builder(context); builder.setView(dialogView); final AlertDialog dialog = builder.create();
-            buttonCopy.setOnClickListener(v -> { android.content.ClipboardManager clipboard = (android.content.ClipboardManager) context.getSystemService(Context.CLIPBOARD_SERVICE); if (clipboard != null) { android.content.ClipData clip = android.content.ClipData.newPlainText("Raw API Response", rawResponse != null ? rawResponse : ""); clipboard.setPrimaryClip(clip); android.widget.Toast.makeText(context, "Raw response copied", android.widget.Toast.LENGTH_SHORT).show(); } });
-            buttonClose.setOnClickListener(v -> dialog.dismiss()); dialog.show();
+
+            // Get all view references
+            TextView textRawResponse = dialogView.findViewById(R.id.text_raw_response);
+            MaterialButton buttonCopy = dialogView.findViewById(R.id.button_copy);
+            MaterialButton buttonSave = dialogView.findViewById(R.id.button_save);
+            MaterialButton buttonClose = dialogView.findViewById(R.id.button_close);
+            MaterialButton buttonFormatJson = dialogView.findViewById(R.id.button_format_json);
+
+            String rawResponse = message.getRawApiResponse();
+            String displayText = rawResponse != null && !rawResponse.isEmpty() ? rawResponse : "No raw API response available.";
+
+            // Format JSON if it looks like JSON
+            if (rawResponse != null && isValidJson(rawResponse)) {
+                try {
+                    com.google.gson.JsonElement element = com.google.gson.JsonParser.parseString(rawResponse);
+                    displayText = formatJson(element);
+                    textRawResponse.setText(displayText);
+                } catch (Exception e) {
+                    textRawResponse.setText(displayText);
+                }
+            } else {
+                textRawResponse.setText(displayText);
+            }
+
+            // Set up dialog
+            androidx.appcompat.app.AlertDialog.Builder builder = new androidx.appcompat.app.AlertDialog.Builder(context);
+            builder.setView(dialogView);
+            final androidx.appcompat.app.AlertDialog dialog = builder.create();
+
+            // Set up button click listeners
+            buttonCopy.setOnClickListener(v -> {
+                android.content.ClipboardManager clipboard = (android.content.ClipboardManager) context.getSystemService(Context.CLIPBOARD_SERVICE);
+                if (clipboard != null) {
+                    android.content.ClipData clip = android.content.ClipData.newPlainText("Raw API Response", rawResponse != null ? rawResponse : "");
+                    clipboard.setPrimaryClip(clip);
+                    android.widget.Toast.makeText(context, "Response copied to clipboard", android.widget.Toast.LENGTH_SHORT).show();
+                }
+            });
+
+            buttonSave.setOnClickListener(v -> {
+                if (rawResponse != null && !rawResponse.isEmpty()) {
+                    saveResponseToFile(rawResponse, dialog);
+                } else {
+                    android.widget.Toast.makeText(context, "No response data to save", android.widget.Toast.LENGTH_SHORT).show();
+                }
+            });
+
+            buttonFormatJson.setOnClickListener(v -> {
+                if (rawResponse != null && isValidJson(rawResponse)) {
+                    try {
+                        com.google.gson.JsonElement element = com.google.gson.JsonParser.parseString(rawResponse);
+                        String formatted = formatJson(element);
+                        textRawResponse.setText(formatted);
+                        android.widget.Toast.makeText(context, "JSON formatted", android.widget.Toast.LENGTH_SHORT).show();
+                    } catch (Exception e) {
+                        android.widget.Toast.makeText(context, "Failed to format JSON", android.widget.Toast.LENGTH_SHORT).show();
+                    }
+                } else {
+                    android.widget.Toast.makeText(context, "Response is not valid JSON", android.widget.Toast.LENGTH_SHORT).show();
+                }
+            });
+
+            buttonClose.setOnClickListener(v -> dialog.dismiss());
+
+            dialog.show();
+
+            // Make dialog larger for better viewing
+            if (dialog.getWindow() != null) {
+                android.view.WindowManager.LayoutParams lp = new android.view.WindowManager.LayoutParams();
+                lp.copyFrom(dialog.getWindow().getAttributes());
+                lp.width = android.view.WindowManager.LayoutParams.MATCH_PARENT;
+                lp.height = android.view.WindowManager.LayoutParams.WRAP_CONTENT;
+                lp.gravity = android.view.Gravity.CENTER;
+                dialog.getWindow().setAttributes(lp);
+            }
+        }
+
+        private boolean isValidJson(String text) {
+            if (text == null || text.trim().isEmpty()) return false;
+            try {
+                com.google.gson.JsonParser.parseString(text);
+                return true;
+            } catch (com.google.gson.JsonSyntaxException e) {
+                return false;
+            }
+        }
+
+        private String formatJson(com.google.gson.JsonElement element) {
+            com.google.gson.Gson gson = new com.google.gson.GsonBuilder()
+                    .setPrettyPrinting()
+                    .create();
+            return gson.toJson(element);
+        }
+
+        private void saveResponseToFile(String content, androidx.appcompat.app.AlertDialog parentDialog) {
+            try {
+                // Create a timestamped filename
+                java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd_HH-mm-ss", java.util.Locale.getDefault());
+                String timestamp = sdf.format(new java.util.Date());
+                String fileName = "api_response_" + timestamp + ".json";
+
+                // Save to downloads directory or app's external files directory
+                java.io.File downloadsDir;
+                if (android.os.Environment.getExternalStorageState().equals(android.os.Environment.MEDIA_MOUNTED)) {
+                    downloadsDir = android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS);
+                } else {
+                    downloadsDir = context.getExternalFilesDir(android.os.Environment.DIRECTORY_DOCUMENTS);
+                }
+
+                if (downloadsDir != null && !downloadsDir.exists()) {
+                    downloadsDir.mkdirs();
+                }
+
+                java.io.File file = new java.io.File(downloadsDir, fileName);
+                try (java.io.FileWriter writer = new java.io.FileWriter(file)) {
+                    writer.write(content);
+                }
+
+                android.widget.Toast.makeText(context, "Response saved to: " + file.getAbsolutePath(), android.widget.Toast.LENGTH_LONG).show();
+
+                // Show a share dialog
+                android.content.Intent shareIntent = new android.content.Intent(android.content.Intent.ACTION_SEND);
+                shareIntent.setType("text/plain");
+                shareIntent.putExtra(android.content.Intent.EXTRA_STREAM, android.net.Uri.fromFile(file));
+                shareIntent.putExtra(android.content.Intent.EXTRA_TEXT, "API Response saved from CodeX");
+                context.startActivity(android.content.Intent.createChooser(shareIntent, "Share API Response"));
+
+            } catch (Exception e) {
+                android.widget.Toast.makeText(context, "Failed to save response: " + e.getMessage(), android.widget.Toast.LENGTH_SHORT).show();
+            }
+        }
+
+        private void savePlanStepResponseToFile(String content, androidx.appcompat.app.AlertDialog parentDialog) {
+            try {
+                // Create a timestamped filename for plan step
+                java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd_HH-mm-ss", java.util.Locale.getDefault());
+                String timestamp = sdf.format(new java.util.Date());
+                String fileName = "plan_step_response_" + timestamp + ".json";
+
+                // Save to downloads directory or app's external files directory
+                java.io.File downloadsDir;
+                if (android.os.Environment.getExternalStorageState().equals(android.os.Environment.MEDIA_MOUNTED)) {
+                    downloadsDir = android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS);
+                } else {
+                    downloadsDir = context.getExternalFilesDir(android.os.Environment.DIRECTORY_DOCUMENTS);
+                }
+
+                if (downloadsDir != null && !downloadsDir.exists()) {
+                    downloadsDir.mkdirs();
+                }
+
+                java.io.File file = new java.io.File(downloadsDir, fileName);
+                try (java.io.FileWriter writer = new java.io.FileWriter(file)) {
+                    writer.write(content);
+                }
+
+                android.widget.Toast.makeText(context, "Plan step response saved to: " + file.getAbsolutePath(), android.widget.Toast.LENGTH_LONG).show();
+
+            } catch (Exception e) {
+                android.widget.Toast.makeText(context, "Failed to save plan step response: " + e.getMessage(), android.widget.Toast.LENGTH_SHORT).show();
+            }
         }
 
         private void applyCitationSpans(TextView tv, List<WebSource> sources) {

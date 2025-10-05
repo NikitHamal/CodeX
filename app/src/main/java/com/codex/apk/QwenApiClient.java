@@ -191,11 +191,75 @@ public class QwenApiClient implements ApiClient {
             .headers(buildQwenHeaders(qwenToken, state.getConversationId()))
             .build();
 
-        try (Response response = httpClient.newCall(request).execute()) {
-            if (response.isSuccessful() && response.body() != null) {
-                processQwenStreamResponse(response, state, model);
-            } else {
-                if (actionListener != null) actionListener.onAiError("Failed to send message");
+        // Add retry logic for better reliability
+        int maxRetries = 3;
+        int retryDelay = 1000; // 1 second
+
+        for (int attempt = 0; attempt < maxRetries; attempt++) {
+            try {
+                try (Response response = httpClient.newCall(request).execute()) {
+                    if (response.isSuccessful() && response.body() != null) {
+                        processQwenStreamResponse(response, state, model);
+                        return; // Success, exit retry loop
+                    } else {
+                        String errorBody = "";
+                        try {
+                            if (response.body() != null) {
+                                errorBody = response.body().string();
+                            }
+                        } catch (Exception ignored) {}
+
+                        if (response.code() == 429 && attempt < maxRetries - 1) {
+                            // Rate limited, invalidate current token and wait before retry
+                            invalidateMidToken();
+                            Log.w(TAG, "Rate limited. Invalidating token and retrying in " + retryDelay + "ms... (Attempt " + (attempt + 1) + ")");
+                            Thread.sleep(retryDelay);
+                            retryDelay *= 2; // Exponential backoff
+                            continue;
+                        } else if (response.code() >= 500 && attempt < maxRetries - 1) {
+                            // Server error, wait and retry
+                            Log.w(TAG, "Server error. Retrying in " + retryDelay + "ms... (Attempt " + (attempt + 1) + ")");
+                            Thread.sleep(retryDelay);
+                            retryDelay *= 2;
+                            continue;
+                        } else {
+                            // Final failure
+                            if (actionListener != null) {
+                                actionListener.onAiError("Failed to send message: HTTP " + response.code() + " - " + errorBody);
+                                actionListener.onAiRequestCompleted();
+                            }
+                            return;
+                        }
+                    }
+                }
+            } catch (java.net.SocketTimeoutException e) {
+                if (attempt < maxRetries - 1) {
+                    Log.w(TAG, "Socket timeout. Retrying in " + retryDelay + "ms... (Attempt " + (attempt + 1) + ")");
+                    Thread.sleep(retryDelay);
+                    retryDelay *= 2;
+                    continue;
+                } else {
+                    Log.e(TAG, "Final timeout after retries", e);
+                    if (actionListener != null) {
+                        actionListener.onAiError("Network timeout after retries: " + e.getMessage());
+                        actionListener.onAiRequestCompleted();
+                    }
+                    return;
+                }
+            } catch (Exception e) {
+                if (attempt < maxRetries - 1 && (e instanceof java.net.ConnectException || e instanceof java.net.UnknownHostException)) {
+                    Log.w(TAG, "Connection error. Retrying in " + retryDelay + "ms... (Attempt " + (attempt + 1) + ")");
+                    Thread.sleep(retryDelay);
+                    retryDelay *= 2;
+                    continue;
+                } else {
+                    Log.e(TAG, "Error in performCompletion", e);
+                    if (actionListener != null) {
+                        actionListener.onAiError("Network error: " + e.getMessage());
+                        actionListener.onAiRequestCompleted();
+                    }
+                    return;
+                }
             }
         }
     }
@@ -207,140 +271,150 @@ public class QwenApiClient implements ApiClient {
         Set<String> seenWebUrls = new HashSet<>();
         StringBuilder rawStreamData = new StringBuilder();
 
-        String line;
-        while ((line = response.body().source().readUtf8Line()) != null) {
-            rawStreamData.append(line).append("\n");
-            String t = line.trim();
-            if (t.isEmpty()) continue;
-            String jsonData = null;
-            if (t.startsWith("data: ")) {
-                jsonData = t.substring(6);
-            } else if (t.startsWith("{")) {
-                jsonData = t;
-            }
-            if (jsonData != null) {
-                if (jsonData.trim().isEmpty()) continue;
+        try {
+            String line;
+            while ((line = response.body().source().readUtf8Line()) != null) {
+                rawStreamData.append(line).append("\n");
+                String t = line.trim();
+                if (t.isEmpty()) continue;
+                String jsonData = null;
+                if (t.startsWith("data: ")) {
+                    jsonData = t.substring(6);
+                } else if (t.startsWith("{")) {
+                    jsonData = t;
+                }
+                if (jsonData != null) {
+                    if (jsonData.trim().isEmpty()) continue;
 
-                try {
-                    JsonObject data = JsonParser.parseString(jsonData).getAsJsonObject();
+                    try {
+                        JsonObject data = JsonParser.parseString(jsonData).getAsJsonObject();
 
-                    // Check for conversation state updates
-                    if (data.has("response.created")) {
-                        JsonObject created = data.getAsJsonObject("response.created");
-                        if (created.has("chat_id")) state.setConversationId(created.get("chat_id").getAsString());
-                        if (created.has("response_id")) state.setLastParentId(created.get("response_id").getAsString());
-                        // Persist state ASAP
-                        if (actionListener != null) actionListener.onQwenConversationStateUpdated(state);
-                        continue; // This line doesn't contain choices, so we skip to the next
-                    }
+                        // Check for conversation state updates
+                        if (data.has("response.created")) {
+                            JsonObject created = data.getAsJsonObject("response.created");
+                            if (created.has("chat_id")) state.setConversationId(created.get("chat_id").getAsString());
+                            if (created.has("response_id")) state.setLastParentId(created.get("response_id").getAsString());
+                            // Persist state ASAP
+                            if (actionListener != null) actionListener.onQwenConversationStateUpdated(state);
+                            continue; // This line doesn't contain choices, so we skip to the next
+                        }
 
-                    if (data.has("choices")) {
-                        JsonArray choices = data.getAsJsonArray("choices");
-                        if (choices.size() > 0) {
-                            JsonObject choice = choices.get(0).getAsJsonObject();
-                            JsonObject delta = choice.getAsJsonObject("delta");
-                            String status = delta.has("status") ? delta.get("status").getAsString() : "";
-                            String content = delta.has("content") ? delta.get("content").getAsString() : "";
-                            String phase = delta.has("phase") ? delta.get("phase").getAsString() : "";
+                        if (data.has("choices")) {
+                            JsonArray choices = data.getAsJsonArray("choices");
+                            if (choices.size() > 0) {
+                                JsonObject choice = choices.get(0).getAsJsonObject();
+                                JsonObject delta = choice.getAsJsonObject("delta");
+                                String status = delta.has("status") ? delta.get("status").getAsString() : "";
+                                String content = delta.has("content") ? delta.get("content").getAsString() : "";
+                                String phase = delta.has("phase") ? delta.get("phase").getAsString() : "";
 
-                            // Accumulate per-phase content and signals
-                            if ("think".equals(phase)) {
-                                thinkingContent.append(content);
-                                if (actionListener != null) actionListener.onAiStreamUpdate(thinkingContent.toString(), true);
-                            } else if ("answer".equals(phase)) {
-                                answerContent.append(content);
-                                // Stream answer tokens too
-                                if (actionListener != null) actionListener.onAiStreamUpdate(answerContent.toString(), false);
-                            } else if ("web_search".equals(phase)) {
-                                // Harvest web search sources from function delta extras when available
-                                if (delta.has("extra") && delta.get("extra").isJsonObject()) {
-                                    JsonObject extra = delta.getAsJsonObject("extra");
-                                    if (extra.has("web_search_info") && extra.get("web_search_info").isJsonArray()) {
-                                        JsonArray infos = extra.getAsJsonArray("web_search_info");
-                                        for (int i = 0; i < infos.size(); i++) {
-                                            try {
-                                                JsonObject info = infos.get(i).getAsJsonObject();
-                                                String url = info.has("url") ? info.get("url").getAsString() : "";
-                                                if (url == null || url.isEmpty() || seenWebUrls.contains(url)) continue;
-                                                String title = info.has("title") ? info.get("title").getAsString() : url;
-                                                String snippet = info.has("snippet") ? info.get("snippet").getAsString() : "";
-                                                String favicon = info.has("hostlogo") ? info.get("hostlogo").getAsString() : null;
-                                                webSources.add(new WebSource(url, title, snippet, favicon));
-                                                seenWebUrls.add(url);
-                                            } catch (Exception ignored) {}
+                                // Accumulate per-phase content and signals
+                                if ("think".equals(phase)) {
+                                    thinkingContent.append(content);
+                                    if (actionListener != null) actionListener.onAiStreamUpdate(thinkingContent.toString(), true);
+                                } else if ("answer".equals(phase)) {
+                                    answerContent.append(content);
+                                    // Stream answer tokens too
+                                    if (actionListener != null) actionListener.onAiStreamUpdate(answerContent.toString(), false);
+                                } else if ("web_search".equals(phase)) {
+                                    // Harvest web search sources from function delta extras when available
+                                    if (delta.has("extra") && delta.get("extra").isJsonObject()) {
+                                        JsonObject extra = delta.getAsJsonObject("extra");
+                                        if (extra.has("web_search_info") && extra.get("web_search_info").isJsonArray()) {
+                                            JsonArray infos = extra.getAsJsonArray("web_search_info");
+                                            for (int i = 0; i < infos.size(); i++) {
+                                                try {
+                                                    JsonObject info = infos.get(i).getAsJsonObject();
+                                                    String url = info.has("url") ? info.get("url").getAsString() : "";
+                                                    if (url == null || url.isEmpty() || seenWebUrls.contains(url)) continue;
+                                                    String title = info.has("title") ? info.get("title").getAsString() : url;
+                                                    String snippet = info.has("snippet") ? info.get("snippet").getAsString() : "";
+                                                    String favicon = info.has("hostlogo") ? info.get("hostlogo").getAsString() : null;
+                                                    webSources.add(new WebSource(url, title, snippet, favicon));
+                                                    seenWebUrls.add(url);
+                                                } catch (Exception ignored) {}
+                                            }
                                         }
                                     }
                                 }
-                            }
 
-                            // Only finalize when the ANSWER phase reports finished
-                            if ("finished".equals(status) && "answer".equals(phase)) {
-                                String finalContent = answerContent.toString();
-                                String trueRawResponse = rawStreamData.toString();
-                                String jsonToParse = extractJsonFromCodeBlock(finalContent);
-                                if (jsonToParse == null && QwenResponseParser.looksLikeJson(finalContent)) {
-                                    jsonToParse = finalContent;
-                                }
+                                // Only finalize when the ANSWER phase reports finished
+                                if ("finished".equals(status) && "answer".equals(phase)) {
+                                    String finalContent = answerContent.toString();
+                                    String trueRawResponse = rawStreamData.toString();
+                                    String jsonToParse = extractJsonFromCodeBlock(finalContent);
+                                    if (jsonToParse == null && QwenResponseParser.looksLikeJson(finalContent)) {
+                                        jsonToParse = finalContent;
+                                    }
 
-                                if (jsonToParse != null) {
-                                    try {
-                                        // Check for tool_call envelope
-                                        JsonObject maybe = JsonParser.parseString(jsonToParse).getAsJsonObject();
-                                        if (maybe.has("action") && "tool_call".equals(maybe.get("action").getAsString())) {
-                                            // Execute tool calls, then continue in-loop by synthesizing a tool_result follow-up content
-                                            JsonArray calls = maybe.getAsJsonArray("tool_calls");
-                                            JsonArray results = new JsonArray();
-                                            for (int i = 0; i < calls.size(); i++) {
-                                                JsonObject c = calls.get(i).getAsJsonObject();
-                                                String name = c.get("name").getAsString();
-                                                JsonObject args = c.getAsJsonObject("args");
-                                                String toolResult = executeToolCall(name, args);
-                                                JsonObject res = new JsonObject();
-                                                res.addProperty("name", name);
-                                                try { res.add("result", JsonParser.parseString(toolResult)); }
-                                                catch (Exception ex) { res.addProperty("result", toolResult); }
-                                                results.add(res);
-                                            }
-                                            // Synthesize a continuation request by posting the tool_result back as a user message
-                                            String continuation = buildToolResultContinuation(results);
-                                            // Swap out answerContent and restart completion using the same chat
-                                            performContinuation(state, model, continuation);
-                                            continue;
-                                        }
-
-                                        QwenResponseParser.ParsedResponse parsed = QwenResponseParser.parseResponse(jsonToParse);
-                                        if (parsed != null && parsed.isValid) {
-                                            if ("plan".equals(parsed.action)) {
-                                                if (actionListener != null) {
-                                                    notifyAiActionsProcessed(trueRawResponse, parsed.explanation, new ArrayList<>(), new ArrayList<>(), model.getDisplayName(), thinkingContent.toString(), webSources);
+                                    if (jsonToParse != null) {
+                                        try {
+                                            // Check for tool_call envelope
+                                            JsonObject maybe = JsonParser.parseString(jsonToParse).getAsJsonObject();
+                                            if (maybe.has("action") && "tool_call".equals(maybe.get("action").getAsString())) {
+                                                // Execute tool calls, then continue in-loop by synthesizing a tool_result follow-up content
+                                                JsonArray calls = maybe.getAsJsonArray("tool_calls");
+                                                JsonArray results = new JsonArray();
+                                                for (int i = 0; i < calls.size(); i++) {
+                                                    JsonObject c = calls.get(i).getAsJsonObject();
+                                                    String name = c.get("name").getAsString();
+                                                    JsonObject args = c.getAsJsonObject("args");
+                                                    String toolResult = executeToolCall(name, args);
+                                                    JsonObject res = new JsonObject();
+                                                    res.addProperty("name", name);
+                                                    try { res.add("result", JsonParser.parseString(toolResult)); }
+                                                    catch (Exception ex) { res.addProperty("result", toolResult); }
+                                                    results.add(res);
                                                 }
-                                            } else if (parsed.action != null && parsed.action.contains("file")) {
-                                                List<ChatMessage.FileActionDetail> details = QwenResponseParser.toFileActionDetails(parsed);
-                                                enrichFileActionDetails(details);
-                                                if (actionListener != null) notifyAiActionsProcessed(trueRawResponse, parsed.explanation, new ArrayList<>(), details, model.getDisplayName(), thinkingContent.toString(), webSources);
-                                            } else {
-                                                if (actionListener != null) notifyAiActionsProcessed(trueRawResponse, parsed.explanation, new ArrayList<>(), new ArrayList<>(), model.getDisplayName(), thinkingContent.toString(), webSources);
+                                                // Synthesize a continuation request by posting the tool_result back as a user message
+                                                String continuation = buildToolResultContinuation(results);
+                                                // Swap out answerContent and restart completion using the same chat
+                                                performContinuation(state, model, continuation);
+                                                continue;
                                             }
-                                        } else {
+
+                                            QwenResponseParser.ParsedResponse parsed = QwenResponseParser.parseResponse(jsonToParse);
+                                            if (parsed != null && parsed.isValid) {
+                                                if ("plan".equals(parsed.action)) {
+                                                    if (actionListener != null) {
+                                                        notifyAiActionsProcessed(trueRawResponse, parsed.explanation, new ArrayList<>(), new ArrayList<>(), model.getDisplayName(), thinkingContent.toString(), webSources);
+                                                    }
+                                                } else if (parsed.action != null && parsed.action.contains("file")) {
+                                                    List<ChatMessage.FileActionDetail> details = QwenResponseParser.toFileActionDetails(parsed);
+                                                    enrichFileActionDetails(details);
+                                                    if (actionListener != null) notifyAiActionsProcessed(trueRawResponse, parsed.explanation, new ArrayList<>(), details, model.getDisplayName(), thinkingContent.toString(), webSources);
+                                                } else {
+                                                    if (actionListener != null) notifyAiActionsProcessed(trueRawResponse, parsed.explanation, new ArrayList<>(), new ArrayList<>(), model.getDisplayName(), thinkingContent.toString(), webSources);
+                                                }
+                                            } else {
+                                                if (actionListener != null) notifyAiActionsProcessed(trueRawResponse, finalContent, new ArrayList<>(), new ArrayList<>(), model.getDisplayName(), thinkingContent.toString(), webSources);
+                                            }
+                                        } catch (Exception e) {
+                                            Log.e(TAG, "Failed to parse extracted JSON, treating as text.", e);
                                             if (actionListener != null) notifyAiActionsProcessed(trueRawResponse, finalContent, new ArrayList<>(), new ArrayList<>(), model.getDisplayName(), thinkingContent.toString(), webSources);
                                         }
-                                    } catch (Exception e) {
-                                        Log.e(TAG, "Failed to parse extracted JSON, treating as text.", e);
+                                    } else {
                                         if (actionListener != null) notifyAiActionsProcessed(trueRawResponse, finalContent, new ArrayList<>(), new ArrayList<>(), model.getDisplayName(), thinkingContent.toString(), webSources);
                                     }
-                                } else {
-                                    if (actionListener != null) notifyAiActionsProcessed(trueRawResponse, finalContent, new ArrayList<>(), new ArrayList<>(), model.getDisplayName(), thinkingContent.toString(), webSources);
-                                }
 
-                                // Notify listener to save the updated state (final)
-                                if (actionListener != null) actionListener.onQwenConversationStateUpdated(state);
-                                break;
+                                    // Notify listener to save the updated state (final)
+                                    if (actionListener != null) actionListener.onQwenConversationStateUpdated(state);
+                                    // Notify completion
+                                    if (actionListener != null) actionListener.onAiRequestCompleted();
+                                    return;
+                                }
                             }
                         }
+                    } catch (Exception e) {
+                        Log.w(TAG, "Error processing stream data chunk", e);
                     }
-                } catch (Exception e) {
-                    Log.w(TAG, "Error processing stream data chunk", e);
                 }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error in stream processing", e);
+            if (actionListener != null) {
+                actionListener.onAiError("Network error: " + e.getMessage());
+                actionListener.onAiRequestCompleted();
             }
         }
     }
@@ -395,6 +469,17 @@ public class QwenApiClient implements ApiClient {
         try (Response response = httpClient.newCall(request).execute()) {
             if (response.isSuccessful() && response.body() != null) {
                 processQwenStreamResponse(response, state, model);
+            } else {
+                if (actionListener != null) {
+                    actionListener.onAiError("Failed to continue conversation: HTTP " + response.code());
+                    actionListener.onAiRequestCompleted();
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error in continuation", e);
+            if (actionListener != null) {
+                actionListener.onAiError("Network error during continuation: " + e.getMessage());
+                actionListener.onAiRequestCompleted();
             }
         }
     }
@@ -432,59 +517,85 @@ public class QwenApiClient implements ApiClient {
 
     private okhttp3.Headers buildQwenHeaders(String midtoken, String conversationId) {
         okhttp3.Headers.Builder builder = new okhttp3.Headers.Builder()
-                .add("Authorization", "Bearer")
-                .add("Content-Type", "application/json")
+                .add("User-Agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36")
                 .add("Accept", "*/*")
-                .add("bx-umidtoken", midtoken)
-                .add("bx-v", QWEN_BX_V)
-                .add("Accept-Language", "en-US,en;q=0.9")
-                .add("Connection", "keep-alive")
+                .add("Accept-Language", "en-US,en;q=0.5")
                 .add("Origin", "https://chat.qwen.ai")
+                .add("Referer", conversationId != null ? "https://chat.qwen.ai/c/" + conversationId : "https://chat.qwen.ai/")
+                .add("Content-Type", "application/json")
                 .add("Sec-Fetch-Dest", "empty")
                 .add("Sec-Fetch-Mode", "cors")
                 .add("Sec-Fetch-Site", "same-origin")
-                .add("User-Agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36")
+                .add("Connection", "keep-alive")
+                .add("Authorization", "Bearer")
                 .add("Source", "web")
-                .add("x-accel-buffering", "no");
-
-        if (conversationId != null) {
-            builder.add("Referer", "https://chat.qwen.ai/c/" + conversationId);
-        }
+                .add("bx-umidtoken", midtoken)
+                .add("bx-v", QWEN_BX_V);
 
         return builder.build();
     }
 
     private synchronized String ensureMidToken() throws IOException {
-        if (midToken != null) {
+        if (midToken != null && midTokenUses < 50) { // Limit token usage to prevent rate limits
             midTokenUses++;
             Log.i(TAG, "Reusing midtoken. Use count: " + midTokenUses);
             return midToken;
         }
 
-        Log.i(TAG, "No active midtoken. Fetching a new one...");
-        Request req = new Request.Builder()
-                .url("https://sg-wum.alibaba.com/w/wu.json")
-                .get()
-                .addHeader("User-Agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36")
-                .addHeader("Accept", "*/*")
-                .build();
-        try (Response resp = httpClient.newCall(req).execute()) {
-            if (!resp.isSuccessful() || resp.body() == null) {
-                throw new IOException("Failed to fetch midtoken: HTTP " + (resp != null ? resp.code() : 0));
-            }
-            String text = resp.body().string();
-            Matcher m = MIDTOKEN_PATTERN.matcher(text);
-            if (!m.find()) {
-                throw new IOException("Failed to extract bx-umidtoken");
-            }
-            midToken = m.group(1);
-            midTokenUses = 1;
-
-            // Save to SharedPreferences
-            sharedPreferences.edit().putString(QWEN_MIDTOKEN_KEY, midToken).apply();
-            Log.i(TAG, "Obtained and saved new midtoken. Use count: 1");
-            return midToken;
+        // Reset usage counter and fetch new token if we've used it too much
+        if (midToken != null) {
+            Log.i(TAG, "Midtoken usage limit reached, fetching new one...");
+        } else {
+            Log.i(TAG, "No active midtoken. Fetching a new one...");
         }
+
+        // Try multiple times to get a working token
+        int maxRetries = 3;
+        for (int attempt = 0; attempt < maxRetries; attempt++) {
+            try {
+                Request req = new Request.Builder()
+                        .url("https://sg-wum.alibaba.com/w/wu.json")
+                        .get()
+                        .addHeader("User-Agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36")
+                        .addHeader("Accept", "*/*")
+                        .build();
+
+                try (Response resp = httpClient.newCall(req).execute()) {
+                    if (!resp.isSuccessful() || resp.body() == null) {
+                        if (attempt < maxRetries - 1) {
+                            Log.w(TAG, "Failed to fetch midtoken (attempt " + (attempt + 1) + "), retrying...");
+                            Thread.sleep(1000);
+                            continue;
+                        }
+                        throw new IOException("Failed to fetch midtoken: HTTP " + (resp != null ? resp.code() : 0));
+                    }
+
+                    String text = resp.body().string();
+                    Matcher m = MIDTOKEN_PATTERN.matcher(text);
+                    if (!m.find()) {
+                        if (attempt < maxRetries - 1) {
+                            Log.w(TAG, "Failed to extract midtoken (attempt " + (attempt + 1) + "), retrying...");
+                            Thread.sleep(1000);
+                            continue;
+                        }
+                        throw new IOException("Failed to extract bx-umidtoken from response");
+                    }
+
+                    midToken = m.group(1);
+                    midTokenUses = 1;
+
+                    // Save to SharedPreferences
+                    sharedPreferences.edit().putString(QWEN_MIDTOKEN_KEY, midToken).apply();
+                    Log.i(TAG, "Obtained and saved new midtoken. Use count: 1");
+                    return midToken;
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new IOException("Interrupted while fetching midtoken", e);
+            }
+        }
+
+        throw new IOException("Failed to obtain midtoken after " + maxRetries + " attempts");
     }
 
     private void invalidateMidToken() {

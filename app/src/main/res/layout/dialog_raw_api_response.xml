@@ -1,57 +1,176 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout
+<androidx.coordinatorlayout.widget.CoordinatorLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="vertical"
-    android:padding="12dp">
+    android:background="@drawable/rounded_dialog_background"
+    android:padding="16dp">
 
-    <ScrollView
-        android:layout_width="match_parent"
-        android:layout_height="300dp"
-        android:layout_marginBottom="8dp">
-
-        <TextView
-            android:id="@+id/text_raw_response"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Raw API response will appear here..."
-            android:textAppearance="@style/TextAppearance.Material3.BodySmall"
-            android:textColor="@color/on_surface"
-            android:fontFamily="monospace"
-            android:textSize="11sp"
-            android:background="@drawable/rounded_edittext_background"
-            android:padding="10dp"
-            android:textIsSelectable="true" />
-
-    </ScrollView>
-
+    <!-- Header Section -->
     <LinearLayout
+        android:id="@+id/header_section"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:gravity="end">
+        android:gravity="center_vertical"
+        android:layout_marginBottom="16dp"
+        android:background="@drawable/dialog_header_background"
+        android:padding="12dp">
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/button_copy"
-            style="@style/Widget.Material3.Button.TextButton"
-            android:layout_width="wrap_content"
+        <ImageView
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:src="@drawable/ic_api_response"
+            android:tint="@color/primary"
+            android:layout_marginEnd="8dp" />
+
+        <TextView
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:text="Copy"
-            android:textColor="@color/primary"
-            app:icon="@drawable/ic_copy"
-            app:iconTint="@color/primary"
-            android:layout_marginEnd="4dp" />
+            android:layout_weight="1"
+            android:text="Raw API Response"
+            android:textStyle="bold"
+            android:textSize="18sp"
+            android:textColor="@color/on_surface"
+            android:fontFamily="sans-serif-medium" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/button_close"
-            style="@style/Widget.Material3.Button.TextButton"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Close"
-            android:textColor="@color/on_surface_variant" />
+            style="@style/Widget.Material3.Button.IconButton"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            app:icon="@drawable/ic_close"
+            app:iconTint="@color/on_surface_variant"
+            app:iconSize="20dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Close dialog" />
 
     </LinearLayout>
 
-</LinearLayout>
+    <!-- Content Section -->
+    <androidx.core.widget.NestedScrollView
+        android:layout_width="match_parent"
+        android:layout_height="400dp"
+        android:clipToPadding="false"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <!-- JSON Viewer Card -->
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="2dp"
+                app:strokeWidth="0dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:background="@drawable/code_background">
+
+                    <!-- JSON Content Header -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:background="@color/surface_container_high"
+                        android:padding="12dp">
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="Response Content"
+                            android:textStyle="bold"
+                            android:textSize="14sp"
+                            android:textColor="@color/on_surface" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/button_format_json"
+                            style="@style/Widget.Material3.Button.TextButton"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Format"
+                            android:textSize="12sp"
+                            android:textColor="@color/primary"
+                            app:icon="@drawable/ic_format"
+                            app:iconTint="@color/primary"
+                            app:iconSize="16dp" />
+
+                    </LinearLayout>
+
+                    <!-- JSON Text Content -->
+                    <ScrollView
+                        android:layout_width="match_parent"
+                        android:layout_height="280dp"
+                        android:fadeScrollbars="false"
+                        android:scrollbars="vertical">
+
+                        <TextView
+                            android:id="@+id/text_raw_response"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="Loading API response..."
+                            android:textAppearance="@style/TextAppearance.Material3.BodySmall"
+                            android:textColor="@color/on_surface"
+                            android:fontFamily="monospace"
+                            android:textSize="12sp"
+                            android:lineSpacingExtra="2dp"
+                            android:padding="16dp"
+                            android:textIsSelectable="true"
+                            android:background="@android:color/transparent" />
+
+                    </ScrollView>
+
+                </LinearLayout>
+
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Action Buttons -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/button_copy"
+                    style="@style/Widget.Material3.Button.Filled"
+                    android:layout_width="0dp"
+                    android:layout_height="48dp"
+                    android:layout_weight="1"
+                    android:layout_marginEnd="8dp"
+                    android:text="Copy Response"
+                    android:textColor="@color/on_primary"
+                    app:icon="@drawable/ic_copy"
+                    app:iconTint="@color/on_primary"
+                    app:iconGravity="textStart" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/button_save"
+                    style="@style/Widget.Material3.Button.Outlined"
+                    android:layout_width="0dp"
+                    android:layout_height="48dp"
+                    android:layout_weight="1"
+                    android:layout_marginStart="8dp"
+                    android:text="Save to File"
+                    android:textColor="@color/primary"
+                    app:icon="@drawable/ic_download"
+                    app:iconTint="@color/primary"
+                    app:iconGravity="textStart" />
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+    </androidx.core.widget.NestedScrollView>
+
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

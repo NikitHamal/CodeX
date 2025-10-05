@@ -205,9 +205,11 @@ public class QwenApiClient implements ApiClient {
         StringBuilder answerContent = new StringBuilder();
         List<WebSource> webSources = new ArrayList<>();
         Set<String> seenWebUrls = new HashSet<>();
+        StringBuilder rawStreamData = new StringBuilder();
 
         String line;
         while ((line = response.body().source().readUtf8Line()) != null) {
+            rawStreamData.append(line).append("\n");
             String t = line.trim();
             if (t.isEmpty()) continue;
             String jsonData = null;
@@ -274,6 +276,7 @@ public class QwenApiClient implements ApiClient {
                             // Only finalize when the ANSWER phase reports finished
                             if ("finished".equals(status) && "answer".equals(phase)) {
                                 String finalContent = answerContent.toString();
+                                String trueRawResponse = rawStreamData.toString();
                                 String jsonToParse = extractJsonFromCodeBlock(finalContent);
                                 if (jsonToParse == null && QwenResponseParser.looksLikeJson(finalContent)) {
                                     jsonToParse = finalContent;
@@ -309,24 +312,24 @@ public class QwenApiClient implements ApiClient {
                                         if (parsed != null && parsed.isValid) {
                                             if ("plan".equals(parsed.action)) {
                                                 if (actionListener != null) {
-                                                    notifyAiActionsProcessed(jsonToParse, parsed.explanation, new ArrayList<>(), new ArrayList<>(), model.getDisplayName(), thinkingContent.toString(), webSources);
+                                                    notifyAiActionsProcessed(trueRawResponse, parsed.explanation, new ArrayList<>(), new ArrayList<>(), model.getDisplayName(), thinkingContent.toString(), webSources);
                                                 }
                                             } else if (parsed.action != null && parsed.action.contains("file")) {
                                                 List<ChatMessage.FileActionDetail> details = QwenResponseParser.toFileActionDetails(parsed);
                                                 enrichFileActionDetails(details);
-                                                if (actionListener != null) notifyAiActionsProcessed(jsonToParse, parsed.explanation, new ArrayList<>(), details, model.getDisplayName(), thinkingContent.toString(), webSources);
+                                                if (actionListener != null) notifyAiActionsProcessed(trueRawResponse, parsed.explanation, new ArrayList<>(), details, model.getDisplayName(), thinkingContent.toString(), webSources);
                                             } else {
-                                                if (actionListener != null) notifyAiActionsProcessed(jsonToParse, parsed.explanation, new ArrayList<>(), new ArrayList<>(), model.getDisplayName(), thinkingContent.toString(), webSources);
+                                                if (actionListener != null) notifyAiActionsProcessed(trueRawResponse, parsed.explanation, new ArrayList<>(), new ArrayList<>(), model.getDisplayName(), thinkingContent.toString(), webSources);
                                             }
                                         } else {
-                                            if (actionListener != null) notifyAiActionsProcessed(finalContent, finalContent, new ArrayList<>(), new ArrayList<>(), model.getDisplayName(), thinkingContent.toString(), webSources);
+                                            if (actionListener != null) notifyAiActionsProcessed(trueRawResponse, finalContent, new ArrayList<>(), new ArrayList<>(), model.getDisplayName(), thinkingContent.toString(), webSources);
                                         }
                                     } catch (Exception e) {
                                         Log.e(TAG, "Failed to parse extracted JSON, treating as text.", e);
-                                        if (actionListener != null) notifyAiActionsProcessed(finalContent, finalContent, new ArrayList<>(), new ArrayList<>(), model.getDisplayName(), thinkingContent.toString(), webSources);
+                                        if (actionListener != null) notifyAiActionsProcessed(trueRawResponse, finalContent, new ArrayList<>(), new ArrayList<>(), model.getDisplayName(), thinkingContent.toString(), webSources);
                                     }
                                 } else {
-                                    if (actionListener != null) notifyAiActionsProcessed(finalContent, finalContent, new ArrayList<>(), new ArrayList<>(), model.getDisplayName(), thinkingContent.toString(), webSources);
+                                    if (actionListener != null) notifyAiActionsProcessed(trueRawResponse, finalContent, new ArrayList<>(), new ArrayList<>(), model.getDisplayName(), thinkingContent.toString(), webSources);
                                 }
 
                                 // Notify listener to save the updated state (final)

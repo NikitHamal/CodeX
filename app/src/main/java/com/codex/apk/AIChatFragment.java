@@ -138,6 +138,10 @@ public class AIChatFragment extends Fragment implements ChatMessageAdapter.OnAiA
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
         historyManager.loadChatState(chatHistory, qwenConversationState);
+
+        // Clear any stuck "AI is thinking" messages that may have persisted from previous sessions
+        clearStuckThinkingState();
+
         aiAssistant = listener.getAIAssistant();
         uiManager.updateUiVisibility(chatHistory.isEmpty());
         uiManager.setListeners();
@@ -191,7 +195,7 @@ public class AIChatFragment extends Fragment implements ChatMessageAdapter.OnAiA
             return;
         }
 
-        uiManager.setSendButtonEnabled(false);
+        // Don't disable send button here - it will be disabled in onAiRequestStarted()
 
         ChatMessage userMsg = new ChatMessage(ChatMessage.SENDER_USER, prompt, System.currentTimeMillis());
         if (!pendingAttachments.isEmpty()) {
@@ -250,7 +254,7 @@ public class AIChatFragment extends Fragment implements ChatMessageAdapter.OnAiA
                 }
                 isAiProcessing = false;
                 currentAiStatusMessage = null;
-                uiManager.setSendButtonEnabled(true);
+                // Don't re-enable send button here - it should be controlled by AI lifecycle callbacks
                 uiManager.scrollToBottom();
             }
         } else {
@@ -287,6 +291,7 @@ public class AIChatFragment extends Fragment implements ChatMessageAdapter.OnAiA
         }
         isAiProcessing = false;
         currentAiStatusMessage = null;
+        // Re-enable send button when thinking message is hidden (AI processing finished)
         uiManager.setSendButtonEnabled(true);
     }
 
@@ -322,6 +327,35 @@ public class AIChatFragment extends Fragment implements ChatMessageAdapter.OnAiA
         if (state != null) {
             this.qwenConversationState = state;
             historyManager.saveChatState(chatHistory, qwenConversationState);
+        }
+    }
+
+    /**
+     * Clears any stuck "AI is thinking" messages that may have persisted from previous sessions
+     * or failed requests.
+     */
+    private void clearStuckThinkingState() {
+        boolean foundStuckMessage = false;
+        for (int i = chatHistory.size() - 1; i >= 0; i--) {
+            ChatMessage message = chatHistory.get(i);
+            if (message.getSender() == ChatMessage.SENDER_AI &&
+                getString(R.string.ai_is_thinking).equals(message.getContent())) {
+                chatHistory.remove(i);
+                foundStuckMessage = true;
+            }
+        }
+
+        if (foundStuckMessage && chatMessageAdapter != null) {
+            chatMessageAdapter.notifyDataSetChanged();
+        }
+
+        // Reset processing state
+        isAiProcessing = false;
+        currentAiStatusMessage = null;
+
+        // Ensure send button is enabled after clearing stuck state
+        if (uiManager != null) {
+            uiManager.setSendButtonEnabled(true);
         }
     }
 }

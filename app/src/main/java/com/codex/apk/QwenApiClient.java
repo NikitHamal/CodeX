@@ -203,11 +203,13 @@ public class QwenApiClient implements ApiClient {
     private void processQwenStreamResponse(Response response, QwenConversationState state, AIModel model) throws IOException {
         StringBuilder thinkingContent = new StringBuilder();
         StringBuilder answerContent = new StringBuilder();
+        StringBuilder rawResponse = new StringBuilder(); // Collect complete raw response
         List<WebSource> webSources = new ArrayList<>();
         Set<String> seenWebUrls = new HashSet<>();
 
         String line;
         while ((line = response.body().source().readUtf8Line()) != null) {
+            rawResponse.append(line).append("\n"); // Collect raw response
             String t = line.trim();
             if (t.isEmpty()) continue;
             String jsonData = null;
@@ -309,24 +311,24 @@ public class QwenApiClient implements ApiClient {
                                         if (parsed != null && parsed.isValid) {
                                             if ("plan".equals(parsed.action)) {
                                                 if (actionListener != null) {
-                                                    notifyAiActionsProcessed(jsonToParse, parsed.explanation, new ArrayList<>(), new ArrayList<>(), model.getDisplayName(), thinkingContent.toString(), webSources);
+                                                    notifyAiActionsProcessed(rawResponse.toString(), parsed.explanation, new ArrayList<>(), new ArrayList<>(), model.getDisplayName(), thinkingContent.toString(), webSources);
                                                 }
                                             } else if (parsed.action != null && parsed.action.contains("file")) {
                                                 List<ChatMessage.FileActionDetail> details = QwenResponseParser.toFileActionDetails(parsed);
                                                 enrichFileActionDetails(details);
-                                                if (actionListener != null) notifyAiActionsProcessed(jsonToParse, parsed.explanation, new ArrayList<>(), details, model.getDisplayName(), thinkingContent.toString(), webSources);
+                                                if (actionListener != null) notifyAiActionsProcessed(rawResponse.toString(), parsed.explanation, new ArrayList<>(), details, model.getDisplayName(), thinkingContent.toString(), webSources);
                                             } else {
-                                                if (actionListener != null) notifyAiActionsProcessed(jsonToParse, parsed.explanation, new ArrayList<>(), new ArrayList<>(), model.getDisplayName(), thinkingContent.toString(), webSources);
+                                                if (actionListener != null) notifyAiActionsProcessed(rawResponse.toString(), parsed.explanation, new ArrayList<>(), new ArrayList<>(), model.getDisplayName(), thinkingContent.toString(), webSources);
                                             }
                                         } else {
-                                            if (actionListener != null) notifyAiActionsProcessed(finalContent, finalContent, new ArrayList<>(), new ArrayList<>(), model.getDisplayName(), thinkingContent.toString(), webSources);
+                                            if (actionListener != null) notifyAiActionsProcessed(rawResponse.toString(), finalContent, new ArrayList<>(), new ArrayList<>(), model.getDisplayName(), thinkingContent.toString(), webSources);
                                         }
                                     } catch (Exception e) {
                                         Log.e(TAG, "Failed to parse extracted JSON, treating as text.", e);
-                                        if (actionListener != null) notifyAiActionsProcessed(finalContent, finalContent, new ArrayList<>(), new ArrayList<>(), model.getDisplayName(), thinkingContent.toString(), webSources);
+                                        if (actionListener != null) notifyAiActionsProcessed(rawResponse.toString(), finalContent, new ArrayList<>(), new ArrayList<>(), model.getDisplayName(), thinkingContent.toString(), webSources);
                                     }
                                 } else {
-                                    if (actionListener != null) notifyAiActionsProcessed(finalContent, finalContent, new ArrayList<>(), new ArrayList<>(), model.getDisplayName(), thinkingContent.toString(), webSources);
+                                    if (actionListener != null) notifyAiActionsProcessed(rawResponse.toString(), finalContent, new ArrayList<>(), new ArrayList<>(), model.getDisplayName(), thinkingContent.toString(), webSources);
                                 }
 
                                 // Notify listener to save the updated state (final)

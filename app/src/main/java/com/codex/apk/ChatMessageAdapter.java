@@ -121,23 +121,39 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
                 // Long-press to show raw response for this step
                 itemView.setOnLongClickListener(v -> {
                     Context ctx = itemView.getContext();
-                    View dialogView = LayoutInflater.from(ctx).inflate(R.layout.dialog_raw_api_response, null);
+                    View dialogView = LayoutInflater.from(ctx).inflate(R.layout.bottom_sheet_raw_api_response, null);
+
                     TextView textRawResponse = dialogView.findViewById(R.id.text_raw_response);
                     com.google.android.material.button.MaterialButton buttonCopy = dialogView.findViewById(R.id.button_copy);
                     com.google.android.material.button.MaterialButton buttonClose = dialogView.findViewById(R.id.button_close);
+
                     String raw = step.rawResponse;
-                    textRawResponse.setText(raw != null && !raw.isEmpty() ? raw : "No raw response captured for this step yet.");
-                    androidx.appcompat.app.AlertDialog.Builder builder = new androidx.appcompat.app.AlertDialog.Builder(ctx);
-                    builder.setView(dialogView);
-                    final androidx.appcompat.app.AlertDialog dialog = builder.create();
+                    String displayText = raw != null && !raw.isEmpty() ? raw : "No raw response captured for this step yet.";
+
+                    // Format JSON for better readability if it's JSON
+                    if (raw != null && (raw.trim().startsWith("{") || raw.trim().startsWith("["))) {
+                        try {
+                            com.google.gson.JsonElement element = com.google.gson.JsonParser.parseString(raw);
+                            displayText = element.toString();
+                        } catch (Exception e) {
+                            // Not valid JSON, use as-is
+                        }
+                    }
+
+                    textRawResponse.setText(displayText);
+
+                    BottomSheetDialog dialog = new BottomSheetDialog(ctx);
+                    dialog.setContentView(dialogView);
+
                     buttonCopy.setOnClickListener(x -> {
                         android.content.ClipboardManager clipboard = (android.content.ClipboardManager) ctx.getSystemService(Context.CLIPBOARD_SERVICE);
                         if (clipboard != null) {
                             android.content.ClipData clip = android.content.ClipData.newPlainText("Plan Step Raw Response", raw != null ? raw : "");
                             clipboard.setPrimaryClip(clip);
-                            android.widget.Toast.makeText(ctx, "Raw response copied", android.widget.Toast.LENGTH_SHORT).show();
+                            android.widget.Toast.makeText(ctx, "Raw response copied to clipboard", android.widget.Toast.LENGTH_SHORT).show();
                         }
                     });
+
                     buttonClose.setOnClickListener(x -> dialog.dismiss());
                     dialog.show();
                     return true;
@@ -303,12 +319,41 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
         }
         
         private void showRawApiResponseDialog(ChatMessage message) {
-            View dialogView = LayoutInflater.from(context).inflate(R.layout.dialog_raw_api_response, null);
-            TextView textRawResponse = dialogView.findViewById(R.id.text_raw_response); MaterialButton buttonCopy = dialogView.findViewById(R.id.button_copy); MaterialButton buttonClose = dialogView.findViewById(R.id.button_close);
-            String rawResponse = message.getRawApiResponse(); textRawResponse.setText(rawResponse != null && !rawResponse.isEmpty() ? rawResponse : "No raw API response available.");
-            AlertDialog.Builder builder = new AlertDialog.Builder(context); builder.setView(dialogView); final AlertDialog dialog = builder.create();
-            buttonCopy.setOnClickListener(v -> { android.content.ClipboardManager clipboard = (android.content.ClipboardManager) context.getSystemService(Context.CLIPBOARD_SERVICE); if (clipboard != null) { android.content.ClipData clip = android.content.ClipData.newPlainText("Raw API Response", rawResponse != null ? rawResponse : ""); clipboard.setPrimaryClip(clip); android.widget.Toast.makeText(context, "Raw response copied", android.widget.Toast.LENGTH_SHORT).show(); } });
-            buttonClose.setOnClickListener(v -> dialog.dismiss()); dialog.show();
+            View dialogView = LayoutInflater.from(context).inflate(R.layout.bottom_sheet_raw_api_response, null);
+
+            TextView textRawResponse = dialogView.findViewById(R.id.text_raw_response);
+            MaterialButton buttonCopy = dialogView.findViewById(R.id.button_copy);
+            MaterialButton buttonClose = dialogView.findViewById(R.id.button_close);
+
+            String rawResponse = message.getRawApiResponse();
+            String displayText = rawResponse != null && !rawResponse.isEmpty() ? rawResponse : "No raw API response available.";
+
+            // Format JSON for better readability if it's JSON
+            if (rawResponse != null && (rawResponse.trim().startsWith("{") || rawResponse.trim().startsWith("["))) {
+                try {
+                    com.google.gson.JsonElement element = com.google.gson.JsonParser.parseString(rawResponse);
+                    displayText = element.toString();
+                } catch (Exception e) {
+                    // Not valid JSON, use as-is
+                }
+            }
+
+            textRawResponse.setText(displayText);
+
+            BottomSheetDialog dialog = new BottomSheetDialog(context);
+            dialog.setContentView(dialogView);
+
+            buttonCopy.setOnClickListener(v -> {
+                android.content.ClipboardManager clipboard = (android.content.ClipboardManager) context.getSystemService(Context.CLIPBOARD_SERVICE);
+                if (clipboard != null) {
+                    android.content.ClipData clip = android.content.ClipData.newPlainText("Raw API Response", rawResponse != null ? rawResponse : "");
+                    clipboard.setPrimaryClip(clip);
+                    android.widget.Toast.makeText(context, "Raw response copied to clipboard", android.widget.Toast.LENGTH_SHORT).show();
+                }
+            });
+
+            buttonClose.setOnClickListener(v -> dialog.dismiss());
+            dialog.show();
         }
 
         private void applyCitationSpans(TextView tv, List<WebSource> sources) {

@@ -516,6 +516,12 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
         activity.runOnUiThread(() -> {
             activity.showToast("AI Error: " + errorMessage);
             sendSystemMessage("Error: " + errorMessage);
+
+            // Clear any ongoing thinking state when there's an error
+            AIChatFragment chatFragment = activity.getAiChatFragment();
+            if (chatFragment != null) {
+                chatFragment.hideThinkingMessage();
+            }
         });
     }
 

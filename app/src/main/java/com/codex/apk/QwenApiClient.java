@@ -209,6 +209,9 @@ public class QwenApiClient implements ApiClient {
 
         String line;
         while ((line = response.body().source().readUtf8Line()) != null) {
+            // Capture complete raw response for raw API response dialog (all lines)
+            completeRawResponse.append(line).append("\n");
+
             String t = line.trim();
             if (t.isEmpty()) continue;
             String jsonData = null;
@@ -219,13 +222,6 @@ public class QwenApiClient implements ApiClient {
             }
             if (jsonData != null) {
                 if (jsonData.trim().isEmpty()) continue;
-
-                // Capture complete raw response for raw API response dialog
-                if (t.startsWith("data: ")) {
-                    completeRawResponse.append(line).append("\n");
-                } else {
-                    completeRawResponse.append(t).append("\n");
-                }
 
                 try {
                     JsonObject data = JsonParser.parseString(jsonData).getAsJsonObject();

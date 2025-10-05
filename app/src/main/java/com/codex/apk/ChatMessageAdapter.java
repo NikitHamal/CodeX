@@ -20,6 +20,7 @@ import com.google.android.material.card.MaterialCardView;
 import androidx.appcompat.app.AlertDialog;
 import com.codex.apk.ai.WebSource;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
+import com.google.android.material.bottomsheet.BottomSheetBehavior;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -121,15 +122,36 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
                 // Long-press to show raw response for this step
                 itemView.setOnLongClickListener(v -> {
                     Context ctx = itemView.getContext();
-                    View dialogView = LayoutInflater.from(ctx).inflate(R.layout.dialog_raw_api_response, null);
-                    TextView textRawResponse = dialogView.findViewById(R.id.text_raw_response);
-                    com.google.android.material.button.MaterialButton buttonCopy = dialogView.findViewById(R.id.button_copy);
-                    com.google.android.material.button.MaterialButton buttonClose = dialogView.findViewById(R.id.button_close);
+
+                    // Use BottomSheetDialog for better UX
+                    BottomSheetDialog bottomSheetDialog = new BottomSheetDialog(ctx, R.style.ThemeOverlay_Material3_BottomSheetDialog);
+                    View sheetView = LayoutInflater.from(ctx).inflate(R.layout.bottom_sheet_raw_api_response, null);
+                    bottomSheetDialog.setContentView(sheetView);
+
+                    TextView textRawResponse = sheetView.findViewById(R.id.text_raw_response);
+                    MaterialButton buttonCopy = sheetView.findViewById(R.id.button_copy);
+                    MaterialButton buttonClose = sheetView.findViewById(R.id.button_close);
+                    MaterialButton buttonShare = sheetView.findViewById(R.id.button_share);
+
                     String raw = step.rawResponse;
-                    textRawResponse.setText(raw != null && !raw.isEmpty() ? raw : "No raw response captured for this step yet.");
-                    androidx.appcompat.app.AlertDialog.Builder builder = new androidx.appcompat.app.AlertDialog.Builder(ctx);
-                    builder.setView(dialogView);
-                    final androidx.appcompat.app.AlertDialog dialog = builder.create();
+                    if (raw != null && !raw.isEmpty()) {
+                        textRawResponse.setText(raw);
+                        textRawResponse.setTextColor(ContextCompat.getColor(ctx, R.color.on_surface));
+                    } else {
+                        textRawResponse.setText("No raw response captured for this step yet.");
+                        textRawResponse.setTextColor(ContextCompat.getColor(ctx, R.color.on_surface_variant));
+                    }
+
+                    // Update title for plan step context
+                    TextView titleText = sheetView.findViewById(R.id.text_title);
+                    if (titleText == null) {
+                        // Find the title TextView in the layout
+                        TextView headerTitle = sheetView.findViewById(R.id.text_raw_response_title);
+                        if (headerTitle != null) {
+                            headerTitle.setText("Plan Step Raw Response");
+                        }
+                    }
+
                     buttonCopy.setOnClickListener(x -> {
                         android.content.ClipboardManager clipboard = (android.content.ClipboardManager) ctx.getSystemService(Context.CLIPBOARD_SERVICE);
                         if (clipboard != null) {
@@ -138,8 +160,24 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
                             android.widget.Toast.makeText(ctx, "Raw response copied", android.widget.Toast.LENGTH_SHORT).show();
                         }
                     });
-                    buttonClose.setOnClickListener(x -> dialog.dismiss());
-                    dialog.show();
+
+                    buttonShare.setOnClickListener(x -> {
+                        if (raw != null && !raw.isEmpty()) {
+                            Intent shareIntent = new Intent(Intent.ACTION_SEND);
+                            shareIntent.setType("text/plain");
+                            shareIntent.putExtra(Intent.EXTRA_SUBJECT, "Plan Step Raw Response");
+                            shareIntent.putExtra(Intent.EXTRA_TEXT, raw);
+                            ctx.startActivity(Intent.createChooser(shareIntent, "Share raw response"));
+                        } else {
+                            android.widget.Toast.makeText(ctx, "No response to share", android.widget.Toast.LENGTH_SHORT).show();
+                        }
+                    });
+
+                    buttonClose.setOnClickListener(x -> bottomSheetDialog.dismiss());
+
+                    bottomSheetDialog.show();
+                    bottomSheetDialog.getBehavior().setState(BottomSheetBehavior.STATE_EXPANDED);
+
                     return true;
                 });
             }
@@ -303,12 +341,55 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
         }
         
         private void showRawApiResponseDialog(ChatMessage message) {
-            View dialogView = LayoutInflater.from(context).inflate(R.layout.dialog_raw_api_response, null);
-            TextView textRawResponse = dialogView.findViewById(R.id.text_raw_response); MaterialButton buttonCopy = dialogView.findViewById(R.id.button_copy); MaterialButton buttonClose = dialogView.findViewById(R.id.button_close);
-            String rawResponse = message.getRawApiResponse(); textRawResponse.setText(rawResponse != null && !rawResponse.isEmpty() ? rawResponse : "No raw API response available.");
-            AlertDialog.Builder builder = new AlertDialog.Builder(context); builder.setView(dialogView); final AlertDialog dialog = builder.create();
-            buttonCopy.setOnClickListener(v -> { android.content.ClipboardManager clipboard = (android.content.ClipboardManager) context.getSystemService(Context.CLIPBOARD_SERVICE); if (clipboard != null) { android.content.ClipData clip = android.content.ClipData.newPlainText("Raw API Response", rawResponse != null ? rawResponse : ""); clipboard.setPrimaryClip(clip); android.widget.Toast.makeText(context, "Raw response copied", android.widget.Toast.LENGTH_SHORT).show(); } });
-            buttonClose.setOnClickListener(v -> dialog.dismiss()); dialog.show();
+            // Use BottomSheetDialog instead of AlertDialog for better UX
+            BottomSheetDialog bottomSheetDialog = new BottomSheetDialog(context, R.style.ThemeOverlay_Material3_BottomSheetDialog);
+            View sheetView = LayoutInflater.from(context).inflate(R.layout.bottom_sheet_raw_api_response, null);
+            bottomSheetDialog.setContentView(sheetView);
+
+            TextView textRawResponse = sheetView.findViewById(R.id.text_raw_response);
+            MaterialButton buttonCopy = sheetView.findViewById(R.id.button_copy);
+            MaterialButton buttonClose = sheetView.findViewById(R.id.button_close);
+            MaterialButton buttonShare = sheetView.findViewById(R.id.button_share);
+
+            String rawResponse = message.getRawApiResponse();
+            if (rawResponse != null && !rawResponse.isEmpty()) {
+                textRawResponse.setText(rawResponse);
+                textRawResponse.setTextColor(ContextCompat.getColor(context, R.color.on_surface));
+            } else {
+                textRawResponse.setText("No raw API response available.");
+                textRawResponse.setTextColor(ContextCompat.getColor(context, R.color.on_surface_variant));
+            }
+
+            // Copy functionality
+            buttonCopy.setOnClickListener(v -> {
+                android.content.ClipboardManager clipboard = (android.content.ClipboardManager) context.getSystemService(Context.CLIPBOARD_SERVICE);
+                if (clipboard != null) {
+                    android.content.ClipData clip = android.content.ClipData.newPlainText("Raw API Response", rawResponse != null ? rawResponse : "");
+                    clipboard.setPrimaryClip(clip);
+                    android.widget.Toast.makeText(context, "Raw response copied to clipboard", android.widget.Toast.LENGTH_SHORT).show();
+                }
+            });
+
+            // Share functionality
+            buttonShare.setOnClickListener(v -> {
+                if (rawResponse != null && !rawResponse.isEmpty()) {
+                    Intent shareIntent = new Intent(Intent.ACTION_SEND);
+                    shareIntent.setType("text/plain");
+                    shareIntent.putExtra(Intent.EXTRA_SUBJECT, "Raw API Response");
+                    shareIntent.putExtra(Intent.EXTRA_TEXT, rawResponse);
+                    context.startActivity(Intent.createChooser(shareIntent, "Share raw API response"));
+                } else {
+                    android.widget.Toast.makeText(context, "No response to share", android.widget.Toast.LENGTH_SHORT).show();
+                }
+            });
+
+            // Close functionality
+            buttonClose.setOnClickListener(v -> bottomSheetDialog.dismiss());
+
+            bottomSheetDialog.show();
+
+            // Set expanded state for better UX
+            bottomSheetDialog.getBehavior().setState(BottomSheetBehavior.STATE_EXPANDED);
         }
 
         private void applyCitationSpans(TextView tv, List<WebSource> sources) {

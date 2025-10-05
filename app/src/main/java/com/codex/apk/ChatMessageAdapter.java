@@ -121,11 +121,11 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
                 // Long-press to show raw response for this step
                 itemView.setOnLongClickListener(v -> {
                     Context ctx = itemView.getContext();
-                    View dialogView = LayoutInflater.from(ctx).inflate(R.layout.bottom_sheet_raw_api_response, null);
+                    View dialogView = LayoutInflater.from(ctx).inflate(R.layout.dialog_raw_api_response_redesigned, null);
 
                     TextView textRawResponse = dialogView.findViewById(R.id.text_raw_response);
                     com.google.android.material.button.MaterialButton buttonCopy = dialogView.findViewById(R.id.button_copy);
-                    com.google.android.material.button.MaterialButton buttonClose = dialogView.findViewById(R.id.button_close);
+                    ImageView buttonClose = dialogView.findViewById(R.id.button_close);
 
                     String raw = step.rawResponse;
                     String displayText = raw != null && !raw.isEmpty() ? raw : "No raw response captured for this step yet.";
@@ -142,8 +142,9 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
 
                     textRawResponse.setText(displayText);
 
-                    BottomSheetDialog dialog = new BottomSheetDialog(ctx);
-                    dialog.setContentView(dialogView);
+                    androidx.appcompat.app.AlertDialog.Builder builder = new androidx.appcompat.app.AlertDialog.Builder(ctx, R.style.RoundedDialogTheme);
+                    builder.setView(dialogView);
+                    final androidx.appcompat.app.AlertDialog dialog = builder.create();
 
                     buttonCopy.setOnClickListener(x -> {
                         android.content.ClipboardManager clipboard = (android.content.ClipboardManager) ctx.getSystemService(Context.CLIPBOARD_SERVICE);
@@ -319,11 +320,11 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
         }
         
         private void showRawApiResponseDialog(ChatMessage message) {
-            View dialogView = LayoutInflater.from(context).inflate(R.layout.bottom_sheet_raw_api_response, null);
+            View dialogView = LayoutInflater.from(context).inflate(R.layout.dialog_raw_api_response_redesigned, null);
 
             TextView textRawResponse = dialogView.findViewById(R.id.text_raw_response);
             MaterialButton buttonCopy = dialogView.findViewById(R.id.button_copy);
-            MaterialButton buttonClose = dialogView.findViewById(R.id.button_close);
+            ImageView buttonClose = dialogView.findViewById(R.id.button_close);
 
             String rawResponse = message.getRawApiResponse();
             String displayText = rawResponse != null && !rawResponse.isEmpty() ? rawResponse : "No raw API response available.";
@@ -340,8 +341,9 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
 
             textRawResponse.setText(displayText);
 
-            BottomSheetDialog dialog = new BottomSheetDialog(context);
-            dialog.setContentView(dialogView);
+            androidx.appcompat.app.AlertDialog.Builder builder = new androidx.appcompat.app.AlertDialog.Builder(context, R.style.RoundedDialogTheme);
+            builder.setView(dialogView);
+            final androidx.appcompat.app.AlertDialog dialog = builder.create();
 
             buttonCopy.setOnClickListener(v -> {
                 android.content.ClipboardManager clipboard = (android.content.ClipboardManager) context.getSystemService(Context.CLIPBOARD_SERVICE);

@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="0dp"
+    android:background="@drawable/rounded_dialog_container">
+
+    <!-- Header Section -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="20dp"
+        android:paddingEnd="16dp"
+        android:background="@color/surface">
+
+        <!-- Title -->
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Raw API Response"
+            android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
+            android:textColor="@color/on_surface"
+            android:textStyle="bold"
+            android:fontFamily="sans-serif-medium" />
+
+        <!-- Close Button with Circle Background -->
+        <FrameLayout
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:background="@drawable/circle_button_background"
+            android:clickable="true"
+            android:focusable="true"
+            android:foreground="?attr/selectableItemBackgroundBorderless">
+
+            <ImageView
+                android:id="@+id/button_close"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:layout_gravity="center"
+                android:src="@drawable/ic_close"
+                android:tint="@color/on_surface_variant"
+                android:contentDescription="Close" />
+
+        </FrameLayout>
+
+    </LinearLayout>
+
+    <!-- Divider -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@color/surface_variant" />
+
+    <!-- Content Section -->
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:padding="20dp"
+        android:background="@color/background"
+        android:scrollbars="vertical"
+        android:fadeScrollbars="false">
+
+        <TextView
+            android:id="@+id/text_raw_response"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Raw API response will appear here..."
+            android:textAppearance="@style/TextAppearance.Material3.BodySmall"
+            android:textColor="@color/on_surface"
+            android:fontFamily="monospace"
+            android:textSize="10sp"
+            android:textIsSelectable="true"
+            android:lineSpacingExtra="2dp"
+            android:background="@drawable/code_background"
+            android:padding="16dp"
+            android:textColorHighlight="@color/primary"
+            android:textSelectHandle="@drawable/text_select_handle"
+            android:textSelectHandleLeft="@drawable/text_select_handle"
+            android:textSelectHandleRight="@drawable/text_select_handle" />
+
+    </ScrollView>
+
+    <!-- Action Section -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="end"
+        android:padding="16dp"
+        android:background="@color/surface">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/button_copy"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Copy to Clipboard"
+            android:textColor="@color/primary"
+            app:icon="@drawable/ic_copy"
+            app:iconTint="@color/primary"
+            app:iconGravity="textStart"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
+            android:minHeight="36dp" />
+
+    </LinearLayout>
+
+</LinearLayout>

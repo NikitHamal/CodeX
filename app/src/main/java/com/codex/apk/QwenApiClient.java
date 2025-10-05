@@ -161,7 +161,7 @@ public class QwenApiClient implements ApiClient {
         requestBody.addProperty("chat_mode", "normal");
         requestBody.addProperty("model", model.getModelId());
         requestBody.addProperty("parent_id", state.getLastParentId()); // Use last parent ID
-        requestBody.addProperty("timestamp", System.currentTimeMillis());
+        requestBody.addProperty("timestamp", System.currentTimeMillis() / 1000); // Convert to seconds like StormX
 
         JsonArray messages = new JsonArray();
         // If this is the first message of a conversation, add the system prompt.
@@ -171,8 +171,10 @@ public class QwenApiClient implements ApiClient {
 
         // Add the current user message
         JsonObject userMsg = createUserMessage(userMessage, model, thinkingModeEnabled, webSearchEnabled);
-        // Optional parity: set per-message parentId to match top-level
-        userMsg.addProperty("parentId", state.getLastParentId());
+        // Set per-message parentId to match top-level like StormX does
+        if (state.getLastParentId() != null) {
+            userMsg.addProperty("parentId", state.getLastParentId());
+        }
         messages.add(userMsg);
 
         requestBody.add("messages", messages);
@@ -186,17 +188,27 @@ public class QwenApiClient implements ApiClient {
 
         String qwenToken = ensureMidToken();
         Request request = new Request.Builder()
-            .url(QWEN_BASE_URL + "/chat/completions?chat_id=" + state.getConversationId())
-            .post(RequestBody.create(requestBody.toString(), MediaType.parse("application/json")))
-            .headers(buildQwenHeaders(qwenToken, state.getConversationId()))
-            .build();
+                .url(QWEN_BASE_URL + "/chat/completions?chat_id=" + state.getConversationId())
+                .post(RequestBody.create(requestBody.toString(), MediaType.parse("application/json")))
+                .headers(buildQwenHeaders(qwenToken, state.getConversationId()))
+                .build();
 
         try (Response response = httpClient.newCall(request).execute()) {
             if (response.isSuccessful() && response.body() != null) {
                 processQwenStreamResponse(response, state, model);
             } else {
-                if (actionListener != null) actionListener.onAiError("Failed to send message");
+                String errorBody = null;
+                try {
+                    if (response.body() != null) {
+                        errorBody = response.body().string();
+                    }
+                } catch (IOException ignored) {}
+                Log.e(TAG, "Qwen API request failed with code: " + response.code() + ", body: " + errorBody);
+                if (actionListener != null) actionListener.onAiError("Failed to send message: " + response.code() + (errorBody != null ? " - " + errorBody : ""));
             }
+        } catch (IOException e) {
+            Log.e(TAG, "IOException during Qwen API request", e);
+            if (actionListener != null) actionListener.onAiError("Network error: " + e.getMessage());
         }
     }
 
@@ -207,8 +219,24 @@ public class QwenApiClient implements ApiClient {
         List<WebSource> webSources = new ArrayList<>();
         Set<String> seenWebUrls = new HashSet<>();
 
+        // Add timeout to prevent infinite hanging
+        long startTime = System.currentTimeMillis();
+        long timeoutMs = 120000; // 2 minutes timeout
+
         String line;
         while ((line = response.body().source().readUtf8Line()) != null) {
+            // Check for timeout
+            if (System.currentTimeMillis() - startTime > timeoutMs) {
+                Log.w(TAG, "Stream processing timed out after " + timeoutMs + "ms");
+                if (actionListener != null) {
+                    if (answerContent.length() > 0) {
+                        notifyAiActionsProcessed(rawResponse.toString(), answerContent.toString(), new ArrayList<>(), new ArrayList<>(), model.getDisplayName(), thinkingContent.toString(), webSources);
+                    } else {
+                        actionListener.onAiError("Response timeout - no content received");
+                    }
+                }
+                return;
+            }
             rawResponse.append(line).append("\n"); // Collect raw response
             String t = line.trim();
             if (t.isEmpty()) continue;
@@ -224,12 +252,12 @@ public class QwenApiClient implements ApiClient {
                 try {
                     JsonObject data = JsonParser.parseString(jsonData).getAsJsonObject();
 
-                    // Check for conversation state updates
+                    // Enhanced conversation state handling like StormX
                     if (data.has("response.created")) {
                         JsonObject created = data.getAsJsonObject("response.created");
                         if (created.has("chat_id")) state.setConversationId(created.get("chat_id").getAsString());
                         if (created.has("response_id")) state.setLastParentId(created.get("response_id").getAsString());
-                        // Persist state ASAP
+                        // Persist state immediately
                         if (actionListener != null) actionListener.onQwenConversationStateUpdated(state);
                         continue; // This line doesn't contain choices, so we skip to the next
                     }
@@ -333,13 +361,27 @@ public class QwenApiClient implements ApiClient {
 
                                 // Notify listener to save the updated state (final)
                                 if (actionListener != null) actionListener.onQwenConversationStateUpdated(state);
-                                break;
+                                // Ensure we break out of the loop when finished
+                                return;
                             }
                         }
                     }
                 } catch (Exception e) {
-                    Log.w(TAG, "Error processing stream data chunk", e);
+                    Log.w(TAG, "Error processing stream data chunk: " + jsonData, e);
+                    // If we encounter parsing errors, we might want to continue processing other chunks
+                    // but log the error for debugging
                 }
+            }
+        }
+
+        // If we exit the loop without finding a "finished" status, something went wrong
+        Log.w(TAG, "Stream ended without proper completion status");
+        if (actionListener != null) {
+            if (answerContent.length() > 0) {
+                // We got some content but no proper completion - treat as text response
+                notifyAiActionsProcessed(rawResponse.toString(), answerContent.toString(), new ArrayList<>(), new ArrayList<>(), model.getDisplayName(), thinkingContent.toString(), webSources);
+            } else {
+                actionListener.onAiError("Stream ended unexpectedly without completion");
             }
         }
     }
@@ -404,11 +446,14 @@ public class QwenApiClient implements ApiClient {
 
     private JsonObject createUserMessage(String message, AIModel model, boolean thinkingModeEnabled, boolean webSearchEnabled) {
         JsonObject messageObj = new JsonObject();
+        messageObj.addProperty("fid", java.util.UUID.randomUUID().toString());
+        messageObj.add("parentId", null); // This should be set in the main request body, not here
+        messageObj.add("childrenIds", new JsonArray());
         messageObj.addProperty("role", "user");
         messageObj.addProperty("content", message);
         messageObj.addProperty("user_action", "chat");
         messageObj.add("files", new JsonArray());
-        messageObj.addProperty("timestamp", System.currentTimeMillis());
+        messageObj.addProperty("timestamp", System.currentTimeMillis() / 1000); // Convert to seconds like StormX
         JsonArray modelsArray = new JsonArray();
         modelsArray.add(model.getModelId());
         messageObj.add("models", modelsArray);
@@ -423,9 +468,12 @@ public class QwenApiClient implements ApiClient {
             featureConfig.addProperty("thinking_budget", 38912);
         }
         messageObj.add("feature_config", featureConfig);
-        messageObj.addProperty("fid", java.util.UUID.randomUUID().toString());
-        messageObj.add("parentId", null); // This should be set in the main request body, not here
-        messageObj.add("childrenIds", new JsonArray());
+        JsonObject extra = new JsonObject();
+        JsonObject meta = new JsonObject();
+        meta.addProperty("subChatType", webSearchEnabled ? "search" : "t2t");
+        extra.add("meta", meta);
+        messageObj.add("extra", extra);
+        messageObj.addProperty("sub_chat_type", webSearchEnabled ? "search" : "t2t");
         return messageObj;
     }
 

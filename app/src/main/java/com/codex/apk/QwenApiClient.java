@@ -61,22 +61,22 @@ public class QwenApiClient implements ApiClient {
     private final File projectDir;
     private volatile String midToken = null;
     private int midTokenUses = 0;
+    // Shared cookie store to allow clearing on token invalidation
+    private final Map<String, List<Cookie>> cookieStoreRef = new HashMap<>();
 
     public QwenApiClient(Context context, AIAssistant.AIActionListener actionListener, File projectDir) {
         this.context = context;
         this.actionListener = actionListener;
         this.projectDir = projectDir;
         CookieJar cookieJar = new CookieJar() {
-            private final Map<String, List<Cookie>> cookieStore = new HashMap<>();
-
             @Override
             public void saveFromResponse(HttpUrl url, List<Cookie> cookies) {
-                cookieStore.put(url.host(), cookies);
+                cookieStoreRef.put(url.host(), cookies);
             }
 
             @Override
             public List<Cookie> loadForRequest(HttpUrl url) {
-                List<Cookie> cookies = cookieStore.get(url.host());
+                List<Cookie> cookies = cookieStoreRef.get(url.host());
                 return cookies != null ? cookies : Collections.emptyList();
             }
         };
@@ -125,10 +125,6 @@ public class QwenApiClient implements ApiClient {
     }
 
     private String createQwenConversation(AIModel model, boolean webSearchEnabled) throws IOException {
-        return createQwenConversationInternal(model, webSearchEnabled, true);
-    }
-
-    private String createQwenConversationInternal(AIModel model, boolean webSearchEnabled, boolean allowRetry) throws IOException {
         JsonObject requestBody = new JsonObject();
         requestBody.addProperty("title", "New Chat");
         JsonArray modelsArray = new JsonArray();
@@ -138,7 +134,7 @@ public class QwenApiClient implements ApiClient {
         requestBody.addProperty("chat_type", webSearchEnabled ? "search" : "t2t");
         requestBody.addProperty("timestamp", System.currentTimeMillis());
 
-        String qwenToken = ensureMidToken();
+        String qwenToken = ensureMidToken(false);
         Request request = new Request.Builder()
                 .url(QWEN_BASE_URL + "/chats/new")
                 .post(RequestBody.create(requestBody.toString(), MediaType.parse("application/json")))
@@ -154,9 +150,23 @@ public class QwenApiClient implements ApiClient {
                 }
             } else {
                 int code = response != null ? response.code() : 0;
-                if ((code == 401 || code == 429) && allowRetry) {
-                    invalidateMidToken();
-                    return createQwenConversationInternal(model, webSearchEnabled, false);
+                if (code == 401 || code == 429) {
+                    // Refresh token in synchronized ensureMidToken and clear cookies
+                    qwenToken = ensureMidToken(true);
+                    Request retry = new Request.Builder()
+                            .url(QWEN_BASE_URL + "/chats/new")
+                            .post(RequestBody.create(requestBody.toString(), MediaType.parse("application/json")))
+                            .headers(buildQwenHeaders(qwenToken, null))
+                            .build();
+                    try (Response resp2 = httpClient.newCall(retry).execute()) {
+                        if (resp2.isSuccessful() && resp2.body() != null) {
+                            String responseBody2 = resp2.body().string();
+                            JsonObject responseJson2 = JsonParser.parseString(responseBody2).getAsJsonObject();
+                            if (responseJson2.get("success").getAsBoolean()) {
+                                return responseJson2.getAsJsonObject("data").get("id").getAsString();
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -164,10 +174,6 @@ public class QwenApiClient implements ApiClient {
     }
 
     private void performCompletion(QwenConversationState state, List<ChatMessage> history, AIModel model, boolean thinkingModeEnabled, boolean webSearchEnabled, List<ToolSpec> enabledTools, String userMessage) throws IOException {
-        performCompletionInternal(state, history, model, thinkingModeEnabled, webSearchEnabled, enabledTools, userMessage, true);
-    }
-
-    private void performCompletionInternal(QwenConversationState state, List<ChatMessage> history, AIModel model, boolean thinkingModeEnabled, boolean webSearchEnabled, List<ToolSpec> enabledTools, String userMessage, boolean allowRetry) throws IOException {
         JsonObject requestBody = new JsonObject();
         requestBody.addProperty("stream", true);
         requestBody.addProperty("incremental_output", true);
@@ -183,10 +189,8 @@ public class QwenApiClient implements ApiClient {
             messages.add(createSystemMessage(enabledTools));
         }
 
-        // Add the current user message
+        // Add the current user message (do not set per-message parentId; only use top-level parent_id)
         JsonObject userMsg = createUserMessage(userMessage, model, thinkingModeEnabled, webSearchEnabled);
-        // Optional parity: set per-message parentId to match top-level
-        userMsg.addProperty("parentId", state.getLastParentId());
         messages.add(userMsg);
 
         requestBody.add("messages", messages);
@@ -198,7 +202,7 @@ public class QwenApiClient implements ApiClient {
             requestBody.add("tool_choice", toolChoice);
         }
 
-        String qwenToken = ensureMidToken();
+        String qwenToken = ensureMidToken(false);
         Request request = new Request.Builder()
             .url(QWEN_BASE_URL + "/chat/completions?chat_id=" + state.getConversationId())
             .post(RequestBody.create(requestBody.toString(), MediaType.parse("application/json")))
@@ -210,10 +214,20 @@ public class QwenApiClient implements ApiClient {
                 processQwenStreamResponse(response, state, model);
             } else {
                 int code = response != null ? response.code() : 0;
-                if ((code == 401 || code == 429) && allowRetry) {
-                    invalidateMidToken();
-                    performCompletionInternal(state, history, model, thinkingModeEnabled, webSearchEnabled, enabledTools, userMessage, false);
-                    return;
+                if (code == 401 || code == 429) {
+                    // Refresh token and retry once
+                    qwenToken = ensureMidToken(true);
+                    Request retryReq = new Request.Builder()
+                        .url(QWEN_BASE_URL + "/chat/completions?chat_id=" + state.getConversationId())
+                        .post(RequestBody.create(requestBody.toString(), MediaType.parse("application/json")))
+                        .headers(buildQwenHeaders(qwenToken, state.getConversationId()))
+                        .build();
+                    try (Response resp2 = httpClient.newCall(retryReq).execute()) {
+                        if (resp2.isSuccessful() && resp2.body() != null) {
+                            processQwenStreamResponse(resp2, state, model);
+                            return;
+                        }
+                    }
                 }
                 if (actionListener != null) actionListener.onAiError("Failed to send message" + (code > 0 ? (" (HTTP " + code + ")") : ""));
                 if (actionListener != null) actionListener.onAiRequestCompleted();
@@ -248,9 +262,14 @@ public class QwenApiClient implements ApiClient {
             }
             if (jsonData != null) {
                 if (jsonData.trim().isEmpty()) continue;
+                String trimmedJson = jsonData.trim();
+                // Only attempt to parse proper JSON payloads; skip heartbeats/other tokens
+                if (!(trimmedJson.startsWith("{") || trimmedJson.startsWith("["))) {
+                    continue;
+                }
 
                 try {
-                    JsonObject data = JsonParser.parseString(jsonData).getAsJsonObject();
+                    JsonObject data = JsonParser.parseString(trimmedJson).getAsJsonObject();
 
                     // Check for conversation state updates
                     if (data.has("response.created")) {
@@ -368,6 +387,8 @@ public class QwenApiClient implements ApiClient {
                     }
                 } catch (Exception e) {
                     Log.w(TAG, "Error processing stream data chunk", e);
+                    if (actionListener != null) actionListener.onAiError("Stream error: " + e.getMessage());
+                    break;
                 }
             }
         }
@@ -408,13 +429,11 @@ public class QwenApiClient implements ApiClient {
         featureConfig.addProperty("output_schema", "phase");
         msg.add("feature_config", featureConfig);
         msg.addProperty("fid", java.util.UUID.randomUUID().toString());
-        // Optional parity: set per-message parentId too
-        msg.addProperty("parentId", state.getLastParentId());
         msg.add("childrenIds", new JsonArray());
         messages.add(msg);
         requestBody.add("messages", messages);
 
-        String qwenToken = ensureMidToken();
+        String qwenToken = ensureMidToken(false);
         Request request = new Request.Builder()
             .url(QWEN_BASE_URL + "/chat/completions?chat_id=" + state.getConversationId())
             .post(RequestBody.create(requestBody.toString(), MediaType.parse("application/json")))
@@ -486,6 +505,17 @@ public class QwenApiClient implements ApiClient {
     }
 
     private synchronized String ensureMidToken() throws IOException {
+        return ensureMidToken(false);
+    }
+
+    private synchronized String ensureMidToken(boolean forceRefresh) throws IOException {
+        if (forceRefresh) {
+            Log.w(TAG, "Force refreshing midtoken and clearing cookies");
+            this.midToken = null;
+            this.midTokenUses = 0;
+            sharedPreferences.edit().remove(QWEN_MIDTOKEN_KEY).apply();
+            try { cookieStoreRef.clear(); } catch (Exception ignore) {}
+        }
         if (midToken != null) {
             midTokenUses++;
             Log.i(TAG, "Reusing midtoken. Use count: " + midTokenUses);
@@ -523,6 +553,7 @@ public class QwenApiClient implements ApiClient {
         this.midToken = null;
         this.midTokenUses = 0;
         sharedPreferences.edit().remove(QWEN_MIDTOKEN_KEY).apply();
+        try { cookieStoreRef.clear(); } catch (Exception ignore) {}
     }
 
     private String executeToolCall(String name, JsonObject args) {

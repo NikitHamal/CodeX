@@ -132,7 +132,7 @@ public class QwenApiClient implements ApiClient {
         requestBody.add("models", modelsArray);
         requestBody.addProperty("chat_mode", "normal");
         requestBody.addProperty("chat_type", webSearchEnabled ? "search" : "t2t");
-        requestBody.addProperty("timestamp", System.currentTimeMillis());
+        requestBody.addProperty("timestamp", System.currentTimeMillis() / 1000);
 
         String qwenToken = ensureMidToken();
         Request request = new Request.Builder()
@@ -161,7 +161,7 @@ public class QwenApiClient implements ApiClient {
         requestBody.addProperty("chat_mode", "normal");
         requestBody.addProperty("model", model.getModelId());
         requestBody.addProperty("parent_id", state.getLastParentId()); // Use last parent ID
-        requestBody.addProperty("timestamp", System.currentTimeMillis());
+        requestBody.addProperty("timestamp", System.currentTimeMillis() / 1000);
 
         JsonArray messages = new JsonArray();
         // If this is the first message of a conversation, add the system prompt.
@@ -170,9 +170,7 @@ public class QwenApiClient implements ApiClient {
         }
 
         // Add the current user message
-        JsonObject userMsg = createUserMessage(userMessage, model, thinkingModeEnabled, webSearchEnabled);
-        // Optional parity: set per-message parentId to match top-level
-        userMsg.addProperty("parentId", state.getLastParentId());
+        JsonObject userMsg = createUserMessage(userMessage, model, thinkingModeEnabled, webSearchEnabled, state.getLastParentId());
         messages.add(userMsg);
 
         requestBody.add("messages", messages);
@@ -361,7 +359,7 @@ public class QwenApiClient implements ApiClient {
         requestBody.addProperty("chat_mode", "normal");
         requestBody.addProperty("model", model.getModelId());
         requestBody.addProperty("parent_id", state.getLastParentId());
-        requestBody.addProperty("timestamp", System.currentTimeMillis());
+        requestBody.addProperty("timestamp", System.currentTimeMillis() / 1000);
 
         JsonArray messages = new JsonArray();
         JsonObject msg = new JsonObject();
@@ -369,7 +367,7 @@ public class QwenApiClient implements ApiClient {
         msg.addProperty("content", "```json\n" + toolResultJson + "\n```\n");
         msg.addProperty("user_action", "chat");
         msg.add("files", new JsonArray());
-        msg.addProperty("timestamp", System.currentTimeMillis());
+        msg.addProperty("timestamp", System.currentTimeMillis() / 1000);
         JsonArray modelsArray = new JsonArray();
         modelsArray.add(model.getModelId());
         msg.add("models", modelsArray);
@@ -379,9 +377,14 @@ public class QwenApiClient implements ApiClient {
         featureConfig.addProperty("output_schema", "phase");
         msg.add("feature_config", featureConfig);
         msg.addProperty("fid", java.util.UUID.randomUUID().toString());
-        // Optional parity: set per-message parentId too
         msg.addProperty("parentId", state.getLastParentId());
         msg.add("childrenIds", new JsonArray());
+        JsonObject extra = new JsonObject();
+        JsonObject meta = new JsonObject();
+        meta.addProperty("subChatType", "t2t");
+        extra.add("meta", meta);
+        msg.add("extra", extra);
+        msg.addProperty("sub_chat_type", "t2t");
         messages.add(msg);
         requestBody.add("messages", messages);
 
@@ -403,13 +406,13 @@ public class QwenApiClient implements ApiClient {
         return PromptManager.createSystemMessage(enabledTools);
     }
 
-    private JsonObject createUserMessage(String message, AIModel model, boolean thinkingModeEnabled, boolean webSearchEnabled) {
+    private JsonObject createUserMessage(String message, AIModel model, boolean thinkingModeEnabled, boolean webSearchEnabled, String parentId) {
         JsonObject messageObj = new JsonObject();
         messageObj.addProperty("role", "user");
         messageObj.addProperty("content", message);
         messageObj.addProperty("user_action", "chat");
         messageObj.add("files", new JsonArray());
-        messageObj.addProperty("timestamp", System.currentTimeMillis());
+        messageObj.addProperty("timestamp", System.currentTimeMillis() / 1000);
         JsonArray modelsArray = new JsonArray();
         modelsArray.add(model.getModelId());
         messageObj.add("models", modelsArray);
@@ -425,8 +428,16 @@ public class QwenApiClient implements ApiClient {
         }
         messageObj.add("feature_config", featureConfig);
         messageObj.addProperty("fid", java.util.UUID.randomUUID().toString());
-        messageObj.add("parentId", null); // This should be set in the main request body, not here
+        if (parentId != null) {
+            messageObj.addProperty("parentId", parentId);
+        }
         messageObj.add("childrenIds", new JsonArray());
+        JsonObject extra = new JsonObject();
+        JsonObject meta = new JsonObject();
+        meta.addProperty("subChatType", webSearchEnabled ? "search" : "t2t");
+        extra.add("meta", meta);
+        messageObj.add("extra", extra);
+        messageObj.addProperty("sub_chat_type", webSearchEnabled ? "search" : "t2t");
         return messageObj;
     }
 
@@ -444,8 +455,7 @@ public class QwenApiClient implements ApiClient {
                 .add("Sec-Fetch-Mode", "cors")
                 .add("Sec-Fetch-Site", "same-origin")
                 .add("User-Agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36")
-                .add("Source", "web")
-                .add("x-accel-buffering", "no");
+                .add("Source", "web");
 
         if (conversationId != null) {
             builder.add("Referer", "https://chat.qwen.ai/c/" + conversationId);

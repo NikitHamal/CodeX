@@ -492,8 +492,7 @@ public class QwenApiClient implements ApiClient {
                 .add("Sec-Fetch-Mode", "cors")
                 .add("Sec-Fetch-Site", "same-origin")
                 .add("User-Agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36")
-                .add("Source", "web")
-                .add("x-accel-buffering", "no");
+                .add("Source", "web");
 
         if (conversationId != null) {
             builder.add("Referer", "https://chat.qwen.ai/c/" + conversationId);

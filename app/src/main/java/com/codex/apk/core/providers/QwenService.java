@@ -96,11 +96,43 @@ public class QwenService extends BaseAIService {
                                                               Consumer<AIResponse> onResponse,
                                                               Consumer<Throwable> onError) {
         return CompletableFuture.runAsync(() -> {
+            StringBuilder contentBuffer = new StringBuilder();
+            StringBuilder thinkingBuffer = new StringBuilder();
             try {
-                String responseBody = response.body().string();
-                // Simple implementation - parse the whole response and send as one chunk
-                AIResponse aiResponse = parseResponse(response, requestId);
-                onResponse.accept(aiResponse);
+                okhttp3.ResponseBody body = response.body();
+                if (body == null) throw new IllegalStateException("Empty response body");
+                okio.BufferedSource source = body.source();
+                String line;
+                while ((line = source.readUtf8Line()) != null) {
+                    String t = line.trim();
+                    if (t.isEmpty()) continue;
+                    if ("data: [DONE]".equals(t) || "[DONE]".equals(t)) {
+                        AIResponse finalResponse = AIResponse.builder()
+                            .withRequestId(requestId)
+                            .withContent(contentBuffer.toString())
+                            .withFinishReason(AIResponse.FinishReason.STOP)
+                            .isStreaming(false)
+                            .isComplete(true)
+                            .build();
+                        onResponse.accept(finalResponse);
+                        return;
+                    }
+                    if (t.startsWith("data: ")) t = t.substring(6);
+                    try {
+                        JsonObject delta = JsonParser.parseString(t).getAsJsonObject();
+                        AIResponse deltaResponse = parseStreamingDelta(delta, requestId, contentBuffer, thinkingBuffer);
+                        if (deltaResponse != null) onResponse.accept(deltaResponse);
+                    } catch (Exception ignore) { /* skip bad chunk */ }
+                }
+                // Fallback finalize if stream closed without [DONE]
+                AIResponse finalResponse = AIResponse.builder()
+                    .withRequestId(requestId)
+                    .withContent(contentBuffer.toString())
+                    .withFinishReason(AIResponse.FinishReason.STOP)
+                    .isStreaming(false)
+                    .isComplete(true)
+                    .build();
+                onResponse.accept(finalResponse);
             } catch (Exception e) {
                 onError.accept(e);
             }
@@ -139,36 +171,45 @@ public class QwenService extends BaseAIService {
     }
     
     private String createConversation(String modelId, boolean webSearchEnabled) throws Exception {
+        return createConversationInternal(modelId, webSearchEnabled, true);
+    }
+
+    private String createConversationInternal(String modelId, boolean webSearchEnabled, boolean allowRetry) throws Exception {
         JsonObject requestBody = new JsonObject();
         requestBody.addProperty("title", "New Chat");
-        
         JsonArray modelsArray = new JsonArray();
         modelsArray.add(modelId);
         requestBody.add("models", modelsArray);
-        
         requestBody.addProperty("chat_mode", "normal");
         requestBody.addProperty("chat_type", webSearchEnabled ? "search" : "t2t");
         requestBody.addProperty("timestamp", System.currentTimeMillis());
-        
+
         String qwenToken = ensureMidToken();
         Request request = new Request.Builder()
             .url(BASE_URL + "/chats/new")
             .post(RequestBody.create(requestBody.toString(), JSON_MEDIA_TYPE))
             .headers(buildQwenHeaders(qwenToken, null))
             .build();
-        
+
         try (Response response = httpClient.newCall(request).execute()) {
             if (response.isSuccessful() && response.body() != null) {
                 String responseBody = response.body().string();
                 JsonObject responseJson = JsonParser.parseString(responseBody).getAsJsonObject();
-                
                 if (responseJson.has("success") && responseJson.get("success").getAsBoolean()) {
                     JsonObject data = responseJson.getAsJsonObject("data");
                     return data.get("id").getAsString();
                 }
+            } else {
+                int code = response != null ? response.code() : 0;
+                if ((code == 401 || code == 429) && allowRetry) {
+                    // Invalidate and retry once
+                    this.midToken = null;
+                    this.midTokenUses = 0;
+                    return createConversationInternal(modelId, webSearchEnabled, false);
+                }
             }
         }
-        
+
         return null;
     }
     
@@ -259,20 +300,27 @@ public class QwenService extends BaseAIService {
     
     private Headers buildQwenHeaders(String midToken, String conversationId) {
         Headers.Builder builder = new Headers.Builder()
-            .add("User-Agent", "Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36")
-            .add("Accept", "text/event-stream")
-            .add("Accept-Language", "en-US,en;q=0.9")
-            .add("Accept-Encoding", "gzip, deflate, br")
+            .add("Authorization", "Bearer")
             .add("Content-Type", "application/json")
+            .add("Accept", "*/*")
+            .add("bx-umidtoken", midToken != null ? midToken : "")
+            .add("bx-v", QWEN_BX_V)
+            .add("Accept-Language", "en-US,en;q=0.9")
+            .add("Connection", "keep-alive")
             .add("Origin", "https://chat.qwen.ai")
-            .add("Referer", "https://chat.qwen.ai/")
-            .add("X-Xsrf-Token", midToken != null ? midToken : "")
-            .add("Bx-V", QWEN_BX_V);
-        
+            .add("Sec-Fetch-Dest", "empty")
+            .add("Sec-Fetch-Mode", "cors")
+            .add("Sec-Fetch-Site", "same-origin")
+            .add("User-Agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36")
+            .add("Source", "web")
+            .add("x-accel-buffering", "no");
+
         if (conversationId != null) {
-            builder.add("X-Chat-Id", conversationId);
+            builder.add("Referer", "https://chat.qwen.ai/c/" + conversationId);
+        } else {
+            builder.add("Referer", "https://chat.qwen.ai/");
         }
-        
+
         return builder.build();
     }
     

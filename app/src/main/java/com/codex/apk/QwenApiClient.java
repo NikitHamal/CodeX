@@ -125,6 +125,10 @@ public class QwenApiClient implements ApiClient {
     }
 
     private String createQwenConversation(AIModel model, boolean webSearchEnabled) throws IOException {
+        return createQwenConversationInternal(model, webSearchEnabled, true);
+    }
+
+    private String createQwenConversationInternal(AIModel model, boolean webSearchEnabled, boolean allowRetry) throws IOException {
         JsonObject requestBody = new JsonObject();
         requestBody.addProperty("title", "New Chat");
         JsonArray modelsArray = new JsonArray();
@@ -148,12 +152,22 @@ public class QwenApiClient implements ApiClient {
                 if (responseJson.get("success").getAsBoolean()) {
                     return responseJson.getAsJsonObject("data").get("id").getAsString();
                 }
+            } else {
+                int code = response != null ? response.code() : 0;
+                if ((code == 401 || code == 429) && allowRetry) {
+                    invalidateMidToken();
+                    return createQwenConversationInternal(model, webSearchEnabled, false);
+                }
             }
         }
         return null;
     }
 
     private void performCompletion(QwenConversationState state, List<ChatMessage> history, AIModel model, boolean thinkingModeEnabled, boolean webSearchEnabled, List<ToolSpec> enabledTools, String userMessage) throws IOException {
+        performCompletionInternal(state, history, model, thinkingModeEnabled, webSearchEnabled, enabledTools, userMessage, true);
+    }
+
+    private void performCompletionInternal(QwenConversationState state, List<ChatMessage> history, AIModel model, boolean thinkingModeEnabled, boolean webSearchEnabled, List<ToolSpec> enabledTools, String userMessage, boolean allowRetry) throws IOException {
         JsonObject requestBody = new JsonObject();
         requestBody.addProperty("stream", true);
         requestBody.addProperty("incremental_output", true);
@@ -195,7 +209,14 @@ public class QwenApiClient implements ApiClient {
             if (response.isSuccessful() && response.body() != null) {
                 processQwenStreamResponse(response, state, model);
             } else {
-                if (actionListener != null) actionListener.onAiError("Failed to send message");
+                int code = response != null ? response.code() : 0;
+                if ((code == 401 || code == 429) && allowRetry) {
+                    invalidateMidToken();
+                    performCompletionInternal(state, history, model, thinkingModeEnabled, webSearchEnabled, enabledTools, userMessage, false);
+                    return;
+                }
+                if (actionListener != null) actionListener.onAiError("Failed to send message" + (code > 0 ? (" (HTTP " + code + ")") : ""));
+                if (actionListener != null) actionListener.onAiRequestCompleted();
             }
         }
     }
@@ -213,6 +234,13 @@ public class QwenApiClient implements ApiClient {
             String t = line.trim();
             if (t.isEmpty()) continue;
             String jsonData = null;
+            if ("data: [DONE]".equals(t) || "[DONE]".equals(t)) {
+                String finalContentDone = answerContent.length() > 0 ? answerContent.toString() : thinkingContent.toString();
+                String trueRawResponse = rawStreamData.toString();
+                if (actionListener != null) notifyAiActionsProcessed(trueRawResponse, finalContentDone, new ArrayList<>(), new ArrayList<>(), model.getDisplayName(), thinkingContent.toString(), webSources);
+                if (actionListener != null) actionListener.onQwenConversationStateUpdated(state);
+                break;
+            }
             if (t.startsWith("data: ")) {
                 jsonData = t.substring(6);
             } else if (t.startsWith("{")) {
@@ -273,9 +301,9 @@ public class QwenApiClient implements ApiClient {
                                 }
                             }
 
-                            // Only finalize when the ANSWER phase reports finished
-                            if ("finished".equals(status) && "answer".equals(phase)) {
-                                String finalContent = answerContent.toString();
+                            // Finalize when status is finished regardless of phase
+                            if ("finished".equals(status)) {
+                                String finalContent = answerContent.length() > 0 ? answerContent.toString() : thinkingContent.toString();
                                 String trueRawResponse = rawStreamData.toString();
                                 String jsonToParse = extractJsonFromCodeBlock(finalContent);
                                 if (jsonToParse == null && QwenResponseParser.looksLikeJson(finalContent)) {
@@ -343,6 +371,7 @@ public class QwenApiClient implements ApiClient {
                 }
             }
         }
+        if (actionListener != null) actionListener.onAiRequestCompleted();
     }
 
     private String buildToolResultContinuation(JsonArray results) {
@@ -449,6 +478,8 @@ public class QwenApiClient implements ApiClient {
 
         if (conversationId != null) {
             builder.add("Referer", "https://chat.qwen.ai/c/" + conversationId);
+        } else {
+            builder.add("Referer", "https://chat.qwen.ai/");
         }
 
         return builder.build();

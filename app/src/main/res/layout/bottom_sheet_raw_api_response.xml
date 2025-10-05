@@ -6,7 +6,7 @@
     android:layout_height="wrap_content"
     android:orientation="vertical"
     android:padding="16dp"
-    android:background="@drawable/rounded_dialog_background">
+    android:background="@drawable/rounded_bottom_sheet_background">
 
     <!-- Header with title and close button -->
     <LinearLayout

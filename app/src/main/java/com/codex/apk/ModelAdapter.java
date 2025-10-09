@@ -128,7 +128,6 @@ public class ModelAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
 
             boolean supportsRefresh = provider == AIProvider.OPENROUTER ||
                                       provider == AIProvider.DEEPINFRA ||
-                                      provider == AIProvider.ZHIPU ||
                                       provider == AIProvider.GOOGLE;
 
             if (supportsRefresh) {

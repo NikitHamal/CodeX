@@ -53,14 +53,8 @@ public class AIModel {
             new AIModel("gemini-2.5-flash", "Gemini 2.5 Flash", AIProvider.COOKIES, new ModelCapabilities(true, true, true, true, true, true, true, 1048576, 8192)),
             new AIModel("gemini-2.5-pro", "Gemini 2.5 Pro", AIProvider.COOKIES, new ModelCapabilities(true, true, true, true, true, true, true, 2097152, 8192)),
 
-            // Zhipu Provider (default model)
-            new AIModel("GLM-4.5", "Zhipu GLM-4.5", AIProvider.ZHIPU, new ModelCapabilities(true, false, false, false, false, false, false, false, false, false, 0, 0, 0, 0, new HashMap<>(), new ArrayList<>(), new ArrayList<>(), new ArrayList<>(), new HashMap<>())),
-
             // OIVSCodeSer0501 Provider
             new AIModel("gpt-4.1-mini", "OIVSCodeSer0501 gpt-4.1-mini", AIProvider.OIVSCodeSer0501, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)),
-
-            // OIVSCodeSer2 Provider
-            new AIModel("gpt-4o-mini", "OIVSCodeSer2 gpt-4o-mini", AIProvider.OIVSCodeSer2, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)),
 
             // WeWordle Provider
             new AIModel("gpt-4", "WeWordle GPT-4", AIProvider.WEWORDLE, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)),

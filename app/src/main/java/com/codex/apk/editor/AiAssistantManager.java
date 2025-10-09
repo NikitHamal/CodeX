@@ -356,13 +356,28 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
     // --- Implement AIAssistant.AIActionListener methods ---
     @Override
     public void onAiActionsProcessed(String rawAiResponseJson, String explanation, List<String> suggestions, List<ChatMessage.FileActionDetail> proposedFileChanges, String aiModelDisplayName) {
-        onAiActionsProcessed(rawAiResponseJson, explanation, suggestions, proposedFileChanges, aiModelDisplayName, null, null);
+        onAiActionsProcessedInternal(rawAiResponseJson, explanation, suggestions, proposedFileChanges, new ArrayList<>(), aiModelDisplayName, null, null);
     }
-    
+
+    @Override
+    public void onAiActionsProcessed(String rawAiResponseJson, String explanation, List<String> suggestions, List<ChatMessage.FileActionDetail> proposedFileChanges, List<ChatMessage.PlanStep> planSteps, String aiModelDisplayName) {
+        onAiActionsProcessedInternal(rawAiResponseJson, explanation, suggestions, proposedFileChanges, planSteps, aiModelDisplayName, null, null);
+    }
+
     public void onAiActionsProcessed(String rawAiResponseJson, String explanation,
                                    List<String> suggestions,
                                    List<ChatMessage.FileActionDetail> proposedFileChanges, String aiModelDisplayName,
                                    String thinkingContent, List<WebSource> webSources) {
+        // This method now delegates to the new internal method, creating an empty plan list.
+        onAiActionsProcessedInternal(rawAiResponseJson, explanation, suggestions, proposedFileChanges, new ArrayList<>(), aiModelDisplayName, thinkingContent, webSources);
+    }
+
+    private void onAiActionsProcessedInternal(String rawAiResponseJson, String explanation,
+                                              List<String> suggestions,
+                                              List<ChatMessage.FileActionDetail> proposedFileChanges,
+                                              List<ChatMessage.PlanStep> planSteps,
+                                              String aiModelDisplayName,
+                                              String thinkingContent, List<WebSource> webSources) {
         activity.runOnUiThread(() -> {
             AIChatFragment uiFrag = activity.getAiChatFragment();
             if (uiFrag == null) {
@@ -380,7 +395,6 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
             // Centralized tool call handling
             String jsonToParseForTools = extractJsonFromCodeBlock(explanation);
             if (jsonToParseForTools == null) {
-                // Fallback to check the raw response if nothing is found in the explanation
                 jsonToParseForTools = extractJsonFromCodeBlock(rawAiResponseJson);
             }
             if (jsonToParseForTools == null && looksLikeJson(explanation)) {
@@ -388,8 +402,6 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
             }
 
             if (jsonToParseForTools != null) {
-                // Log the JSON for debugging instead of showing in UI
-                Log.d(TAG, "Detected tool call JSON: " + jsonToParseForTools);
                 try {
                     JsonObject maybe = JsonParser.parseString(jsonToParseForTools).getAsJsonObject();
                     if (maybe.has("action") && "tool_call".equalsIgnoreCase(maybe.get("action").getAsString()) && maybe.has("tool_calls") && maybe.get("tool_calls").isJsonArray()) {
@@ -421,41 +433,34 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                         String fenced = "```json\n" + continuation + "\n```\n";
                         Log.d(TAG, "Sending tool results back to AI: " + fenced);
                         sendAiPrompt(fenced, new java.util.ArrayList<>(), activity.getQwenState(), activity.getActiveTab());
-                        return; // Stop further processing
+                        return;
                     }
                 } catch (Exception e) {
-                    // Not a valid tool call, proceed with normal processing.
                     Log.w(TAG, "Could not execute tool call. Error parsing JSON.", e);
                 }
             }
 
             List<ChatMessage.FileActionDetail> effectiveProposedFileChanges = proposedFileChanges;
-            boolean isPlan = false;
-            List<ChatMessage.PlanStep> planSteps = new ArrayList<>();
-            QwenResponseParser.ParsedResponse parsed = null;
-            try {
-                if (rawAiResponseJson != null) {
-                    String normalized = extractJsonFromCodeBlock(rawAiResponseJson);
-                    String toParse = normalized != null ? normalized : rawAiResponseJson;
-                    parsed = QwenResponseParser.parseResponse(toParse);
-                }
-                if (parsed == null && explanation != null && !explanation.isEmpty()) {
-                    String exNorm = extractJsonFromCodeBlock(explanation);
-                    if (exNorm != null) {
-                        try { parsed = QwenResponseParser.parseResponse(exNorm); } catch (Exception ignored) {}
+            boolean isPlan = planSteps != null && !planSteps.isEmpty();
+
+            if ((effectiveProposedFileChanges == null || effectiveProposedFileChanges.isEmpty()) && !isPlan) {
+                try {
+                    QwenResponseParser.ParsedResponse parsed = null;
+                    if (rawAiResponseJson != null) {
+                        String normalized = extractJsonFromCodeBlock(rawAiResponseJson);
+                        String toParse = normalized != null ? normalized : rawAiResponseJson;
+                        if (toParse != null) parsed = QwenResponseParser.parseResponse(toParse);
                     }
-                }
-                if (parsed != null && "plan".equals(parsed.action)) {
-                    isPlan = true;
-                    planSteps = QwenResponseParser.toPlanSteps(parsed);
-                } else if (parsed != null && ("file_operation".equals(parsed.action) || QwenResponseParser.looksLikeJson(parsed.explanation))) {
-                    List<ChatMessage.FileActionDetail> ops = QwenResponseParser.toFileActionDetails(parsed);
-                    if (effectiveProposedFileChanges == null || effectiveProposedFileChanges.isEmpty()) {
-                        effectiveProposedFileChanges = ops;
+                    if (parsed == null && explanation != null && !explanation.isEmpty()) {
+                        String exNorm = extractJsonFromCodeBlock(explanation);
+                        if (exNorm != null) parsed = QwenResponseParser.parseResponse(exNorm);
                     }
+                    if (parsed != null && parsed.action != null && parsed.action.contains("file")) {
+                        effectiveProposedFileChanges = QwenResponseParser.toFileActionDetails(parsed);
+                    }
+                } catch (Exception e) {
+                    Log.w(TAG, "Fallback file op parse failed", e);
                 }
-            } catch (Exception e) {
-                Log.w(TAG, "Plan/file parse failed", e);
             }
 
             boolean hasOps = effectiveProposedFileChanges != null && !effectiveProposedFileChanges.isEmpty();
@@ -471,15 +476,10 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
 
             String finalExplanation = explanation != null ? explanation.trim() : "";
             ChatMessage aiMessage = new ChatMessage(
-                    ChatMessage.SENDER_AI,
-                    finalExplanation,
-                    null,
+                    ChatMessage.SENDER_AI, finalExplanation, null,
                     suggestions != null ? new ArrayList<>(suggestions) : new ArrayList<>(),
-                    aiModelDisplayName,
-                    System.currentTimeMillis(),
-                    rawAiResponseJson,
-                    effectiveProposedFileChanges,
-                    ChatMessage.STATUS_PENDING_APPROVAL
+                    aiModelDisplayName, System.currentTimeMillis(), rawAiResponseJson,
+                    effectiveProposedFileChanges, ChatMessage.STATUS_PENDING_APPROVAL
             );
             if (thinkingContent != null && !thinkingContent.isEmpty()) {
                 aiMessage.setThinkingContent(thinkingContent);
@@ -487,24 +487,20 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
             if (webSources != null && !webSources.isEmpty()) {
                 aiMessage.setWebSources(webSources);
             }
+            if (isPlan) {
+                aiMessage.setPlanSteps(planSteps);
+            }
 
             Integer targetPos = currentStreamingMessagePosition;
             if (targetPos != null && uiFrag.getMessageAt(targetPos) != null) {
-                if (isPlan && planSteps != null && !planSteps.isEmpty()) {
-                    aiMessage.setPlanSteps(planSteps);
-                }
                 uiFrag.updateMessage(targetPos, aiMessage);
                 currentStreamingMessagePosition = null;
-
                 if (aiAssistant != null && aiAssistant.isAgentModeEnabled() && hasOps) {
                     onAiAcceptActions(targetPos, aiMessage);
                 }
             } else {
                 int insertedPos = uiFrag.addMessage(aiMessage);
-                if (isPlan && planSteps != null && !planSteps.isEmpty()) {
-                    aiMessage.setPlanSteps(planSteps);
-                    uiFrag.updateMessage(insertedPos, aiMessage);
-                } else if (aiAssistant != null && aiAssistant.isAgentModeEnabled() && hasOps) {
+                if (aiAssistant != null && aiAssistant.isAgentModeEnabled() && hasOps) {
                     onAiAcceptActions(insertedPos, aiMessage);
                 }
             }

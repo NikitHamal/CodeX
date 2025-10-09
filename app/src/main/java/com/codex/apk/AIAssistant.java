@@ -120,6 +120,10 @@ public class AIAssistant {
     public interface AIActionListener {
         void onAiActionsProcessed(String rawAiResponseJson, String explanation, List<String> suggestions,
                                  List<ChatMessage.FileActionDetail> proposedFileChanges, String aiModelDisplayName);
+        void onAiActionsProcessed(String rawAiResponseJson, String explanation, List<String> suggestions,
+                                 List<ChatMessage.FileActionDetail> proposedFileChanges,
+                                 List<ChatMessage.PlanStep> planSteps,
+                                 String aiModelDisplayName);
         void onAiError(String errorMessage);
         void onAiRequestStarted();
         void onAiStreamUpdate(String partialResponse, boolean isThinking);

@@ -6,9 +6,7 @@ public enum AIProvider {
     DEEPINFRA("DeepInfra"),
     FREE("Free"),
     COOKIES("Cookies"),
-    ZHIPU("Zhipu"),
     OIVSCodeSer0501("OIVSCodeSer0501"),
-    OIVSCodeSer2("OIVSCodeSer2"),
     WEWORDLE("WeWordle"),
     OPENROUTER("OpenRouter");
 

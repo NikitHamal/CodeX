@@ -66,11 +66,7 @@ public class AIChatUIManager {
             recyclerAttachedFilesPreview.setLayoutManager(new LinearLayoutManager(context, LinearLayoutManager.HORIZONTAL, false));
         }
 
-        // Long press on model selector to choose a custom agent
-        layoutModelSelectorCustom.setOnLongClickListener(v -> {
-            showAgentPickerDialog(fragment.getAIAssistant());
-            return true;
-        });
+        // Long press on model selector is now removed.
     }
 
     public void setupRecyclerView(ChatMessageAdapter adapter) {
@@ -159,56 +155,6 @@ public class AIChatUIManager {
                 .show();
     }
 
-    private void showAgentPickerDialog(AIAssistant aiAssistant) {
-        List<CustomAgent> agents = SettingsActivity.getCustomAgents(context);
-        if (agents.isEmpty()) {
-            Toast.makeText(context, "No custom agents configured in Settings.", Toast.LENGTH_SHORT).show();
-            return;
-        }
-        BottomSheetDialog dlg = new BottomSheetDialog(context);
-        View view = LayoutInflater.from(context).inflate(R.layout.bottom_sheet_ai_settings, null);
-        dlg.setContentView(view);
-        // Reuse simple list: show names as options
-        androidx.recyclerview.widget.RecyclerView rv = new androidx.recyclerview.widget.RecyclerView(context);
-        rv.setLayoutManager(new LinearLayoutManager(context));
-        rv.setAdapter(new RecyclerView.Adapter<RecyclerView.ViewHolder>() {
-            @Override public RecyclerView.ViewHolder onCreateViewHolder(android.view.ViewGroup parent, int viewType) {
-                TextView tv = new TextView(context);
-                tv.setPadding(32, 32, 32, 32);
-                tv.setTextColor(context.getColor(R.color.on_surface));
-                return new RecyclerView.ViewHolder(tv) {};
-            }
-            @Override public void onBindViewHolder(RecyclerView.ViewHolder holder, int position) {
-                TextView tv = (TextView) holder.itemView;
-                CustomAgent a = agents.get(position);
-                tv.setText(a.name + " (" + a.modelId + ")");
-                tv.setOnClickListener(v -> {
-                    AIModel model = AIModel.fromModelId(a.modelId);
-                    if (model != null) {
-                        aiAssistant.setCurrentModel(model);
-                        textSelectedModel.setText(model.getDisplayName());
-                        if (layoutModelSelectorCustom != null) layoutModelSelectorCustom.requestLayout();
-                        textSelectedModel.post(() -> { if (layoutModelSelectorCustom != null) layoutModelSelectorCustom.requestLayout(); });
-                        // Persist last used model per project
-                        android.content.SharedPreferences sp = context.getSharedPreferences("settings", Context.MODE_PRIVATE);
-                        sp.edit().putString("selected_model", model.getDisplayName()).apply();
-                        if (a.prompt != null && !a.prompt.isEmpty()) {
-                            // Prepend custom agent prompt to current input for next send
-                            String existing = editTextAiPrompt.getText().toString();
-                            editTextAiPrompt.setText(a.prompt + "\n\n" + existing);
-                            editTextAiPrompt.setSelection(editTextAiPrompt.getText().length());
-                        }
-                        dlg.dismiss();
-                    } else {
-                        Toast.makeText(context, "Model not found: " + a.modelId, Toast.LENGTH_SHORT).show();
-                    }
-                });
-            }
-            @Override public int getItemCount() { return agents.size(); }
-        });
-        dlg.setContentView(rv);
-        dlg.show();
-    }
 
 
     public void showAiSettingsDialog(AIAssistant aiAssistant) {

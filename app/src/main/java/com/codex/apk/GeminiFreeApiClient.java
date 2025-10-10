@@ -5,6 +5,7 @@ import android.util.Log;
 
 import com.codex.apk.ai.AIModel;
 import com.codex.apk.ai.AIProvider;
+import com.codex.apk.util.JsonUtils;
 import com.codex.apk.util.ResponseUtils;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
@@ -167,15 +168,12 @@ public class GeminiFreeApiClient implements ApiClient {
                                 String body2 = resp2.body().string();
                                 ParsedOutput parsed2 = parseOutputFromStream(body2);
                                 persistConversationMetaIfAvailable(modelId, body2);
-                                String explanation2 = deriveHumanExplanation(parsed2.text, parsed2.thoughts);
-                                // Normalize JSON (plan/file ops) for model-agnostic handlers
-                                String normalized2 = normalizeJsonIfPresent(parsed2.text);
                                 List<String> suggestions2 = new ArrayList<>();
                                 List<ChatMessage.FileActionDetail> files2 = new ArrayList<>();
                                 // Route via richer callback so thinking is separate
                                 notifyAiActionsProcessed(
                                         body2,
-                                        explanation2,
+                                        parsed2.text,
                                         suggestions2,
                                         files2,
                                         model != null ? model.getDisplayName() : "Gemini (Free)",
@@ -225,14 +223,11 @@ public class GeminiFreeApiClient implements ApiClient {
                     String body = full.toString();
                     ParsedOutput parsed = parseOutputFromStream(body);
                     persistConversationMetaIfAvailable(modelId, body);
-                    String explanation = deriveHumanExplanation(parsed.text, parsed.thoughts);
                     if (actionListener != null) {
                         // Store actual raw response for long-press, but show only the derived explanation
-                        // Normalize JSON for model-agnostic downstream parsing (plan/file ops)
-                        String normalized = normalizeJsonIfPresent(parsed.text);
                         notifyAiActionsProcessed(
                                 body,
-                                explanation,
+                                parsed.text,
                                 new ArrayList<>(),
                                 new ArrayList<>(),
                                 model != null ? model.getDisplayName() : "Gemini (Free)",
@@ -479,56 +474,6 @@ public class GeminiFreeApiClient implements ApiClient {
         }
     }
 
-    private String deriveHumanExplanation(String text, String thoughts) {
-        if (text == null) return "";
-        String normalized = normalizeJsonIfPresent(text);
-        boolean looksJson = com.codex.apk.QwenResponseParser.looksLikeJson(normalized != null ? normalized.trim() : "");
-        if (looksJson) {
-            try {
-                com.google.gson.JsonObject obj = com.google.gson.JsonParser.parseString(normalized).getAsJsonObject();
-                if (obj.has("action")) {
-                    String action = obj.get("action").getAsString();
-                    if ("plan".equalsIgnoreCase(action)) {
-                        String goal = obj.has("goal") ? obj.get("goal").getAsString() : "Plan";
-                        return "Plan: " + goal;
-                    } else if ("file_operation".equalsIgnoreCase(action)) {
-                        String expl = obj.has("explanation") ? obj.get("explanation").getAsString() : "Proposed file operations";
-                        return expl;
-                    }
-                }
-            } catch (Exception ignore) {}
-            // Unknown JSON: do not echo raw JSON in the bubble
-            return "";
-        }
-        // Non-JSON text: return as-is (thinking is shown separately by UI)
-        return text.trim();
-    }
-
-    private String normalizeJsonIfPresent(String text) {
-        if (text == null) return null;
-        String t = text.trim();
-        // Strip leading code fence markers or 'json\n'
-        if (t.startsWith("```") ) {
-            int firstBrace = t.indexOf('{');
-            int lastBrace = t.lastIndexOf('}');
-            if (firstBrace >= 0 && lastBrace > firstBrace) {
-                t = t.substring(firstBrace, lastBrace + 1);
-            }
-        } else if (t.startsWith("json\n")) {
-            t = t.substring(5);
-        }
-        // Extract object substring if present
-        int start = t.indexOf('{');
-        int end = t.lastIndexOf('}');
-        if (start >= 0 && end > start) {
-            String cand = t.substring(start, end + 1);
-            try {
-                com.google.gson.JsonParser.parseString(cand).getAsJsonObject();
-                return cand;
-            } catch (Exception ignore) {}
-        }
-        return text;
-    }
 
     private Map<String, String> defaultGeminiHeaders() {
         Map<String, String> headers = new HashMap<>();
@@ -598,6 +543,30 @@ public class GeminiFreeApiClient implements ApiClient {
                                           String modelDisplayName,
                                           String thinking,
                                           List<com.codex.apk.ai.WebSource> sources) {
+
+        String jsonToParse = JsonUtils.extractJsonFromCodeBlock(explanation);
+        if (jsonToParse == null && JsonUtils.looksLikeJson(explanation)) {
+            jsonToParse = explanation;
+        }
+
+        if (jsonToParse != null) {
+            try {
+                QwenResponseParser.ParsedResponse parsed = QwenResponseParser.parseResponse(jsonToParse);
+                if (parsed != null && parsed.isValid) {
+                    if ("plan".equals(parsed.action) && parsed.planSteps != null && !parsed.planSteps.isEmpty()) {
+                        List<ChatMessage.PlanStep> planSteps = QwenResponseParser.toPlanSteps(parsed);
+                        actionListener.onAiActionsProcessed(rawAiResponseJson, parsed.explanation, suggestions, new ArrayList<>(), planSteps, modelDisplayName);
+                        return;
+                    } else {
+                        fileActions = QwenResponseParser.toFileActionDetails(parsed);
+                        explanation = parsed.explanation;
+                    }
+                }
+            } catch (Exception e) {
+                // Fallback to default behavior
+            }
+        }
+
         if (actionListener instanceof com.codex.apk.editor.AiAssistantManager) {
             ((com.codex.apk.editor.AiAssistantManager) actionListener).onAiActionsProcessed(rawAiResponseJson, explanation, suggestions, fileActions, modelDisplayName, thinking, sources);
         } else {

@@ -27,6 +27,7 @@ import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
+import com.codex.apk.util.JsonUtils;
 import okhttp3.Response;
 import okio.BufferedSource;
 
@@ -102,14 +103,32 @@ public class AnyProviderApiClient implements ApiClient {
                 streamOpenAiSse(response, finalText, rawSse);
 
                 if (finalText.length() > 0) {
-                    if (actionListener != null) {
-                        actionListener.onAiActionsProcessed(
-                                rawSse.toString(),
-                                finalText.toString(),
-                                new ArrayList<String>(),
-                                new ArrayList<ChatMessage.FileActionDetail>(),
-                                ""
-                        );
+                     if (actionListener != null) {
+                        String jsonToParse = JsonUtils.extractJsonFromCodeBlock(finalText.toString());
+                        if (jsonToParse == null && JsonUtils.looksLikeJson(finalText.toString())) {
+                            jsonToParse = finalText.toString();
+                        }
+
+                        if (jsonToParse != null) {
+                            try {
+                                QwenResponseParser.ParsedResponse parsed = QwenResponseParser.parseResponse(jsonToParse);
+                                if (parsed != null && parsed.isValid) {
+                                    if ("plan".equals(parsed.action) && parsed.planSteps != null && !parsed.planSteps.isEmpty()) {
+                                        List<ChatMessage.PlanStep> planSteps = QwenResponseParser.toPlanSteps(parsed);
+                                        actionListener.onAiActionsProcessed(jsonToParse, parsed.explanation, new ArrayList<>(), new ArrayList<>(), planSteps, model.getDisplayName());
+                                    } else {
+                                        List<ChatMessage.FileActionDetail> fileActions = QwenResponseParser.toFileActionDetails(parsed);
+                                        actionListener.onAiActionsProcessed(jsonToParse, parsed.explanation, new ArrayList<>(), fileActions, model.getDisplayName());
+                                    }
+                                } else {
+                                    actionListener.onAiActionsProcessed(rawSse.toString(), finalText.toString(), new ArrayList<>(), new ArrayList<>(), model.getDisplayName());
+                                }
+                            } catch (Exception e) {
+                                actionListener.onAiActionsProcessed(rawSse.toString(), finalText.toString(), new ArrayList<>(), new ArrayList<>(), model.getDisplayName());
+                            }
+                        } else {
+                            actionListener.onAiActionsProcessed(rawSse.toString(), finalText.toString(), new ArrayList<>(), new ArrayList<>(), model.getDisplayName());
+                        }
                     }
                 } else {
                     if (actionListener != null) actionListener.onAiError("No response from free provider");

@@ -21,6 +21,7 @@ import java.util.concurrent.TimeUnit;
 
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
+import com.codex.apk.util.JsonUtils;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
@@ -110,7 +111,31 @@ public class OpenRouterApiClient implements ApiClient {
                     }
 
                     if (actionListener != null) {
-                        actionListener.onAiActionsProcessed(content, content, new ArrayList<>(), new ArrayList<>(), model.getDisplayName());
+                        String jsonToParse = JsonUtils.extractJsonFromCodeBlock(content);
+                        if (jsonToParse == null && JsonUtils.looksLikeJson(content)) {
+                            jsonToParse = content;
+                        }
+
+                        if (jsonToParse != null) {
+                            try {
+                                QwenResponseParser.ParsedResponse parsed = QwenResponseParser.parseResponse(jsonToParse);
+                                if (parsed != null && parsed.isValid) {
+                                    if ("plan".equals(parsed.action) && parsed.planSteps != null && !parsed.planSteps.isEmpty()) {
+                                        List<ChatMessage.PlanStep> planSteps = QwenResponseParser.toPlanSteps(parsed);
+                                        actionListener.onAiActionsProcessed(jsonToParse, parsed.explanation, new ArrayList<>(), new ArrayList<>(), planSteps, model.getDisplayName());
+                                    } else {
+                                        List<ChatMessage.FileActionDetail> fileActions = QwenResponseParser.toFileActionDetails(parsed);
+                                        actionListener.onAiActionsProcessed(jsonToParse, parsed.explanation, new ArrayList<>(), fileActions, model.getDisplayName());
+                                    }
+                                } else {
+                                    actionListener.onAiActionsProcessed(content, content, new ArrayList<>(), new ArrayList<>(), model.getDisplayName());
+                                }
+                            } catch (Exception e) {
+                                actionListener.onAiActionsProcessed(content, content, new ArrayList<>(), new ArrayList<>(), model.getDisplayName());
+                            }
+                        } else {
+                            actionListener.onAiActionsProcessed(content, content, new ArrayList<>(), new ArrayList<>(), model.getDisplayName());
+                        }
                     }
                 }
             } catch (Exception e) {

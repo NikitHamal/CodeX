@@ -76,9 +76,7 @@ public class SettingsActivity extends AppCompatActivity {
 		LinearLayout themeSelectorLayout = findViewById(R.id.layout_theme_selector);
 		TextView selectedThemeText = findViewById(R.id.text_selected_theme);
 		com.google.android.material.card.MaterialCardView modelsCard = findViewById(R.id.card_models);
-		com.google.android.material.card.MaterialCardView agentsCard = findViewById(R.id.card_agents);
 		com.google.android.material.card.MaterialCardView apiCard = findViewById(R.id.card_api);
-		com.google.android.material.card.MaterialCardView promptsCard = findViewById(R.id.card_prompts);
 		com.google.android.material.materialswitch.MaterialSwitch wrapSwitch = findViewById(R.id.switch_wrap);
 		com.google.android.material.materialswitch.MaterialSwitch readOnlySwitch = findViewById(R.id.switch_read_only);
 		com.google.android.material.slider.Slider fontSizeSlider = findViewById(R.id.slider_font_size);
@@ -106,14 +104,8 @@ public class SettingsActivity extends AppCompatActivity {
 		if (modelsCard != null) modelsCard.setOnClickListener(v -> {
 			startActivity(new Intent(this, ModelsActivity.class));
 		});
-		if (agentsCard != null) agentsCard.setOnClickListener(v -> {
-			startActivity(new Intent(this, AgentsActivity.class));
-		});
 		if (apiCard != null) apiCard.setOnClickListener(v -> {
 			startActivity(new Intent(this, ApiActivity.class));
-		});
-		if (promptsCard != null) promptsCard.setOnClickListener(v -> {
-			startActivity(new Intent(this, PromptsActivity.class));
 		});
 
 		// Switch Listeners
@@ -277,36 +269,6 @@ public class SettingsActivity extends AppCompatActivity {
 		getPreferences(context).edit().putString("custom_general_prompt", prompt != null ? prompt : "").apply();
 	}
 
-	public static java.util.List<CustomAgent> getCustomAgents(Context context) {
-		String json = getPreferences(context).getString("custom_agents", "[]");
-		try {
-			java.util.List<CustomAgent> list = new java.util.ArrayList<>();
-			com.google.gson.JsonArray arr = com.google.gson.JsonParser.parseString(json).getAsJsonArray();
-			for (int i = 0; i < arr.size(); i++) {
-				com.google.gson.JsonObject o = arr.get(i).getAsJsonObject();
-				String id = o.has("id") ? o.get("id").getAsString() : java.util.UUID.randomUUID().toString();
-				String name = o.has("name") ? o.get("name").getAsString() : "Unnamed";
-				String prompt = o.has("prompt") ? o.get("prompt").getAsString() : "";
-				String modelId = o.has("modelId") ? o.get("modelId").getAsString() : "";
-				list.add(new CustomAgent(id, name, prompt, modelId));
-			}
-			return list;
-		} catch (Exception e) {
-			return new java.util.ArrayList<>();
-		}
-	}
-	public static void setCustomAgents(Context context, java.util.List<CustomAgent> agents) {
-		com.google.gson.JsonArray arr = new com.google.gson.JsonArray();
-		for (CustomAgent a : agents) {
-			com.google.gson.JsonObject o = new com.google.gson.JsonObject();
-			o.addProperty("id", a.id);
-			o.addProperty("name", a.name);
-			o.addProperty("prompt", a.prompt);
-			o.addProperty("modelId", a.modelId);
-			arr.add(o);
-		}
-		getPreferences(context).edit().putString("custom_agents", arr.toString()).apply();
-	}
 
 	// Cache helpers for __Secure-1PSIDTS keyed by the 1PSID value
 	public static String getCached1psidts(Context context, String psid) {

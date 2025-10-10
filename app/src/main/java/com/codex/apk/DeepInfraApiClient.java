@@ -26,6 +26,7 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
+import com.codex.apk.util.JsonUtils;
 import okio.BufferedSource;
 
 /**
@@ -148,8 +149,8 @@ public class DeepInfraApiClient implements ApiClient {
             if (finalText.length() != lastSentLen[0]) {
                 actionListener.onAiStreamUpdate(finalText.toString(), false);
             }
-            String jsonToParse = extractJsonFromCodeBlock(finalText.toString());
-            if (jsonToParse == null && looksLikeJson(finalText.toString())) {
+            String jsonToParse = JsonUtils.extractJsonFromCodeBlock(finalText.toString());
+            if (jsonToParse == null && JsonUtils.looksLikeJson(finalText.toString())) {
                 jsonToParse = finalText.toString();
             }
 
@@ -157,10 +158,17 @@ public class DeepInfraApiClient implements ApiClient {
                 try {
                     QwenResponseParser.ParsedResponse parsed = QwenResponseParser.parseResponse(jsonToParse);
                     if (parsed != null && parsed.isValid) {
-                        List<ChatMessage.FileActionDetail> fileActions = QwenResponseParser.toFileActionDetails(parsed);
-                        actionListener.onAiActionsProcessed(jsonToParse, parsed.explanation, new ArrayList<>(), fileActions, modelDisplayName);
+                        // Check if the response is a plan
+                        if ("plan".equals(parsed.action) && parsed.planSteps != null && !parsed.planSteps.isEmpty()) {
+                            List<ChatMessage.PlanStep> planSteps = QwenResponseParser.toPlanSteps(parsed);
+                            actionListener.onAiActionsProcessed(jsonToParse, parsed.explanation, new ArrayList<>(), new ArrayList<>(), planSteps, modelDisplayName);
+                        } else {
+                            // It's a file operation or other valid JSON
+                            List<ChatMessage.FileActionDetail> fileActions = QwenResponseParser.toFileActionDetails(parsed);
+                            actionListener.onAiActionsProcessed(jsonToParse, parsed.explanation, new ArrayList<>(), fileActions, modelDisplayName);
+                        }
                     } else {
-                        // Not a valid plan, treat as text
+                        // Not a valid structured response, treat as plain text
                         actionListener.onAiActionsProcessed(finalText.toString(), finalText.toString(), new java.util.ArrayList<>(), new java.util.ArrayList<>(), modelDisplayName);
                     }
                 } catch (Exception e) {
@@ -275,49 +283,6 @@ public class DeepInfraApiClient implements ApiClient {
         return out;
     }
 
-    private String extractJsonFromCodeBlock(String content) {
-        if (content == null || content.trim().isEmpty()) {
-            return null;
-        }
-
-        // Look for ```json ... ``` pattern
-        String jsonPattern = "```json\\s*([\\s\\S]*?)```";
-        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile(jsonPattern, java.util.regex.Pattern.CASE_INSENSITIVE);
-        java.util.regex.Matcher matcher = pattern.matcher(content);
-
-        if (matcher.find()) {
-            return matcher.group(1).trim();
-        }
-
-        // Also check for ``` ... ``` pattern (without json specifier)
-        String genericPattern = "```\\s*([\\s\\S]*?)```";
-        pattern = java.util.regex.Pattern.compile(genericPattern);
-        matcher = pattern.matcher(content);
-
-        if (matcher.find()) {
-            String extracted = matcher.group(1).trim();
-            // Check if the extracted content looks like JSON
-            if (looksLikeJson(extracted)) {
-                return extracted;
-            }
-        }
-
-        return null;
-    }
-
-    public static boolean looksLikeJson(String response) {
-        if (response == null || response.trim().isEmpty()) {
-            Log.d(TAG, "looksLikeJson: response is null or empty");
-            return false;
-        }
-
-        String trimmed = response.trim();
-        boolean isJson = (trimmed.startsWith("{") && trimmed.endsWith("}")) ||
-                        (trimmed.startsWith("[") && trimmed.endsWith("]"));
-
-        Log.d(TAG, "looksLikeJson: checking '" + trimmed.substring(0, Math.min(50, trimmed.length())) + "...'");
-        return isJson;
-    }
 
     private String toDisplayName(String id) {
         String s = id.replace('-', ' ').replace('_', ' ');

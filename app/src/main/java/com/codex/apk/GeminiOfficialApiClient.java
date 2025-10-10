@@ -5,6 +5,7 @@ import android.util.Log;
 
 import com.codex.apk.ai.AIModel;
 import com.codex.apk.ai.AIProvider;
+import com.codex.apk.util.JsonUtils;
 import com.codex.apk.util.ResponseUtils;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
@@ -102,10 +103,31 @@ public class GeminiOfficialApiClient implements ApiClient {
                     String body = resp.body().string();
                     Parsed parsed = parseGenerateContent(body);
 
-                    String explanation = deriveHumanExplanation(parsed.text);
                     // No web sources for now; could parse citations later.
                     List<String> suggestions = new ArrayList<>();
                     List<ChatMessage.FileActionDetail> files = new ArrayList<>();
+
+                    String jsonToParse = JsonUtils.extractJsonFromCodeBlock(parsed.text);
+                    if (jsonToParse == null && JsonUtils.looksLikeJson(parsed.text)) {
+                        jsonToParse = parsed.text;
+                    }
+                    if (jsonToParse != null) {
+                        try {
+                            QwenResponseParser.ParsedResponse parsedResponse = QwenResponseParser.parseResponse(jsonToParse);
+                            if (parsedResponse != null && parsedResponse.isValid) {
+                                if ("plan".equals(parsedResponse.action) && parsedResponse.planSteps != null && !parsedResponse.planSteps.isEmpty()) {
+                                    List<ChatMessage.PlanStep> planSteps = QwenResponseParser.toPlanSteps(parsedResponse);
+                                    actionListener.onAiActionsProcessed(jsonToParse, parsedResponse.explanation, suggestions, new ArrayList<>(), planSteps, model.getDisplayName());
+                                    return;
+                                } else {
+                                    files = QwenResponseParser.toFileActionDetails(parsedResponse);
+                                    explanation = parsedResponse.explanation;
+                                }
+                            }
+                        } catch (Exception e) {
+                            // Fallback to default behavior
+                        }
+                    }
 
                     if (actionListener instanceof com.codex.apk.editor.AiAssistantManager) {
                         ((com.codex.apk.editor.AiAssistantManager) actionListener)
@@ -173,49 +195,6 @@ public class GeminiOfficialApiClient implements ApiClient {
         }
     }
 
-    private String deriveHumanExplanation(String text) {
-        if (text == null) return "";
-        String t = normalizeJsonIfPresent(text);
-        boolean looksJson = com.codex.apk.QwenResponseParser.looksLikeJson(t != null ? t.trim() : "");
-        if (looksJson) {
-            try {
-                JsonObject obj = JsonParser.parseString(t).getAsJsonObject();
-                if (obj.has("action")) {
-                    String action = obj.get("action").getAsString();
-                    if ("plan".equalsIgnoreCase(action)) {
-                        String goal = obj.has("goal") ? obj.get("goal").getAsString() : "Plan";
-                        return "Plan: " + goal;
-                    } else if ("file_operation".equalsIgnoreCase(action)) {
-                        String expl = obj.has("explanation") ? obj.get("explanation").getAsString() : "Proposed file operations";
-                        return expl;
-                    }
-                }
-            } catch (Exception ignore) {}
-            return "";
-        }
-        return text.trim();
-    }
-
-    private String normalizeJsonIfPresent(String text) {
-        if (text == null) return null;
-        String t = text.trim();
-        if (t.startsWith("```") ) {
-            int firstBrace = t.indexOf('{');
-            int lastBrace = t.lastIndexOf('}');
-            if (firstBrace >= 0 && lastBrace > firstBrace) {
-                t = t.substring(firstBrace, lastBrace + 1);
-            }
-        } else if (t.startsWith("json\n")) {
-            t = t.substring(5);
-        }
-        int start = t.indexOf('{');
-        int end = t.lastIndexOf('}');
-        if (start >= 0 && end > start) {
-            String cand = t.substring(start, end + 1);
-            try { JsonParser.parseString(cand).getAsJsonObject(); return cand; } catch (Exception ignore) {}
-        }
-        return text;
-    }
 
     private static class Parsed { final String text; Parsed(String t) { this.text = t; } }
 }

@@ -1,6 +1,10 @@
 package com.codex.apk;
 
 import android.util.Log;
+import com.codex.apk.ai.AIModel;
+import com.codex.apk.ai.WebSource;
+import com.codex.apk.ChatMessage;
+import com.codex.apk.ToolExecutor;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;

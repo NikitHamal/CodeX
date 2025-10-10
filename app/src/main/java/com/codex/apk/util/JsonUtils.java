@@ -1,7 +1,8 @@
 package com.codex.apk.util;
 
 import android.util.Log;
-import com.codex.apk.QwenResponseParser;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class JsonUtils {
     private static final String TAG = "JsonUtils";
@@ -13,8 +14,8 @@ public class JsonUtils {
 
         // Look for ```json ... ``` pattern
         String jsonPattern = "```json\\s*([\\s\\S]*?)```";
-        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile(jsonPattern, java.util.regex.Pattern.CASE_INSENSITIVE);
-        java.util.regex.Matcher matcher = pattern.matcher(content);
+        Pattern pattern = Pattern.compile(jsonPattern, Pattern.CASE_INSENSITIVE);
+        Matcher matcher = pattern.matcher(content);
 
         if (matcher.find()) {
             return matcher.group(1).trim();
@@ -22,7 +23,7 @@ public class JsonUtils {
 
         // Also check for ``` ... ``` pattern (without json specifier)
         String genericPattern = "```\\s*([\\s\\S]*?)```";
-        pattern = java.util.regex.Pattern.compile(genericPattern);
+        pattern = Pattern.compile(genericPattern);
         matcher = pattern.matcher(content);
 
         if (matcher.find()) {

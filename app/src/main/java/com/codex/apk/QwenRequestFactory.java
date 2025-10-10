@@ -1,5 +1,6 @@
 package com.codex.apk;
 
+import com.codex.apk.ai.AIModel;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import java.util.List;

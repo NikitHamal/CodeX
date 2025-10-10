@@ -1,10 +1,19 @@
 package com.codex.apk;
 
 import android.content.Context;
+import android.util.Log;
+import com.codex.apk.ai.AIModel;
+import com.codex.apk.ai.AIProvider;
+import com.codex.apk.ai.ModelCapabilities;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;

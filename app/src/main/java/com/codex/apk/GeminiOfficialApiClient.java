@@ -106,6 +106,7 @@ public class GeminiOfficialApiClient implements ApiClient {
                     // No web sources for now; could parse citations later.
                     List<String> suggestions = new ArrayList<>();
                     List<ChatMessage.FileActionDetail> files = new ArrayList<>();
+                    String explanation = parsed.text;
 
                     String jsonToParse = JsonUtils.extractJsonFromCodeBlock(parsed.text);
                     if (jsonToParse == null && JsonUtils.looksLikeJson(parsed.text)) {

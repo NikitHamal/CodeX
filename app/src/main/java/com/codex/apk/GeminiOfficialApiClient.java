@@ -135,8 +135,7 @@ public class GeminiOfficialApiClient implements ApiClient {
                                 .onAiActionsProcessed(parsed.text, explanation, suggestions, files,
                                         model != null ? model.getDisplayName() : "Gemini", null, new ArrayList<>());
                     } else {
-                        String fallback = ResponseUtils.buildExplanationWithThinking(explanation, null);
-                        actionListener.onAiActionsProcessed(parsed.text, fallback, suggestions, files,
+                        actionListener.onAiActionsProcessed(parsed.text, explanation, suggestions, files,
                                 model != null ? model.getDisplayName() : "Gemini");
                     }
                 }

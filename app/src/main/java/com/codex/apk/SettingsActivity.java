@@ -107,6 +107,9 @@ public class SettingsActivity extends AppCompatActivity {
 		if (apiCard != null) apiCard.setOnClickListener(v -> {
 			startActivity(new Intent(this, ApiActivity.class));
 		});
+		findViewById(R.id.about_card).setOnClickListener(v -> {
+            startActivity(new Intent(this, AboutActivity.class));
+        });
 
 		// Switch Listeners
 		if (wrapSwitch != null) {

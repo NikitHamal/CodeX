@@ -293,11 +293,34 @@ public class SimpleSoraTabAdapter extends RecyclerView.Adapter<RecyclerView.View
                 }
             }
             // Prepare split view adapter scaffold (to be fully wired by SplitDiffAdapter)
-            if (editorViewHolder.diffRecyclerSplit != null && editorViewHolder.diffRecyclerSplit.getAdapter() == null) {
-                editorViewHolder.diffRecyclerSplit.setLayoutManager(new LinearLayoutManager(context));
-                editorViewHolder.diffRecyclerSplit.setHasFixedSize(true);
-                editorViewHolder.diffRecyclerSplit.setItemViewCacheSize(64);
-                // Set a placeholder adapter for now; the real SplitDiffAdapter will be attached below if available
+            if (editorViewHolder.diffRecyclerSplit != null) {
+                if (editorViewHolder.diffRecyclerSplit.getLayoutManager() == null) {
+                    editorViewHolder.diffRecyclerSplit.setLayoutManager(new LinearLayoutManager(context));
+                    editorViewHolder.diffRecyclerSplit.setHasFixedSize(true);
+                    editorViewHolder.diffRecyclerSplit.setItemViewCacheSize(64);
+                }
+                // Bind split adapter data from same unified lines
+                String key = tabId;
+                String content = tabItem.getContent();
+                int h = content != null ? content.hashCode() : 0;
+                java.util.List<DiffUtils.DiffLine> lines;
+                DiffCacheEntry entry = diffCache.get(key);
+                if (entry == null || entry.hash != h) {
+                    lines = DiffUtils.parseUnifiedDiff(content);
+                    DiffCacheEntry newEntry = new DiffCacheEntry();
+                    newEntry.lines = lines;
+                    newEntry.hash = h;
+                    diffCache.put(key, newEntry);
+                } else {
+                    lines = entry.lines;
+                }
+                SplitDiffAdapter split = (SplitDiffAdapter) editorViewHolder.diffRecyclerSplit.getAdapter();
+                if (split == null) {
+                    split = new SplitDiffAdapter(context, lines);
+                    editorViewHolder.diffRecyclerSplit.setAdapter(split);
+                } else {
+                    split.setData(lines);
+                }
             }
         } else {
             // Show normal editor

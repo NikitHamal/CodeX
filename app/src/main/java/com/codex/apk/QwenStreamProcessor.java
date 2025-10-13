@@ -212,7 +212,7 @@ public class QwenStreamProcessor {
         }
     }
 
-    private String recoverContentFromRaw(String raw) {
+    public String recoverContentFromRaw(String raw) {
         if (raw == null || raw.isEmpty()) return "";
         // Heuristic: concatenate all answer-phase content fragments (delta.content) between code fences
         StringBuilder sb = new StringBuilder();

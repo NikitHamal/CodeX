@@ -49,10 +49,27 @@ public class QwenStreamProcessor {
         StringBuilder rawStreamData = new StringBuilder();
 
         String line;
+        boolean firstLineChecked = false;
         while ((line = response.body().source().readUtf8Line()) != null) {
             rawStreamData.append(line).append("\n");
             String t = line.trim();
             if (t.isEmpty()) continue;
+            if (!firstLineChecked) {
+                firstLineChecked = true;
+                // Some servers send an initial JSON line before SSE data:
+                if (t.startsWith("{") || t.startsWith("[")) {
+                    try {
+                        JsonObject data = JsonParser.parseString(t).getAsJsonObject();
+                        if (data.has("response.created")) {
+                            JsonObject created = data.getAsJsonObject("response.created");
+                            if (created.has("chat_id")) conversationState.setConversationId(created.get("chat_id").getAsString());
+                            if (created.has("response_id")) conversationState.setLastParentId(created.get("response_id").getAsString());
+                            if (actionListener != null) actionListener.onQwenConversationStateUpdated(conversationState);
+                            continue;
+                        }
+                    } catch (Exception ignore) {}
+                }
+            }
             if ("data: [DONE]".equals(t) || "[DONE]".equals(t)) {
                 String finalContentDone = answerContent.length() > 0 ? answerContent.toString() : thinkingContent.toString();
                 notifyListener(rawStreamData.toString(), finalContentDone, thinkingContent.toString(), webSources);

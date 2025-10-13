@@ -20,6 +20,10 @@ public class QwenMidTokenManager {
     private final SharedPreferences sharedPreferences;
     private volatile String midToken = null;
     private int midTokenUses = 0;
+    private long midTokenCreatedAtMs = 0L;
+
+    private static final int MAX_USES = 20; // refresh after 20 uses
+    private static final long MAX_AGE_MS = 5 * 60 * 1000L; // refresh after 5 minutes
 
     public QwenMidTokenManager(Context context, OkHttpClient httpClient) {
         this.httpClient = httpClient;
@@ -28,6 +32,7 @@ public class QwenMidTokenManager {
             this.midToken = sharedPreferences.getString(QWEN_MIDTOKEN_KEY, null);
             if (this.midToken != null) {
                 this.midTokenUses = 0;
+                this.midTokenCreatedAtMs = System.currentTimeMillis();
                 Log.i(TAG, "Loaded persisted midtoken.");
             }
         } catch (Exception ignored) {}
@@ -41,9 +46,17 @@ public class QwenMidTokenManager {
             sharedPreferences.edit().remove(QWEN_MIDTOKEN_KEY).apply();
         }
         if (midToken != null) {
-            midTokenUses++;
-            Log.i(TAG, "Reusing midtoken. Use count: " + midTokenUses);
-            return midToken;
+            long age = System.currentTimeMillis() - midTokenCreatedAtMs;
+            if (midTokenUses < MAX_USES && age < MAX_AGE_MS) {
+                midTokenUses++;
+                Log.i(TAG, "Reusing midtoken. Use count: " + midTokenUses + ", ageMs=" + age);
+                return midToken;
+            } else {
+                Log.i(TAG, "Midtoken expired (uses=" + midTokenUses + ", ageMs=" + age + ") refreshing...");
+                this.midToken = null;
+                this.midTokenUses = 0;
+                sharedPreferences.edit().remove(QWEN_MIDTOKEN_KEY).apply();
+            }
         }
 
         Log.i(TAG, "No active midtoken. Fetching a new one...");
@@ -64,8 +77,8 @@ public class QwenMidTokenManager {
             }
             midToken = m.group(1);
             midTokenUses = 1;
-
-            sharedPreferences.edit().putString(QWEN_MIDTOKEN_KEY, midToken).apply();
+            midTokenCreatedAtMs = System.currentTimeMillis();
+            try { sharedPreferences.edit().putString(QWEN_MIDTOKEN_KEY, midToken).apply(); } catch (Exception ignore) {}
             Log.i(TAG, "Obtained and saved new midtoken. Use count: 1");
             return midToken;
         }

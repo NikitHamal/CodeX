@@ -37,7 +37,7 @@ public class QwenApiClient implements ApiClient {
         this.httpClient = new OkHttpClient.Builder()
                 .connectTimeout(30, TimeUnit.SECONDS)
                 .writeTimeout(30, TimeUnit.SECONDS)
-                .readTimeout(60, TimeUnit.SECONDS)
+                .readTimeout(0, TimeUnit.SECONDS)
                 .build();
         this.midTokenManager = new QwenMidTokenManager(context, this.httpClient);
         this.conversationManager = new QwenConversationManager(this.httpClient, this.midTokenManager);

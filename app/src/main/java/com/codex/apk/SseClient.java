@@ -84,32 +84,38 @@ public class SseClient {
     }
 
     private void handleEvent(String rawEvent, Listener listener) {
-        String trimmed = rawEvent == null ? "" : rawEvent.trim();
-        if (trimmed.isEmpty()) return;
-        // Primary path: SSE lines with data:
-        String prefix = "data:";
-        int idx = trimmed.indexOf(prefix);
-        if (idx >= 0) {
-            String jsonPart = trimmed.substring(idx + prefix.length()).trim();
-            if (jsonPart.isEmpty() || jsonPart.equals("[DONE]") || jsonPart.equalsIgnoreCase("data: [DONE]")) return;
-            try {
-                JsonObject obj = JsonParser.parseString(jsonPart).getAsJsonObject();
-                if (obj.has("usage") && obj.get("usage").isJsonObject()) {
-                    if (listener != null) listener.onUsage(obj.getAsJsonObject("usage"));
-                }
-                if (listener != null) listener.onDelta(obj);
-            } catch (Exception ignore) {}
-            return;
-        }
-        // Fallback: servers sometimes send an initial JSON line (no data:) before SSE
-        if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
-            try {
-                JsonObject obj = JsonParser.parseString(trimmed).getAsJsonObject();
-                if (obj.has("usage") && obj.get("usage").isJsonObject()) {
-                    if (listener != null) listener.onUsage(obj.getAsJsonObject("usage"));
-                }
-                if (listener != null) listener.onDelta(obj);
-            } catch (Exception ignore) {}
+        String trimmedBlock = rawEvent == null ? "" : rawEvent.trim();
+        if (trimmedBlock.isEmpty()) return;
+        // Split into individual lines and process each; many providers emit multiple
+        // data: lines without blank separators. We must parse each line separately.
+        String[] lines = trimmedBlock.split("\n");
+        for (String line : lines) {
+            if (line == null) continue;
+            String trimmed = line.trim();
+            if (trimmed.isEmpty()) continue;
+            if (trimmed.startsWith("data:")) {
+                String jsonPart = trimmed.substring("data:".length()).trim();
+                if (jsonPart.isEmpty()) continue;
+                if ("[DONE]".equals(jsonPart) || "data: [DONE]".equalsIgnoreCase(jsonPart)) continue;
+                try {
+                    JsonObject obj = JsonParser.parseString(jsonPart).getAsJsonObject();
+                    if (obj.has("usage") && obj.get("usage").isJsonObject()) {
+                        if (listener != null) listener.onUsage(obj.getAsJsonObject("usage"));
+                    }
+                    if (listener != null) listener.onDelta(obj);
+                } catch (Exception ignore) { /* ignore malformed partials */ }
+                continue;
+            }
+            // Fallback: initial JSON line with no data: prefix
+            if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
+                try {
+                    JsonObject obj = JsonParser.parseString(trimmed).getAsJsonObject();
+                    if (obj.has("usage") && obj.get("usage").isJsonObject()) {
+                        if (listener != null) listener.onUsage(obj.getAsJsonObject("usage"));
+                    }
+                    if (listener != null) listener.onDelta(obj);
+                } catch (Exception ignore) { /* ignore malformed partials */ }
+            }
         }
     }
 

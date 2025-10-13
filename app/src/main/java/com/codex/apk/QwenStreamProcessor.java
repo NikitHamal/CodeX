@@ -112,6 +112,7 @@ public class QwenStreamProcessor {
 
                             if ("finished".equals(status)) {
                                 String finalContent = answerContent.length() > 0 ? answerContent.toString() : thinkingContent.toString();
+                                // Defensive: some responses end with empty content but valid fenced JSON earlier
                                 String jsonToParse = extractJsonFromCodeBlock(finalContent);
                                 if (jsonToParse == null && QwenResponseParser.looksLikeJson(finalContent)) {
                                     jsonToParse = finalContent;
@@ -141,6 +142,10 @@ public class QwenStreamProcessor {
                                     }
                                 }
 
+                                // If still empty, try to salvage from last non-empty delta content
+                                if ((finalContent == null || finalContent.trim().isEmpty())) {
+                                    finalContent = recoverContentFromRaw(rawStreamData.toString());
+                                }
                                 notifyListener(rawStreamData.toString(), finalContent, thinkingContent.toString(), webSources);
                                 if (actionListener != null) actionListener.onQwenConversationStateUpdated(conversationState);
                                 break;
@@ -188,6 +193,38 @@ public class QwenStreamProcessor {
         } else {
             notifyAiActionsProcessed(rawResponse, finalContent, new ArrayList<>(), new ArrayList<>(), thinkingContent, webSources);
         }
+    }
+
+    private String recoverContentFromRaw(String raw) {
+        if (raw == null || raw.isEmpty()) return "";
+        // Heuristic: concatenate all answer-phase content fragments (delta.content) between code fences
+        StringBuilder sb = new StringBuilder();
+        try {
+            String[] lines = raw.split("\n");
+            boolean inside = false;
+            for (String l : lines) {
+                String t = l.trim();
+                if (!t.startsWith("data: ")) continue;
+                String json = t.substring(6).trim();
+                if (!(json.startsWith("{") || json.startsWith("["))) continue;
+                JsonObject obj = JsonParser.parseString(json).getAsJsonObject();
+                if (!obj.has("choices")) continue;
+                JsonArray choices = obj.getAsJsonArray("choices");
+                if (choices.size() == 0) continue;
+                JsonObject delta = choices.get(0).getAsJsonObject().getAsJsonObject("delta");
+                if (delta == null) continue;
+                String phase = delta.has("phase") ? delta.get("phase").getAsString() : "";
+                String content = delta.has("content") && !delta.get("content").isJsonNull() ? delta.get("content").getAsString() : "";
+                if (content == null) content = "";
+                // Track code fence blocks; if the model emitted ```json ... ``` chunks, try to reassemble
+                if ("answer".equals(phase)) {
+                    if (content.startsWith("```")) inside = true;
+                    if (inside) sb.append(content);
+                    if (content.endsWith("```")) inside = false;
+                }
+            }
+        } catch (Exception ignore) {}
+        return sb.toString();
     }
 
     private void enrichFileActionDetails(List<ChatMessage.FileActionDetail> details) {

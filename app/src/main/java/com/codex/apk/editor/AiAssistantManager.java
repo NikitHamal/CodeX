@@ -475,6 +475,15 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
             }
 
             String finalExplanation = explanation != null ? explanation.trim() : "";
+            if ((finalExplanation == null || finalExplanation.isEmpty()) && effectiveProposedFileChanges != null && !effectiveProposedFileChanges.isEmpty()) {
+                // Build a concise summary with aggregated counts per affected file
+                try {
+                    finalExplanation = buildFileChangeSummary(effectiveProposedFileChanges);
+                } catch (Exception ignore) {}
+                if (finalExplanation == null || finalExplanation.isEmpty()) {
+                    finalExplanation = "Proposed file changes available.";
+                }
+            }
             ChatMessage aiMessage = new ChatMessage(
                     ChatMessage.SENDER_AI, finalExplanation, null,
                     suggestions != null ? new ArrayList<>(suggestions) : new ArrayList<>(),
@@ -505,6 +514,84 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                 }
             }
         });
+    }
+
+    private String buildFileChangeSummary(List<ChatMessage.FileActionDetail> details) {
+        // Aggregate by effective path (tracking renames in this message)
+        java.util.LinkedHashMap<String, int[]> countsByPath = new java.util.LinkedHashMap<>();
+        java.util.Set<String> allPaths = new java.util.LinkedHashSet<>();
+        for (ChatMessage.FileActionDetail d : details) {
+            if (d.path != null && !d.path.isEmpty()) allPaths.add(d.path);
+            if ("renameFile".equals(d.type)) {
+                if (d.oldPath != null && !d.oldPath.isEmpty()) allPaths.add(d.oldPath);
+                if (d.newPath != null && !d.newPath.isEmpty()) allPaths.add(d.newPath);
+            }
+        }
+        // Build alias set per path by walking rename chain backwards
+        java.util.Map<String, java.util.Set<String>> aliases = new java.util.HashMap<>();
+        for (String p : allPaths) {
+            java.util.Set<String> set = new java.util.LinkedHashSet<>();
+            set.add(p);
+            boolean changed;
+            for (int pass = 0; pass < 3; pass++) {
+                changed = false;
+                for (ChatMessage.FileActionDetail a : details) {
+                    if ("renameFile".equals(a.type) && a.newPath != null && set.contains(a.newPath) && a.oldPath != null) {
+                        if (set.add(a.oldPath)) changed = true;
+                    }
+                }
+                if (!changed) break;
+            }
+            aliases.put(p, set);
+        }
+
+        // Define helper to find a canonical display name
+        java.util.function.Function<ChatMessage.FileActionDetail, String> displayPath = a -> {
+            if ("renameFile".equals(a.type) && a.newPath != null && !a.newPath.isEmpty()) return a.newPath;
+            return a.path != null ? a.path : "";
+        };
+
+        // Aggregate counts
+        for (ChatMessage.FileActionDetail a : details) {
+            String key = displayPath.apply(a);
+            if (key.isEmpty()) continue;
+            int[] current = countsByPath.computeIfAbsent(key, k -> new int[]{0, 0});
+            if ("modifyLines".equals(a.type)) {
+                current[0] += (a.insertLines != null) ? a.insertLines.size() : 0;
+                current[1] += Math.max(0, a.deleteCount);
+            } else if (a.diffPatch != null && !a.diffPatch.isEmpty()) {
+                int[] c = com.codex.apk.DiffUtils.countAddRemove(a.diffPatch);
+                current[0] += c[0];
+                current[1] += c[1];
+            } else if ("createFile".equals(a.type) && a.newContent != null) {
+                current[0] += countLines(a.newContent);
+            } else if ("deleteFile".equals(a.type) && a.oldContent != null) {
+                current[1] += countLines(a.oldContent);
+            } else if (a.oldContent != null || a.newContent != null) {
+                int[] c = com.codex.apk.DiffUtils.countAddRemoveFromContents(a.oldContent, a.newContent);
+                current[0] += c[0];
+                current[1] += c[1];
+            }
+        }
+
+        if (countsByPath.isEmpty()) return "";
+        StringBuilder sb = new StringBuilder();
+        sb.append("Changes:\n");
+        for (java.util.Map.Entry<String, int[]> e : countsByPath.entrySet()) {
+            int add = e.getValue()[0];
+            int rem = e.getValue()[1];
+            sb.append("- ").append(e.getKey());
+            if (add > 0 || rem > 0) sb.append(" (+").append(add).append(" -").append(rem).append(")");
+            sb.append('\n');
+        }
+        return sb.toString().trim();
+    }
+
+    private int countLines(String s) {
+        if (s == null || s.isEmpty()) return 0;
+        int lines = 1;
+        for (int i = 0; i < s.length(); i++) if (s.charAt(i) == '\n') lines++;
+        return lines;
     }
 
     @Override

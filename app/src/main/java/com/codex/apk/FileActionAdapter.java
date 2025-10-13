@@ -39,7 +39,8 @@ public class FileActionAdapter extends RecyclerView.Adapter<FileActionAdapter.Vi
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         List<ChatMessage.FileActionDetail> displayActions = getDisplayActions();
         ChatMessage.FileActionDetail action = displayActions.get(position);
-        holder.bind(action, listener);
+        int[] counts = computeAggregatedCountsForDisplayAction(action);
+        holder.bind(action, listener, counts[0], counts[1]);
     }
 
     @Override
@@ -87,7 +88,7 @@ public class FileActionAdapter extends RecyclerView.Adapter<FileActionAdapter.Vi
             textRemovedBadge = itemView.findViewById(R.id.text_removed_badge);
         }
 
-        void bind(final ChatMessage.FileActionDetail action, final OnFileActionClickListener listener) {
+        void bind(final ChatMessage.FileActionDetail action, final OnFileActionClickListener listener, int added, int removed) {
             String path = action.type.equals("renameFile") ? action.newPath : action.path;
             textFileName.setText(path);
 
@@ -137,26 +138,7 @@ public class FileActionAdapter extends RecyclerView.Adapter<FileActionAdapter.Vi
 
             // No status label in the new UI
 
-            // Diff badges (+ added / - removed lines)
-            int added = 0;
-            int removed = 0;
-
-            if ("modifyLines".equals(action.type)) {
-                added = (action.insertLines != null) ? action.insertLines.size() : 0;
-                removed = Math.max(0, action.deleteCount);
-            } else if (action.diffPatch != null && !action.diffPatch.isEmpty()) {
-                int[] counts = DiffUtils.countAddRemove(action.diffPatch);
-                added = counts[0];
-                removed = counts[1];
-            } else if ("createFile".equals(action.type) && action.newContent != null) {
-                added = countLines(action.newContent);
-            } else if ("deleteFile".equals(action.type) && action.oldContent != null) {
-                removed = countLines(action.oldContent);
-            } else if (action.oldContent != null || action.newContent != null) { // fallback for any modified-like action
-                int[] counts = DiffUtils.countAddRemoveFromContents(action.oldContent, action.newContent);
-                added = counts[0];
-                removed = counts[1];
-            }
+            // Diff badges (+ added / - removed lines) provided by adapter pre-computation
 
             // Configure + badge
             if (added > 0) {
@@ -189,5 +171,63 @@ public class FileActionAdapter extends RecyclerView.Adapter<FileActionAdapter.Vi
         }
 
         // Removed duplicate unified diff parser; using DiffUtils.countAddRemove
+    }
+
+    /**
+     * Compute aggregated add/remove counts for a displayed action by summing all
+     * changes to the same effective file path within this message (handles renames).
+     */
+    private int[] computeAggregatedCountsForDisplayAction(ChatMessage.FileActionDetail displayed) {
+        String displayPath = "renameFile".equals(displayed.type) && displayed.newPath != null && !displayed.newPath.isEmpty()
+                ? displayed.newPath
+                : displayed.path;
+        if (displayPath == null) displayPath = "";
+
+        // Build path alias set by walking rename chain backwards
+        java.util.Set<String> relatedPaths = new java.util.LinkedHashSet<>();
+        relatedPaths.add(displayPath);
+        boolean changed;
+        for (int pass = 0; pass < 3; pass++) { // few passes are enough for single-message chains
+            changed = false;
+            for (ChatMessage.FileActionDetail a : fileActions) {
+                if ("renameFile".equals(a.type) && a.newPath != null && relatedPaths.contains(a.newPath) && a.oldPath != null) {
+                    if (relatedPaths.add(a.oldPath)) changed = true;
+                }
+            }
+            if (!changed) break;
+        }
+
+        int added = 0, removed = 0;
+        for (ChatMessage.FileActionDetail a : fileActions) {
+            boolean affects = false;
+            if (a.path != null && relatedPaths.contains(a.path)) affects = true;
+            if (!affects && "renameFile".equals(a.type) && (relatedPaths.contains(a.oldPath) || relatedPaths.contains(a.newPath))) affects = true;
+            if (!affects) continue;
+
+            if ("modifyLines".equals(a.type)) {
+                added += (a.insertLines != null) ? a.insertLines.size() : 0;
+                removed += Math.max(0, a.deleteCount);
+            } else if (a.diffPatch != null && !a.diffPatch.isEmpty()) {
+                int[] c = DiffUtils.countAddRemove(a.diffPatch);
+                added += c[0];
+                removed += c[1];
+            } else if ("createFile".equals(a.type) && a.newContent != null) {
+                added += countLinesStatic(a.newContent);
+            } else if ("deleteFile".equals(a.type) && a.oldContent != null) {
+                removed += countLinesStatic(a.oldContent);
+            } else if (a.oldContent != null || a.newContent != null) {
+                int[] c = DiffUtils.countAddRemoveFromContents(a.oldContent, a.newContent);
+                added += c[0];
+                removed += c[1];
+            }
+        }
+        return new int[]{added, removed};
+    }
+
+    private static int countLinesStatic(String s) {
+        if (s == null || s.isEmpty()) return 0;
+        int lines = 1;
+        for (int i = 0; i < s.length(); i++) { if (s.charAt(i) == '\n') lines++; }
+        return lines;
     }
 }

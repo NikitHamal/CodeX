@@ -86,36 +86,39 @@ public class OpenRouterApiClient implements ApiClient {
                         .url(url)
                         .post(RequestBody.create(req.toString(), JSON))
                         .addHeader("Authorization", "Bearer " + apiKey)
+                        .addHeader("Accept", "text/event-stream")
                         .build();
 
-                try (Response resp = http.newCall(httpReq).execute()) {
-                    if (!resp.isSuccessful() || resp.body() == null) {
-                        String err = resp.body() != null ? resp.body().string() : null;
-                        if (actionListener != null) actionListener.onAiError("OpenRouter API error: " + resp.code() + (err != null ? ": " + err : ""));
-                        return;
-                    }
-                    String body = resp.body().string();
-                    JsonObject jsonResponse = JsonParser.parseString(body).getAsJsonObject();
-                    String content = "";
-                    if (jsonResponse.has("choices")) {
-                        JsonArray choices = jsonResponse.getAsJsonArray("choices");
-                        if (choices.size() > 0) {
-                            JsonObject choice = choices.get(0).getAsJsonObject();
-                            if (choice.has("message")) {
-                                JsonObject messageObj = choice.getAsJsonObject("message");
-                                if (messageObj.has("content")) {
-                                    content = messageObj.get("content").getAsString();
+                SseClient sse = new SseClient(http);
+                StringBuilder finalText = new StringBuilder();
+                StringBuilder rawSse = new StringBuilder();
+                sse.postStream(url, httpReq.headers(), req, new SseClient.Listener() {
+                    @Override public void onOpen() {}
+                    @Override public void onDelta(JsonObject chunk) {
+                        rawSse.append("data: ").append(chunk.toString()).append('\n');
+                        try {
+                            if (chunk.has("choices") && chunk.get("choices").isJsonArray()) {
+                                JsonArray choices = chunk.getAsJsonArray("choices");
+                                for (int i = 0; i < choices.size(); i++) {
+                                    JsonObject c = choices.get(i).getAsJsonObject();
+                                    JsonObject delta = c.has("delta") && c.get("delta").isJsonObject() ? c.getAsJsonObject("delta") : null;
+                                    if (delta != null && delta.has("content") && !delta.get("content").isJsonNull()) {
+                                        finalText.append(delta.get("content").getAsString());
+                                        actionListener.onAiStreamUpdate(finalText.toString(), false);
+                                    }
                                 }
                             }
-                        }
+                        } catch (Exception ignore) {}
                     }
-
-                    if (actionListener != null) {
+                    @Override public void onUsage(JsonObject usage) {}
+                    @Override public void onError(String message, int code) {
+                        if (actionListener != null) actionListener.onAiError("OpenRouter API error: " + code + (message != null ? ": " + message : ""));
+                    }
+                    @Override public void onComplete() {
+                        if (actionListener == null) return;
+                        String content = finalText.toString();
                         String jsonToParse = JsonUtils.extractJsonFromCodeBlock(content);
-                        if (jsonToParse == null && JsonUtils.looksLikeJson(content)) {
-                            jsonToParse = content;
-                        }
-
+                        if (jsonToParse == null && JsonUtils.looksLikeJson(content)) jsonToParse = content;
                         if (jsonToParse != null) {
                             try {
                                 QwenResponseParser.ParsedResponse parsed = QwenResponseParser.parseResponse(jsonToParse);
@@ -136,8 +139,9 @@ public class OpenRouterApiClient implements ApiClient {
                         } else {
                             actionListener.onAiActionsProcessed(content, content, new ArrayList<>(), new ArrayList<>(), model.getDisplayName());
                         }
+                        actionListener.onAiRequestCompleted();
                     }
-                }
+                });
             } catch (Exception e) {
                 Log.e(TAG, "Error calling OpenRouter API", e);
                 if (actionListener != null) actionListener.onAiError("Error: " + e.getMessage());

@@ -65,32 +65,84 @@ public class DeepInfraApiClient implements ApiClient {
                             List<ToolSpec> enabledTools,
                             List<File> attachments) {
         new Thread(() -> {
-            Response response = null;
             try {
                 if (actionListener != null) actionListener.onAiRequestStarted();
-
                 String modelId = model != null ? model.getModelId() : "deepseek-v3";
                 JsonObject body = buildOpenAIStyleBody(modelId, message, history);
-
-                Request request = new Request.Builder()
+                Request req = new Request.Builder()
                         .url(DI_CHAT)
                         .addHeader("user-agent", "Mozilla/5.0 (Linux; Android) CodeX-Android/1.0")
                         .addHeader("accept", "text/event-stream")
                         .post(RequestBody.create(body.toString(), MediaType.parse("application/json")))
                         .build();
 
-                response = httpClient.newCall(request).execute();
-                if (response.isSuccessful() && response.body() != null) {
-                    String modelDisplay = model != null ? model.getDisplayName() : (modelId != null ? modelId : "DeepInfra");
-                    streamOpenAiSse(response, modelDisplay);
-                } else {
-                    if (actionListener != null) actionListener.onAiError("DeepInfra error: " + (response != null ? response.code() : -1));
-                }
+                SseClient sse = new SseClient(httpClient);
+                StringBuilder finalText = new StringBuilder();
+                StringBuilder rawSse = new StringBuilder();
+                String modelDisplay = model != null ? model.getDisplayName() : (modelId != null ? modelId : "DeepInfra");
+                sse.postStream(DI_CHAT, req.headers(), body, new SseClient.Listener() {
+                    @Override public void onOpen() {}
+                    @Override public void onDelta(JsonObject chunk) {
+                        rawSse.append("data: ").append(chunk.toString()).append('\n');
+                        try {
+                            if (chunk.has("choices") && chunk.get("choices").isJsonArray()) {
+                                JsonArray choices = chunk.getAsJsonArray("choices");
+                                for (int i = 0; i < choices.size(); i++) {
+                                    JsonObject choice = choices.get(i).getAsJsonObject();
+                                    if (choice.has("delta") && choice.get("delta").isJsonObject()) {
+                                        JsonObject delta = choice.getAsJsonObject("delta");
+                                        if (delta.has("content") && !delta.get("content").isJsonNull()) {
+                                            finalText.append(delta.get("content").getAsString());
+                                            actionListener.onAiStreamUpdate(finalText.toString(), false);
+                                        }
+                                    } else if (choice.has("message") && choice.get("message").isJsonObject()) {
+                                        JsonObject msg = choice.getAsJsonObject("message");
+                                        if (msg.has("content") && !msg.get("content").isJsonNull()) {
+                                            finalText.append(msg.get("content").getAsString());
+                                            actionListener.onAiStreamUpdate(finalText.toString(), false);
+                                        }
+                                    }
+                                }
+                            }
+                        } catch (Exception ignore) {}
+                    }
+                    @Override public void onUsage(JsonObject usage) {}
+                    @Override public void onError(String message, int code) {
+                        if (actionListener != null) actionListener.onAiError("DeepInfra error: " + code);
+                    }
+                    @Override public void onComplete() {
+                        if (actionListener != null) {
+                            String jsonToParse = JsonUtils.extractJsonFromCodeBlock(finalText.toString());
+                            if (jsonToParse == null && JsonUtils.looksLikeJson(finalText.toString())) {
+                                jsonToParse = finalText.toString();
+                            }
+                            if (jsonToParse != null) {
+                                try {
+                                    QwenResponseParser.ParsedResponse parsed = QwenResponseParser.parseResponse(jsonToParse);
+                                    if (parsed != null && parsed.isValid) {
+                                        if ("plan".equals(parsed.action) && parsed.planSteps != null && !parsed.planSteps.isEmpty()) {
+                                            List<ChatMessage.PlanStep> planSteps = QwenResponseParser.toPlanSteps(parsed);
+                                            actionListener.onAiActionsProcessed(jsonToParse, parsed.explanation, new ArrayList<>(), new ArrayList<>(), planSteps, modelDisplay);
+                                        } else {
+                                            List<ChatMessage.FileActionDetail> fileActions = QwenResponseParser.toFileActionDetails(parsed);
+                                            actionListener.onAiActionsProcessed(jsonToParse, parsed.explanation, new ArrayList<>(), fileActions, modelDisplay);
+                                        }
+                                    } else {
+                                        actionListener.onAiActionsProcessed(finalText.toString(), finalText.toString(), new java.util.ArrayList<>(), new java.util.ArrayList<>(), modelDisplay);
+                                    }
+                                } catch (Exception e) {
+                                    actionListener.onAiActionsProcessed(finalText.toString(), finalText.toString(), new java.util.ArrayList<>(), new java.util.ArrayList<>(), modelDisplay);
+                                }
+                            } else {
+                                actionListener.onAiActionsProcessed(finalText.toString(), finalText.toString(), new java.util.ArrayList<>(), new java.util.ArrayList<>(), modelDisplay);
+                            }
+                            actionListener.onAiRequestCompleted();
+                        }
+                    }
+                });
             } catch (Exception e) {
                 Log.e(TAG, "Error calling DeepInfra", e);
                 if (actionListener != null) actionListener.onAiError("Error: " + e.getMessage());
-            } finally {
-                try { if (response != null) response.close(); } catch (Exception ignore) {}
                 if (actionListener != null) actionListener.onAiRequestCompleted();
             }
         }).start();

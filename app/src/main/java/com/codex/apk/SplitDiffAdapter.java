@@ -184,7 +184,6 @@ public class SplitDiffAdapter extends RecyclerView.Adapter<RecyclerView.ViewHold
         if (unified == null) return out;
         List<DiffUtils.DiffLine> pendRem = new ArrayList<>();
         List<DiffUtils.DiffLine> pendAdd = new ArrayList<>();
-        int lastOld = -1, lastNew = -1;
         Runnable flush = () -> {
             int n = Math.max(pendRem.size(), pendAdd.size());
             for (int i = 0; i < n; i++) {
@@ -197,8 +196,6 @@ public class SplitDiffAdapter extends RecyclerView.Adapter<RecyclerView.ViewHold
                 DiffUtils.LineType lt = r != null ? DiffUtils.LineType.REMOVED : DiffUtils.LineType.CONTEXT;
                 DiffUtils.LineType rt = a != null ? DiffUtils.LineType.ADDED : DiffUtils.LineType.CONTEXT;
                 out.add(new PairRow(oldLn, newLn, oldTx, newTx, lt, rt));
-                if (oldLn > 0) lastOld = oldLn;
-                if (newLn > 0) lastNew = newLn;
             }
             pendRem.clear();
             pendAdd.clear();
@@ -219,8 +216,6 @@ public class SplitDiffAdapter extends RecyclerView.Adapter<RecyclerView.ViewHold
                     flush.run();
                     out.add(new PairRow(d.oldLine != null ? d.oldLine : 0, d.newLine != null ? d.newLine : 0,
                             d.text, d.text, DiffUtils.LineType.CONTEXT, DiffUtils.LineType.CONTEXT));
-                    if (d.oldLine != null) lastOld = d.oldLine;
-                    if (d.newLine != null) lastNew = d.newLine;
                     break;
             }
         }

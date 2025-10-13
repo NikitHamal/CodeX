@@ -112,30 +112,7 @@ public class DeepInfraApiClient implements ApiClient {
                     }
                     @Override public void onComplete() {
                         if (actionListener != null) {
-                            String jsonToParse = JsonUtils.extractJsonFromCodeBlock(finalText.toString());
-                            if (jsonToParse == null && JsonUtils.looksLikeJson(finalText.toString())) {
-                                jsonToParse = finalText.toString();
-                            }
-                            if (jsonToParse != null) {
-                                try {
-                                    QwenResponseParser.ParsedResponse parsed = QwenResponseParser.parseResponse(jsonToParse);
-                                    if (parsed != null && parsed.isValid) {
-                                        if ("plan".equals(parsed.action) && parsed.planSteps != null && !parsed.planSteps.isEmpty()) {
-                                            List<ChatMessage.PlanStep> planSteps = QwenResponseParser.toPlanSteps(parsed);
-                                            actionListener.onAiActionsProcessed(jsonToParse, parsed.explanation, new ArrayList<>(), new ArrayList<>(), planSteps, modelDisplay);
-                                        } else {
-                                            List<ChatMessage.FileActionDetail> fileActions = QwenResponseParser.toFileActionDetails(parsed);
-                                            actionListener.onAiActionsProcessed(jsonToParse, parsed.explanation, new ArrayList<>(), fileActions, modelDisplay);
-                                        }
-                                    } else {
-                                        actionListener.onAiActionsProcessed(finalText.toString(), finalText.toString(), new java.util.ArrayList<>(), new java.util.ArrayList<>(), modelDisplay);
-                                    }
-                                } catch (Exception e) {
-                                    actionListener.onAiActionsProcessed(finalText.toString(), finalText.toString(), new java.util.ArrayList<>(), new java.util.ArrayList<>(), modelDisplay);
-                                }
-                            } else {
-                                actionListener.onAiActionsProcessed(finalText.toString(), finalText.toString(), new java.util.ArrayList<>(), new java.util.ArrayList<>(), modelDisplay);
-                            }
+                            ResponseDemuxer.handleGeneric(actionListener, modelDisplay, rawSse.toString(), finalText.toString(), null);
                             actionListener.onAiRequestCompleted();
                         }
                     }

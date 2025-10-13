@@ -113,30 +113,7 @@ public class AnyProviderApiClient implements ApiClient {
                     }
                     @Override public void onComplete() {
                         if (actionListener == null) return;
-                        String jsonToParse = JsonUtils.extractJsonFromCodeBlock(finalText.toString());
-                        if (jsonToParse == null && JsonUtils.looksLikeJson(finalText.toString())) {
-                            jsonToParse = finalText.toString();
-                        }
-                        if (jsonToParse != null) {
-                            try {
-                                QwenResponseParser.ParsedResponse parsed = QwenResponseParser.parseResponse(jsonToParse);
-                                if (parsed != null && parsed.isValid) {
-                                    if ("plan".equals(parsed.action) && parsed.planSteps != null && !parsed.planSteps.isEmpty()) {
-                                        List<ChatMessage.PlanStep> planSteps = QwenResponseParser.toPlanSteps(parsed);
-                                        actionListener.onAiActionsProcessed(jsonToParse, parsed.explanation, new ArrayList<>(), new ArrayList<>(), planSteps, model.getDisplayName());
-                                    } else {
-                                        List<ChatMessage.FileActionDetail> fileActions = QwenResponseParser.toFileActionDetails(parsed);
-                                        actionListener.onAiActionsProcessed(jsonToParse, parsed.explanation, new ArrayList<>(), fileActions, new ArrayList<>(), model.getDisplayName());
-                                    }
-                                } else {
-                                    actionListener.onAiActionsProcessed(rawSse.toString(), finalText.toString(), new ArrayList<>(), new ArrayList<>(), model.getDisplayName());
-                                }
-                            } catch (Exception e) {
-                                actionListener.onAiActionsProcessed(rawSse.toString(), finalText.toString(), new ArrayList<>(), new ArrayList<>(), model.getDisplayName());
-                            }
-                        } else {
-                            actionListener.onAiActionsProcessed(rawSse.toString(), finalText.toString(), new ArrayList<>(), new ArrayList<>(), model.getDisplayName());
-                        }
+                        ResponseDemuxer.handleGeneric(actionListener, model != null ? model.getDisplayName() : "Free", rawSse.toString(), finalText.toString(), null);
                         actionListener.onAiRequestCompleted();
                     }
                 });

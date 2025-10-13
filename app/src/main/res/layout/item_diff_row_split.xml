@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal">
+
+    <!-- Left (old) column -->
+    <LinearLayout
+        android:id="@+id/left_container"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="horizontal"
+        android:paddingVertical="2dp">
+
+        <View
+            android:id="@+id/left_gutter"
+            android:layout_width="3dp"
+            android:layout_height="match_parent"
+            android:background="@color/outline_variant" />
+
+        <TextView
+            android:id="@+id/tv_old_line"
+            android:layout_width="52dp"
+            android:layout_height="wrap_content"
+            android:gravity="end"
+            android:paddingEnd="6dp"
+            android:textColor="@color/on_surface_variant"
+            android:textSize="12sp"
+            android:fontFamily="monospace" />
+
+        <TextView
+            android:id="@+id/tv_old_content"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:paddingStart="8dp"
+            android:paddingEnd="4dp"
+            android:textColor="@color/on_surface"
+            android:textSize="12sp"
+            android:fontFamily="monospace" />
+    </LinearLayout>
+
+    <!-- Right (new) column -->
+    <LinearLayout
+        android:id="@+id/right_container"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="horizontal"
+        android:paddingVertical="2dp">
+
+        <View
+            android:id="@+id/right_gutter"
+            android:layout_width="3dp"
+            android:layout_height="match_parent"
+            android:background="@color/outline_variant" />
+
+        <TextView
+            android:id="@+id/tv_new_line"
+            android:layout_width="52dp"
+            android:layout_height="wrap_content"
+            android:gravity="end"
+            android:paddingEnd="6dp"
+            android:textColor="@color/on_surface_variant"
+            android:textSize="12sp"
+            android:fontFamily="monospace" />
+
+        <TextView
+            android:id="@+id/tv_new_content"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:paddingStart="8dp"
+            android:paddingEnd="4dp"
+            android:textColor="@color/on_surface"
+            android:textSize="12sp"
+            android:fontFamily="monospace" />
+    </LinearLayout>
+
+</LinearLayout>

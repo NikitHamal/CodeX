@@ -344,7 +344,30 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                 String newPath = fileActionDetail.newPath != null ? fileActionDetail.newPath : fileNameToOpen;
                 diffContent = DiffGenerator.generateDiff(oldFileContent, newFileContent, "unified", "a/" + oldPath, "b/" + newPath);
             } else { // updateFile, smartUpdate, patchFile, modifyLines, etc.
-                diffContent = DiffGenerator.generateDiff(oldFileContent, newFileContent, "unified", "a/" + fileNameToOpen, "b/" + fileNameToOpen);
+                // If we have modifyLines or searchAndReplace info but newContent is empty, try constructing a minimal new content
+                String effectiveNew = newFileContent;
+                if ((effectiveNew == null || effectiveNew.isEmpty())) {
+                    try {
+                        if (fileActionDetail.diffPatch != null && !fileActionDetail.diffPatch.isEmpty()) {
+                            // Show provided patch even if new content missing
+                            diffContent = fileActionDetail.diffPatch;
+                        } else if (fileActionDetail.insertLines != null && fileActionDetail.startLine > 0) {
+                            effectiveNew = com.codex.apk.util.FileOps.applyModifyLines(oldFileContent, fileActionDetail.startLine, fileActionDetail.deleteCount, fileActionDetail.insertLines);
+                            diffContent = DiffGenerator.generateDiff(oldFileContent, effectiveNew, "unified", "a/" + fileNameToOpen, "b/" + fileNameToOpen);
+                        } else if ((fileActionDetail.searchPattern != null || fileActionDetail.search != null) && (fileActionDetail.replaceWith != null || fileActionDetail.replace != null)) {
+                            String pattern = fileActionDetail.searchPattern != null ? fileActionDetail.searchPattern : fileActionDetail.search;
+                            String repl = fileActionDetail.replaceWith != null ? fileActionDetail.replaceWith : fileActionDetail.replace;
+                            effectiveNew = com.codex.apk.util.FileOps.applySearchReplace(oldFileContent, pattern, repl);
+                            diffContent = DiffGenerator.generateDiff(oldFileContent, effectiveNew, "unified", "a/" + fileNameToOpen, "b/" + fileNameToOpen);
+                        } else {
+                            diffContent = DiffGenerator.generateDiff(oldFileContent, newFileContent, "unified", "a/" + fileNameToOpen, "b/" + fileNameToOpen);
+                        }
+                    } catch (Exception e) {
+                        diffContent = DiffGenerator.generateDiff(oldFileContent, newFileContent, "unified", "a/" + fileNameToOpen, "b/" + fileNameToOpen);
+                    }
+                } else {
+                    diffContent = DiffGenerator.generateDiff(oldFileContent, effectiveNew, "unified", "a/" + fileNameToOpen, "b/" + fileNameToOpen);
+                }
             }
         }
 

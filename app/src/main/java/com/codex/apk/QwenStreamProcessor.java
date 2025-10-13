@@ -241,8 +241,23 @@ public class QwenStreamProcessor {
                     case "updateFile": {
                         String old = com.codex.apk.util.FileOps.readFileSafe(new File(projectDir, d.path));
                         d.oldContent = old;
-                        if (d.newContent == null || d.newContent.isEmpty()) d.newContent = d.newContent != null ? d.newContent : d.replaceWith != null ? d.replaceWith : d.newContent;
-                        if (d.newContent == null) d.newContent = d.oldContent; // no change fallback
+                        if (d.newContent == null || d.newContent.isEmpty()) {
+                            String pattern = d.searchPattern != null ? d.searchPattern : d.search;
+                            String repl = d.replaceWith != null ? d.replaceWith : d.replace;
+                            String computed = null;
+                            if (pattern != null && !pattern.isEmpty() && repl != null) {
+                                computed = com.codex.apk.util.FileOps.applySearchReplace(old, pattern, repl);
+                            } else if (d.insertLines != null && d.startLine > 0) {
+                                computed = com.codex.apk.util.FileOps.applyModifyLines(old, d.startLine, d.deleteCount, d.insertLines);
+                            }
+                            if (computed != null) {
+                                d.newContent = computed;
+                            } else if (d.diffPatch != null && !d.diffPatch.isEmpty()) {
+                                // Leave newContent as null; diff will be shown using provided unified patch
+                            } else {
+                                d.newContent = d.oldContent; // fallback to avoid nulls
+                            }
+                        }
                         break;
                     }
                     case "searchAndReplace": {

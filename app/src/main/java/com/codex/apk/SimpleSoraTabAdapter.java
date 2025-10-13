@@ -301,7 +301,6 @@ public class SimpleSoraTabAdapter extends RecyclerView.Adapter<RecyclerView.View
                 }
                 // Bind split adapter data from same unified lines
                 String key = tabId;
-                String content = tabItem.getContent();
                 int h = content != null ? content.hashCode() : 0;
                 java.util.List<DiffUtils.DiffLine> lines;
                 DiffCacheEntry entry = diffCache.get(key);

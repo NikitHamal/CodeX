@@ -15,6 +15,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import okhttp3.Cookie;
+import okhttp3.CookieJar;
+import okhttp3.HttpUrl;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -38,6 +41,7 @@ public class QwenApiClient implements ApiClient {
                 .connectTimeout(30, TimeUnit.SECONDS)
                 .writeTimeout(30, TimeUnit.SECONDS)
                 .readTimeout(0, TimeUnit.SECONDS)
+                .cookieJar(new InMemoryCookieJar())
                 .build();
         this.midTokenManager = new QwenMidTokenManager(context, this.httpClient);
         this.conversationManager = new QwenConversationManager(this.httpClient, this.midTokenManager);
@@ -64,56 +68,93 @@ public class QwenApiClient implements ApiClient {
     private void performCompletion(QwenConversationState state, AIModel model, boolean thinkingModeEnabled, boolean webSearchEnabled, List<ToolSpec> enabledTools, String userMessage) throws IOException {
         JsonObject requestBody = QwenRequestFactory.buildCompletionRequestBody(state, model, thinkingModeEnabled, webSearchEnabled, enabledTools, userMessage);
         String qwenToken = midTokenManager.ensureMidToken(false);
-        Request request = new Request.Builder()
-                .url(QWEN_BASE_URL + "/chat/completions?chat_id=" + state.getConversationId())
-                .post(RequestBody.create(requestBody.toString(), MediaType.parse("application/json")))
-                .headers(QwenRequestFactory.buildQwenHeaders(qwenToken, state.getConversationId()))
-                .build();
+        int attempts = 0;
+        while (attempts < 3) {
+            attempts++;
+            Request request = new Request.Builder()
+                    .url(QWEN_BASE_URL + "/chat/completions?chat_id=" + state.getConversationId())
+                    .post(RequestBody.create(requestBody.toString(), MediaType.parse("application/json")))
+                    .headers(QwenRequestFactory.buildQwenHeaders(qwenToken, state.getConversationId()))
+                    .addHeader("Accept", "text/event-stream")
+                    .build();
 
-        try (Response response = httpClient.newCall(request).execute()) {
-            if (response.isSuccessful() && response.body() != null) {
-                QwenStreamProcessor.StreamProcessingResult result = new QwenStreamProcessor(actionListener, state, model, projectDir).process(response);
-                if (result.isContinuation) {
-                    performContinuation(state, model, result.continuationJson);
-                }
-            } else {
-                int code = response.code();
-                if (code == 401 || code == 429 || code == 403) {
-                    qwenToken = midTokenManager.ensureMidToken(true);
-                    Request retryReq = new Request.Builder()
-                            .url(QWEN_BASE_URL + "/chat/completions?chat_id=" + state.getConversationId())
-                            .post(RequestBody.create(requestBody.toString(), MediaType.parse("application/json")))
-                            .headers(QwenRequestFactory.buildQwenHeaders(qwenToken, state.getConversationId()))
-                            .build();
-                    try (Response resp2 = httpClient.newCall(retryReq).execute()) {
-                        if (resp2.isSuccessful() && resp2.body() != null) {
-                            QwenStreamProcessor.StreamProcessingResult result = new QwenStreamProcessor(actionListener, state, model, projectDir).process(resp2);
-                            if (result.isContinuation) {
-                                performContinuation(state, model, result.continuationJson);
-                            }
-                            return;
-                        }
+            try (Response response = httpClient.newCall(request).execute()) {
+                if (response.isSuccessful() && response.body() != null) {
+                    QwenStreamProcessor.StreamProcessingResult result = new QwenStreamProcessor(actionListener, state, model, projectDir).process(response);
+                    if (result.isContinuation) {
+                        performContinuation(state, model, result.continuationJson);
                     }
+                    return;
+                }
+                int code = response.code();
+                boolean retryable = (code == 401 || code == 403 || code == 429 || (code >= 500 && code < 600));
+                if (retryable) {
+                    // refresh token once for auth/rate-limit
+                    if (code == 401 || code == 403 || code == 429) {
+                        qwenToken = midTokenManager.ensureMidToken(true);
+                    }
+                    try { Thread.sleep(500L * attempts); } catch (InterruptedException ignore) {}
+                    continue;
                 }
                 if (actionListener != null) actionListener.onAiError("Failed to send message (HTTP " + code + ")");
                 if (actionListener != null) actionListener.onAiRequestCompleted();
+                return;
             }
         }
+        if (actionListener != null) actionListener.onAiError("Failed to send message after retries");
+        if (actionListener != null) actionListener.onAiRequestCompleted();
     }
 
     private void performContinuation(QwenConversationState state, AIModel model, String toolResultJson) throws IOException {
         JsonObject requestBody = QwenRequestFactory.buildContinuationRequestBody(state, model, toolResultJson);
         String qwenToken = midTokenManager.ensureMidToken(false);
-        Request request = new Request.Builder()
-                .url(QWEN_BASE_URL + "/chat/completions?chat_id=" + state.getConversationId())
-                .post(RequestBody.create(requestBody.toString(), MediaType.parse("application/json")))
-                .headers(QwenRequestFactory.buildQwenHeaders(qwenToken, state.getConversationId()))
-                .build();
+        int attempts = 0;
+        while (attempts < 3) {
+            attempts++;
+            Request request = new Request.Builder()
+                    .url(QWEN_BASE_URL + "/chat/completions?chat_id=" + state.getConversationId())
+                    .post(RequestBody.create(requestBody.toString(), MediaType.parse("application/json")))
+                    .headers(QwenRequestFactory.buildQwenHeaders(qwenToken, state.getConversationId()))
+                    .addHeader("Accept", "text/event-stream")
+                    .build();
 
-        try (Response response = httpClient.newCall(request).execute()) {
-            if (response.isSuccessful() && response.body() != null) {
-                new QwenStreamProcessor(actionListener, state, model, projectDir).process(response);
+            try (Response response = httpClient.newCall(request).execute()) {
+                if (response.isSuccessful() && response.body() != null) {
+                    new QwenStreamProcessor(actionListener, state, model, projectDir).process(response);
+                    return;
+                }
+                int code = response.code();
+                boolean retryable = (code == 401 || code == 403 || code == 429 || (code >= 500 && code < 600));
+                if (retryable) {
+                    if (code == 401 || code == 403 || code == 429) qwenToken = midTokenManager.ensureMidToken(true);
+                    try { Thread.sleep(500L * attempts); } catch (InterruptedException ignore) {}
+                    continue;
+                }
+                break;
             }
+        }
+    }
+
+    // Simple in-memory cookie jar for Qwen continuity
+    private static class InMemoryCookieJar implements CookieJar {
+        private final java.util.List<Cookie> store = new java.util.ArrayList<>();
+        @Override public synchronized void saveFromResponse(HttpUrl url, java.util.List<Cookie> cookies) {
+            for (Cookie c : cookies) {
+                // replace existing cookie with same name/domain/path
+                store.removeIf(k -> k.name().equals(c.name()) && k.domain().equals(c.domain()) && k.path().equals(c.path()));
+                store.add(c);
+            }
+        }
+        @Override public synchronized java.util.List<Cookie> loadForRequest(HttpUrl url) {
+            long now = System.currentTimeMillis();
+            java.util.List<Cookie> out = new java.util.ArrayList<>();
+            java.util.Iterator<Cookie> it = store.iterator();
+            while (it.hasNext()) {
+                Cookie c = it.next();
+                if (c.expiresAt() < now) { it.remove(); continue; }
+                if (c.matches(url)) out.add(c);
+            }
+            return out;
         }
     }
 

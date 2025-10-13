@@ -69,15 +69,11 @@ public class AnyProviderApiClient implements ApiClient {
                             List<ToolSpec> enabledTools,
                             List<File> attachments) {
         new Thread(() -> {
-            Response response = null;
             try {
                 if (actionListener != null) actionListener.onAiRequestStarted();
-
-                // Build request JSON (OpenAI-style)
                 String providerModel = mapToProviderModel(model != null ? model.getModelId() : null);
                 JsonObject body = buildOpenAIStyleBody(providerModel, message, history, thinkingModeEnabled);
-
-                Request request = new Request.Builder()
+                Request req = new Request.Builder()
                         .url(OPENAI_ENDPOINT)
                         .post(RequestBody.create(body.toString(), MediaType.parse("application/json")))
                         .addHeader("accept", "text/event-stream")
@@ -88,27 +84,39 @@ public class AnyProviderApiClient implements ApiClient {
                         .addHeader("accept-encoding", "identity")
                         .build();
 
-                response = httpClient.newCall(request).execute();
-                if (!response.isSuccessful() || response.body() == null) {
-                    String errBody = null;
-                    try { if (response != null && response.body() != null) errBody = response.body().string(); } catch (Exception ignore) {}
-                    String snippet = errBody != null ? (errBody.length() > 400 ? errBody.substring(0, 400) + "..." : errBody) : null;
-                    if (actionListener != null) actionListener.onAiError("Free endpoint request failed: " + (response != null ? response.code() : -1) + (snippet != null ? (" | body: " + snippet) : ""));
-                    return;
-                }
-
-                // Stream OpenAI-like SSE
+                SseClient sse = new SseClient(httpClient);
                 StringBuilder finalText = new StringBuilder();
                 StringBuilder rawSse = new StringBuilder();
-                streamOpenAiSse(response, finalText, rawSse);
-
-                if (finalText.length() > 0) {
-                     if (actionListener != null) {
+                sse.postStream(OPENAI_ENDPOINT, req.headers(), body, new SseClient.Listener() {
+                    @Override public void onOpen() {}
+                    @Override public void onDelta(JsonObject chunk) {
+                        rawSse.append("data: ").append(chunk.toString()).append('\n');
+                        try {
+                            if (chunk.has("choices")) {
+                                JsonArray choices = chunk.getAsJsonArray("choices");
+                                for (int i = 0; i < choices.size(); i++) {
+                                    JsonObject c = choices.get(i).getAsJsonObject();
+                                    if (c.has("delta") && c.get("delta").isJsonObject()) {
+                                        JsonObject delta = c.getAsJsonObject("delta");
+                                        if (delta.has("content") && !delta.get("content").isJsonNull()) {
+                                            finalText.append(delta.get("content").getAsString());
+                                            actionListener.onAiStreamUpdate(finalText.toString(), false);
+                                        }
+                                    }
+                                }
+                            }
+                        } catch (Exception ignore) {}
+                    }
+                    @Override public void onUsage(JsonObject usage) {}
+                    @Override public void onError(String message, int code) {
+                        if (actionListener != null) actionListener.onAiError("Free endpoint request failed: " + code + (message != null ? (" | body: " + message) : ""));
+                    }
+                    @Override public void onComplete() {
+                        if (actionListener == null) return;
                         String jsonToParse = JsonUtils.extractJsonFromCodeBlock(finalText.toString());
                         if (jsonToParse == null && JsonUtils.looksLikeJson(finalText.toString())) {
                             jsonToParse = finalText.toString();
                         }
-
                         if (jsonToParse != null) {
                             try {
                                 QwenResponseParser.ParsedResponse parsed = QwenResponseParser.parseResponse(jsonToParse);
@@ -129,15 +137,12 @@ public class AnyProviderApiClient implements ApiClient {
                         } else {
                             actionListener.onAiActionsProcessed(rawSse.toString(), finalText.toString(), new ArrayList<>(), new ArrayList<>(), model.getDisplayName());
                         }
+                        actionListener.onAiRequestCompleted();
                     }
-                } else {
-                    if (actionListener != null) actionListener.onAiError("No response from free provider");
-                }
+                });
             } catch (Exception e) {
                 Log.e(TAG, "Error calling free provider", e);
                 if (actionListener != null) actionListener.onAiError("Error: " + e.getMessage());
-            } finally {
-                try { if (response != null) response.close(); } catch (Exception ignore) {}
                 if (actionListener != null) actionListener.onAiRequestCompleted();
             }
         }).start();

@@ -68,41 +68,77 @@ public class QwenApiClient implements ApiClient {
     private void performCompletion(QwenConversationState state, AIModel model, boolean thinkingModeEnabled, boolean webSearchEnabled, List<ToolSpec> enabledTools, String userMessage) throws IOException {
         JsonObject requestBody = QwenRequestFactory.buildCompletionRequestBody(state, model, thinkingModeEnabled, webSearchEnabled, enabledTools, userMessage);
         String qwenToken = midTokenManager.ensureMidToken(false);
-        int attempts = 0;
-        while (attempts < 3) {
-            attempts++;
-            Request request = new Request.Builder()
-                    .url(QWEN_BASE_URL + "/chat/completions?chat_id=" + state.getConversationId())
-                    .post(RequestBody.create(requestBody.toString(), MediaType.parse("application/json")))
-                    .headers(QwenRequestFactory.buildQwenHeaders(qwenToken, state.getConversationId()))
-                    .addHeader("Accept", "text/event-stream")
-                    .build();
-
-            try (Response response = httpClient.newCall(request).execute()) {
-                if (response.isSuccessful() && response.body() != null) {
-                    QwenStreamProcessor.StreamProcessingResult result = new QwenStreamProcessor(actionListener, state, model, projectDir).process(response);
-                    if (result.isContinuation) {
-                        performContinuation(state, model, result.continuationJson);
+        okhttp3.Headers headers = QwenRequestFactory.buildQwenHeaders(qwenToken, state.getConversationId())
+                .newBuilder().add("Accept", "text/event-stream").build();
+        SseClient sse = new SseClient(httpClient);
+        StringBuilder finalText = new StringBuilder();
+        StringBuilder rawSse = new StringBuilder();
+        sse.postStreamWithRetry(QWEN_BASE_URL + "/chat/completions?chat_id=" + state.getConversationId(), headers, requestBody, 3, 500L, new SseClient.Listener() {
+            @Override public void onOpen() {}
+            @Override public void onDelta(JsonObject chunk) {
+                rawSse.append("data: ").append(chunk.toString()).append('\n');
+                try {
+                    if (chunk.has("response.created")) {
+                        JsonObject created = chunk.getAsJsonObject("response.created");
+                        if (created.has("chat_id")) state.setConversationId(created.get("chat_id").getAsString());
+                        if (created.has("response_id")) state.setLastParentId(created.get("response_id").getAsString());
+                        if (actionListener != null) actionListener.onQwenConversationStateUpdated(state);
+                        return;
                     }
-                    return;
-                }
-                int code = response.code();
-                boolean retryable = (code == 401 || code == 403 || code == 429 || (code >= 500 && code < 600));
-                if (retryable) {
-                    // refresh token once for auth/rate-limit
-                    if (code == 401 || code == 403 || code == 429) {
-                        qwenToken = midTokenManager.ensureMidToken(true);
+                    if (chunk.has("choices")) {
+                        JsonArray choices = chunk.getAsJsonArray("choices");
+                        if (choices.size() > 0) {
+                            JsonObject choice = choices.get(0).getAsJsonObject();
+                            JsonObject delta = choice.getAsJsonObject("delta");
+                            String status = delta.has("status") ? delta.get("status").getAsString() : "";
+                            String content = delta.has("content") ? delta.get("content").getAsString() : "";
+                            String phase = delta.has("phase") ? delta.get("phase").getAsString() : "";
+                            if ("think".equals(phase)) {
+                                actionListener.onAiStreamUpdate(content, true);
+                            } else if ("answer".equals(phase)) {
+                                finalText.append(content);
+                                actionListener.onAiStreamUpdate(finalText.toString(), false);
+                            }
+                            if ("finished".equals(status)) {
+                                // Completed; handled onComplete
+                            }
+                        }
                     }
-                    try { Thread.sleep(500L * attempts); } catch (InterruptedException ignore) {}
-                    continue;
-                }
-                if (actionListener != null) actionListener.onAiError("Failed to send message (HTTP " + code + ")");
-                if (actionListener != null) actionListener.onAiRequestCompleted();
-                return;
+                } catch (Exception ignore) {}
             }
-        }
-        if (actionListener != null) actionListener.onAiError("Failed to send message after retries");
-        if (actionListener != null) actionListener.onAiRequestCompleted();
+            @Override public void onUsage(JsonObject usage) {}
+            @Override public void onError(String message, int code) {
+                if (actionListener != null) actionListener.onAiError("Failed to send message (HTTP " + code + ")");
+            }
+            @Override public void onComplete() {
+                // Parse final content into actions/plan
+                String jsonToParse = com.codex.apk.util.JsonUtils.extractJsonFromCodeBlock(finalText.toString());
+                if (jsonToParse == null && com.codex.apk.util.JsonUtils.looksLikeJson(finalText.toString())) jsonToParse = finalText.toString();
+                if (jsonToParse != null) {
+                    try {
+                        QwenResponseParser.ParsedResponse parsed = QwenResponseParser.parseResponse(jsonToParse);
+                        if (parsed != null && parsed.isValid) {
+                            if ("plan".equals(parsed.action)) {
+                                List<ChatMessage.PlanStep> planSteps = QwenResponseParser.toPlanSteps(parsed);
+                                actionListener.onAiActionsProcessed(rawSse.toString(), parsed.explanation, new ArrayList<>(), new ArrayList<>(), planSteps, model.getDisplayName());
+                            } else if (parsed.action != null && parsed.action.contains("file")) {
+                                List<ChatMessage.FileActionDetail> details = QwenResponseParser.toFileActionDetails(parsed);
+                                actionListener.onAiActionsProcessed(rawSse.toString(), parsed.explanation, new ArrayList<>(), details, model.getDisplayName());
+                            } else {
+                                actionListener.onAiActionsProcessed(rawSse.toString(), parsed.explanation, new ArrayList<>(), new ArrayList<>(), model.getDisplayName());
+                            }
+                        } else {
+                            actionListener.onAiActionsProcessed(rawSse.toString(), finalText.toString(), new ArrayList<>(), new ArrayList<>(), model.getDisplayName());
+                        }
+                    } catch (Exception e) {
+                        actionListener.onAiActionsProcessed(rawSse.toString(), finalText.toString(), new ArrayList<>(), new ArrayList<>(), model.getDisplayName());
+                    }
+                } else {
+                    actionListener.onAiActionsProcessed(rawSse.toString(), finalText.toString(), new ArrayList<>(), new ArrayList<>(), model.getDisplayName());
+                }
+                if (actionListener != null) actionListener.onAiRequestCompleted();
+            }
+        });
     }
 
     private void performContinuation(QwenConversationState state, AIModel model, String toolResultJson) throws IOException {

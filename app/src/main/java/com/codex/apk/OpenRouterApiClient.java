@@ -92,7 +92,7 @@ public class OpenRouterApiClient implements ApiClient {
                 SseClient sse = new SseClient(http);
                 StringBuilder finalText = new StringBuilder();
                 StringBuilder rawSse = new StringBuilder();
-                sse.postStream(url, httpReq.headers(), req, new SseClient.Listener() {
+                sse.postStream(url, httpReq.headers(), req.getAsJsonObject(), new SseClient.Listener() {
                     @Override public void onOpen() {}
                     @Override public void onDelta(JsonObject chunk) {
                         rawSse.append("data: ").append(chunk.toString()).append('\n');

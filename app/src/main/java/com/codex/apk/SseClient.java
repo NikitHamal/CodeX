@@ -84,17 +84,88 @@ public class SseClient {
     }
 
     private void handleEvent(String rawEvent, Listener listener) {
+        String trimmed = rawEvent == null ? "" : rawEvent.trim();
+        if (trimmed.isEmpty()) return;
+        // Primary path: SSE lines with data:
         String prefix = "data:";
-        int idx = rawEvent.indexOf(prefix);
-        if (idx < 0) return;
-        String jsonPart = rawEvent.substring(idx + prefix.length()).trim();
-        if (jsonPart.isEmpty() || jsonPart.equals("[DONE]") || jsonPart.equalsIgnoreCase("data: [DONE]")) return;
-        try {
-            JsonObject obj = JsonParser.parseString(jsonPart).getAsJsonObject();
-            if (obj.has("usage") && obj.get("usage").isJsonObject()) {
-                if (listener != null) listener.onUsage(obj.getAsJsonObject("usage"));
+        int idx = trimmed.indexOf(prefix);
+        if (idx >= 0) {
+            String jsonPart = trimmed.substring(idx + prefix.length()).trim();
+            if (jsonPart.isEmpty() || jsonPart.equals("[DONE]") || jsonPart.equalsIgnoreCase("data: [DONE]")) return;
+            try {
+                JsonObject obj = JsonParser.parseString(jsonPart).getAsJsonObject();
+                if (obj.has("usage") && obj.get("usage").isJsonObject()) {
+                    if (listener != null) listener.onUsage(obj.getAsJsonObject("usage"));
+                }
+                if (listener != null) listener.onDelta(obj);
+            } catch (Exception ignore) {}
+            return;
+        }
+        // Fallback: servers sometimes send an initial JSON line (no data:) before SSE
+        if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
+            try {
+                JsonObject obj = JsonParser.parseString(trimmed).getAsJsonObject();
+                if (obj.has("usage") && obj.get("usage").isJsonObject()) {
+                    if (listener != null) listener.onUsage(obj.getAsJsonObject("usage"));
+                }
+                if (listener != null) listener.onDelta(obj);
+            } catch (Exception ignore) {}
+        }
+    }
+
+    // Synchronous streaming with simple retry/backoff for 429/5xx
+    public void postStreamWithRetry(String url, okhttp3.Headers headers, JsonObject body, int maxAttempts, long baseBackoffMs, Listener listener) {
+        int attempts = 0;
+        while (attempts < maxAttempts) {
+            attempts++;
+            Request req = new Request.Builder()
+                    .url(url)
+                    .headers(headers)
+                    .post(RequestBody.create(body.toString(), MediaType.parse("application/json")))
+                    .addHeader("accept", "text/event-stream")
+                    .build();
+            try (Response response = http.newCall(req).execute()) {
+                if (!response.isSuccessful() || response.body() == null) {
+                    int code = response.code();
+                    boolean retry = (code == 429 || (code >= 500 && code < 600));
+                    if (retry && attempts < maxAttempts) {
+                        try { Thread.sleep(baseBackoffMs * attempts); } catch (InterruptedException ignore) {}
+                        continue;
+                    }
+                    String msg;
+                    try { msg = response.body() != null ? response.body().string() : null; } catch (Exception ignore) { msg = null; }
+                    if (listener != null) listener.onError(msg != null ? msg : ("HTTP " + code), code);
+                    return;
+                }
+                if (listener != null) listener.onOpen();
+                try (BufferedSource source = response.body().source()) {
+                    StringBuilder eventBuf = new StringBuilder();
+                    while (true) {
+                        String line;
+                        try {
+                            line = source.readUtf8LineStrict();
+                        } catch (EOFException eof) { break; }
+                        catch (java.io.InterruptedIOException timeout) { break; }
+                        if (line == null) break;
+                        if (line.isEmpty()) {
+                            handleEvent(eventBuf.toString(), listener);
+                            eventBuf.setLength(0);
+                            continue;
+                        }
+                        eventBuf.append(line).append('\n');
+                    }
+                    if (eventBuf.length() > 0) handleEvent(eventBuf.toString(), listener);
+                } finally {
+                    if (listener != null) listener.onComplete();
+                }
+                return;
+            } catch (IOException e) {
+                if (attempts >= maxAttempts) {
+                    if (listener != null) listener.onError(e.getMessage(), -1);
+                    return;
+                }
+                try { Thread.sleep(baseBackoffMs * attempts); } catch (InterruptedException ignore) {}
             }
-            if (listener != null) listener.onDelta(obj);
-        } catch (Exception ignore) {}
+        }
     }
 }

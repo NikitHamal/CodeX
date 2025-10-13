@@ -58,7 +58,6 @@ public class SseClient {
                 }
                 if (listener != null) listener.onOpen();
                 try (BufferedSource source = response.body().source()) {
-                    StringBuilder eventBuf = new StringBuilder();
                     while (true) {
                         String line;
                         try {
@@ -67,13 +66,10 @@ public class SseClient {
                         catch (java.io.InterruptedIOException timeout) { break; }
                         if (line == null) break;
                         if (line.isEmpty()) {
-                            handleEvent(eventBuf.toString(), listener);
-                            eventBuf.setLength(0);
-                            continue;
+                            continue; // no buffering; handle each line independently
                         }
-                        eventBuf.append(line).append('\n');
+                        handleEvent(line, listener);
                     }
-                    if (eventBuf.length() > 0) handleEvent(eventBuf.toString(), listener);
                 } catch (Exception e) {
                     if (listener != null) listener.onError(e.getMessage(), -1);
                 } finally {
@@ -145,7 +141,6 @@ public class SseClient {
                 }
                 if (listener != null) listener.onOpen();
                 try (BufferedSource source = response.body().source()) {
-                    StringBuilder eventBuf = new StringBuilder();
                     while (true) {
                         String line;
                         try {
@@ -154,13 +149,10 @@ public class SseClient {
                         catch (java.io.InterruptedIOException timeout) { break; }
                         if (line == null) break;
                         if (line.isEmpty()) {
-                            handleEvent(eventBuf.toString(), listener);
-                            eventBuf.setLength(0);
-                            continue;
+                            continue; // no buffering; handle each line independently
                         }
-                        eventBuf.append(line).append('\n');
+                        handleEvent(line, listener);
                     }
-                    if (eventBuf.length() > 0) handleEvent(eventBuf.toString(), listener);
                 } finally {
                     if (listener != null) listener.onComplete();
                 }

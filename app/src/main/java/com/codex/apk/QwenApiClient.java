@@ -90,9 +90,9 @@ public class QwenApiClient implements ApiClient {
                         JsonArray choices = chunk.getAsJsonArray("choices");
                         if (choices.size() > 0) {
                             JsonObject choice = choices.get(0).getAsJsonObject();
-                            JsonObject delta = choice.getAsJsonObject("delta");
+                            JsonObject delta = choice.has("delta") && choice.get("delta").isJsonObject() ? choice.getAsJsonObject("delta") : new JsonObject();
                             String status = delta.has("status") ? delta.get("status").getAsString() : "";
-                            String content = delta.has("content") ? delta.get("content").getAsString() : "";
+                            String content = delta.has("content") && !delta.get("content").isJsonNull() ? delta.get("content").getAsString() : "";
                             String phase = delta.has("phase") ? delta.get("phase").getAsString() : "";
                             if ("think".equals(phase)) {
                                 thinkingText.append(content);
@@ -100,6 +100,14 @@ public class QwenApiClient implements ApiClient {
                             } else if ("answer".equals(phase)) {
                                 finalText.append(content);
                                 actionListener.onAiStreamUpdate(finalText.toString(), false);
+                            }
+                            // Some providers put the final message at choices[0].message
+                            if ((content == null || content.isEmpty()) && choice.has("message") && choice.get("message").isJsonObject()) {
+                                JsonObject msg = choice.getAsJsonObject("message");
+                                if (msg.has("content") && !msg.get("content").isJsonNull()) {
+                                    finalText.append(msg.get("content").getAsString());
+                                    actionListener.onAiStreamUpdate(finalText.toString(), false);
+                                }
                             }
                             if ("finished".equals(status)) {
                                 // Completed; handled onComplete
@@ -113,8 +121,11 @@ public class QwenApiClient implements ApiClient {
                 if (actionListener != null) actionListener.onAiError("Failed to send message (HTTP " + code + ")");
             }
             @Override public void onComplete() {
-                // Prefer answer content; if empty, fallback to thinking
+                // Prefer answer content; if empty, fallback to thinking. If still empty, try salvage from raw.
                 String completedText = finalText.length() > 0 ? finalText.toString() : thinkingText.toString();
+                if (completedText == null || completedText.trim().isEmpty()) {
+                    completedText = new QwenStreamProcessor(actionListener, state, model, projectDir).recoverContentFromRaw(rawSse.toString());
+                }
                 // Parse final content into actions/plan/tool_call
                 String jsonToParse = com.codex.apk.util.JsonUtils.extractJsonFromCodeBlock(completedText);
                 if (jsonToParse == null && com.codex.apk.util.JsonUtils.looksLikeJson(completedText)) jsonToParse = completedText;

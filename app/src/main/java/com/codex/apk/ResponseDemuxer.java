@@ -42,7 +42,13 @@ public final class ResponseDemuxer {
                 try {
                     JsonObject maybe = JsonParser.parseString(jsonToParse).getAsJsonObject();
                     if (maybe.has("action") && "tool_call".equalsIgnoreCase(maybe.get("action").getAsString())) {
-                        listener.onAiActionsProcessed(rawResponse, explanation, new ArrayList<>(), new ArrayList<>(), modelDisplayName);
+                        listener.onAiActionsProcessed(
+                                rawResponse,
+                                explanation,
+                                new java.util.ArrayList<String>(),
+                                new java.util.ArrayList<com.codex.apk.ChatMessage.FileActionDetail>(),
+                                modelDisplayName
+                        );
                         return;
                     }
                 } catch (Exception ignore) {}
@@ -51,28 +57,35 @@ public final class ResponseDemuxer {
                 if (parsed != null && parsed.isValid) {
                     if ("plan".equals(parsed.action) && parsed.planSteps != null && !parsed.planSteps.isEmpty()) {
                         List<ChatMessage.PlanStep> planSteps = QwenResponseParser.toPlanSteps(parsed);
-                        if (listener instanceof com.codex.apk.editor.AiAssistantManager) {
-                            ((com.codex.apk.editor.AiAssistantManager) listener).onAiActionsProcessed(rawResponse, parsed.explanation, new ArrayList<>(), new ArrayList<>(), planSteps, modelDisplayName, thinking, new ArrayList<>());
-                        } else {
-                            listener.onAiActionsProcessed(rawResponse, parsed.explanation, new ArrayList<>(), new ArrayList<>(), planSteps, modelDisplayName);
-                        }
+                        listener.onAiActionsProcessed(
+                                rawResponse,
+                                parsed.explanation,
+                                new java.util.ArrayList<String>(),
+                                new java.util.ArrayList<com.codex.apk.ChatMessage.FileActionDetail>(),
+                                planSteps,
+                                modelDisplayName
+                        );
                         return;
                     }
                     List<ChatMessage.FileActionDetail> fileActions = QwenResponseParser.toFileActionDetails(parsed);
-                    if (listener instanceof com.codex.apk.editor.AiAssistantManager) {
-                        ((com.codex.apk.editor.AiAssistantManager) listener).onAiActionsProcessed(rawResponse, parsed.explanation, new ArrayList<>(), fileActions, modelDisplayName, thinking, new ArrayList<>());
-                    } else {
-                        listener.onAiActionsProcessed(rawResponse, parsed.explanation, new ArrayList<>(), fileActions, new ArrayList<>(), modelDisplayName);
-                    }
+                    listener.onAiActionsProcessed(
+                            rawResponse,
+                            parsed.explanation,
+                            new java.util.ArrayList<String>(),
+                            fileActions,
+                            modelDisplayName
+                    );
                     return;
                 }
             } catch (Exception ignore) {}
         }
         // Fallback: plain text
-        if (listener instanceof com.codex.apk.editor.AiAssistantManager) {
-            ((com.codex.apk.editor.AiAssistantManager) listener).onAiActionsProcessed(rawResponse, explanation, new ArrayList<>(), new ArrayList<>(), modelDisplayName, thinking, new ArrayList<>());
-        } else {
-            listener.onAiActionsProcessed(rawResponse, explanation, new ArrayList<>(), new ArrayList<>(), modelDisplayName);
-        }
+        listener.onAiActionsProcessed(
+                rawResponse,
+                explanation,
+                new java.util.ArrayList<String>(),
+                new java.util.ArrayList<com.codex.apk.ChatMessage.FileActionDetail>(),
+                modelDisplayName
+        );
     }
 }

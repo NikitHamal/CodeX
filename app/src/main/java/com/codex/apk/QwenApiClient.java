@@ -69,16 +69,47 @@ public class QwenApiClient implements ApiClient {
         JsonObject requestBody = QwenRequestFactory.buildCompletionRequestBody(state, model, thinkingModeEnabled, webSearchEnabled, enabledTools, userMessage);
         String qwenToken = midTokenManager.ensureMidToken(false);
         okhttp3.Headers headers = QwenRequestFactory.buildQwenHeaders(qwenToken, state.getConversationId())
-                .newBuilder().add("Accept", "text/event-stream").build();
+                .newBuilder().set("Accept", "text/event-stream").build();
         SseClient sse = new SseClient(httpClient);
         StringBuilder finalText = new StringBuilder();
         StringBuilder rawSse = new StringBuilder();
         final StringBuilder thinkingText = new StringBuilder();
+        final boolean[] aborted = new boolean[]{false};
+        final boolean[] retriedJsonError = new boolean[]{false};
+        final boolean[] retriedHttpError = new boolean[]{false};
         sse.postStreamWithRetry(QWEN_BASE_URL + "/chat/completions?chat_id=" + state.getConversationId(), headers, requestBody, 3, 500L, new SseClient.Listener() {
             @Override public void onOpen() {}
             @Override public void onDelta(JsonObject chunk) {
+                if (aborted[0]) return;
                 rawSse.append("data: ").append(chunk.toString()).append('\n');
                 try {
+                    // Detect JSON-signaled errors (rate limit/auth/invalid)
+                    boolean isJsonError = false;
+                    String errorCodeStr = null;
+                    if (chunk.has("data") && chunk.get("data").isJsonObject()) {
+                        JsonObject dataObj = chunk.getAsJsonObject("data");
+                        if (dataObj.has("code")) { isJsonError = true; errorCodeStr = String.valueOf(dataObj.get("code")); }
+                    }
+                    if (!isJsonError && chunk.has("code")) { isJsonError = true; errorCodeStr = String.valueOf(chunk.get("code")); }
+                    if (!isJsonError && chunk.has("error") && chunk.get("error").isJsonObject()) {
+                        JsonObject err = chunk.getAsJsonObject("error");
+                        if (err.has("code")) { isJsonError = true; errorCodeStr = String.valueOf(err.get("code")); }
+                        else if (err.has("message")) { isJsonError = true; errorCodeStr = err.get("message").getAsString(); }
+                    }
+                    if (isJsonError) {
+                        if (!retriedJsonError[0]) {
+                            retriedJsonError[0] = true;
+                            aborted[0] = true;
+                            try { midTokenManager.ensureMidToken(true); } catch (Exception ignore) {}
+                            new Thread(() -> {
+                                try { performCompletion(state, model, thinkingModeEnabled, webSearchEnabled, enabledTools, userMessage); } catch (IOException ignore) {}
+                            }).start();
+                            return;
+                        } else {
+                            if (actionListener != null) actionListener.onAiError("Qwen error: " + (errorCodeStr != null ? errorCodeStr : "unknown"));
+                            return;
+                        }
+                    }
                     if (chunk.has("response.created")) {
                         JsonObject created = chunk.getAsJsonObject("response.created");
                         if (created.has("chat_id")) state.setConversationId(created.get("chat_id").getAsString());
@@ -118,9 +149,18 @@ public class QwenApiClient implements ApiClient {
             }
             @Override public void onUsage(JsonObject usage) {}
             @Override public void onError(String message, int code) {
-                if (actionListener != null) actionListener.onAiError("Failed to send message (HTTP " + code + ")");
+                if ((code == 401 || code == 403 || code == 429) && !retriedHttpError[0]) {
+                    retriedHttpError[0] = true;
+                    try { midTokenManager.ensureMidToken(true); } catch (Exception ignore) {}
+                    new Thread(() -> {
+                        try { performCompletion(state, model, thinkingModeEnabled, webSearchEnabled, enabledTools, userMessage); } catch (IOException ignore) {}
+                    }).start();
+                    return;
+                }
+                if (actionListener != null) actionListener.onAiError("Failed to send message (HTTP " + code + ")" + (message != null ? (": " + message) : ""));
             }
             @Override public void onComplete() {
+                if (aborted[0]) return;
                 // Prefer answer content; if empty, fallback to thinking. If still empty, try salvage from raw.
                 String completedText = finalText.length() > 0 ? finalText.toString() : thinkingText.toString();
                 if (completedText == null || completedText.trim().isEmpty()) {

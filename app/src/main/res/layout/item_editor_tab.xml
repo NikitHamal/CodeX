@@ -15,12 +15,81 @@
         android:elevation="2dp" />
 
     <!-- Inline Diff RecyclerView (hidden by default) -->
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/diff_recycler"
+    <LinearLayout
+        android:id="@+id/diff_container"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:orientation="vertical"
         android:visibility="gone"
-        android:overScrollMode="never"
-        android:background="@color/surface_container_low"/>
+        android:background="@color/surface_container_low">
+
+        <!-- Diff header: filenames, counts, view toggles -->
+        <LinearLayout
+            android:id="@+id/diff_header"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:paddingTop="8dp"
+            android:paddingBottom="8dp">
+
+            <TextView
+                android:id="@+id/diff_filename"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:textStyle="bold"
+                android:textColor="@color/on_surface"
+                android:text="file.ext" />
+
+            <TextView
+                android:id="@+id/diff_added_count"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="@color/color_border_diff_added"
+                android:text="+0"
+                android:paddingEnd="8dp" />
+
+            <TextView
+                android:id="@+id/diff_removed_count"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="@color/color_border_diff_deleted"
+                android:text="-0"
+                android:paddingEnd="12dp" />
+
+            <TextView
+                android:id="@+id/diff_toggle_inline"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Inline"
+                android:padding="6dp" />
+
+            <TextView
+                android:id="@+id/diff_toggle_split"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Split"
+                android:padding="6dp" />
+        </LinearLayout>
+
+        <!-- Inline mode list -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/diff_recycler"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:overScrollMode="never" />
+
+        <!-- Split mode grid (two columns) -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/diff_recycler_split"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:visibility="gone"
+            android:overScrollMode="never" />
+    </LinearLayout>
 
 </LinearLayout>

@@ -92,13 +92,17 @@ public class SimpleSoraTabAdapter extends RecyclerView.Adapter<RecyclerView.View
         public CodeEditor codeEditor;
         public boolean isListenerAttached;
         public String currentTabId;
+        public View diffContainer;
         public RecyclerView diffRecycler;
+        public RecyclerView diffRecyclerSplit;
         public InlineDiffAdapter diffAdapter;
 
         public ViewHolder(@NonNull View itemView) {
             super(itemView);
             codeEditor = itemView.findViewById(R.id.code_editor);
+            diffContainer = itemView.findViewById(R.id.diff_container);
             diffRecycler = itemView.findViewById(R.id.diff_recycler);
+            diffRecyclerSplit = itemView.findViewById(R.id.diff_recycler_split);
             isListenerAttached = false;
             currentTabId = null;
             diffAdapter = null;
@@ -224,8 +228,9 @@ public class SimpleSoraTabAdapter extends RecyclerView.Adapter<RecyclerView.View
 
         // Toggle between editor and diff view every bind to reflect latest state/content
         if (isDiffTab) {
-            // Show diff view
+            // Show diff container and inline list for now
             codeEditor.setVisibility(View.GONE);
+            if (editorViewHolder.diffContainer != null) editorViewHolder.diffContainer.setVisibility(View.VISIBLE);
             if (editorViewHolder.diffRecycler != null) {
                 editorViewHolder.diffRecycler.setVisibility(View.VISIBLE);
                 if (editorViewHolder.diffRecycler.getLayoutManager() == null) {
@@ -258,6 +263,7 @@ public class SimpleSoraTabAdapter extends RecyclerView.Adapter<RecyclerView.View
         } else {
             // Show normal editor
             codeEditor.setVisibility(View.VISIBLE);
+            if (editorViewHolder.diffContainer != null) editorViewHolder.diffContainer.setVisibility(View.GONE);
             if (editorViewHolder.diffRecycler != null) {
                 editorViewHolder.diffRecycler.setVisibility(View.GONE);
                 editorViewHolder.diffRecycler.setAdapter(null);

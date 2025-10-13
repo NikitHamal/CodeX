@@ -17,12 +17,14 @@ public final class DiffUtils {
         public final Integer oldLine; // nullable
         public final Integer newLine; // nullable
         public final String text;
+        public final String intraline; // optional HTML-like marked diff for split/inline intraline highlight
 
         public DiffLine(LineType type, Integer oldLine, Integer newLine, String text) {
             this.type = type;
             this.oldLine = oldLine;
             this.newLine = newLine;
             this.text = text == null ? "" : text;
+            this.intraline = null;
         }
     }
 
@@ -104,6 +106,34 @@ public final class DiffUtils {
             }
         } catch (Throwable ignore) {}
         return new int[]{adds, rems};
+    }
+
+    /**
+     * Compute a simple intraline diff marking changed spans with markers. Returns a tuple
+     * in string array: [oldMarked, newMarked]. Markers use <<>> for removed and [[]] for added.
+     */
+    public static String[] computeIntraline(String oldLine, String newLine) {
+        if (oldLine == null) oldLine = "";
+        if (newLine == null) newLine = "";
+        // Find common prefix
+        int prefix = 0;
+        int maxPrefix = Math.min(oldLine.length(), newLine.length());
+        while (prefix < maxPrefix && oldLine.charAt(prefix) == newLine.charAt(prefix)) prefix++;
+        // Find common suffix
+        int oldIdx = oldLine.length() - 1;
+        int newIdx = newLine.length() - 1;
+        int suffix = 0;
+        while (oldIdx - suffix >= prefix && newIdx - suffix >= prefix && oldLine.charAt(oldIdx - suffix) == newLine.charAt(newIdx - suffix)) suffix++;
+        // Build marked strings
+        String oldMarked = oldLine;
+        String newMarked = newLine;
+        if (prefix + suffix < oldLine.length()) {
+            oldMarked = oldLine.substring(0, prefix) + "<<" + oldLine.substring(prefix, oldLine.length() - suffix) + ">>" + oldLine.substring(oldLine.length() - suffix);
+        }
+        if (prefix + suffix < newLine.length()) {
+            newMarked = newLine.substring(0, prefix) + "[[" + newLine.substring(prefix, newLine.length() - suffix) + "]]" + newLine.substring(newLine.length() - suffix);
+        }
+        return new String[]{oldMarked, newMarked};
     }
 
     /**

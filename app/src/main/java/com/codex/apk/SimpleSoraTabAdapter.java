@@ -96,6 +96,11 @@ public class SimpleSoraTabAdapter extends RecyclerView.Adapter<RecyclerView.View
         public RecyclerView diffRecycler;
         public RecyclerView diffRecyclerSplit;
         public InlineDiffAdapter diffAdapter;
+        public android.widget.TextView diffFilename;
+        public android.widget.TextView diffAddedCount;
+        public android.widget.TextView diffRemovedCount;
+        public android.widget.TextView diffToggleInline;
+        public android.widget.TextView diffToggleSplit;
 
         public ViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -103,6 +108,11 @@ public class SimpleSoraTabAdapter extends RecyclerView.Adapter<RecyclerView.View
             diffContainer = itemView.findViewById(R.id.diff_container);
             diffRecycler = itemView.findViewById(R.id.diff_recycler);
             diffRecyclerSplit = itemView.findViewById(R.id.diff_recycler_split);
+            diffFilename = itemView.findViewById(R.id.diff_filename);
+            diffAddedCount = itemView.findViewById(R.id.diff_added_count);
+            diffRemovedCount = itemView.findViewById(R.id.diff_removed_count);
+            diffToggleInline = itemView.findViewById(R.id.diff_toggle_inline);
+            diffToggleSplit = itemView.findViewById(R.id.diff_toggle_split);
             isListenerAttached = false;
             currentTabId = null;
             diffAdapter = null;
@@ -231,6 +241,29 @@ public class SimpleSoraTabAdapter extends RecyclerView.Adapter<RecyclerView.View
             // Show diff container and inline list for now
             codeEditor.setVisibility(View.GONE);
             if (editorViewHolder.diffContainer != null) editorViewHolder.diffContainer.setVisibility(View.VISIBLE);
+            // Populate header details
+            if (editorViewHolder.diffFilename != null) {
+                String displayName = tabItem.getFile().getName();
+                if (displayName.startsWith("DIFF_")) displayName = displayName.substring(5);
+                editorViewHolder.diffFilename.setText(displayName);
+            }
+            String content = tabItem.getContent();
+            int[] counts = DiffUtils.countAddRemove(content);
+            if (editorViewHolder.diffAddedCount != null) editorViewHolder.diffAddedCount.setText("+" + counts[0]);
+            if (editorViewHolder.diffRemovedCount != null) editorViewHolder.diffRemovedCount.setText("-" + counts[1]);
+            // Toggle handlers
+            if (editorViewHolder.diffToggleInline != null) {
+                editorViewHolder.diffToggleInline.setOnClickListener(v -> {
+                    if (editorViewHolder.diffRecycler != null) editorViewHolder.diffRecycler.setVisibility(View.VISIBLE);
+                    if (editorViewHolder.diffRecyclerSplit != null) editorViewHolder.diffRecyclerSplit.setVisibility(View.GONE);
+                });
+            }
+            if (editorViewHolder.diffToggleSplit != null) {
+                editorViewHolder.diffToggleSplit.setOnClickListener(v -> {
+                    if (editorViewHolder.diffRecycler != null) editorViewHolder.diffRecycler.setVisibility(View.GONE);
+                    if (editorViewHolder.diffRecyclerSplit != null) editorViewHolder.diffRecyclerSplit.setVisibility(View.VISIBLE);
+                });
+            }
             if (editorViewHolder.diffRecycler != null) {
                 editorViewHolder.diffRecycler.setVisibility(View.VISIBLE);
                 if (editorViewHolder.diffRecycler.getLayoutManager() == null) {
@@ -240,7 +273,6 @@ public class SimpleSoraTabAdapter extends RecyclerView.Adapter<RecyclerView.View
                 }
                 // Parse and bind diff lines with LRU caching
                 String key = tabId;
-                String content = tabItem.getContent();
                 int h = content != null ? content.hashCode() : 0;
                 java.util.List<DiffUtils.DiffLine> lines;
                 DiffCacheEntry entry = diffCache.get(key);
@@ -260,6 +292,13 @@ public class SimpleSoraTabAdapter extends RecyclerView.Adapter<RecyclerView.View
                     editorViewHolder.diffAdapter.updateLines(lines);
                 }
             }
+            // Prepare split view adapter scaffold (to be fully wired by SplitDiffAdapter)
+            if (editorViewHolder.diffRecyclerSplit != null && editorViewHolder.diffRecyclerSplit.getAdapter() == null) {
+                editorViewHolder.diffRecyclerSplit.setLayoutManager(new LinearLayoutManager(context));
+                editorViewHolder.diffRecyclerSplit.setHasFixedSize(true);
+                editorViewHolder.diffRecyclerSplit.setItemViewCacheSize(64);
+                // Set a placeholder adapter for now; the real SplitDiffAdapter will be attached below if available
+            }
         } else {
             // Show normal editor
             codeEditor.setVisibility(View.VISIBLE);
@@ -268,6 +307,10 @@ public class SimpleSoraTabAdapter extends RecyclerView.Adapter<RecyclerView.View
                 editorViewHolder.diffRecycler.setVisibility(View.GONE);
                 editorViewHolder.diffRecycler.setAdapter(null);
                 editorViewHolder.diffAdapter = null;
+            }
+            if (editorViewHolder.diffRecyclerSplit != null) {
+                editorViewHolder.diffRecyclerSplit.setVisibility(View.GONE);
+                editorViewHolder.diffRecyclerSplit.setAdapter(null);
             }
         }
 

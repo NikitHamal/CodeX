@@ -187,7 +187,7 @@ public class DeepInfraApiClient implements ApiClient {
         int idx = rawEvent.indexOf(prefix);
         if (idx < 0) return;
         String jsonPart = rawEvent.substring(idx + prefix.length()).trim();
-        if (jsonPart.isEmpty() || jsonPart.equals("[DONE]")) return;
+        if (jsonPart.isEmpty() || jsonPart.equals("[DONE]") || jsonPart.equalsIgnoreCase("data: [DONE]")) return;
         try {
             JsonElement elem = JsonParser.parseString(jsonPart);
             if (!elem.isJsonObject()) return;

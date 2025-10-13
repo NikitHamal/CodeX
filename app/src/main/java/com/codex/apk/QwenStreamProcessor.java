@@ -82,6 +82,7 @@ public class QwenStreamProcessor {
                             String status = delta.has("status") ? delta.get("status").getAsString() : "";
                             String content = delta.has("content") ? delta.get("content").getAsString() : "";
                             String phase = delta.has("phase") ? delta.get("phase").getAsString() : "";
+                            JsonObject extra = delta.has("extra") && delta.get("extra").isJsonObject() ? delta.getAsJsonObject("extra") : null;
 
                             if ("think".equals(phase)) {
                                 thinkingContent.append(content);
@@ -89,6 +90,24 @@ public class QwenStreamProcessor {
                             } else if ("answer".equals(phase)) {
                                 answerContent.append(content);
                                 if (actionListener != null) actionListener.onAiStreamUpdate(answerContent.toString(), false);
+                            }
+
+                            // Collect web sources when present in extra
+                            if (extra != null && extra.has("sources") && extra.get("sources").isJsonArray()) {
+                                try {
+                                    JsonArray srcArr = extra.getAsJsonArray("sources");
+                                    for (int i = 0; i < srcArr.size(); i++) {
+                                        JsonObject s = srcArr.get(i).getAsJsonObject();
+                                        String url = s.has("url") ? s.get("url").getAsString() : null;
+                                        String title = s.has("title") ? s.get("title").getAsString() : null;
+                                        String snippet = s.has("snippet") ? s.get("snippet").getAsString() : null;
+                                        String favicon = s.has("favicon") ? s.get("favicon").getAsString() : null;
+                                        if (url != null && !seenWebUrls.contains(url)) {
+                                            seenWebUrls.add(url);
+                                            webSources.add(new WebSource(url, title, snippet, favicon));
+                                        }
+                                    }
+                                } catch (Exception ignore) {}
                             }
 
                             if ("finished".equals(status)) {

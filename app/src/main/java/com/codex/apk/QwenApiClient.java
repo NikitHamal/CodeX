@@ -78,7 +78,7 @@ public class QwenApiClient implements ApiClient {
                 }
             } else {
                 int code = response.code();
-                if (code == 401 || code == 429) {
+                if (code == 401 || code == 429 || code == 403) {
                     qwenToken = midTokenManager.ensureMidToken(true);
                     Request retryReq = new Request.Builder()
                             .url(QWEN_BASE_URL + "/chat/completions?chat_id=" + state.getConversationId())

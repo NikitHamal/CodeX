@@ -54,7 +54,7 @@ public class QwenConversationManager {
                 }
             } else {
                 int code = response.code();
-                if (code == 401 || code == 429) {
+                if (code == 401 || code == 429 || code == 403) {
                     qwenToken = midTokenManager.ensureMidToken(true);
                     Request retry = new Request.Builder()
                             .url(QWEN_BASE_URL + "/chats/new")

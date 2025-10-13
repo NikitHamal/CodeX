@@ -212,7 +212,7 @@ public class AnyProviderApiClient implements ApiClient {
         int idx = rawEvent.indexOf(prefix);
         if (idx < 0) return;
         String jsonPart = rawEvent.substring(idx + prefix.length()).trim();
-        if (jsonPart.isEmpty() || jsonPart.equals("[DONE]")) return;
+        if (jsonPart.isEmpty() || jsonPart.equals("[DONE]") || jsonPart.equalsIgnoreCase("data: [DONE]")) return;
         try {
             if (rawAnswer != null) rawAnswer.append(jsonPart).append('\n');
             JsonElement elem = JsonParser.parseString(jsonPart);

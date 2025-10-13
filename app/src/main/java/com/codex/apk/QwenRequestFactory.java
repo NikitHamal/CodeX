@@ -110,7 +110,8 @@ public class QwenRequestFactory {
         JsonArray modelsArray = new JsonArray();
         modelsArray.add(model.getModelId());
         messageObj.add("models", modelsArray);
-        messageObj.addProperty("chat_type", webSearchEnabled ? "search" : "t2t");
+        String chatType = webSearchEnabled ? "search" : "t2t";
+        messageObj.addProperty("chat_type", chatType);
         JsonObject featureConfig = new JsonObject();
         featureConfig.addProperty("thinking_enabled", thinkingModeEnabled);
         featureConfig.addProperty("output_schema", "phase");
@@ -118,12 +119,28 @@ public class QwenRequestFactory {
             featureConfig.addProperty("search_version", "v2");
         }
         if (thinkingModeEnabled) {
-            featureConfig.addProperty("thinking_budget", 38912);
+            int defaultBudget = 81920;
+            int modelBudget = 0;
+            try {
+                com.codex.apk.ai.ModelCapabilities caps = model.getCapabilities();
+                if (caps != null && caps.maxThinkingGenerationLength > 0) {
+                    modelBudget = caps.maxThinkingGenerationLength;
+                }
+            } catch (Exception ignore) {}
+            featureConfig.addProperty("thinking_budget", modelBudget > 0 ? modelBudget : defaultBudget);
         }
         messageObj.add("feature_config", featureConfig);
         messageObj.addProperty("fid", java.util.UUID.randomUUID().toString());
         messageObj.add("parentId", null);
         messageObj.add("childrenIds", new JsonArray());
+
+        // Extra metadata to align with latest Qwen web payloads
+        JsonObject extra = new JsonObject();
+        JsonObject meta = new JsonObject();
+        meta.addProperty("subChatType", chatType);
+        extra.add("meta", meta);
+        messageObj.add("extra", extra);
+        messageObj.addProperty("sub_chat_type", chatType);
         return messageObj;
     }
 }

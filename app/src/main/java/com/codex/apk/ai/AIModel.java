@@ -45,6 +45,15 @@ public class AIModel {
             new AIModel("qwen2.5-14b-instruct-1m", "Qwen2.5-14B-Instruct-1M", AIProvider.ALIBABA, new ModelCapabilities(true, true, true, true, true, false, true, 1000000, 8192)),
             new AIModel("qwen2.5-coder-32b-instruct", "Qwen2.5-Coder-32B-Instruct", AIProvider.ALIBABA, new ModelCapabilities(true, true, true, true, true, false, true, 131072, 8192)),
             new AIModel("qwen2.5-72b-instruct", "Qwen2.5-72B-Instruct", AIProvider.ALIBABA, new ModelCapabilities(true, true, true, true, true, false, true, 131072, 8192)),
+            // Newer Qwen additions (based on G4F and recent provider lists)
+            new AIModel("qwen3-32b", "Qwen3-32B", AIProvider.ALIBABA, new ModelCapabilities(true, true, true, true, true, true, true, 131072, 32768)),
+            new AIModel("qwen3-14b", "Qwen3-14B", AIProvider.ALIBABA, new ModelCapabilities(true, true, true, true, true, true, true, 131072, 16384)),
+            new AIModel("qwen3-4b", "Qwen3-4B", AIProvider.ALIBABA, new ModelCapabilities(false, true, true, true, true, true, true, 65536, 8192)),
+            new AIModel("qwen3-1.7b", "Qwen3-1.7B", AIProvider.ALIBABA, new ModelCapabilities(false, true, true, true, true, true, true, 32768, 4096)),
+            new AIModel("qwen3-0.6b", "Qwen3-0.6B", AIProvider.ALIBABA, new ModelCapabilities(false, false, true, true, true, true, true, 16384, 2048)),
+            // Vision / VL recent entries
+            new AIModel("qwen-vl-max", "Qwen-VL-Max", AIProvider.ALIBABA, new ModelCapabilities(true, true, true, true, true, true, true, 131072, 8192)),
+            new AIModel("qwen-vl-max-2025-08-13", "Qwen-VL-Max-2025-08-13", AIProvider.ALIBABA, new ModelCapabilities(true, true, true, true, true, true, true, 131072, 8192)),
 
             // DeepInfra (OpenAI-compatible chat)
             new AIModel("deepseek-v3", "DeepInfra DeepSeek V3", AIProvider.DEEPINFRA, new ModelCapabilities(true, false, false, true, false, false, false, 131072, 8192)),

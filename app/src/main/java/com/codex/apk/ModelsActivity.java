@@ -47,15 +47,7 @@ public class ModelsActivity extends AppCompatActivity {
 
         setupAdapter();
 
-        // Auto-refresh Alibaba/Qwen models to include latest additions on open
-        aiAssistant.refreshModelsForProvider(AIProvider.ALIBABA, (success, message) -> {
-            runOnUiThread(() -> {
-                if (success) {
-                    setupAdapter();
-                }
-                android.util.Log.i("ModelsActivity", "Alibaba models refresh: " + message);
-            });
-        });
+        // Removed auto-refresh; models list is maintained statically in AIModel
     }
 
 

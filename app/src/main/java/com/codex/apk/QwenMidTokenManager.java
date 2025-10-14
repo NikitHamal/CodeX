@@ -22,8 +22,9 @@ public class QwenMidTokenManager {
     private int midTokenUses = 0;
     private long midTokenCreatedAtMs = 0L;
 
-    private static final int MAX_USES = 20; // refresh after 20 uses
-    private static final long MAX_AGE_MS = 5 * 60 * 1000L; // refresh after 5 minutes
+    // Tighten lifecycle to address "works for some time then stops" by refreshing more aggressively
+    private static final int MAX_USES = 8; // refresh after 8 uses
+    private static final long MAX_AGE_MS = 2 * 60 * 1000L; // refresh after 2 minutes
 
     public QwenMidTokenManager(Context context, OkHttpClient httpClient) {
         this.httpClient = httpClient;

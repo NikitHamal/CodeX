@@ -105,8 +105,12 @@ public class TabManager {
             return;
         }
 
-        // Create a unique file object for the diff tab.
-        File diffFile = new File(activity.getProjectDirectory(), "DIFF_" + fileName); // Use projectDir from activity
+        // Create a unique, sanitized file object for the diff tab so that getName() starts with DIFF_
+        String safeName = ("DIFF_" + fileName)
+                .replace('/', '_')
+                .replace('\\', '_')
+                .replace(java.io.File.separatorChar, '_');
+        File diffFile = new File(activity.getProjectDirectory(), safeName); // Use projectDir from activity
 
         // Check if a diff tab for this file is already open
         for (int i = 0; i < openTabs.size(); i++) {

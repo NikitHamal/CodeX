@@ -78,7 +78,10 @@ public class QwenApiClient implements ApiClient {
         final boolean[] retriedJsonError = new boolean[]{false};
         final boolean[] retriedHttpError = new boolean[]{false};
         sse.postStreamWithRetry(QWEN_BASE_URL + "/chat/completions?chat_id=" + state.getConversationId(), headers, requestBody, 3, 500L, new SseClient.Listener() {
-            @Override public void onOpen() {}
+            @Override public void onOpen() {
+                // If midtoken is near expiry by use or age, proactively refresh for next calls
+                try { midTokenManager.ensureMidToken(false); } catch (Exception ignore) {}
+            }
             @Override public void onDelta(JsonObject chunk) {
                 if (aborted[0]) return;
                 rawSse.append("data: ").append(chunk.toString()).append('\n');
@@ -147,7 +150,10 @@ public class QwenApiClient implements ApiClient {
                     }
                 } catch (Exception ignore) {}
             }
-            @Override public void onUsage(JsonObject usage) {}
+            @Override public void onUsage(JsonObject usage) {
+                // Heuristic: if server reports low output tokens but many input tokens repeatedly, we may be rate-limited soon.
+                // No-op here but could log/telemetry in future.
+            }
             @Override public void onError(String message, int code) {
                 if ((code == 401 || code == 403 || code == 429) && !retriedHttpError[0]) {
                     retriedHttpError[0] = true;

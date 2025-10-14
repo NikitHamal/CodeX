@@ -99,7 +99,13 @@ public class SseClient {
                         if (listener != null) listener.onUsage(obj.getAsJsonObject("usage"));
                     }
                     if (listener != null) listener.onDelta(obj);
-                } catch (Exception ignore) { /* ignore malformed partials */ }
+                } catch (Exception ignore) { /* malformed partials: still surface raw for debugging/recovery */
+                    try {
+                        com.google.gson.JsonObject rawObj = new com.google.gson.JsonObject();
+                        rawObj.addProperty("_raw", jsonPart);
+                        if (listener != null) listener.onDelta(rawObj);
+                    } catch (Exception ignored2) {}
+                }
                 continue;
             }
             // Fallback: initial JSON line with no data: prefix
@@ -110,7 +116,13 @@ public class SseClient {
                         if (listener != null) listener.onUsage(obj.getAsJsonObject("usage"));
                     }
                     if (listener != null) listener.onDelta(obj);
-                } catch (Exception ignore) { /* ignore malformed partials */ }
+                } catch (Exception ignore) { /* surface raw */
+                    try {
+                        com.google.gson.JsonObject rawObj = new com.google.gson.JsonObject();
+                        rawObj.addProperty("_raw", trimmed);
+                        if (listener != null) listener.onDelta(rawObj);
+                    } catch (Exception ignored2) {}
+                }
             }
         }
     }

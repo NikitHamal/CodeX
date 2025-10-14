@@ -35,7 +35,7 @@ public final class DiffUtils {
         List<DiffLine> out = new ArrayList<>();
         if (diffText == null || diffText.isEmpty()) return out;
 
-        String[] rows = diffText.split("\n", -1);
+        String[] rows = diffText.split("\r?\n", -1);
         int oldLine = 0;
         int newLine = 0;
         boolean haveHeader = false;
@@ -67,6 +67,14 @@ public final class DiffUtils {
                 continue;
             }
 
+            if (raw.startsWith("+++ ")) {
+                out.add(new DiffLine(LineType.HEADER, null, null, raw));
+                continue;
+            }
+            if (raw.startsWith("--- ")) {
+                out.add(new DiffLine(LineType.HEADER, null, null, raw));
+                continue;
+            }
             if (raw.startsWith("+")) {
                 String text = raw.length() > 1 ? raw.substring(1) : "";
                 out.add(new DiffLine(LineType.ADDED, null, newLine, text));

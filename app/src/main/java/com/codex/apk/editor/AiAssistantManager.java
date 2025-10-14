@@ -319,8 +319,31 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
             fileNameToOpen = fileActionDetail.newPath; // Use newPath for renamed files
         }
 
+        // Ensure we have authoritative old/new contents; if missing, read from disk and/or synthesize
         String oldFileContent = fileActionDetail.oldContent != null ? fileActionDetail.oldContent : "";
         String newFileContent = fileActionDetail.newContent != null ? fileActionDetail.newContent : "";
+
+        try {
+            File projectDir = activity.getProjectDirectory();
+            if ((oldFileContent == null || oldFileContent.isEmpty())) {
+                String pathToRead = "renameFile".equals(fileActionDetail.type) ? fileActionDetail.oldPath : fileActionDetail.path;
+                if (pathToRead != null && !pathToRead.isEmpty() && projectDir != null) {
+                    File f = new File(projectDir, pathToRead);
+                    if (f.exists()) {
+                        oldFileContent = activity.getFileManager().readFileContent(f);
+                    }
+                }
+            }
+            if ((newFileContent == null || newFileContent.isEmpty()) && "renameFile".equals(fileActionDetail.type)) {
+                String pathToRead = fileActionDetail.newPath;
+                if (pathToRead != null && !pathToRead.isEmpty() && projectDir != null) {
+                    File f = new File(projectDir, pathToRead);
+                    if (f.exists()) {
+                        newFileContent = activity.getFileManager().readFileContent(f);
+                    }
+                }
+            }
+        } catch (Exception ignore) {}
 
         // Prefer provided diffPatch if it looks like a valid unified diff; otherwise, generate fallback
         String providedPatch = fileActionDetail.diffPatch != null ? fileActionDetail.diffPatch.trim() : "";
@@ -358,6 +381,9 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                             String pattern = fileActionDetail.searchPattern != null ? fileActionDetail.searchPattern : fileActionDetail.search;
                             String repl = fileActionDetail.replaceWith != null ? fileActionDetail.replaceWith : fileActionDetail.replace;
                             effectiveNew = com.codex.apk.util.FileOps.applySearchReplace(oldFileContent, pattern, repl);
+                            diffContent = DiffGenerator.generateDiff(oldFileContent, effectiveNew, "unified", "a/" + fileNameToOpen, "b/" + fileNameToOpen);
+                        } else if (fileActionDetail.newContent != null && !fileActionDetail.newContent.isEmpty()) {
+                            effectiveNew = fileActionDetail.newContent;
                             diffContent = DiffGenerator.generateDiff(oldFileContent, effectiveNew, "unified", "a/" + fileNameToOpen, "b/" + fileNameToOpen);
                         } else {
                             diffContent = DiffGenerator.generateDiff(oldFileContent, newFileContent, "unified", "a/" + fileNameToOpen, "b/" + fileNameToOpen);

@@ -172,6 +172,15 @@ public class QwenApiClient implements ApiClient {
                 if (completedText == null || completedText.trim().isEmpty()) {
                     completedText = new QwenStreamProcessor(actionListener, state, model, projectDir).recoverContentFromRaw(rawSse.toString());
                 }
+                // Final safety: if still empty and we received no valid chunks, perform a non-streaming fallback request
+                if ((completedText == null || completedText.trim().isEmpty())) {
+                    try {
+                        String nonStream = performNonStreamingCompletion(state, model, thinkingModeEnabled, webSearchEnabled, enabledTools, userMessage);
+                        if (nonStream != null && !nonStream.trim().isEmpty()) {
+                            completedText = nonStream;
+                        }
+                    } catch (Exception ignore) {}
+                }
                 // Parse final content into actions/plan/tool_call
                 String jsonToParse = com.codex.apk.util.JsonUtils.extractJsonFromCodeBlock(completedText);
                 if (jsonToParse == null && com.codex.apk.util.JsonUtils.looksLikeJson(completedText)) jsonToParse = completedText;
@@ -224,6 +233,66 @@ public class QwenApiClient implements ApiClient {
         });
     }
 
+    /**
+     * Fallback: perform a non-streaming completion to recover content when SSE yields nothing.
+     */
+    private String performNonStreamingCompletion(QwenConversationState state, AIModel model, boolean thinkingModeEnabled, boolean webSearchEnabled, List<ToolSpec> enabledTools, String userMessage) throws IOException {
+        JsonObject body = QwenRequestFactory.buildCompletionRequestBody(state, model, thinkingModeEnabled, webSearchEnabled, enabledTools, userMessage);
+        body.addProperty("stream", false);
+        body.addProperty("incremental_output", false);
+        String qwenToken = midTokenManager.ensureMidToken(false);
+        okhttp3.Headers headers = QwenRequestFactory.buildQwenHeaders(qwenToken, state.getConversationId())
+                .newBuilder()
+                .set("Accept", "application/json")
+                .add("Cache-Control", "no-cache")
+                .add("Pragma", "no-cache")
+                .build();
+        Request req = new Request.Builder()
+                .url(QWEN_BASE_URL + "/chat/completions?chat_id=" + state.getConversationId())
+                .headers(headers)
+                .post(RequestBody.create(body.toString(), MediaType.parse("application/json")))
+                .build();
+        try (Response resp = httpClient.newCall(req).execute()) {
+            if (!resp.isSuccessful() || resp.body() == null) return null;
+            String text = resp.body().string();
+            try {
+                JsonObject obj = JsonParser.parseString(text).getAsJsonObject();
+                // Handle error code in non-stream
+                if (obj.has("data") && obj.get("data").isJsonObject()) {
+                    JsonObject data = obj.getAsJsonObject("data");
+                    if (data.has("code")) {
+                        // If chat invalid, create new chat and retry once
+                        String codeStr = String.valueOf(data.get("code"));
+                        if (codeStr.toLowerCase().contains("chat") && codeStr.toLowerCase().contains("not")) {
+                            try {
+                                String newChat = conversationManager.createNewConversation(model, webSearchEnabled);
+                                if (newChat != null) state.setConversationId(newChat);
+                            } catch (Exception ignore) {}
+                            return performNonStreamingCompletion(state, model, thinkingModeEnabled, webSearchEnabled, enabledTools, userMessage);
+                        }
+                        return null;
+                    }
+                }
+                if (obj.has("choices") && obj.get("choices").isJsonArray() && obj.getAsJsonArray("choices").size() > 0) {
+                    JsonObject choice = obj.getAsJsonArray("choices").get(0).getAsJsonObject();
+                    if (choice.has("message") && choice.get("message").isJsonObject()) {
+                        JsonObject msg = choice.getAsJsonObject("message");
+                        if (msg.has("content") && !msg.get("content").isJsonNull()) {
+                            return msg.get("content").getAsString();
+                        }
+                    }
+                    if (choice.has("delta") && choice.get("delta").isJsonObject()) {
+                        JsonObject delta = choice.getAsJsonObject("delta");
+                        if (delta.has("content") && !delta.get("content").isJsonNull()) {
+                            return delta.get("content").getAsString();
+                        }
+                    }
+                }
+            } catch (Exception ignore) { return text; }
+            return null;
+        }
+    }
+
     private void performContinuation(QwenConversationState state, AIModel model, String toolResultJson) throws IOException {
         JsonObject requestBody = QwenRequestFactory.buildContinuationRequestBody(state, model, toolResultJson);
         String qwenToken = midTokenManager.ensureMidToken(false);
@@ -237,17 +306,32 @@ public class QwenApiClient implements ApiClient {
             @Override public void onDelta(JsonObject chunk) {
                 rawSse.append("data: ").append(chunk.toString()).append('\n');
                 try {
+                    if (chunk.has("response.created")) {
+                        JsonObject created = chunk.getAsJsonObject("response.created");
+                        if (created.has("chat_id")) state.setConversationId(created.get("chat_id").getAsString());
+                        if (created.has("response_id")) state.setLastParentId(created.get("response_id").getAsString());
+                        if (actionListener != null) actionListener.onQwenConversationStateUpdated(state);
+                        return;
+                    }
                     if (chunk.has("choices")) {
                         JsonArray choices = chunk.getAsJsonArray("choices");
                         if (choices.size() > 0) {
                             JsonObject choice = choices.get(0).getAsJsonObject();
-                            JsonObject delta = choice.getAsJsonObject("delta");
+                            JsonObject delta = choice.has("delta") && choice.get("delta").isJsonObject() ? choice.getAsJsonObject("delta") : new JsonObject();
                             String status = delta.has("status") ? delta.get("status").getAsString() : "";
-                            String content = delta.has("content") ? delta.get("content").getAsString() : "";
+                            String content = delta.has("content") && !delta.get("content").isJsonNull() ? delta.get("content").getAsString() : "";
                             String phase = delta.has("phase") ? delta.get("phase").getAsString() : "";
                             if ("answer".equals(phase)) {
                                 finalText.append(content);
                                 actionListener.onAiStreamUpdate(finalText.toString(), false);
+                            }
+                            // message fallback
+                            if ((content == null || content.isEmpty()) && choice.has("message") && choice.get("message").isJsonObject()) {
+                                JsonObject msg = choice.getAsJsonObject("message");
+                                if (msg.has("content") && !msg.get("content").isJsonNull()) {
+                                    finalText.append(msg.get("content").getAsString());
+                                    actionListener.onAiStreamUpdate(finalText.toString(), false);
+                                }
                             }
                         }
                     }
@@ -256,8 +340,18 @@ public class QwenApiClient implements ApiClient {
             @Override public void onUsage(JsonObject usage) {}
             @Override public void onError(String message, int code) {}
             @Override public void onComplete() {
-                String jsonToParse = com.codex.apk.util.JsonUtils.extractJsonFromCodeBlock(finalText.toString());
-                if (jsonToParse == null && com.codex.apk.util.JsonUtils.looksLikeJson(finalText.toString())) jsonToParse = finalText.toString();
+                String completed = finalText.toString();
+                if (completed == null || completed.trim().isEmpty()) {
+                    completed = new QwenStreamProcessor(actionListener, state, model, projectDir).recoverContentFromRaw(rawSse.toString());
+                    if (completed == null || completed.trim().isEmpty()) {
+                        try {
+                            String nonStream = performNonStreamingCompletion(state, model, false, false, new java.util.ArrayList<>(), "");
+                            if (nonStream != null) completed = nonStream;
+                        } catch (Exception ignore) {}
+                    }
+                }
+                String jsonToParse = com.codex.apk.util.JsonUtils.extractJsonFromCodeBlock(completed);
+                if (jsonToParse == null && com.codex.apk.util.JsonUtils.looksLikeJson(completed)) jsonToParse = completed;
                 if (jsonToParse != null) {
                     try {
                         QwenResponseParser.ParsedResponse parsed = QwenResponseParser.parseResponse(jsonToParse);
@@ -269,7 +363,7 @@ public class QwenApiClient implements ApiClient {
                                 List<ChatMessage.FileActionDetail> details = QwenResponseParser.toFileActionDetails(parsed);
                                 actionListener.onAiActionsProcessed(rawSse.toString(), parsed.explanation, new ArrayList<>(), details, model.getDisplayName());
                             } else {
-                                actionListener.onAiActionsProcessed(rawSse.toString(), finalText.toString(), new ArrayList<>(), new ArrayList<>(), model.getDisplayName());
+                                actionListener.onAiActionsProcessed(rawSse.toString(), completed, new ArrayList<>(), new ArrayList<>(), model.getDisplayName());
                             }
                         }
                     } catch (Exception ignore) {}

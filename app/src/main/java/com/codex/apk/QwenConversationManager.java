@@ -29,6 +29,13 @@ public class QwenConversationManager {
         return createQwenConversation(model, webSearchEnabled);
     }
 
+    /**
+     * Force-create a new chat conversation, ignoring any existing state.
+     */
+    public String createNewConversation(AIModel model, boolean webSearchEnabled) throws IOException {
+        return createQwenConversation(model, webSearchEnabled);
+    }
+
     private String createQwenConversation(AIModel model, boolean webSearchEnabled) throws IOException {
         JsonObject requestBody = new JsonObject();
         requestBody.addProperty("title", "New Chat");

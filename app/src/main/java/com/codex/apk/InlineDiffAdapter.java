@@ -71,6 +71,7 @@ public class InlineDiffAdapter extends RecyclerView.Adapter<InlineDiffAdapter.Di
                 holder.tvNew.setText(line.newLine != null ? String.valueOf(line.newLine) : "");
                 holder.tvContent.setTextColor(context.getColor(R.color.color_border_diff_added));
                 holder.tvContent.setText("+ " + line.text);
+                holder.tvContent.setContentDescription("Added line " + (line.newLine != null ? line.newLine : "") + ": " + line.text);
                 break;
             case REMOVED:
                 holder.viewGutter.setBackgroundColor(context.getColor(R.color.color_border_diff_deleted));
@@ -79,6 +80,7 @@ public class InlineDiffAdapter extends RecyclerView.Adapter<InlineDiffAdapter.Di
                 holder.tvNew.setText("");
                 holder.tvContent.setTextColor(context.getColor(R.color.color_border_diff_deleted));
                 holder.tvContent.setText("- " + line.text);
+                holder.tvContent.setContentDescription("Removed line " + (line.oldLine != null ? line.oldLine : "") + ": " + line.text);
                 break;
             case CONTEXT:
                 holder.viewGutter.setBackgroundColor(context.getColor(R.color.outline_variant));
@@ -87,6 +89,18 @@ public class InlineDiffAdapter extends RecyclerView.Adapter<InlineDiffAdapter.Di
                 holder.tvNew.setText(line.newLine != null ? String.valueOf(line.newLine) : "");
                 holder.tvContent.setTextColor(context.getColor(R.color.on_surface));
                 holder.tvContent.setText("  " + line.text);
+                holder.tvContent.setContentDescription("Unchanged line " +
+                        (line.oldLine != null ? line.oldLine : (line.newLine != null ? line.newLine : "")) + ": " + line.text);
+                break;
+            case ELLIPSIS:
+                holder.viewGutter.setBackgroundColor(context.getColor(R.color.outline_variant));
+                holder.itemView.setBackgroundColor(context.getColor(R.color.surface_container));
+                holder.tvOld.setText("");
+                holder.tvNew.setText("");
+                holder.tvContent.setTypeface(Typeface.DEFAULT_BOLD);
+                holder.tvContent.setTextColor(context.getColor(R.color.text_secondary));
+                holder.tvContent.setText(line.text);
+                holder.tvContent.setContentDescription(line.text);
                 break;
         }
     }

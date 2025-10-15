@@ -30,6 +30,7 @@ import java.util.List;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.LinkedHashMap;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Simplified TabAdapter using Sora Editor for high-performance code editing.
@@ -60,6 +61,13 @@ public class SimpleSoraTabAdapter extends RecyclerView.Adapter<RecyclerView.View
             return size() > MAX_DIFF_CACHE;
         }
     };
+
+    // Persist UI state per DIFF_ tab
+    private static class DiffUiState {
+        boolean splitMode = false;
+        boolean collapse = false;
+    }
+    private final Map<String, DiffUiState> diffUiStateMap = new ConcurrentHashMap<>();
 
 
     // Current active tab position
@@ -94,14 +102,30 @@ public class SimpleSoraTabAdapter extends RecyclerView.Adapter<RecyclerView.View
         public String currentTabId;
         public RecyclerView diffRecycler;
         public InlineDiffAdapter diffAdapter;
+        public View diffToolbar;
+        public android.widget.TextView diffSummary;
+        public android.widget.Button btnPrev;
+        public android.widget.Button btnNext;
+        public android.widget.Button btnToggleMode;
+        public android.widget.CheckBox cbCollapse;
+        public boolean splitMode;
 
         public ViewHolder(@NonNull View itemView) {
             super(itemView);
             codeEditor = itemView.findViewById(R.id.code_editor);
             diffRecycler = itemView.findViewById(R.id.diff_recycler);
+            diffToolbar = itemView.findViewById(R.id.diff_toolbar);
+            if (diffToolbar != null) {
+                diffSummary = diffToolbar.findViewById(R.id.tv_diff_summary);
+                btnPrev = diffToolbar.findViewById(R.id.btn_prev_change);
+                btnNext = diffToolbar.findViewById(R.id.btn_next_change);
+                btnToggleMode = diffToolbar.findViewById(R.id.btn_toggle_mode);
+                cbCollapse = diffToolbar.findViewById(R.id.cb_collapse_unchanged);
+            }
             isListenerAttached = false;
             currentTabId = null;
             diffAdapter = null;
+            splitMode = false;
         }
     }
 
@@ -175,6 +199,7 @@ public class SimpleSoraTabAdapter extends RecyclerView.Adapter<RecyclerView.View
         String tabId = tabItem.getFile().getAbsolutePath();
         CodeEditor codeEditor = editorViewHolder.codeEditor;
         boolean isDiffTab = tabItem.getFile().getName().startsWith("DIFF_");
+        DiffUiState uiState = diffUiStateMap.computeIfAbsent(tabId, k -> new DiffUiState());
 
         // Only reconfigure if this is a different tab
         if (!tabId.equals(editorViewHolder.currentTabId)) {
@@ -224,6 +249,9 @@ public class SimpleSoraTabAdapter extends RecyclerView.Adapter<RecyclerView.View
             codeEditor.setVisibility(View.GONE);
             if (editorViewHolder.diffRecycler != null) {
                 editorViewHolder.diffRecycler.setVisibility(View.VISIBLE);
+                if (editorViewHolder.diffToolbar != null) {
+                    editorViewHolder.diffToolbar.setVisibility(View.VISIBLE);
+                }
                 if (editorViewHolder.diffRecycler.getLayoutManager() == null) {
                     editorViewHolder.diffRecycler.setLayoutManager(new LinearLayoutManager(context));
                     editorViewHolder.diffRecycler.setHasFixedSize(true);
@@ -237,6 +265,8 @@ public class SimpleSoraTabAdapter extends RecyclerView.Adapter<RecyclerView.View
                 DiffCacheEntry entry = diffCache.get(key);
                 if (entry == null || entry.hash != h) {
                     lines = DiffUtils.parseUnifiedDiff(content);
+                    // Apply collapse preference from persisted state
+                    if (uiState.collapse) lines = DiffUtils.collapseContext(lines, 3);
                     DiffCacheEntry newEntry = new DiffCacheEntry();
                     newEntry.lines = lines;
                     newEntry.hash = h;
@@ -244,11 +274,64 @@ public class SimpleSoraTabAdapter extends RecyclerView.Adapter<RecyclerView.View
                 } else {
                     lines = entry.lines;
                 }
-                if (editorViewHolder.diffAdapter == null) {
-                    editorViewHolder.diffAdapter = new InlineDiffAdapter(context, lines);
-                    editorViewHolder.diffRecycler.setAdapter(editorViewHolder.diffAdapter);
+                // Sync toolbar UI with state
+                if (editorViewHolder.cbCollapse != null) {
+                    editorViewHolder.cbCollapse.setOnCheckedChangeListener(null);
+                    editorViewHolder.cbCollapse.setChecked(uiState.collapse);
+                }
+                editorViewHolder.splitMode = uiState.splitMode;
+
+                // Mode handling
+                if (editorViewHolder.splitMode) {
+                    // Split adapter
+                    SplitDiffAdapter splitAdapter = new SplitDiffAdapter(context, lines);
+                    editorViewHolder.diffRecycler.setAdapter(splitAdapter);
+                    if (editorViewHolder.btnToggleMode != null) editorViewHolder.btnToggleMode.setText("Split");
                 } else {
-                    editorViewHolder.diffAdapter.updateLines(lines);
+                    if (editorViewHolder.diffAdapter == null) {
+                        editorViewHolder.diffAdapter = new InlineDiffAdapter(context, lines);
+                        editorViewHolder.diffRecycler.setAdapter(editorViewHolder.diffAdapter);
+                    } else {
+                        editorViewHolder.diffAdapter.updateLines(lines);
+                        editorViewHolder.diffRecycler.setAdapter(editorViewHolder.diffAdapter);
+                    }
+                    if (editorViewHolder.btnToggleMode != null) editorViewHolder.btnToggleMode.setText("Inline");
+                }
+
+                // Summary and navigation
+                int[] stats = DiffUtils.countAddRemove(content);
+                if (editorViewHolder.diffSummary != null) {
+                    editorViewHolder.diffSummary.setText("+" + stats[0] + " −" + stats[1]);
+                }
+
+                if (editorViewHolder.btnPrev != null && editorViewHolder.btnNext != null) {
+                    View.OnClickListener nav = v -> {
+                        int firstVisible = ((LinearLayoutManager) editorViewHolder.diffRecycler.getLayoutManager()).findFirstVisibleItemPosition();
+                        java.util.List<Integer> changeRows = editorViewHolder.splitMode
+                                ? computeChangeRowsForSplit(lines)
+                                : computeChangeRowsForInline(lines);
+                        int target = nextFrom(changeRows, firstVisible, v == editorViewHolder.btnNext);
+                        if (target >= 0) editorViewHolder.diffRecycler.smoothScrollToPosition(target);
+                    };
+                    editorViewHolder.btnPrev.setOnClickListener(nav);
+                    editorViewHolder.btnNext.setOnClickListener(nav);
+                }
+
+                if (editorViewHolder.btnToggleMode != null) {
+                    editorViewHolder.btnToggleMode.setOnClickListener(v -> {
+                        uiState.splitMode = !uiState.splitMode;
+                        editorViewHolder.splitMode = uiState.splitMode;
+                        notifyItemChanged(position);
+                    });
+                }
+
+                if (editorViewHolder.cbCollapse != null) {
+                    editorViewHolder.cbCollapse.setOnCheckedChangeListener((buttonView, isChecked) -> {
+                        uiState.collapse = isChecked;
+                        // Purge cache to force re-parse with collapse
+                        purgeDiffCacheForFile(tabItem.getFile());
+                        notifyItemChanged(position);
+                    });
                 }
             }
         } else {
@@ -259,6 +342,9 @@ public class SimpleSoraTabAdapter extends RecyclerView.Adapter<RecyclerView.View
                 editorViewHolder.diffRecycler.setAdapter(null);
                 editorViewHolder.diffAdapter = null;
             }
+            if (editorViewHolder.diffToolbar != null) {
+                editorViewHolder.diffToolbar.setVisibility(View.GONE);
+            }
         }
 
         // Apply active tab styling if this is the active tab
@@ -268,6 +354,50 @@ public class SimpleSoraTabAdapter extends RecyclerView.Adapter<RecyclerView.View
                 tabActionListener.onActiveTabChanged(tabItem.getFile());
             }
         }
+    }
+
+    private static int findNextChangePosition(java.util.List<DiffUtils.DiffLine> lines, int start, boolean forward) {
+        if (lines == null || lines.isEmpty()) return -1;
+        int n = lines.size();
+        if (forward) {
+            for (int i = Math.max(0, start + 1); i < n; i++) {
+                if (DiffUtils.isChange(lines.get(i))) return i;
+            }
+        } else {
+            for (int i = Math.min(n - 1, Math.max(0, start - 1)); i >= 0; i--) {
+                if (DiffUtils.isChange(lines.get(i))) return i;
+            }
+        }
+        return -1;
+    }
+
+    private static java.util.List<Integer> computeChangeRowsForInline(java.util.List<DiffUtils.DiffLine> lines) {
+        java.util.ArrayList<Integer> rows = new java.util.ArrayList<>();
+        for (int i = 0; i < (lines != null ? lines.size() : 0); i++) {
+            DiffUtils.DiffLine d = lines.get(i);
+            if (DiffUtils.isChange(d)) rows.add(i);
+        }
+        return rows;
+    }
+
+    private static java.util.List<Integer> computeChangeRowsForSplit(java.util.List<DiffUtils.DiffLine> lines) {
+        // Split adapter pairs lines, but navigation can reuse inline indices as approximation
+        return computeChangeRowsForInline(lines);
+    }
+
+    private static int nextFrom(java.util.List<Integer> rows, int current, boolean forward) {
+        if (rows == null || rows.isEmpty()) return -1;
+        if (forward) {
+            for (int r : rows) if (r > current) return r;
+        } else {
+            int prev = -1;
+            for (int r : rows) {
+                if (r >= current) break;
+                prev = r;
+            }
+            return prev;
+        }
+        return -1;
     }
 
     @Override

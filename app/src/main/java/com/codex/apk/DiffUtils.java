@@ -10,7 +10,7 @@ public final class DiffUtils {
 
     private DiffUtils() {}
 
-    public enum LineType { ADDED, REMOVED, CONTEXT, HEADER }
+    public enum LineType { ADDED, REMOVED, CONTEXT, HEADER, ELLIPSIS }
 
     public static class DiffLine {
         public final LineType type;
@@ -83,6 +83,49 @@ public final class DiffUtils {
             }
         }
         return out;
+    }
+
+    /**
+     * Collapse long runs of context lines between changes into an ELLIPSIS placeholder.
+     * Keeps up to contextKeep lines at both the start and end of each run.
+     */
+    public static List<DiffLine> collapseContext(List<DiffLine> src, int contextKeep) {
+        List<DiffLine> result = new ArrayList<>();
+        if (src == null || src.isEmpty()) return result;
+        int i = 0;
+        while (i < src.size()) {
+            DiffLine d = src.get(i);
+            if (d.type != LineType.CONTEXT) {
+                result.add(d);
+                i++;
+                continue;
+            }
+            // Count run length of context
+            int start = i;
+            while (i < src.size() && src.get(i).type == LineType.CONTEXT) i++;
+            int endExclusive = i;
+            int run = endExclusive - start;
+            // Determine neighbors to know if this run sits between changes
+            boolean collapsed = run > contextKeep * 2;
+            if (!collapsed) {
+                // Keep all
+                for (int k = start; k < endExclusive; k++) result.add(src.get(k));
+            } else {
+                // Keep head
+                for (int k = start; k < start + contextKeep; k++) result.add(src.get(k));
+                // Ellipsis
+                int hidden = run - (contextKeep * 2);
+                result.add(new DiffLine(LineType.ELLIPSIS, null, null, "… " + hidden + " unchanged lines"));
+                // Keep tail
+                for (int k = endExclusive - contextKeep; k < endExclusive; k++) result.add(src.get(k));
+            }
+        }
+        return result;
+    }
+
+    /** Returns true if the line is a change (added or removed). */
+    public static boolean isChange(DiffLine d) {
+        return d != null && (d.type == LineType.ADDED || d.type == LineType.REMOVED);
     }
 
     /**

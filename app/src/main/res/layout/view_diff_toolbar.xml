@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:padding="8dp"
+    android:gravity="center_vertical"
+    android:background="@color/surface_container_high">
+
+    <TextView
+        android:id="@+id/tv_diff_summary"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:textColor="@color/text_secondary"
+        android:textSize="12sp"
+        android:contentDescription="Diff summary" />
+
+    <Button
+        android:id="@+id/btn_prev_change"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Prev"
+        android:contentDescription="Previous change" />
+
+    <Button
+        android:id="@+id/btn_next_change"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Next"
+        android:contentDescription="Next change"
+        android:layout_marginStart="8dp" />
+
+    <Button
+        android:id="@+id/btn_toggle_mode"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Inline"
+        android:contentDescription="Toggle diff mode"
+        android:layout_marginStart="8dp" />
+
+    <CheckBox
+        android:id="@+id/cb_collapse_unchanged"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Collapse unchanged"
+        android:layout_marginStart="8dp" />
+</LinearLayout>

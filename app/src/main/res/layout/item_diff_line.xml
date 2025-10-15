@@ -3,49 +3,52 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="horizontal"
-    android:minHeight="28dp"
-    android:paddingVertical="4dp"
-    android:paddingEnd="4dp">
+    android:paddingStart="8dp"
+    android:paddingEnd="8dp"
+    android:minHeight="32dp"
+    android:gravity="center_vertical">
 
-    <!-- Gutter color strip -->
     <View
         android:id="@+id/view_gutter"
         android:layout_width="4dp"
         android:layout_height="match_parent"
         android:background="@color/outline_variant" />
 
-    <!-- Old line number -->
     <TextView
         android:id="@+id/tv_old_line"
-        android:layout_width="52dp"
+        android:layout_width="48dp"
         android:layout_height="wrap_content"
-        android:gravity="end"
-        android:paddingEnd="6dp"
-        android:textColor="@color/on_surface_variant"
+        android:paddingStart="8dp"
+        android:paddingEnd="8dp"
+        android:textColor="@color/text_secondary"
         android:textSize="12sp"
+        android:gravity="end"
+        android:importantForAccessibility="no"
         android:fontFamily="monospace" />
 
-    <!-- New line number -->
     <TextView
         android:id="@+id/tv_new_line"
-        android:layout_width="52dp"
+        android:layout_width="48dp"
         android:layout_height="wrap_content"
-        android:gravity="end"
-        android:paddingEnd="6dp"
-        android:textColor="@color/on_surface_variant"
+        android:paddingStart="8dp"
+        android:paddingEnd="8dp"
+        android:textColor="@color/text_secondary"
         android:textSize="12sp"
+        android:gravity="end"
+        android:importantForAccessibility="no"
         android:fontFamily="monospace" />
 
-    <!-- Line content -->
     <TextView
         android:id="@+id/tv_content"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_weight="1"
-        android:paddingStart="8dp"
-        android:paddingEnd="4dp"
+        android:paddingStart="12dp"
+        android:paddingTop="6dp"
+        android:paddingBottom="6dp"
         android:textColor="@color/on_surface"
         android:textSize="13sp"
-        android:fontFamily="monospace" />
-
+        android:fontFamily="monospace"
+        android:autoSizeTextType="none"
+        android:importantForAccessibility="yes" />
 </LinearLayout>

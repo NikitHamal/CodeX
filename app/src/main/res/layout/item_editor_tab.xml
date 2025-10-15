@@ -5,10 +5,17 @@
     android:layout_height="match_parent"
     android:orientation="vertical">
 
+    <!-- Diff toolbar (only visible for DIFF_ tabs, controlled in code) -->
+    <include
+        android:id="@+id/diff_toolbar"
+        layout="@layout/view_diff_toolbar"
+        android:visibility="gone" />
+
     <io.github.rosemoe.sora.widget.CodeEditor
         android:id="@+id/code_editor"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
         android:textSize="14sp"
         android:background="@color/surface_container_low"
         android:overScrollMode="never"
@@ -18,7 +25,8 @@
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/diff_recycler"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
         android:visibility="gone"
         android:overScrollMode="never"
         android:background="@color/surface_container_low"/>

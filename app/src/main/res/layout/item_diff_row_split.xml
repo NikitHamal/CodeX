@@ -1,8 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="horizontal">
+    android:orientation="horizontal"
+    android:background="?android:attr/colorBackground">
 
     <!-- Left (old) column -->
     <LinearLayout
@@ -11,34 +13,29 @@
         android:layout_height="wrap_content"
         android:layout_weight="1"
         android:orientation="horizontal"
-        android:paddingVertical="2dp">
-
-        <View
-            android:id="@+id/left_gutter"
-            android:layout_width="3dp"
-            android:layout_height="match_parent"
-            android:background="@color/outline_variant" />
+        android:paddingStart="8dp"
+        android:paddingEnd="4dp">
 
         <TextView
             android:id="@+id/tv_old_line"
-            android:layout_width="52dp"
+            android:layout_width="40dp"
             android:layout_height="wrap_content"
             android:gravity="end"
-            android:paddingEnd="6dp"
-            android:textColor="@color/on_surface_variant"
+            android:paddingEnd="8dp"
+            android:textColor="?android:attr/textColorSecondary"
             android:textSize="12sp"
-            android:fontFamily="monospace" />
+            android:fontFamily="monospace"
+            tools:text="10" />
 
         <TextView
             android:id="@+id/tv_old_content"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:paddingStart="8dp"
-            android:paddingEnd="4dp"
-            android:textColor="@color/on_surface"
-            android:textSize="12sp"
-            android:fontFamily="monospace" />
+            android:textColor="?android:attr/textColorPrimary"
+            android:textSize="14sp"
+            android:fontFamily="monospace"
+            tools:text="- a removed line" />
     </LinearLayout>
 
     <!-- Right (new) column -->
@@ -48,34 +45,29 @@
         android:layout_height="wrap_content"
         android:layout_weight="1"
         android:orientation="horizontal"
-        android:paddingVertical="2dp">
-
-        <View
-            android:id="@+id/right_gutter"
-            android:layout_width="3dp"
-            android:layout_height="match_parent"
-            android:background="@color/outline_variant" />
+        android:paddingStart="4dp"
+        android:paddingEnd="8dp">
 
         <TextView
             android:id="@+id/tv_new_line"
-            android:layout_width="52dp"
+            android:layout_width="40dp"
             android:layout_height="wrap_content"
             android:gravity="end"
-            android:paddingEnd="6dp"
-            android:textColor="@color/on_surface_variant"
+            android:paddingEnd="8dp"
+            android:textColor="?android:attr/textColorSecondary"
             android:textSize="12sp"
-            android:fontFamily="monospace" />
+            android:fontFamily="monospace"
+            tools:text="12" />
 
         <TextView
             android:id="@+id/tv_new_content"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:paddingStart="8dp"
-            android:paddingEnd="4dp"
-            android:textColor="@color/on_surface"
-            android:textSize="12sp"
-            android:fontFamily="monospace" />
+            android:textColor="?android:attr/textColorPrimary"
+            android:textSize="14sp"
+            android:fontFamily="monospace"
+            tools:text="+ an added line" />
     </LinearLayout>
 
 </LinearLayout>

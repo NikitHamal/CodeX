@@ -3,18 +3,32 @@ package com.codex.apk;
 import java.io.File;
 
 public class TabItem {
+    public enum TabType {
+        FILE, FRAGMENT
+    }
+
     private File file;
     private String content;
     private boolean modified;
     private boolean lastNotifiedModifiedState;
     private boolean wrapEnabled = false;
     private boolean readOnly = false;
+    private final TabType tabType;
+    private androidx.fragment.app.Fragment fragment;
+    private String title;
 
     public TabItem(File file, String initialContent) {
         this.file = file;
         this.content = initialContent;
         this.modified = false;
         this.lastNotifiedModifiedState = false;
+        this.tabType = TabType.FILE;
+    }
+
+    public TabItem(String title, androidx.fragment.app.Fragment fragment) {
+        this.title = title;
+        this.fragment = fragment;
+        this.tabType = TabType.FRAGMENT;
     }
 
     /**
@@ -50,4 +64,7 @@ public class TabItem {
 
     public boolean isReadOnly() { return readOnly; }
     public void setReadOnly(boolean readOnly) { this.readOnly = readOnly; }
+    public TabType getTabType() { return tabType; }
+    public androidx.fragment.app.Fragment getFragment() { return fragment; }
+    public String getTitle() { return title; }
 }

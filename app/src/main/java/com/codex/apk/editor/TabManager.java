@@ -105,30 +105,23 @@ public class TabManager {
             return;
         }
 
-        // Create a unique, sanitized file object for the diff tab so that getName() starts with DIFF_
-        String safeName = ("DIFF_" + fileName)
-                .replace('/', '_')
-                .replace('\\', '_')
-                .replace(java.io.File.separatorChar, '_');
-        File diffFile = new File(activity.getProjectDirectory(), safeName); // Use projectDir from activity
+        String tabTitle = "DIFF_" + fileName;
 
         // Check if a diff tab for this file is already open
         for (int i = 0; i < openTabs.size(); i++) {
             TabItem existingTab = openTabs.get(i);
-            if (existingTab.getFile().equals(diffFile)) {
-                // Update content and switch to existing diff tab
-                existingTab.setContent(diffContent);
-                existingTab.setModified(false); // Diff tabs are not "modified" in the save sense
+            if (existingTab.getTabType() == TabItem.TabType.FRAGMENT && tabTitle.equals(existingTab.getTitle())) {
+                // If a diff tab is already open, we can't easily update it, so just switch to it.
+                // A more advanced implementation could update the fragment's content.
                 activity.getCodeEditorFragment().setFileViewPagerCurrentItem(i, true);
-                activity.getCodeEditorFragment().refreshFileTabLayout(); // Refresh to update content
                 activity.getMainViewPager().setCurrentItem(1, true); // Switch to Code tab
                 return;
             }
         }
 
-        // Create a new TabItem for the diff
-        TabItem diffTabItem = new TabItem(diffFile, diffContent);
-        diffTabItem.setModified(false); // Diffs are not user-editable in this context
+        // Create a new DiffViewerFragment
+        DiffViewerFragment diffFragment = DiffViewerFragment.newInstance(fileName, diffContent);
+        TabItem diffTabItem = new TabItem(tabTitle, diffFragment);
 
         openTabs.add(diffTabItem);
         activity.getCodeEditorFragment().addFileTab(diffTabItem);
@@ -148,7 +141,7 @@ public class TabManager {
             return;
         }
         // Prevent saving for diff tabs
-        if (tabItem.getFile().getName().startsWith("DIFF_")) {
+        if (tabItem.getTabType() == TabItem.TabType.FRAGMENT) {
             activity.showToast("Diff tabs cannot be saved.");
             tabItem.setModified(false); // Ensure it's not marked as modified
             activity.getCodeEditorFragment().refreshFileTabLayout();
@@ -193,7 +186,7 @@ public class TabManager {
         File file = tabItem.getFile();
 
         // Don't refresh diff tabs
-        if (file.getName().startsWith("DIFF_")) {
+        if (tabItem.getTabType() == TabItem.TabType.FRAGMENT) {
             activity.showToast("Cannot refresh a diff tab.");
             return;
         }
@@ -223,7 +216,7 @@ public class TabManager {
             return;
         }
         // Prevent saving for diff tabs
-        if (tabItem.getFile().getName().startsWith("DIFF_")) {
+        if (tabItem.getTabType() == TabItem.TabType.FRAGMENT) {
             if (showToast) {
                 activity.showToast("Diff tabs cannot be saved.");
             }
@@ -263,7 +256,7 @@ public class TabManager {
         TabItem tabItem = openTabs.get(position);
 
         // If it's a diff tab, just close it without confirmation or saving
-        if (tabItem.getFile().getName().startsWith("DIFF_")) {
+        if (tabItem.getTabType() == TabItem.TabType.FRAGMENT) {
             removeTabAtPosition(position);
             return;
         }
@@ -315,7 +308,7 @@ public class TabManager {
 
         boolean hasModifiedTabsToClose = false;
         for (int i = 0; i < openTabs.size(); i++) {
-            if (i != keepPosition && openTabs.get(i).isModified() && !openTabs.get(i).getFile().getName().startsWith("DIFF_")) {
+            if (i != keepPosition && openTabs.get(i).isModified() && openTabs.get(i).getTabType() != TabItem.TabType.FRAGMENT) {
                 hasModifiedTabsToClose = true;
                 break;
             }
@@ -329,7 +322,7 @@ public class TabManager {
             dialogHelper.showCloseOtherTabsDialog(
                     () -> { // On Save and Close
                         for (int i = 0; i < openTabs.size(); i++) {
-                            if (i != keepPosition && openTabs.get(i).isModified() && !openTabs.get(i).getFile().getName().startsWith("DIFF_")) {
+                            if (i != keepPosition && openTabs.get(i).isModified() && openTabs.get(i).getTabType() != TabItem.TabType.FRAGMENT) {
                                 saveFile(openTabs.get(i));
                             }
                         }
@@ -372,7 +365,7 @@ public class TabManager {
         boolean hasAnyModifiedTabs = false;
         if (confirmIfModified) {
             for (TabItem tab : openTabs) {
-                if (tab.isModified() && !tab.getFile().getName().startsWith("DIFF_")) {
+                if (tab.isModified() && tab.getTabType() != TabItem.TabType.FRAGMENT) {
                     hasAnyModifiedTabs = true;
                     break;
                 }
@@ -458,7 +451,7 @@ public class TabManager {
 
         for (TabItem tab : currentOpenTabs) {
             // Skip diff tabs as they are not real files and don't need content refresh from disk
-            if (tab.getFile().getName().startsWith("DIFF_")) {
+            if (tab.getTabType() == TabItem.TabType.FRAGMENT) {
                 continue;
             }
 

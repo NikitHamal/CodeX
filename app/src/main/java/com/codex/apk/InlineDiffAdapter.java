@@ -44,50 +44,30 @@ public class InlineDiffAdapter extends RecyclerView.Adapter<InlineDiffAdapter.Di
     public void onBindViewHolder(@NonNull DiffViewHolder holder, int position) {
         DiffUtils.DiffLine line = lines.get(position);
 
-        // Reset defaults
-        holder.itemView.setVisibility(View.VISIBLE);
-        RecyclerView.LayoutParams lp = (RecyclerView.LayoutParams) holder.itemView.getLayoutParams();
-        if (lp != null) {
-            lp.width = ViewGroup.LayoutParams.MATCH_PARENT;
-            lp.height = ViewGroup.LayoutParams.WRAP_CONTENT;
-            holder.itemView.setLayoutParams(lp);
-        }
         holder.tvOld.setText("");
         holder.tvNew.setText("");
-        holder.tvContent.setTypeface(Typeface.MONOSPACE, Typeface.NORMAL);
-        holder.itemView.setBackgroundColor(0x00000000); // transparent
+        holder.tvContent.setText(line.text);
+        holder.itemView.setBackgroundColor(context.getColor(android.R.color.transparent));
 
         switch (line.type) {
-            case HEADER:
-                // Headers (e.g., @@ -a,+b @@ or ---/+++) are excluded via filterDisplayable();
-                // This branch should rarely be hit, but render as invisible safety net.
-                holder.itemView.setLayoutParams(new RecyclerView.LayoutParams(0, 0));
-                holder.itemView.setVisibility(View.GONE);
-                break;
             case ADDED:
-                holder.viewGutter.setBackgroundColor(context.getColor(R.color.color_border_diff_added));
                 holder.itemView.setBackgroundColor(context.getColor(R.color.color_diff_added_bg));
-                holder.tvOld.setText("");
                 holder.tvNew.setText(line.newLine != null ? String.valueOf(line.newLine) : "");
-                holder.tvContent.setTextColor(context.getColor(R.color.color_border_diff_added));
                 holder.tvContent.setText("+ " + line.text);
                 break;
             case REMOVED:
-                holder.viewGutter.setBackgroundColor(context.getColor(R.color.color_border_diff_deleted));
                 holder.itemView.setBackgroundColor(context.getColor(R.color.color_diff_deleted_bg));
                 holder.tvOld.setText(line.oldLine != null ? String.valueOf(line.oldLine) : "");
-                holder.tvNew.setText("");
-                holder.tvContent.setTextColor(context.getColor(R.color.color_border_diff_deleted));
                 holder.tvContent.setText("- " + line.text);
                 break;
             case CONTEXT:
-                holder.viewGutter.setBackgroundColor(context.getColor(R.color.outline_variant));
-                holder.itemView.setBackgroundColor(context.getColor(R.color.surface));
                 holder.tvOld.setText(line.oldLine != null ? String.valueOf(line.oldLine) : "");
                 holder.tvNew.setText(line.newLine != null ? String.valueOf(line.newLine) : "");
-                holder.tvContent.setTextColor(context.getColor(R.color.on_surface));
-                holder.tvContent.setText("  " + line.text);
                 break;
+            case HEADER:
+                 holder.itemView.setVisibility(View.GONE);
+                 holder.itemView.setLayoutParams(new RecyclerView.LayoutParams(0, 0));
+                 break;
         }
     }
 
@@ -95,13 +75,11 @@ public class InlineDiffAdapter extends RecyclerView.Adapter<InlineDiffAdapter.Di
     public int getItemCount() { return lines.size(); }
 
     static class DiffViewHolder extends RecyclerView.ViewHolder {
-        View viewGutter;
         TextView tvOld;
         TextView tvNew;
         TextView tvContent;
         DiffViewHolder(@NonNull View itemView) {
             super(itemView);
-            viewGutter = itemView.findViewById(R.id.view_gutter);
             tvOld = itemView.findViewById(R.id.tv_old_line);
             tvNew = itemView.findViewById(R.id.tv_new_line);
             tvContent = itemView.findViewById(R.id.tv_content);

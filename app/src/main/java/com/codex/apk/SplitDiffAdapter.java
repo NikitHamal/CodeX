@@ -70,38 +70,25 @@ public class SplitDiffAdapter extends RecyclerView.Adapter<RecyclerView.ViewHold
         }
         PairVH vh = (PairVH) holder;
         PairRow pr = (PairRow) row;
-        // Line numbers
         vh.tvOldLine.setText(pr.oldLineNumber > 0 ? String.valueOf(pr.oldLineNumber) : "");
         vh.tvNewLine.setText(pr.newLineNumber > 0 ? String.valueOf(pr.newLineNumber) : "");
-        // Backgrounds
+
+        vh.leftContainer.setBackgroundColor(context.getColor(android.R.color.transparent));
+        vh.rightContainer.setBackgroundColor(context.getColor(android.R.color.transparent));
+        vh.tvOld.setText(pr.oldText);
+        vh.tvNew.setText(pr.newText);
+
         if (pr.leftType == DiffUtils.LineType.REMOVED) {
-            vh.leftGutter.setBackgroundColor(context.getColor(R.color.color_border_diff_deleted));
             vh.leftContainer.setBackgroundColor(context.getColor(R.color.color_diff_deleted_bg));
-            vh.tvOld.setTextColor(context.getColor(R.color.color_border_diff_deleted));
-        } else {
-            vh.leftGutter.setBackgroundColor(context.getColor(R.color.outline_variant));
-            vh.leftContainer.setBackgroundColor(context.getColor(R.color.surface));
-            vh.tvOld.setTextColor(context.getColor(R.color.on_surface));
         }
         if (pr.rightType == DiffUtils.LineType.ADDED) {
-            vh.rightGutter.setBackgroundColor(context.getColor(R.color.color_border_diff_added));
             vh.rightContainer.setBackgroundColor(context.getColor(R.color.color_diff_added_bg));
-            vh.tvNew.setTextColor(context.getColor(R.color.color_border_diff_added));
-        } else {
-            vh.rightGutter.setBackgroundColor(context.getColor(R.color.outline_variant));
-            vh.rightContainer.setBackgroundColor(context.getColor(R.color.surface));
-            vh.tvNew.setTextColor(context.getColor(R.color.on_surface));
         }
-        // Intraline highlights for changed lines
+
         if (pr.leftType == DiffUtils.LineType.REMOVED && pr.rightType == DiffUtils.LineType.ADDED) {
             String[] marked = DiffUtils.computeIntraline(pr.oldText, pr.newText);
-            setIntraline(vh.tvOld, marked[0], context.getColor(R.color.color_border_diff_deleted));
-            setIntraline(vh.tvNew, marked[1], context.getColor(R.color.color_border_diff_added));
-        } else {
-            vh.tvOld.setTypeface(Typeface.MONOSPACE, Typeface.NORMAL);
-            vh.tvNew.setTypeface(Typeface.MONOSPACE, Typeface.NORMAL);
-            vh.tvOld.setText(pr.oldText != null ? pr.oldText : "");
-            vh.tvNew.setText(pr.newText != null ? pr.newText : "");
+            setIntraline(vh.tvOld, marked[0], context.getColor(R.color.color_diff_deleted_bg));
+            setIntraline(vh.tvNew, marked[1], context.getColor(R.color.color_diff_added_bg));
         }
     }
 
@@ -255,14 +242,12 @@ public class SplitDiffAdapter extends RecyclerView.Adapter<RecyclerView.ViewHold
     }
 
     static class PairVH extends RecyclerView.ViewHolder {
-        View leftContainer, rightContainer, leftGutter, rightGutter;
+        View leftContainer, rightContainer;
         TextView tvOldLine, tvNewLine, tvOld, tvNew;
         PairVH(@NonNull View itemView) {
             super(itemView);
             leftContainer = itemView.findViewById(R.id.left_container);
             rightContainer = itemView.findViewById(R.id.right_container);
-            leftGutter = itemView.findViewById(R.id.left_gutter);
-            rightGutter = itemView.findViewById(R.id.right_gutter);
             tvOldLine = itemView.findViewById(R.id.tv_old_line);
             tvNewLine = itemView.findViewById(R.id.tv_new_line);
             tvOld = itemView.findViewById(R.id.tv_old_content);

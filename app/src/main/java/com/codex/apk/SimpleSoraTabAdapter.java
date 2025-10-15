@@ -282,17 +282,18 @@ public class SimpleSoraTabAdapter extends RecyclerView.Adapter<RecyclerView.View
                 editorViewHolder.splitMode = uiState.splitMode;
 
                 // Mode handling
+                final java.util.List<DiffUtils.DiffLine> displayLines = lines;
                 if (editorViewHolder.splitMode) {
                     // Split adapter
-                    SplitDiffAdapter splitAdapter = new SplitDiffAdapter(context, lines);
+                    SplitDiffAdapter splitAdapter = new SplitDiffAdapter(context, displayLines);
                     editorViewHolder.diffRecycler.setAdapter(splitAdapter);
                     if (editorViewHolder.btnToggleMode != null) editorViewHolder.btnToggleMode.setText("Split");
                 } else {
                     if (editorViewHolder.diffAdapter == null) {
-                        editorViewHolder.diffAdapter = new InlineDiffAdapter(context, lines);
+                        editorViewHolder.diffAdapter = new InlineDiffAdapter(context, displayLines);
                         editorViewHolder.diffRecycler.setAdapter(editorViewHolder.diffAdapter);
                     } else {
-                        editorViewHolder.diffAdapter.updateLines(lines);
+                        editorViewHolder.diffAdapter.updateLines(displayLines);
                         editorViewHolder.diffRecycler.setAdapter(editorViewHolder.diffAdapter);
                     }
                     if (editorViewHolder.btnToggleMode != null) editorViewHolder.btnToggleMode.setText("Inline");
@@ -308,8 +309,8 @@ public class SimpleSoraTabAdapter extends RecyclerView.Adapter<RecyclerView.View
                     View.OnClickListener nav = v -> {
                         int firstVisible = ((LinearLayoutManager) editorViewHolder.diffRecycler.getLayoutManager()).findFirstVisibleItemPosition();
                         java.util.List<Integer> changeRows = editorViewHolder.splitMode
-                                ? computeChangeRowsForSplit(lines)
-                                : computeChangeRowsForInline(lines);
+                                ? computeChangeRowsForSplit(displayLines)
+                                : computeChangeRowsForInline(displayLines);
                         int target = nextFrom(changeRows, firstVisible, v == editorViewHolder.btnNext);
                         if (target >= 0) editorViewHolder.diffRecycler.smoothScrollToPosition(target);
                     };

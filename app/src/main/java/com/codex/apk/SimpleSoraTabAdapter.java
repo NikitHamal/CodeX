@@ -46,20 +46,6 @@ public class SimpleSoraTabAdapter extends RecyclerView.Adapter<RecyclerView.View
     private final TabActionListener tabActionListener;
     private final FileManager fileManager;
     private final Map<Integer, ViewHolder> holders = new HashMap<>();
-    // LRU cache for parsed diffs per tabId with content hash to avoid re-parsing
-    private static final int MAX_DIFF_CACHE = 16;
-
-    private static class DiffCacheEntry {
-        java.util.List<DiffUtils.DiffLine> lines;
-        int hash;
-    }
-
-    private final LinkedHashMap<String, DiffCacheEntry> diffCache = new LinkedHashMap<String, DiffCacheEntry>(16, 0.75f, true) {
-        @Override
-        protected boolean removeEldestEntry(Map.Entry<String, DiffCacheEntry> eldest) {
-            return size() > MAX_DIFF_CACHE;
-        }
-    };
 
 
     // Current active tab position
@@ -99,30 +85,12 @@ public class SimpleSoraTabAdapter extends RecyclerView.Adapter<RecyclerView.View
         public CodeEditor codeEditor;
         public boolean isListenerAttached;
         public String currentTabId;
-        public View diffContainer;
-        public RecyclerView diffRecycler;
-        public RecyclerView diffRecyclerSplit;
-        public InlineDiffAdapter diffAdapter;
-        public android.widget.TextView diffFilename;
-        public android.widget.TextView diffAddedCount;
-        public android.widget.TextView diffRemovedCount;
-        public android.widget.TextView diffToggleInline;
-        public android.widget.TextView diffToggleSplit;
 
         public ViewHolder(@NonNull View itemView) {
             super(itemView);
             codeEditor = itemView.findViewById(R.id.code_editor);
-            diffContainer = itemView.findViewById(R.id.diff_container);
-            diffRecycler = itemView.findViewById(R.id.diff_recycler);
-            diffRecyclerSplit = itemView.findViewById(R.id.diff_recycler_split);
-            diffFilename = itemView.findViewById(R.id.diff_filename);
-            diffAddedCount = itemView.findViewById(R.id.diff_added_count);
-            diffRemovedCount = itemView.findViewById(R.id.diff_removed_count);
-            diffToggleInline = itemView.findViewById(R.id.diff_toggle_inline);
-            diffToggleSplit = itemView.findViewById(R.id.diff_toggle_split);
             isListenerAttached = false;
             currentTabId = null;
-            diffAdapter = null;
         }
     }
 
@@ -240,11 +208,6 @@ public class SimpleSoraTabAdapter extends RecyclerView.Adapter<RecyclerView.View
 
                 if (!codeEditor.getText().toString().equals(tabItem.getContent())) {
                     codeEditor.setText(tabItem.getContent());
-                }
-
-                codeEditor.setVisibility(View.VISIBLE);
-                if (editorViewHolder.diffContainer != null) {
-                    editorViewHolder.diffContainer.setVisibility(View.GONE);
                 }
 
                 if (position == activeTabPosition) {
@@ -474,11 +437,6 @@ public class SimpleSoraTabAdapter extends RecyclerView.Adapter<RecyclerView.View
         if (rawHolder instanceof ViewHolder) {
             ViewHolder holder = (ViewHolder) rawHolder;
             holders.remove(holder.getAdapterPosition());
-            // Detach diff adapter to help GC
-            if (holder.diffRecycler != null) {
-                holder.diffRecycler.setAdapter(null);
-            }
-            holder.diffAdapter = null;
         }
         super.onViewRecycled(rawHolder);
     }
@@ -488,35 +446,9 @@ public class SimpleSoraTabAdapter extends RecyclerView.Adapter<RecyclerView.View
     }
 
     /**
-     * Purge any cached parsed diff for a specific file/tab.
-     */
-    public void purgeDiffCacheForFile(File file) {
-        if (file == null) return;
-        String key = file.getAbsolutePath();
-        diffCache.remove(key);
-    }
-
-    /**
-     * Clear all diff caches.
-     */
-    public void clearDiffCaches() {
-        diffCache.clear();
-    }
-
-    /**
      * Clean up resources
      */
     public void cleanup() {
-        // Detach adapters and clear holder references
-        for (ViewHolder vh : holders.values()) {
-            if (vh != null && vh.diffRecycler != null) {
-                vh.diffRecycler.setAdapter(null);
-            }
-            if (vh != null) {
-                vh.diffAdapter = null;
-            }
-        }
         holders.clear();
-        clearDiffCaches();
     }
 }

@@ -9,6 +9,7 @@ import androidx.appcompat.widget.PopupMenu;
 
 import com.codex.apk.EditorActivity;
 import com.codex.apk.FileManager;
+import com.codex.apk.DiffViewerFragment;
 import com.codex.apk.R;
 import com.codex.apk.SimpleSoraTabAdapter;
 import com.codex.apk.TabItem;

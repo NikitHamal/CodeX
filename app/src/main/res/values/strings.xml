@@ -141,7 +141,4 @@
     <string name="python_run">python app.py</string>
     <string name="composer_install">composer install</string>
     <string name="php_serve">php -S localhost:%1$d</string>
-    <string name="inline">Inline</string>
-    <string name="split">Split</string>
-    <string name="diff_summary_format">+%1$d -%2$d</string>
 </resources>

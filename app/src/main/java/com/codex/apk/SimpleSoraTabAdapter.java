@@ -7,7 +7,6 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.FrameLayout;
 
 import androidx.annotation.NonNull;
 import androidx.core.content.ContextCompat;
@@ -47,6 +46,20 @@ public class SimpleSoraTabAdapter extends RecyclerView.Adapter<RecyclerView.View
     private final TabActionListener tabActionListener;
     private final FileManager fileManager;
     private final Map<Integer, ViewHolder> holders = new HashMap<>();
+    // LRU cache for parsed diffs per tabId with content hash to avoid re-parsing
+    private static final int MAX_DIFF_CACHE = 16;
+
+    private static class DiffCacheEntry {
+        java.util.List<DiffUtils.DiffLine> lines;
+        int hash;
+    }
+
+    private final LinkedHashMap<String, DiffCacheEntry> diffCache = new LinkedHashMap<String, DiffCacheEntry>(16, 0.75f, true) {
+        @Override
+        protected boolean removeEldestEntry(Map.Entry<String, DiffCacheEntry> eldest) {
+            return size() > MAX_DIFF_CACHE;
+        }
+    };
 
 
     // Current active tab position
@@ -65,7 +78,6 @@ public class SimpleSoraTabAdapter extends RecyclerView.Adapter<RecyclerView.View
      */
     private static final int VIEW_TYPE_EDITOR = 0;
     private static final int VIEW_TYPE_IMAGE = 1;
-    private static final int VIEW_TYPE_FRAGMENT = 2;
 
     public static class ImageViewHolder extends RecyclerView.ViewHolder {
         public android.widget.ImageView imageView;
@@ -76,22 +88,34 @@ public class SimpleSoraTabAdapter extends RecyclerView.Adapter<RecyclerView.View
         }
     }
 
-    public static class FragmentViewHolder extends RecyclerView.ViewHolder {
-        public FragmentViewHolder(@NonNull View itemView) {
-            super(itemView);
-        }
-    }
-
     public static class ViewHolder extends RecyclerView.ViewHolder {
         public CodeEditor codeEditor;
         public boolean isListenerAttached;
         public String currentTabId;
+        public View diffContainer;
+        public RecyclerView diffRecycler;
+        public RecyclerView diffRecyclerSplit;
+        public InlineDiffAdapter diffAdapter;
+        public android.widget.TextView diffFilename;
+        public android.widget.TextView diffAddedCount;
+        public android.widget.TextView diffRemovedCount;
+        public android.widget.TextView diffToggleInline;
+        public android.widget.TextView diffToggleSplit;
 
         public ViewHolder(@NonNull View itemView) {
             super(itemView);
             codeEditor = itemView.findViewById(R.id.code_editor);
+            diffContainer = itemView.findViewById(R.id.diff_container);
+            diffRecycler = itemView.findViewById(R.id.diff_recycler);
+            diffRecyclerSplit = itemView.findViewById(R.id.diff_recycler_split);
+            diffFilename = itemView.findViewById(R.id.diff_filename);
+            diffAddedCount = itemView.findViewById(R.id.diff_added_count);
+            diffRemovedCount = itemView.findViewById(R.id.diff_removed_count);
+            diffToggleInline = itemView.findViewById(R.id.diff_toggle_inline);
+            diffToggleSplit = itemView.findViewById(R.id.diff_toggle_split);
             isListenerAttached = false;
             currentTabId = null;
+            diffAdapter = null;
         }
     }
 
@@ -108,11 +132,7 @@ public class SimpleSoraTabAdapter extends RecyclerView.Adapter<RecyclerView.View
 
     @Override
     public int getItemViewType(int position) {
-        TabItem tabItem = openTabs.get(position);
-        if (tabItem.getTabType() == TabItem.TabType.FRAGMENT) {
-            return VIEW_TYPE_FRAGMENT;
-        }
-        String fileName = tabItem.getFileName().toLowerCase();
+        String fileName = openTabs.get(position).getFileName().toLowerCase();
         if (fileName.endsWith(".svg") || fileName.endsWith(".png") || fileName.endsWith(".jpg") || fileName.endsWith(".jpeg") || fileName.endsWith(".gif") || fileName.endsWith(".webp")) {
             return VIEW_TYPE_IMAGE;
         }
@@ -126,109 +146,209 @@ public class SimpleSoraTabAdapter extends RecyclerView.Adapter<RecyclerView.View
             View view = LayoutInflater.from(context).inflate(R.layout.item_image_tab, parent, false);
             return new ImageViewHolder(view);
         }
-        if (viewType == VIEW_TYPE_FRAGMENT) {
-            FrameLayout frameLayout = new FrameLayout(context);
-            frameLayout.setLayoutParams(new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-            frameLayout.setId(View.generateViewId());
-            return new FragmentViewHolder(frameLayout);
-        }
         View view = LayoutInflater.from(context).inflate(R.layout.item_editor_tab, parent, false);
         return new ViewHolder(view);
     }
 
     @Override
     public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
-        TabItem tabItem = openTabs.get(position);
-
-        switch (holder.getItemViewType()) {
-            case VIEW_TYPE_IMAGE:
-                ImageViewHolder imageViewHolder = (ImageViewHolder) holder;
-                try {
-                    com.caverock.androidsvg.SVG svg = com.caverock.androidsvg.SVG.getFromInputStream(new java.io.FileInputStream(tabItem.getFile()));
-                    if (svg.getDocumentWidth() != -1) {
-                        android.graphics.drawable.PictureDrawable drawable = new android.graphics.drawable.PictureDrawable(svg.renderToPicture());
-                        imageViewHolder.imageView.setImageDrawable(drawable);
-                    } else {
-                        // Not an SVG, or SVG parsing failed. Try to load as a bitmap.
-                        android.graphics.Bitmap bitmap = android.graphics.BitmapFactory.decodeFile(tabItem.getFile().getAbsolutePath());
-                        imageViewHolder.imageView.setImageBitmap(bitmap);
-                    }
-                } catch (Exception e) {
+        if (holder.getItemViewType() == VIEW_TYPE_IMAGE) {
+            ImageViewHolder imageViewHolder = (ImageViewHolder) holder;
+            TabItem tabItem = openTabs.get(position);
+            try {
+                com.caverock.androidsvg.SVG svg = com.caverock.androidsvg.SVG.getFromInputStream(new java.io.FileInputStream(tabItem.getFile()));
+                if (svg.getDocumentWidth() != -1) {
+                    android.graphics.drawable.PictureDrawable drawable = new android.graphics.drawable.PictureDrawable(svg.renderToPicture());
+                    imageViewHolder.imageView.setImageDrawable(drawable);
+                } else {
                     // Not an SVG, or SVG parsing failed. Try to load as a bitmap.
-                    try {
-                        android.graphics.Bitmap bitmap = android.graphics.BitmapFactory.decodeFile(tabItem.getFile().getAbsolutePath());
-                        imageViewHolder.imageView.setImageBitmap(bitmap);
-                    } catch (Exception ex) {
-                        Log.e(TAG, "Failed to load image: " + tabItem.getFileName(), ex);
-                        imageViewHolder.imageView.setImageResource(R.drawable.icon_file_round); // Fallback icon
-                    }
+                    android.graphics.Bitmap bitmap = android.graphics.BitmapFactory.decodeFile(tabItem.getFile().getAbsolutePath());
+                    imageViewHolder.imageView.setImageBitmap(bitmap);
                 }
-                break;
-
-            case VIEW_TYPE_FRAGMENT:
-                FragmentViewHolder fragmentViewHolder = (FragmentViewHolder) holder;
-                if (context instanceof EditorActivity) {
-                    EditorActivity activity = (EditorActivity) context;
-                    androidx.fragment.app.FragmentManager fragmentManager = activity.getSupportFragmentManager();
-                    androidx.fragment.app.FragmentTransaction transaction = fragmentManager.beginTransaction();
-                    transaction.replace(fragmentViewHolder.itemView.getId(), tabItem.getFragment());
-                    transaction.commit();
+            } catch (Exception e) {
+                // Not an SVG, or SVG parsing failed. Try to load as a bitmap.
+                try {
+                    android.graphics.Bitmap bitmap = android.graphics.BitmapFactory.decodeFile(tabItem.getFile().getAbsolutePath());
+                    imageViewHolder.imageView.setImageBitmap(bitmap);
+                } catch (Exception ex) {
+                    Log.e(TAG, "Failed to load image: " + tabItem.getFileName(), ex);
+                    imageViewHolder.imageView.setImageResource(R.drawable.icon_file_round); // Fallback icon
                 }
-                break;
+            }
+            return;
+        }
 
-            case VIEW_TYPE_EDITOR:
-                ViewHolder editorViewHolder = (ViewHolder) holder;
-                holders.put(position, editorViewHolder);
-                String tabId = tabItem.getFile().getAbsolutePath();
-                CodeEditor codeEditor = editorViewHolder.codeEditor;
+        ViewHolder editorViewHolder = (ViewHolder) holder;
+        holders.put(position, editorViewHolder);
+        if (position >= openTabs.size()) {
+            Log.e(TAG, "Position " + position + " is out of bounds for openTabs size " + openTabs.size());
+            return;
+        }
 
-                if (!tabId.equals(editorViewHolder.currentTabId)) {
-                    editorViewHolder.currentTabId = tabId;
-                    configureEditor(codeEditor, tabItem);
-                    codeEditor.setWordwrap(tabItem.isWrapEnabled());
-                    codeEditor.setEditable(!tabItem.isReadOnly());
+        TabItem tabItem = openTabs.get(position);
+        String tabId = tabItem.getFile().getAbsolutePath();
+        CodeEditor codeEditor = editorViewHolder.codeEditor;
+        boolean isDiffTab = tabItem.getFile().getName().startsWith("DIFF_");
 
-                    if (!editorViewHolder.isListenerAttached) {
-                        codeEditor.subscribeEvent(io.github.rosemoe.sora.event.ContentChangeEvent.class, (event, unsubscribe) -> {
-                            int currentPos = editorViewHolder.getAdapterPosition();
-                            if (currentPos != RecyclerView.NO_POSITION && currentPos < openTabs.size()) {
-                                TabItem currentTabItem = openTabs.get(currentPos);
-                                String newContent = codeEditor.getText().toString();
-                                if (!currentTabItem.getContent().equals(newContent)) {
-                                    currentTabItem.setContent(newContent);
-                                    currentTabItem.setModified(true);
-                                    if (tabActionListener != null) {
-                                        tabActionListener.onTabModifiedStateChanged();
-                                    }
-                                }
+        // Only reconfigure if this is a different tab
+        if (!tabId.equals(editorViewHolder.currentTabId)) {
+            editorViewHolder.currentTabId = tabId;
+
+            // Configure the editor only for new tabs (skip heavy setup for DIFF_ tabs)
+            if (!isDiffTab) {
+                configureEditor(codeEditor, tabItem);
+                // Apply persistent flags
+                codeEditor.setWordwrap(tabItem.isWrapEnabled());
+                codeEditor.setEditable(!tabItem.isReadOnly());
+            } else {
+                // For diff tabs, keep editor lightweight & disabled
+                codeEditor.setText("");
+                codeEditor.setEditable(false);
+            }
+
+            // Set up content change listener only once per tab
+            if (!editorViewHolder.isListenerAttached) {
+                codeEditor.subscribeEvent(io.github.rosemoe.sora.event.ContentChangeEvent.class, (event, unsubscribe) -> {
+                    // Get the current tab item for this holder
+                    int currentPos = editorViewHolder.getAdapterPosition();
+                    if (currentPos != RecyclerView.NO_POSITION && currentPos < openTabs.size()) {
+                        TabItem currentTabItem = openTabs.get(currentPos);
+                        String newContent = codeEditor.getText().toString();
+
+                        // Only update if content actually changed
+                        if (!currentTabItem.getContent().equals(newContent)) {
+                            // Update content immediately for responsive typing
+                            currentTabItem.setContent(newContent);
+                            currentTabItem.setModified(true);
+                            if (tabActionListener != null) {
+                                tabActionListener.onTabModifiedStateChanged();
                             }
-                        });
-                        editorViewHolder.isListenerAttached = true;
+                        }
                     }
-                }
+                });
+                editorViewHolder.isListenerAttached = true;
+            }
+        }
 
-                if (!codeEditor.getText().toString().equals(tabItem.getContent())) {
-                    codeEditor.setText(tabItem.getContent());
-                }
+        if (!isDiffTab) {
+            if (!codeEditor.getText().toString().equals(tabItem.getContent())) {
+                codeEditor.setText(tabItem.getContent());
+            }
+        }
 
-                if (position == activeTabPosition) {
-                    codeEditor.requestFocus();
-                    if (tabActionListener != null) {
-                        tabActionListener.onActiveTabChanged(tabItem.getFile());
-                    }
+        // Toggle between editor and diff view every bind to reflect latest state/content
+        if (isDiffTab) {
+            // Show diff container and inline list for now
+            codeEditor.setVisibility(View.GONE);
+            if (editorViewHolder.diffContainer != null) editorViewHolder.diffContainer.setVisibility(View.VISIBLE);
+            // Populate header details
+            if (editorViewHolder.diffFilename != null) {
+                String displayName = tabItem.getFile().getName();
+                if (displayName.startsWith("DIFF_")) displayName = displayName.substring(5);
+                editorViewHolder.diffFilename.setText(displayName);
+            }
+            String content = tabItem.getContent();
+            int[] counts = DiffUtils.countAddRemove(content);
+            if (editorViewHolder.diffAddedCount != null) editorViewHolder.diffAddedCount.setText("+" + counts[0]);
+            if (editorViewHolder.diffRemovedCount != null) editorViewHolder.diffRemovedCount.setText("-" + counts[1]);
+            // Toggle handlers
+            if (editorViewHolder.diffToggleInline != null) {
+                editorViewHolder.diffToggleInline.setOnClickListener(v -> {
+                    if (editorViewHolder.diffRecycler != null) editorViewHolder.diffRecycler.setVisibility(View.VISIBLE);
+                    if (editorViewHolder.diffRecyclerSplit != null) editorViewHolder.diffRecyclerSplit.setVisibility(View.GONE);
+                });
+            }
+            if (editorViewHolder.diffToggleSplit != null) {
+                editorViewHolder.diffToggleSplit.setOnClickListener(v -> {
+                    if (editorViewHolder.diffRecycler != null) editorViewHolder.diffRecycler.setVisibility(View.GONE);
+                    if (editorViewHolder.diffRecyclerSplit != null) editorViewHolder.diffRecyclerSplit.setVisibility(View.VISIBLE);
+                });
+            }
+            if (editorViewHolder.diffRecycler != null) {
+                editorViewHolder.diffRecycler.setVisibility(View.VISIBLE);
+                if (editorViewHolder.diffRecycler.getLayoutManager() == null) {
+                    editorViewHolder.diffRecycler.setLayoutManager(new LinearLayoutManager(context));
+                    editorViewHolder.diffRecycler.setHasFixedSize(true);
+                    editorViewHolder.diffRecycler.setItemViewCacheSize(64);
                 }
-                break;
+                // Parse and bind diff lines with LRU caching
+                String key = tabId;
+                int h = content != null ? content.hashCode() : 0;
+                java.util.List<DiffUtils.DiffLine> lines;
+                DiffCacheEntry entry = diffCache.get(key);
+                if (entry == null || entry.hash != h) {
+                    lines = DiffUtils.parseUnifiedDiff(content);
+                    DiffCacheEntry newEntry = new DiffCacheEntry();
+                    newEntry.lines = lines;
+                    newEntry.hash = h;
+                    diffCache.put(key, newEntry);
+                } else {
+                    lines = entry.lines;
+                }
+                if (editorViewHolder.diffAdapter == null) {
+                    editorViewHolder.diffAdapter = new InlineDiffAdapter(context, lines);
+                    editorViewHolder.diffRecycler.setAdapter(editorViewHolder.diffAdapter);
+                } else {
+                    editorViewHolder.diffAdapter.updateLines(lines);
+                }
+            }
+            // Prepare split view adapter scaffold (to be fully wired by SplitDiffAdapter)
+            if (editorViewHolder.diffRecyclerSplit != null) {
+                if (editorViewHolder.diffRecyclerSplit.getLayoutManager() == null) {
+                    editorViewHolder.diffRecyclerSplit.setLayoutManager(new LinearLayoutManager(context));
+                    editorViewHolder.diffRecyclerSplit.setHasFixedSize(true);
+                    editorViewHolder.diffRecyclerSplit.setItemViewCacheSize(64);
+                }
+                // Bind split adapter data from same unified lines
+                String key = tabId;
+                int h = content != null ? content.hashCode() : 0;
+                java.util.List<DiffUtils.DiffLine> lines;
+                DiffCacheEntry entry = diffCache.get(key);
+                if (entry == null || entry.hash != h) {
+                    lines = DiffUtils.parseUnifiedDiff(content);
+                    DiffCacheEntry newEntry = new DiffCacheEntry();
+                    newEntry.lines = lines;
+                    newEntry.hash = h;
+                    diffCache.put(key, newEntry);
+                } else {
+                    lines = entry.lines;
+                }
+                SplitDiffAdapter split = (SplitDiffAdapter) editorViewHolder.diffRecyclerSplit.getAdapter();
+                if (split == null) {
+                    split = new SplitDiffAdapter(context, lines);
+                    editorViewHolder.diffRecyclerSplit.setAdapter(split);
+                } else {
+                    split.setData(lines);
+                }
+            }
+        } else {
+            // Show normal editor
+            codeEditor.setVisibility(View.VISIBLE);
+            if (editorViewHolder.diffContainer != null) editorViewHolder.diffContainer.setVisibility(View.GONE);
+            if (editorViewHolder.diffRecycler != null) {
+                editorViewHolder.diffRecycler.setVisibility(View.GONE);
+                editorViewHolder.diffRecycler.setAdapter(null);
+                editorViewHolder.diffAdapter = null;
+            }
+            if (editorViewHolder.diffRecyclerSplit != null) {
+                editorViewHolder.diffRecyclerSplit.setVisibility(View.GONE);
+                editorViewHolder.diffRecyclerSplit.setAdapter(null);
+            }
+        }
+
+        // Apply active tab styling if this is the active tab
+        if (position == activeTabPosition) {
+            codeEditor.requestFocus();
+            if (tabActionListener != null) {
+                tabActionListener.onActiveTabChanged(tabItem.getFile());
+            }
         }
     }
 
     @Override
     public long getItemId(int position) {
         if (position >= 0 && position < openTabs.size()) {
-            TabItem item = openTabs.get(position);
-            if (item.getTabType() == TabItem.TabType.FRAGMENT) {
-                return item.getTitle().hashCode();
-            }
-            return item.getFile().getAbsolutePath().hashCode();
+            return openTabs.get(position).getFile().getAbsolutePath().hashCode();
         }
         return RecyclerView.NO_ID;
     }
@@ -375,12 +495,7 @@ public class SimpleSoraTabAdapter extends RecyclerView.Adapter<RecyclerView.View
             notifyItemChanged(activeTabPosition);
 
             if (tabActionListener != null) {
-                TabItem item = openTabs.get(position);
-                if (item.getTabType() == TabItem.TabType.FILE) {
-                    tabActionListener.onActiveTabChanged(item.getFile());
-                } else {
-                    tabActionListener.onActiveTabChanged(null);
-                }
+                tabActionListener.onActiveTabChanged(openTabs.get(position).getFile());
             }
         }
     }
@@ -438,6 +553,11 @@ public class SimpleSoraTabAdapter extends RecyclerView.Adapter<RecyclerView.View
         if (rawHolder instanceof ViewHolder) {
             ViewHolder holder = (ViewHolder) rawHolder;
             holders.remove(holder.getAdapterPosition());
+            // Detach diff adapter to help GC
+            if (holder.diffRecycler != null) {
+                holder.diffRecycler.setAdapter(null);
+            }
+            holder.diffAdapter = null;
         }
         super.onViewRecycled(rawHolder);
     }
@@ -447,9 +567,35 @@ public class SimpleSoraTabAdapter extends RecyclerView.Adapter<RecyclerView.View
     }
 
     /**
+     * Purge any cached parsed diff for a specific file/tab.
+     */
+    public void purgeDiffCacheForFile(File file) {
+        if (file == null) return;
+        String key = file.getAbsolutePath();
+        diffCache.remove(key);
+    }
+
+    /**
+     * Clear all diff caches.
+     */
+    public void clearDiffCaches() {
+        diffCache.clear();
+    }
+
+    /**
      * Clean up resources
      */
     public void cleanup() {
+        // Detach adapters and clear holder references
+        for (ViewHolder vh : holders.values()) {
+            if (vh != null && vh.diffRecycler != null) {
+                vh.diffRecycler.setAdapter(null);
+            }
+            if (vh != null) {
+                vh.diffAdapter = null;
+            }
+        }
         holders.clear();
+        clearDiffCaches();
     }
 }

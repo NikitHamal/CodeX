@@ -58,7 +58,7 @@ public class TabManager {
 
         if (activity.getCodeEditorFragment() == null) {
             activity.addPendingFileToOpen(file);
-            activity.getMainViewPager().setCurrentItem(1, true); // Switch to editor view
+            activity.getMainViewPager().setCurrentItem(1, false); // Switch to editor view
             return;
         }
 
@@ -67,7 +67,7 @@ public class TabManager {
                 // If file is already open, switch to it
                 activity.getCodeEditorFragment().setFileViewPagerCurrentItem(i, true);
                 // Also ensure we are on the Code tab (position 1)
-                activity.getMainViewPager().setCurrentItem(1, true);
+                activity.getMainViewPager().setCurrentItem(1, false);
                 return;
             }
         }
@@ -102,7 +102,7 @@ public class TabManager {
     public void openDiffTab(String fileName, String diffContent) {
         if (activity.getCodeEditorFragment() == null) {
             activity.addPendingDiffToOpen(fileName, diffContent);
-            activity.getMainViewPager().setCurrentItem(1, true); // Switch to editor view
+            activity.getMainViewPager().setCurrentItem(1, false); // Switch to editor view
             return;
         }
 
@@ -115,7 +115,7 @@ public class TabManager {
                 // If a diff tab is already open, we can't easily update it, so just switch to it.
                 // A more advanced implementation could update the fragment's content.
                 activity.getCodeEditorFragment().setFileViewPagerCurrentItem(i, true);
-                activity.getMainViewPager().setCurrentItem(1, true); // Switch to Code tab
+                activity.getMainViewPager().setCurrentItem(1, false); // Switch to Code tab
                 return;
             }
         }

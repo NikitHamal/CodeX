@@ -24,7 +24,8 @@ public class DiffViewerFragment extends Fragment {
     private InlineDiffAdapter mInlineAdapter;
     private SplitDiffAdapter mSplitAdapter;
     private TextView mFileNameTextView;
-    private TextView mDiffSummaryTextView;
+    private TextView mDiffAddedSummaryTextView;
+    private TextView mDiffRemovedSummaryTextView;
     private ToggleButton mToggleViewModeButton;
 
     public static DiffViewerFragment newInstance(String fileName, String diffContent) {
@@ -59,7 +60,8 @@ public class DiffViewerFragment extends Fragment {
 
         mRecyclerView = view.findViewById(R.id.diff_recycler_view);
         mFileNameTextView = view.findViewById(R.id.diff_file_name);
-        mDiffSummaryTextView = view.findViewById(R.id.diff_summary);
+        mDiffAddedSummaryTextView = view.findViewById(R.id.diff_added_summary);
+        mDiffRemovedSummaryTextView = view.findViewById(R.id.diff_removed_summary);
         mToggleViewModeButton = view.findViewById(R.id.toggle_view_mode);
 
         mRecyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
@@ -72,8 +74,11 @@ public class DiffViewerFragment extends Fragment {
                 mSplitAdapter = new SplitDiffAdapter(getContext(), diffLines);
                 updateAdapter();
 
-                int[] counts = DiffUtils.countAddRemoveFromContents("", getArguments().getString(ARG_DIFF_CONTENT));
-                mDiffSummaryTextView.setText(getString(R.string.diff_summary_format, counts[0], counts[1]));
+                int[] counts = DiffUtils.countAddRemove(getArguments().getString(ARG_DIFF_CONTENT));
+                mDiffAddedSummaryTextView.setText("+" + counts[0]);
+                mDiffAddedSummaryTextView.setTextColor(getResources().getColor(R.color.color_diff_added_bg));
+                mDiffRemovedSummaryTextView.setText("-" + counts[1]);
+                mDiffRemovedSummaryTextView.setTextColor(getResources().getColor(R.color.color_diff_deleted_bg));
             }
         });
 

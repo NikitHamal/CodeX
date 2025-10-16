@@ -22,11 +22,20 @@
             tools:text="index.html" />
 
         <TextView
-            android:id="@+id/diff_summary"
+            android:id="@+id/diff_added_summary"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="4dp"
+            android:textStyle="bold"
+            tools:text="+20" />
+
+        <TextView
+            android:id="@+id/diff_removed_summary"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginEnd="8dp"
-            tools:text="+20 -10" />
+            android:textStyle="bold"
+            tools:text="-10" />
 
         <ToggleButton
             android:id="@+id/toggle_view_mode"

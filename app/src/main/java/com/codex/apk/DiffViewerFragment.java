@@ -76,9 +76,9 @@ public class DiffViewerFragment extends Fragment {
 
                 int[] counts = DiffUtils.countAddRemove(getArguments().getString(ARG_DIFF_CONTENT));
                 mDiffAddedSummaryTextView.setText("+" + counts[0]);
-                mDiffAddedSummaryTextView.setTextColor(getResources().getColor(R.color.color_diff_added_bg));
+                mDiffAddedSummaryTextView.setTextColor(getResources().getColor(R.color.color_border_diff_added));
                 mDiffRemovedSummaryTextView.setText("-" + counts[1]);
-                mDiffRemovedSummaryTextView.setTextColor(getResources().getColor(R.color.color_diff_deleted_bg));
+                mDiffRemovedSummaryTextView.setTextColor(getResources().getColor(R.color.color_border_diff_deleted));
             }
         });
 

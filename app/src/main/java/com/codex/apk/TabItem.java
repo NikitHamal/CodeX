@@ -50,8 +50,13 @@ public class TabItem {
     }
     
     public File getFile() { return file; }
-    public void setFile(File file) { this.file = file; } 
-    public String getFileName() { return file.getName(); }
+    public void setFile(File file) { this.file = file; }
+    public String getFileName() {
+        if (file != null) {
+            return file.getName();
+        }
+        return title;
+    }
     public String getContent() { return content; }
     public void setContent(String content) { this.content = content; }
     public boolean isModified() { return modified; }

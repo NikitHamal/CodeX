@@ -104,7 +104,12 @@ public class CodeEditorFragment extends Fragment implements SimpleSoraTabAdapter
         fileViewPager.setAdapter(tabAdapter);
 
         new TabLayoutMediator(tabLayout, fileViewPager, (tab, position) -> {
-            tab.setText(openTabs.get(position).getFileName());
+            TabItem tabItem = openTabs.get(position);
+            if (tabItem.getTabType() == TabItem.TabType.FILE) {
+                tab.setText(tabItem.getFileName());
+            } else {
+                tab.setText(tabItem.getTitle());
+            }
             tab.view.setOnClickListener(v -> {
                 if (fileViewPager.getCurrentItem() == position) {
                     if (listener != null) {

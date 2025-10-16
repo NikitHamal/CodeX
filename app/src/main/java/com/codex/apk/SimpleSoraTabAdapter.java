@@ -7,6 +7,7 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.FrameLayout;
 
 import androidx.annotation.NonNull;
 import androidx.core.content.ContextCompat;
@@ -126,10 +127,10 @@ public class SimpleSoraTabAdapter extends RecyclerView.Adapter<RecyclerView.View
             return new ImageViewHolder(view);
         }
         if (viewType == VIEW_TYPE_FRAGMENT) {
-            View view = new View(context);
-            view.setLayoutParams(new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-            view.setId(View.generateViewId());
-            return new FragmentViewHolder(view);
+            FrameLayout frameLayout = new FrameLayout(context);
+            frameLayout.setLayoutParams(new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+            frameLayout.setId(View.generateViewId());
+            return new FragmentViewHolder(frameLayout);
         }
         View view = LayoutInflater.from(context).inflate(R.layout.item_editor_tab, parent, false);
         return new ViewHolder(view);

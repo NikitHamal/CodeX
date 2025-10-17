@@ -843,7 +843,42 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                     }
                 } catch (Exception ignore) {}
             } else {
-                msg.setContent(partialResponse != null ? partialResponse : "");
+                String pr = partialResponse != null ? partialResponse : "";
+                boolean suppressed = false;
+                // Suppress raw tool_call JSON from being shown to the user; show a planning placeholder + chips instead
+                try {
+                    String normalized = extractJsonFromCodeBlock(pr);
+                    String candidate = normalized != null ? normalized : pr;
+                    if (looksLikeJson(candidate)) {
+                        com.google.gson.JsonObject obj = com.google.gson.JsonParser.parseString(candidate).getAsJsonObject();
+                        if (obj.has("action") && "tool_call".equalsIgnoreCase(obj.get("action").getAsString())) {
+                            suppressed = true;
+                            msg.setContent("Planning tools…");
+                            java.util.List<ChatMessage.ToolUsage> planned = new java.util.ArrayList<>();
+                            if (obj.has("tool_calls") && obj.get("tool_calls").isJsonArray()) {
+                                com.google.gson.JsonArray arr = obj.getAsJsonArray("tool_calls");
+                                for (int i = 0; i < Math.min(5, arr.size()); i++) {
+                                    com.google.gson.JsonObject c = arr.get(i).getAsJsonObject();
+                                    String name = c.has("name") ? c.get("name").getAsString() : "tool";
+                                    ChatMessage.ToolUsage tu = new ChatMessage.ToolUsage(name);
+                                    tu.status = "running";
+                                    if (c.has("args") && c.get("args").isJsonObject()) {
+                                        tu.argsJson = c.get("args").getAsJsonObject().toString();
+                                        if (c.get("args").getAsJsonObject().has("path")) {
+                                            tu.filePath = c.get("args").getAsJsonObject().get("path").getAsString();
+                                        }
+                                    }
+                                    planned.add(tu);
+                                }
+                            }
+                            msg.setToolUsages(planned);
+                        }
+                    }
+                } catch (Exception ignore) {}
+                if (!suppressed) {
+                    msg.setContent(pr);
+                    msg.setToolUsages(null);
+                }
                 // Clear thinking content when we get a final response
                 msg.setThinkingContent(null);
             }

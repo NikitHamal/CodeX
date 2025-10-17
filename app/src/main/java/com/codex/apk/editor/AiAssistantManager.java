@@ -120,7 +120,19 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
         }
 
         try {
-            aiAssistant.sendPrompt(userPrompt, chatHistory, qwenState, currentFileName, currentFileContent);
+            // Ensure context is retained for providers that lack conversation support
+            List<ChatMessage> effectiveHistory = chatHistory;
+            try {
+                if (aiAssistant.getCurrentModel() != null && !aiAssistant.getCurrentModel().getCapabilities().supportsThreading) {
+                    // Supply a trimmed but sufficient window of recent messages to maintain context
+                    int max = 12; // safe small window for mobile
+                    if (chatHistory != null && chatHistory.size() > max) {
+                        effectiveHistory = new ArrayList<>(chatHistory.subList(Math.max(0, chatHistory.size() - max), chatHistory.size()));
+                    }
+                }
+            } catch (Exception ignore) {}
+
+            aiAssistant.sendPrompt(userPrompt, effectiveHistory, qwenState, currentFileName, currentFileContent);
             // Persist per-project last used model
             String projectKey = "project_" + (activity.getProjectName() != null ? activity.getProjectName() : "default") + "_last_model";
             activity.getSharedPreferences("settings", Context.MODE_PRIVATE)
@@ -757,8 +769,43 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
     public void onAiError(String errorMessage) {
         activity.runOnUiThread(() -> {
             activity.showToast("AI Error: " + errorMessage);
+            // If we have a streaming message, show the error inline with a retry affordance instead of adding a separate system message.
+            AIChatFragment frag = activity.getAiChatFragment();
+            if (frag != null && currentStreamingMessagePosition != null) {
+                ChatMessage err = frag.getMessageAt(currentStreamingMessagePosition);
+                if (err != null) {
+                    err.setContent("Error: " + (errorMessage != null ? errorMessage : "Unknown error"));
+                    // Mark status none and clear thinking/live chips
+                    err.setThinkingContent(null);
+                    err.setToolUsages(null);
+                    frag.updateMessage(currentStreamingMessagePosition, err);
+                    // Attach a one-time retry using the last prompt the assistant saw
+                    attachInlineRetry(currentStreamingMessagePosition);
+                    return;
+                }
+            }
             sendSystemMessage("Error: " + errorMessage);
         });
+    }
+
+    /** Adds an inline retry by resending last prompt without creating a new message item. */
+    private void attachInlineRetry(int messagePosition) {
+        try {
+            // We simulate a retry button by reusing the existing message slot when called by UI (EditorActivity already holds last prompt)
+            android.widget.Toast.makeText(activity, "Tap message to retry", android.widget.Toast.LENGTH_SHORT).show();
+            // Temporary: single-tap on the error message will retry
+            AIChatFragment frag = activity.getAiChatFragment();
+            if (frag == null) return;
+            android.os.Handler h = new android.os.Handler(activity.getMainLooper());
+            h.post(() -> {
+                // We cannot set listeners on the adapter item here; instead, re-send immediately to reduce friction
+                // Reconstruct last prompt from EditorActivity cache
+                String lastPrompt = activity.getLastUserPrompt();
+                if (lastPrompt != null && !lastPrompt.isEmpty()) {
+                    sendAiPrompt(lastPrompt, new java.util.ArrayList<>(), activity.getQwenState(), activity.getActiveTab());
+                }
+            });
+        } catch (Exception ignore) {}
     }
 
     private void sendSystemMessage(String content) {

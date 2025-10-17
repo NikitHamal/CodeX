@@ -56,6 +56,8 @@ public class EditorActivity extends AppCompatActivity implements
     // Core project properties (still kept here as they define the context of the activity)
     private String projectPath;
     private String projectName;
+    // Cache last user prompt to allow inline retry without creating a new message
+    private String lastUserPrompt;
     private File projectDir;
     private FileManager fileManager; // FileManager is a core utility, might stay here or be managed by a dedicated utility manager
     private DialogHelper dialogHelper; // DialogHelper is a core utility, might stay here or be managed by a dedicated utility manager
@@ -350,6 +352,7 @@ public class EditorActivity extends AppCompatActivity implements
 
     @Override
     public void sendAiPrompt(String userPrompt, List<ChatMessage> chatHistory, QwenConversationState qwenState) {
+        this.lastUserPrompt = userPrompt;
         tabManager.getActiveTabItem(); // Ensure active tab is retrieved before sending prompt
         aiAssistantManager.sendAiPrompt(userPrompt, chatHistory, qwenState, tabManager.getActiveTabItem()); // Delegate to AiAssistantManager
     }
@@ -447,6 +450,8 @@ public class EditorActivity extends AppCompatActivity implements
     public QwenConversationState getQwenState() {
         return aiChatFragment != null ? aiChatFragment.getQwenState() : new QwenConversationState();
     }
+
+    public String getLastUserPrompt() { return lastUserPrompt; }
 
     // Public methods for DialogHelper/FileTreeAdapter to call back to EditorActivity for manager actions
     public void showNewFileDialog(File parentDirectory) {

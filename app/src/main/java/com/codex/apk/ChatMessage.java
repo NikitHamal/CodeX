@@ -166,12 +166,14 @@ public class ChatMessage {
         public String filePath;              // Key file path affected/read
         public int addedLines;               // quick metrics for diffs
         public int removedLines;
+        public List<String> filePaths;       // Aggregated related paths (for grouping)
 
         public ToolUsage(String name) {
             this.name = name;
             this.status = "pending";
             this.ok = false;
             this.durationMs = 0L;
+            this.filePaths = new ArrayList<>();
         }
     }
 

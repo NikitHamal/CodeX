@@ -533,6 +533,13 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                                         } else if (exec.has("results")) {
                                             uiUsage.addedLines = exec.getAsJsonArray("results").size();
                                         }
+                                        // If we can infer multiple file paths, store them
+                                        if (exec.has("files")) {
+                                            for (int j = 0; j < Math.min(5, exec.getAsJsonArray("files").size()); j++) {
+                                                JsonObject f = exec.getAsJsonArray("files").get(j).getAsJsonObject();
+                                                if (f.has("name")) uiUsage.filePaths.add(f.get("name").getAsString());
+                                            }
+                                        }
                                     } else if ("readFile".equals(name) && exec.has("content")) {
                                         String content = exec.get("content").getAsString();
                                         uiUsage.addedLines = countLines(content);

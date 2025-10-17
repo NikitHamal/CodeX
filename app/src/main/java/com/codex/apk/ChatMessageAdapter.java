@@ -546,10 +546,11 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
         }
     }
 
-    static class ToolsUsedAdapter extends RecyclerView.Adapter<ToolsUsedAdapter.ToolViewHolder> {
+        static class ToolsUsedAdapter extends RecyclerView.Adapter<ToolsUsedAdapter.ToolViewHolder> {
         interface OnToolClick { void onViewResult(ChatMessage.ToolUsage usage); }
         private final List<ChatMessage.ToolUsage> tools;
         private final OnToolClick listener;
+        private final java.util.Map<String, Boolean> collapsedByTool = new java.util.HashMap<>();
         ToolsUsedAdapter(List<ChatMessage.ToolUsage> tools, OnToolClick listener) {
             this.tools = tools != null ? tools : new ArrayList<>();
             this.listener = listener;
@@ -562,7 +563,7 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
         @Override public int getItemCount() { return tools.size(); }
 
         static class ToolViewHolder extends RecyclerView.ViewHolder {
-            TextView name; TextView status; TextView args; TextView action; TextView meta;
+            TextView name; TextView status; TextView args; TextView action; TextView meta; TextView toggle;
             private final OnToolClick listener;
             ToolViewHolder(View itemView, OnToolClick listener) {
                 super(itemView);
@@ -572,13 +573,17 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
                 args = itemView.findViewById(R.id.text_tool_args);
                 action = itemView.findViewById(R.id.button_view_result);
                 meta = itemView.findViewById(R.id.text_tool_meta);
+                toggle = itemView.findViewById(R.id.button_toggle);
             }
             void bind(ChatMessage.ToolUsage u) {
                 name.setText(u.name);
-                status.setText(u.ok ? "OK" : "Failed");
+                String statusText = u.state != null ? u.state : (u.ok ? "ok" : "failed");
+                if ("running".equals(statusText)) statusText = "running";
+                status.setText(statusText.toUpperCase());
                 if (meta != null) {
                     String when = new java.text.SimpleDateFormat("HH:mm:ss").format(new java.util.Date(u.startedAtMs));
-                    meta.setText(when + " • " + u.durationMs + " ms");
+                    String suffix = u.resultCount > 0 ? (" • " + u.resultCount + " result" + (u.resultCount == 1 ? "" : "s")) : "";
+                    meta.setText(when + " • " + u.durationMs + " ms" + suffix);
                 }
                 try {
                     String prettyArgs = u.argsJson;
@@ -598,6 +603,26 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
                     android.widget.Toast.makeText(v.getContext(), "Args copied", android.widget.Toast.LENGTH_SHORT).show();
                     return true;
                 });
+
+                if (toggle != null) {
+                    // Collapse args preview for repeated tool names
+                    boolean collapsed = false;
+                    try {
+                        ToolsUsedAdapter adapter = (ToolsUsedAdapter) ((RecyclerView) itemView.getParent()).getAdapter();
+                        if (adapter != null) {
+                            Boolean c = adapter.collapsedByTool.get(u.name);
+                            collapsed = c != null && c;
+                            toggle.setText(collapsed ? "Expand" : "Collapse");
+                            args.setVisibility(collapsed ? View.GONE : View.VISIBLE);
+                            toggle.setOnClickListener(v -> {
+                                boolean newState = !((adapter.collapsedByTool.get(u.name) != null && adapter.collapsedByTool.get(u.name)));
+                                adapter.collapsedByTool.put(u.name, newState);
+                                toggle.setText(newState ? "Expand" : "Collapse");
+                                args.setVisibility(newState ? View.GONE : View.VISIBLE);
+                            });
+                        }
+                    } catch (Exception ignore) {}
+                }
             }
         }
     }

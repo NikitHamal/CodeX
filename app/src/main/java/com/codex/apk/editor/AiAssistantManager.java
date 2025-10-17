@@ -459,6 +459,25 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                         File projectDir = activity.getProjectDirectory();
                         // Build a UI-friendly ToolUsage list
                         java.util.List<ChatMessage.ToolUsage> toolUsages = new java.util.ArrayList<>();
+
+                        // Create a streaming tools message upfront so users see activity immediately
+                        ChatMessage toolsMsg = new ChatMessage(
+                                ChatMessage.SENDER_AI,
+                                "Running tools…",
+                                null,
+                                null,
+                                aiAssistant != null && aiAssistant.getCurrentModel() != null ? aiAssistant.getCurrentModel().getDisplayName() : "Assistant",
+                                System.currentTimeMillis(),
+                                maybe.toString(),
+                                null,
+                                ChatMessage.STATUS_NONE
+                        );
+                        toolsMsg.setToolUsages(toolUsages);
+                        AIChatFragment preFrag = activity.getAiChatFragment();
+                        final int[] toolsMsgPos = new int[]{-1};
+                        if (preFrag != null) {
+                            toolsMsgPos[0] = preFrag.addMessage(toolsMsg);
+                        }
                         for (int i = 0; i < calls.size(); i++) {
                             try {
                                 JsonObject c = calls.get(i).getAsJsonObject();
@@ -467,6 +486,13 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                                 JsonObject res = new JsonObject();
                                 res.addProperty("name", name);
                                 long startedAt = System.currentTimeMillis();
+                                // Mark running
+                                ChatMessage.ToolUsage pending = new ChatMessage.ToolUsage(name, args.toString(), "{}", false, System.currentTimeMillis(), 0L, null);
+                                pending.state = "running";
+                                toolUsages.add(pending);
+                                // update UI with running state
+                                if (preFrag != null && toolsMsgPos[0] >= 0) preFrag.updateMessage(toolsMsgPos[0], toolsMsg);
+
                                 JsonObject exec = ToolExecutor.execute(projectDir, name, args);
                                 long duration = Math.max(0L, System.currentTimeMillis() - startedAt);
                                 res.add("result", exec);
@@ -475,7 +501,14 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                                 boolean ok = exec.has("ok") && exec.get("ok").getAsBoolean();
                                 String argsJson = args.toString();
                                 String resultJson = exec.toString();
-                                toolUsages.add(new ChatMessage.ToolUsage(name, argsJson, resultJson, ok, startedAt, duration, null));
+                                // update last pending entry
+                                pending.state = ok ? "ok" : "failed";
+                                pending.resultCount = estimateResultCount(name, exec);
+                                ChatMessage.ToolUsage finalized = new ChatMessage.ToolUsage(name, argsJson, resultJson, ok, startedAt, duration, null);
+                                finalized.resultCount = pending.resultCount;
+                                // replace pending with finalized
+                                toolUsages.set(toolUsages.size() - 1, finalized);
+                                if (preFrag != null && toolsMsgPos[0] >= 0) preFrag.updateMessage(toolsMsgPos[0], toolsMsg);
                             } catch (Exception inner) {
                                 JsonObject res = new JsonObject();
                                 res.addProperty("name", "unknown");
@@ -486,27 +519,19 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                                 results.add(res);
                                 Log.w(TAG, "Error executing tool", inner);
 
-                                toolUsages.add(new ChatMessage.ToolUsage("unknown", "{}", err.toString(), false, System.currentTimeMillis(), 0L, null));
+                                ChatMessage.ToolUsage failed = new ChatMessage.ToolUsage("unknown", "{}", err.toString(), false, System.currentTimeMillis(), 0L, null);
+                                failed.state = "failed";
+                                toolUsages.add(failed);
+                                if (preFrag != null && toolsMsgPos[0] >= 0) preFrag.updateMessage(toolsMsgPos[0], toolsMsg);
                             }
                         }
-                        // Emit a chat message showing the tools used
+                        // Finalize the streaming tools message content
                         try {
                             AIChatFragment frag = activity.getAiChatFragment();
-                            if (frag != null && !toolUsages.isEmpty()) {
+                            if (frag != null && toolsMsgPos[0] >= 0) {
                                 String contentMsg = "Executed " + toolUsages.size() + " tool" + (toolUsages.size() == 1 ? "" : "s") + ".";
-                                ChatMessage toolsMsg = new ChatMessage(
-                                        ChatMessage.SENDER_AI,
-                                        contentMsg,
-                                        null,
-                                        null,
-                                        aiAssistant != null && aiAssistant.getCurrentModel() != null ? aiAssistant.getCurrentModel().getDisplayName() : "Assistant",
-                                        System.currentTimeMillis(),
-                                        maybe.toString(),
-                                        null,
-                                        ChatMessage.STATUS_NONE
-                                );
-                                toolsMsg.setToolUsages(toolUsages);
-                                frag.addMessage(toolsMsg);
+                                toolsMsg.setContent(contentMsg);
+                                frag.updateMessage(toolsMsgPos[0], toolsMsg);
                             }
                         } catch (Exception ignore) {}
                         String continuation = ToolExecutor.buildToolResultContinuation(results);
@@ -594,6 +619,28 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                 }
             }
         });
+    }
+
+    // Heuristic to compute a meaningful result count to show inline in tools list
+    private int estimateResultCount(String toolName, com.google.gson.JsonObject exec) {
+        try {
+            if (exec == null) return 0;
+            if (exec.has("matches") && exec.get("matches").isJsonArray()) return exec.getAsJsonArray("matches").size();
+            if (exec.has("results") && exec.get("results").isJsonArray()) return exec.getAsJsonArray("results").size();
+            if (exec.has("files") && exec.get("files").isJsonArray()) return exec.getAsJsonArray("files").size();
+            if (exec.has("tree")) {
+                String t = exec.get("tree").getAsString();
+                int lines = 0; for (int i = 0; i < t.length(); i++) if (t.charAt(i) == '\n') lines++;
+                return Math.max(1, lines);
+            }
+            if (exec.has("content")) {
+                String c = exec.get("content").getAsString();
+                // rough count of lines as results
+                int lines = 0; for (int i = 0; i < c.length(); i++) if (c.charAt(i) == '\n') lines++;
+                return Math.max(1, lines);
+            }
+        } catch (Exception ignore) {}
+        return 0;
     }
 
     private String buildFileChangeSummary(List<ChatMessage.FileActionDetail> details) {

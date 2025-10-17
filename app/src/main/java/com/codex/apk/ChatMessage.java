@@ -164,9 +164,12 @@ public class ChatMessage {
         public final long startedAtMs; // epoch millis
         public final long durationMs; // duration
         public final String preview; // short result preview for list
+        public String state; // running | ok | failed
+        public int resultCount; // parsed count for files/matches/results
 
         public ToolUsage(String name, String argsJson, String resultJson, boolean ok) {
             this(name, argsJson, resultJson, ok, System.currentTimeMillis(), 0L, null);
+            this.state = ok ? "ok" : "failed";
         }
 
         public ToolUsage(String name, String argsJson, String resultJson, boolean ok, long startedAtMs, long durationMs, String preview) {
@@ -177,6 +180,8 @@ public class ChatMessage {
             this.startedAtMs = startedAtMs;
             this.durationMs = durationMs;
             this.preview = preview != null ? preview : buildPreview(this.resultJson);
+            this.state = ok ? "ok" : "failed";
+            this.resultCount = 0;
         }
 
         private static String buildPreview(String json) {

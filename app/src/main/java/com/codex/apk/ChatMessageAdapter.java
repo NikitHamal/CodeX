@@ -108,8 +108,8 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
         @Override
         public int getItemCount() { return steps.size(); }
         static class StepViewHolder extends RecyclerView.ViewHolder {
-            TextView title; TextView status;
-            StepViewHolder(View itemView) { super(itemView); title = itemView.findViewById(R.id.text_step_title); status = itemView.findViewById(R.id.text_step_status); }
+            TextView title; TextView status; TextView open;
+            StepViewHolder(View itemView) { super(itemView); title = itemView.findViewById(R.id.text_step_title); status = itemView.findViewById(R.id.text_step_status); open = itemView.findViewById(R.id.text_step_open); }
             void bind(ChatMessage.PlanStep step) {
                 title.setText(step.title);
                 String s = step.status != null ? step.status : "pending";
@@ -142,6 +142,13 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
                     dialog.show();
                     return true;
                 });
+
+                if (open != null) {
+                    open.setOnClickListener(v -> {
+                        // Reuse long-press dialog on click
+                        itemView.performLongClick();
+                    });
+                }
             }
             private String capitalize(String x) { return x.length() > 0 ? Character.toUpperCase(x.charAt(0)) + x.substring(1) : x; }
         }
@@ -318,7 +325,10 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
             View dialogView = LayoutInflater.from(context).inflate(R.layout.dialog_tool_result, null);
             TextView title = dialogView.findViewById(R.id.text_tool_title);
             TextView payload = dialogView.findViewById(R.id.text_tool_payload);
+            TextView argsPayload = dialogView.findViewById(R.id.text_tool_args_payload);
+            MaterialButton copyArgs = dialogView.findViewById(R.id.button_copy_tool_args);
             MaterialButton copy = dialogView.findViewById(R.id.button_copy_tool_result);
+            MaterialButton close = dialogView.findViewById(R.id.button_close);
             title.setText("Result: " + toolName);
             String computedPretty = resultJson;
             try {
@@ -327,12 +337,26 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
             } catch (Exception ignore) {}
             final String pretty = computedPretty; // effectively final for lambda
             payload.setText(pretty);
+            String argsText = "";
+            try { argsText = ((org.json.JSONObject) null).toString(); } catch (Exception ignore) {}
+            // We don't have args here; they are embedded in the ToolUsage item click; populate via outer binder using tag
+            Object tagArgs = dialogView.getTag();
+            if (tagArgs instanceof String) argsText = (String) tagArgs;
+            argsPayload.setText(argsText != null ? argsText : "{}");
+
             AlertDialog dialog = new AlertDialog.Builder(context).setView(dialogView).create();
+            final String finalArgs = argsText;
+            copyArgs.setOnClickListener(v -> {
+                android.content.ClipboardManager cb = (android.content.ClipboardManager) context.getSystemService(Context.CLIPBOARD_SERVICE);
+                if (cb != null) cb.setPrimaryClip(android.content.ClipData.newPlainText("tool_args", finalArgs != null ? finalArgs : ""));
+                android.widget.Toast.makeText(context, "Copied", android.widget.Toast.LENGTH_SHORT).show();
+            });
             copy.setOnClickListener(v -> {
                 android.content.ClipboardManager cb = (android.content.ClipboardManager) context.getSystemService(Context.CLIPBOARD_SERVICE);
                 if (cb != null) cb.setPrimaryClip(android.content.ClipData.newPlainText("tool_result", pretty));
                 android.widget.Toast.makeText(context, "Copied", android.widget.Toast.LENGTH_SHORT).show();
             });
+            close.setOnClickListener(v -> dialog.dismiss());
             dialog.show();
         }
 
@@ -538,7 +562,7 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
         @Override public int getItemCount() { return tools.size(); }
 
         static class ToolViewHolder extends RecyclerView.ViewHolder {
-            TextView name; TextView status; TextView args; TextView action;
+            TextView name; TextView status; TextView args; TextView action; TextView meta;
             private final OnToolClick listener;
             ToolViewHolder(View itemView, OnToolClick listener) {
                 super(itemView);
@@ -547,10 +571,15 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
                 status = itemView.findViewById(R.id.text_tool_status);
                 args = itemView.findViewById(R.id.text_tool_args);
                 action = itemView.findViewById(R.id.button_view_result);
+                meta = itemView.findViewById(R.id.text_tool_meta);
             }
             void bind(ChatMessage.ToolUsage u) {
                 name.setText(u.name);
                 status.setText(u.ok ? "OK" : "Failed");
+                if (meta != null) {
+                    String when = new java.text.SimpleDateFormat("HH:mm:ss").format(new java.util.Date(u.startedAtMs));
+                    meta.setText(when + " • " + u.durationMs + " ms");
+                }
                 try {
                     String prettyArgs = u.argsJson;
                     com.google.gson.JsonElement el = com.google.gson.JsonParser.parseString(u.argsJson);
@@ -561,6 +590,14 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
                     args.setText(compact);
                 } catch (Exception e) { args.setText(u.argsJson); }
                 action.setOnClickListener(v -> { if (listener != null) listener.onViewResult(u); });
+                // Store args JSON in the dialog view tag when opening
+                action.setOnLongClickListener(v -> {
+                    // Long-press: quick copy args
+                    android.content.ClipboardManager cb = (android.content.ClipboardManager) v.getContext().getSystemService(Context.CLIPBOARD_SERVICE);
+                    if (cb != null) cb.setPrimaryClip(android.content.ClipData.newPlainText("tool_args", u.argsJson));
+                    android.widget.Toast.makeText(v.getContext(), "Args copied", android.widget.Toast.LENGTH_SHORT).show();
+                    return true;
+                });
             }
         }
     }

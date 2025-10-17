@@ -7,30 +7,61 @@
     android:padding="8dp"
     android:gravity="center_vertical">
 
-    <TextView
-        android:id="@+id/text_step_title"
+    <!-- Timeline dot -->
+    <View
+        android:id="@+id/view_timeline_dot"
+        android:layout_width="10dp"
+        android:layout_height="10dp"
+        android:background="@drawable/rounded_label_background"/>
+
+    <!-- Connecting line -->
+    <View
+        android:id="@+id/view_timeline_line"
+        android:layout_width="2dp"
+        android:layout_height="match_parent"
+        android:layout_marginStart="6dp"
+        android:background="@color/surface_container"/>
+
+    <LinearLayout
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_weight="1"
-        android:text="Create HTML scaffold"
-        android:textColor="@color/on_surface"
-        android:textSize="13sp"
-        android:singleLine="true"
-        android:ellipsize="end" />
+        android:orientation="vertical"
+        android:layout_marginStart="8dp">
+
+        <TextView
+            android:id="@+id/text_step_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Create HTML scaffold"
+            android:textColor="@color/on_surface"
+            android:textSize="13sp"
+            android:singleLine="true"
+            android:ellipsize="end" />
+
+        <TextView
+            android:id="@+id/text_step_status"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
+            android:paddingTop="4dp"
+            android:paddingBottom="4dp"
+            android:background="@drawable/rounded_label_background"
+            android:text="Pending"
+            android:textColor="@color/on_secondary_container"
+            android:textSize="10sp"
+            android:textStyle="bold" />
+    </LinearLayout>
 
     <TextView
-        android:id="@+id/text_step_status"
+        android:id="@+id/text_step_open"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginStart="8dp"
-        android:paddingStart="8dp"
-        android:paddingEnd="8dp"
-        android:paddingTop="4dp"
-        android:paddingBottom="4dp"
-        android:background="@drawable/rounded_label_background"
-        android:text="Pending"
-        android:textColor="@color/on_secondary_container"
-        android:textSize="10sp"
-        android:textStyle="bold" />
+        android:text="Details"
+        android:textColor="@color/primary"
+        android:textSize="12sp"
+        android:padding="4dp"/>
 
 </LinearLayout>

@@ -466,14 +466,16 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                                 JsonObject args = c.has("args") && c.get("args").isJsonObject() ? c.getAsJsonObject("args") : new JsonObject();
                                 JsonObject res = new JsonObject();
                                 res.addProperty("name", name);
+                                long startedAt = System.currentTimeMillis();
                                 JsonObject exec = ToolExecutor.execute(projectDir, name, args);
+                                long duration = Math.max(0L, System.currentTimeMillis() - startedAt);
                                 res.add("result", exec);
                                 results.add(res);
 
                                 boolean ok = exec.has("ok") && exec.get("ok").getAsBoolean();
                                 String argsJson = args.toString();
                                 String resultJson = exec.toString();
-                                toolUsages.add(new ChatMessage.ToolUsage(name, argsJson, resultJson, ok));
+                                toolUsages.add(new ChatMessage.ToolUsage(name, argsJson, resultJson, ok, startedAt, duration, null));
                             } catch (Exception inner) {
                                 JsonObject res = new JsonObject();
                                 res.addProperty("name", "unknown");
@@ -484,7 +486,7 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                                 results.add(res);
                                 Log.w(TAG, "Error executing tool", inner);
 
-                                toolUsages.add(new ChatMessage.ToolUsage("unknown", "{}", err.toString(), false));
+                                toolUsages.add(new ChatMessage.ToolUsage("unknown", "{}", err.toString(), false, System.currentTimeMillis(), 0L, null));
                             }
                         }
                         // Emit a chat message showing the tools used

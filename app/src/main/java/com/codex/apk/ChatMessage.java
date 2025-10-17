@@ -161,12 +161,29 @@ public class ChatMessage {
         public final String argsJson; // JSON string of arguments
         public final String resultJson; // JSON string result (may be truncated)
         public final boolean ok; // execution success flag
+        public final long startedAtMs; // epoch millis
+        public final long durationMs; // duration
+        public final String preview; // short result preview for list
 
         public ToolUsage(String name, String argsJson, String resultJson, boolean ok) {
+            this(name, argsJson, resultJson, ok, System.currentTimeMillis(), 0L, null);
+        }
+
+        public ToolUsage(String name, String argsJson, String resultJson, boolean ok, long startedAtMs, long durationMs, String preview) {
             this.name = name != null ? name : "";
             this.argsJson = argsJson != null ? argsJson : "{}";
             this.resultJson = resultJson != null ? resultJson : "{}";
             this.ok = ok;
+            this.startedAtMs = startedAtMs;
+            this.durationMs = durationMs;
+            this.preview = preview != null ? preview : buildPreview(this.resultJson);
+        }
+
+        private static String buildPreview(String json) {
+            if (json == null) return "";
+            String compact = json.replaceAll("\n+", " ").replaceAll("\\s+", " ").trim();
+            if (compact.length() > 140) compact = compact.substring(0, 140) + "…";
+            return compact;
         }
     }
 

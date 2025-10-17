@@ -36,6 +36,14 @@
     </LinearLayout>
 
     <TextView
+        android:id="@+id/text_tool_meta"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="0ms"
+        android:textColor="@color/on_surface_variant"
+        android:textSize="11sp"/>
+
+    <TextView
         android:id="@+id/text_tool_args"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

@@ -565,7 +565,7 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
                     StringBuilder sb = new StringBuilder();
                     if (u.argsJson != null && !u.argsJson.isEmpty()) sb.append("Args:\n").append(u.argsJson).append("\n\n");
                     if (u.filePath != null && !u.filePath.isEmpty()) sb.append("File:\n").append(u.filePath).append("\n\n");
-                    if (u.addedLines > 0 || u.removedLines > 0) sb.append("Δ Lines: +").append(u.addedLines).append(" -").append(u.removedLines).append("\n\n");
+                    if (u.addedLines > 0 || u.removedLines > 0) sb.append("Δ: +").append(u.addedLines).append(" -").append(u.removedLines).append("\n\n");
                     if (u.durationMs > 0) sb.append("Duration: ").append(u.durationMs).append(" ms\n\n");
                     if (u.resultJson != null && !u.resultJson.isEmpty()) sb.append("Result:\n").append(u.resultJson);
                     if (sb.length() == 0) sb.append("No details available.");

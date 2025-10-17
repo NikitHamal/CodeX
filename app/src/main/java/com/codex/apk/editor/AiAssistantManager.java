@@ -49,6 +49,8 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
     private PlanExecutor planExecutor; // The new PlanExecutor instance
     // Track last tool usages to attach to the subsequent assistant message
     private List<ChatMessage.ToolUsage> lastToolUsages;
+    // Track the position of the transient tools message so we can replace it later
+    private Integer currentToolsMessagePosition = null;
 
     // Track current streaming AI message position
     private Integer currentStreamingMessagePosition = null;
@@ -493,7 +495,7 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                         toolsMsg.setToolUsages(toolUsageList);
 
                         // Insert tools message and keep its position to update progressively
-                        final int toolsMsgPos = uiFrag.addMessage(toolsMsg);
+                        currentToolsMessagePosition = uiFrag.addMessage(toolsMsg);
 
                         // Execute tools sequentially and update the message list as we go
                         JsonArray results = new JsonArray();
@@ -519,7 +521,19 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                                 uiUsage.durationMs = System.currentTimeMillis() - startOne;
                                 // Quick metrics for read/update operations
                                 try {
-                                    if ("readFile".equals(name) && exec.has("content")) {
+                                    if (("readFile".equals(name) || "listFiles".equals(name) || "searchInProject".equals(name) || "grepSearch".equals(name)) && exec.has("ok")) {
+                                        // Populate metrics generically for discovery tools
+                                        if (args.has("path") && (uiUsage.filePath == null || uiUsage.filePath.isEmpty())) {
+                                            uiUsage.filePath = args.get("path").getAsString();
+                                        }
+                                        if (exec.has("files")) {
+                                            uiUsage.addedLines = exec.getAsJsonArray("files").size();
+                                        } else if (exec.has("matches")) {
+                                            uiUsage.addedLines = exec.getAsJsonArray("matches").size();
+                                        } else if (exec.has("results")) {
+                                            uiUsage.addedLines = exec.getAsJsonArray("results").size();
+                                        }
+                                    } else if ("readFile".equals(name) && exec.has("content")) {
                                         String content = exec.get("content").getAsString();
                                         uiUsage.addedLines = countLines(content);
                                         uiUsage.removedLines = 0;
@@ -545,11 +559,15 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                                 Log.w(TAG, "Error executing tool", inner);
                             }
                             // Push UI update for each tool completion
-                            uiFrag.updateMessage(toolsMsgPos, toolsMsg);
+                            if (currentToolsMessagePosition != null) {
+                                uiFrag.updateMessage(currentToolsMessagePosition, toolsMsg);
+                            }
                         }
                         long durationAll = System.currentTimeMillis() - startAll;
                         toolsMsg.setContent("Tools finished in " + durationAll + " ms");
-                        uiFrag.updateMessage(toolsMsgPos, toolsMsg);
+                        if (currentToolsMessagePosition != null) {
+                            uiFrag.updateMessage(currentToolsMessagePosition, toolsMsg);
+                        }
 
                         // Stash for next assistant message so it shows the tool chips too
                         lastToolUsages = new ArrayList<>(toolUsageList);
@@ -627,15 +645,17 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
             }
             if (lastToolUsages != null && !lastToolUsages.isEmpty()) {
                 aiMessage.setToolUsages(lastToolUsages);
-                lastToolUsages = null;
             }
 
             Integer targetPos = currentStreamingMessagePosition;
-            if (targetPos != null && uiFrag.getMessageAt(targetPos) != null) {
-                uiFrag.updateMessage(targetPos, aiMessage);
-                currentStreamingMessagePosition = null;
+            // Prefer to replace a transient tools message if present to avoid duplicates
+            Integer replacePos = currentToolsMessagePosition != null ? currentToolsMessagePosition : targetPos;
+            if (replacePos != null && uiFrag.getMessageAt(replacePos) != null) {
+                uiFrag.updateMessage(replacePos, aiMessage);
+                if (replacePos.equals(currentStreamingMessagePosition)) currentStreamingMessagePosition = null;
+                if (replacePos.equals(currentToolsMessagePosition)) currentToolsMessagePosition = null;
                 if (aiAssistant != null && aiAssistant.isAgentModeEnabled() && hasOps) {
-                    onAiAcceptActions(targetPos, aiMessage);
+                    onAiAcceptActions(replacePos, aiMessage);
                 }
             } else {
                 int insertedPos = uiFrag.addMessage(aiMessage);
@@ -643,6 +663,8 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                     onAiAcceptActions(insertedPos, aiMessage);
                 }
             }
+            // Clear after attaching/replacing to prevent duplicate display in future messages
+            lastToolUsages = null;
         });
     }
 
@@ -791,6 +813,28 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                 if (msg.getContent() == null || !msg.getContent().equals(activity.getString(com.codex.apk.R.string.ai_is_thinking))) {
                     msg.setContent("");
                 }
+                // Experimental: lightweight live activity parsing (heuristic)
+                try {
+                    String s = partialResponse != null ? partialResponse.toLowerCase() : "";
+                    java.util.List<ChatMessage.ToolUsage> live = new java.util.ArrayList<>();
+                    // Heuristic cues
+                    if (s.contains("reading") || s.contains("read file")) {
+                        ChatMessage.ToolUsage u = new ChatMessage.ToolUsage("readFile");
+                        u.status = "running";
+                        live.add(u);
+                    } else if (s.contains("search") && !s.contains("research")) {
+                        ChatMessage.ToolUsage u = new ChatMessage.ToolUsage("searchInProject");
+                        u.status = "running";
+                        live.add(u);
+                    } else if (s.contains("update") || s.contains("write file") || s.contains("create file")) {
+                        ChatMessage.ToolUsage u = new ChatMessage.ToolUsage("updateFile");
+                        u.status = "running";
+                        live.add(u);
+                    }
+                    if (!live.isEmpty()) {
+                        msg.setToolUsages(live);
+                    }
+                } catch (Exception ignore) {}
             } else {
                 msg.setContent(partialResponse != null ? partialResponse : "");
                 // Clear thinking content when we get a final response

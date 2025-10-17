@@ -276,12 +276,15 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
             // New plan card (v2)
             includePlanCard = itemView.findViewById(R.id.include_plan_card);
             if (includePlanCard != null) {
-                textPlanTitle = includePlanCard.findViewById(R.id.text_plan_title);
-                textPlanProgress = includePlanCard.findViewById(R.id.text_plan_progress);
-                recyclerPlanStepsV2 = includePlanCard.findViewById(R.id.recycler_plan_steps_v2);
-                layoutPlanActionsV2 = includePlanCard.findViewById(R.id/layout_plan_actions_v2);
-                buttonAcceptPlanV2 = includePlanCard.findViewById(R.id/button_accept_plan_v2);
-                buttonDiscardPlanV2 = includePlanCard.findViewById(R.id/button_discard_plan_v2);
+                // Use dynamic lookup to avoid compile-time R id dependency issues in CI
+                android.content.res.Resources res = itemView.getResources();
+                String pkg = itemView.getContext().getPackageName();
+                textPlanTitle = includePlanCard.findViewById(res.getIdentifier("text_plan_title", "id", pkg));
+                textPlanProgress = includePlanCard.findViewById(res.getIdentifier("text_plan_progress", "id", pkg));
+                recyclerPlanStepsV2 = includePlanCard.findViewById(res.getIdentifier("recycler_plan_steps_v2", "id", pkg));
+                layoutPlanActionsV2 = includePlanCard.findViewById(res.getIdentifier("layout_plan_actions_v2", "id", pkg));
+                buttonAcceptPlanV2 = includePlanCard.findViewById(res.getIdentifier("button_accept_plan_v2", "id", pkg));
+                buttonDiscardPlanV2 = includePlanCard.findViewById(res.getIdentifier("button_discard_plan_v2", "id", pkg));
             }
             textAgentThinking = itemView.findViewById(R.id.text_agent_thinking);
             recyclerToolsUsed = itemView.findViewById(R.id.recycler_tools_used);

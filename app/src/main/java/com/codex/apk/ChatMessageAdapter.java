@@ -259,6 +259,7 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
     static class AiMessageViewHolder extends RecyclerView.ViewHolder {
         TextView textMessage; TextView textAiModelName; RecyclerView fileChangesContainer; LinearLayout layoutThinkingSection; TextView textThinkingContent; TextView textThinkingHeaderTitle; LinearLayout layoutWebSources; TextView buttonWebSources; LinearLayout layoutTypingIndicator; TextView textTypingIndicator; LinearLayout layoutPlanSteps; RecyclerView recyclerPlanSteps; TextView textAgentThinking;
         LinearLayout layoutPlanActions; MaterialButton buttonAcceptPlan; MaterialButton buttonDiscardPlan;
+        LinearLayout layoutToolsUsed; RecyclerView recyclerToolsUsed;
         private final OnAiActionInteractionListener listener; private final Context context; private MarkdownFormatter markdownFormatter;
         AiMessageViewHolder(View itemView, OnAiActionInteractionListener listener) {
             super(itemView); this.listener = listener; this.context = itemView.getContext();
@@ -278,6 +279,8 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
             layoutPlanActions = itemView.findViewById(R.id.layout_plan_actions);
             buttonAcceptPlan = itemView.findViewById(R.id.button_accept_plan);
             buttonDiscardPlan = itemView.findViewById(R.id.button_discard_plan);
+            layoutToolsUsed = itemView.findViewById(R.id.layout_tools_used);
+            recyclerToolsUsed = itemView.findViewById(R.id.recycler_tools_used);
             markdownFormatter = MarkdownFormatter.getInstance(context);
             // Long click is set in bind with the bound message to avoid outer messages reference
         }
@@ -309,6 +312,27 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
             AlertDialog.Builder builder = new AlertDialog.Builder(context); builder.setView(dialogView); final AlertDialog dialog = builder.create();
             buttonCopy.setOnClickListener(v -> { android.content.ClipboardManager clipboard = (android.content.ClipboardManager) context.getSystemService(Context.CLIPBOARD_SERVICE); if (clipboard != null) { android.content.ClipData clip = android.content.ClipData.newPlainText("Raw API Response", rawResponse != null ? rawResponse : ""); clipboard.setPrimaryClip(clip); android.widget.Toast.makeText(context, "Raw response copied", android.widget.Toast.LENGTH_SHORT).show(); } });
             buttonClose.setOnClickListener(v -> dialog.dismiss()); dialog.show();
+        }
+
+        private void showToolResultDialog(String toolName, String resultJson) {
+            View dialogView = LayoutInflater.from(context).inflate(R.layout.dialog_tool_result, null);
+            TextView title = dialogView.findViewById(R.id.text_tool_title);
+            TextView payload = dialogView.findViewById(R.id.text_tool_payload);
+            MaterialButton copy = dialogView.findViewById(R.id.button_copy_tool_result);
+            title.setText("Result: " + toolName);
+            String pretty = resultJson;
+            try {
+                com.google.gson.JsonElement el = com.google.gson.JsonParser.parseString(resultJson);
+                pretty = new com.google.gson.GsonBuilder().setPrettyPrinting().create().toJson(el);
+            } catch (Exception ignore) {}
+            payload.setText(pretty);
+            AlertDialog dialog = new AlertDialog.Builder(context).setView(dialogView).create();
+            copy.setOnClickListener(v -> {
+                android.content.ClipboardManager cb = (android.content.ClipboardManager) context.getSystemService(Context.CLIPBOARD_SERVICE);
+                if (cb != null) cb.setPrimaryClip(android.content.ClipData.newPlainText("tool_result", pretty));
+                android.widget.Toast.makeText(context, "Copied", android.widget.Toast.LENGTH_SHORT).show();
+            });
+            dialog.show();
         }
 
         private void applyCitationSpans(TextView tv, List<WebSource> sources) {
@@ -426,6 +450,18 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
                 recyclerPlanSteps.setLayoutManager(new LinearLayoutManager(itemView.getContext()));
             }
 
+            // Tools used section
+            List<ChatMessage.ToolUsage> tus = message.getToolUsages();
+            if (!isTyping && tus != null && !tus.isEmpty()) {
+                layoutToolsUsed.setVisibility(View.VISIBLE);
+                recyclerToolsUsed.setLayoutManager(new LinearLayoutManager(itemView.getContext()));
+                recyclerToolsUsed.setAdapter(new ToolsUsedAdapter(tus, new ToolsUsedAdapter.OnToolClick() {
+                    @Override public void onViewResult(ChatMessage.ToolUsage u) { showToolResultDialog(u.name, u.resultJson); }
+                }));
+            } else {
+                layoutToolsUsed.setVisibility(View.GONE);
+            }
+
             if (layoutWebSources.getVisibility() == View.VISIBLE) {
                 buttonWebSources.setText("Web sources (" + message.getWebSources().size() + ")");
                 buttonWebSources.setOnClickListener(v -> showWebSourcesDialog(message.getWebSources()));
@@ -481,6 +517,49 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
                 });
             } else {
                 layoutPlanActions.setVisibility(View.GONE);
+            }
+        }
+    }
+
+    static class ToolsUsedAdapter extends RecyclerView.Adapter<ToolsUsedAdapter.ToolViewHolder> {
+        interface OnToolClick { void onViewResult(ChatMessage.ToolUsage usage); }
+        private final List<ChatMessage.ToolUsage> tools;
+        private final OnToolClick listener;
+        ToolsUsedAdapter(List<ChatMessage.ToolUsage> tools, OnToolClick listener) {
+            this.tools = tools != null ? tools : new ArrayList<>();
+            this.listener = listener;
+        }
+        @NonNull @Override public ToolViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+            View v = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_tool_usage, parent, false);
+            return new ToolViewHolder(v, listener);
+        }
+        @Override public void onBindViewHolder(@NonNull ToolViewHolder holder, int position) { holder.bind(tools.get(position)); }
+        @Override public int getItemCount() { return tools.size(); }
+
+        static class ToolViewHolder extends RecyclerView.ViewHolder {
+            TextView name; TextView status; TextView args; TextView action;
+            private final OnToolClick listener;
+            ToolViewHolder(View itemView, OnToolClick listener) {
+                super(itemView);
+                this.listener = listener;
+                name = itemView.findViewById(R.id.text_tool_name);
+                status = itemView.findViewById(R.id.text_tool_status);
+                args = itemView.findViewById(R.id.text_tool_args);
+                action = itemView.findViewById(R.id.button_view_result);
+            }
+            void bind(ChatMessage.ToolUsage u) {
+                name.setText(u.name);
+                status.setText(u.ok ? "OK" : "Failed");
+                try {
+                    String prettyArgs = u.argsJson;
+                    com.google.gson.JsonElement el = com.google.gson.JsonParser.parseString(u.argsJson);
+                    prettyArgs = new com.google.gson.GsonBuilder().setPrettyPrinting().create().toJson(el);
+                    // show single line preview
+                    String compact = prettyArgs.replaceAll("\n+", " ").trim();
+                    if (compact.length() > 120) compact = compact.substring(0, 120) + "…";
+                    args.setText(compact);
+                } catch (Exception e) { args.setText(u.argsJson); }
+                action.setOnClickListener(v -> { if (listener != null) listener.onViewResult(u); });
             }
         }
     }

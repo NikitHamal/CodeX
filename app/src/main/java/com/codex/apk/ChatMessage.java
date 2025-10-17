@@ -43,6 +43,9 @@ public class ChatMessage {
     // Plan steps (for agent plan rendering)
     private List<PlanStep> planSteps;
     
+    // Tools used (when the model requested tool_calls)
+    private List<ToolUsage> toolUsages;
+    
     // Qwen threading fields
     private String fid; // Unique message id
     private String parentId; // Parent message id
@@ -65,6 +68,7 @@ public class ChatMessage {
         this.parentId = null;
         this.childrenIds = new ArrayList<>();
         this.userAttachmentPaths = new ArrayList<>();
+        this.toolUsages = new ArrayList<>();
     }
 
     /**
@@ -87,6 +91,7 @@ public class ChatMessage {
         this.fid = java.util.UUID.randomUUID().toString();
         this.parentId = null;
         this.childrenIds = new ArrayList<>();
+        this.toolUsages = new ArrayList<>();
     }
 
     // Getters
@@ -105,6 +110,7 @@ public class ChatMessage {
     public String getThinkingContent() { return thinkingContent; }
     public List<WebSource> getWebSources() { return webSources; }
     public List<String> getUserAttachmentPaths() { return userAttachmentPaths; }
+    public List<ToolUsage> getToolUsages() { return toolUsages; }
 
     // Getters and setters for Qwen threading fields
     public String getFid() { return fid; }
@@ -124,6 +130,7 @@ public class ChatMessage {
     public void setWebSources(List<WebSource> webSources) { this.webSources = webSources; }
     public void setPlanSteps(List<PlanStep> planSteps) { this.planSteps = planSteps; }
     public void setUserAttachmentPaths(List<String> paths) { this.userAttachmentPaths = paths != null ? new ArrayList<>(paths) : new ArrayList<>(); }
+    public void setToolUsages(List<ToolUsage> toolUsages) { this.toolUsages = toolUsages != null ? new ArrayList<>(toolUsages) : new ArrayList<>(); }
 
     public com.google.gson.JsonObject toJsonObject() {
         com.google.gson.JsonObject jsonObject = new com.google.gson.JsonObject();
@@ -145,6 +152,21 @@ public class ChatMessage {
             this.kind = kind;
             this.status = "pending";
             this.rawResponse = null;
+        }
+    }
+
+    /** Tool usage model for UI */
+    public static class ToolUsage {
+        public final String name; // tool name
+        public final String argsJson; // JSON string of arguments
+        public final String resultJson; // JSON string result (may be truncated)
+        public final boolean ok; // execution success flag
+
+        public ToolUsage(String name, String argsJson, String resultJson, boolean ok) {
+            this.name = name != null ? name : "";
+            this.argsJson = argsJson != null ? argsJson : "{}";
+            this.resultJson = resultJson != null ? resultJson : "{}";
+            this.ok = ok;
         }
     }
 
@@ -303,6 +325,14 @@ public class ChatMessage {
                 map.put("proposedFileChanges", null);
             }
 
+            // Serialize tool usages
+            if (toolUsages != null && !toolUsages.isEmpty()) {
+                Gson gson = new Gson();
+                map.put("toolUsages", gson.toJson(toolUsages));
+            } else {
+                map.put("toolUsages", null);
+            }
+
         } else {
             // User message attachments
             if (userAttachmentPaths != null && !userAttachmentPaths.isEmpty()) {
@@ -372,8 +402,23 @@ public class ChatMessage {
                 }
             }
 
-            return new ChatMessage(sender, content, actionSummaries, suggestions, aiModelName,
+            ChatMessage msg = new ChatMessage(sender, content, actionSummaries, suggestions, aiModelName,
                     timestamp, rawAiResponseJson, proposedFileChanges, status);
+
+            // Deserialize toolUsages from JSON string
+            String toolUsagesJson = (String) map.get("toolUsages");
+            if (toolUsagesJson != null && !toolUsagesJson.isEmpty()) {
+                try {
+                    Gson gson = new Gson();
+                    Type type = new TypeToken<List<ToolUsage>>() {}.getType();
+                    List<ToolUsage> tus = gson.fromJson(toolUsagesJson, type);
+                    msg.setToolUsages(tus);
+                } catch (Exception e) {
+                    Log.e("ChatMessage", "Error deserializing toolUsages: " + e.getMessage(), e);
+                }
+            }
+
+            return msg;
         } else {
             return new ChatMessage(sender, content, timestamp);
         }

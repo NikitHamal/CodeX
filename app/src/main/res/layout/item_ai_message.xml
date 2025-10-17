@@ -153,6 +153,31 @@
                 app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
         </LinearLayout>
 
+        <!-- Tools used section -->
+        <LinearLayout
+            android:id="@+id/layout_tools_used"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginTop="12dp"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/text_tools_used_header"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Tools used"
+                android:textColor="@color/on_surface_variant"
+                android:textSize="12sp"
+                android:layout_marginBottom="4dp"/>
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/recycler_tools_used"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
+        </LinearLayout>
+
         <!-- File actions approval (shown only when NOT in agent mode) -->
         <LinearLayout
             android:id="@+id/layout_file_actions"

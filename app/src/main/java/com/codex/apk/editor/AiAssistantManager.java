@@ -457,6 +457,8 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                         JsonArray calls = maybe.getAsJsonArray("tool_calls");
                         JsonArray results = new JsonArray();
                         File projectDir = activity.getProjectDirectory();
+                        // Build a UI-friendly ToolUsage list
+                        java.util.List<ChatMessage.ToolUsage> toolUsages = new java.util.ArrayList<>();
                         for (int i = 0; i < calls.size(); i++) {
                             try {
                                 JsonObject c = calls.get(i).getAsJsonObject();
@@ -467,6 +469,11 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                                 JsonObject exec = ToolExecutor.execute(projectDir, name, args);
                                 res.add("result", exec);
                                 results.add(res);
+
+                                boolean ok = exec.has("ok") && exec.get("ok").getAsBoolean();
+                                String argsJson = args.toString();
+                                String resultJson = exec.toString();
+                                toolUsages.add(new ChatMessage.ToolUsage(name, argsJson, resultJson, ok));
                             } catch (Exception inner) {
                                 JsonObject res = new JsonObject();
                                 res.addProperty("name", "unknown");
@@ -476,8 +483,30 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                                 res.add("result", err);
                                 results.add(res);
                                 Log.w(TAG, "Error executing tool", inner);
+
+                                toolUsages.add(new ChatMessage.ToolUsage("unknown", "{}", err.toString(), false));
                             }
                         }
+                        // Emit a chat message showing the tools used
+                        try {
+                            AIChatFragment frag = activity.getAiChatFragment();
+                            if (frag != null && !toolUsages.isEmpty()) {
+                                String contentMsg = "Executed " + toolUsages.size() + " tool" + (toolUsages.size() == 1 ? "" : "s") + ".";
+                                ChatMessage toolsMsg = new ChatMessage(
+                                        ChatMessage.SENDER_AI,
+                                        contentMsg,
+                                        null,
+                                        null,
+                                        aiAssistant != null && aiAssistant.getCurrentModel() != null ? aiAssistant.getCurrentModel().getDisplayName() : "Assistant",
+                                        System.currentTimeMillis(),
+                                        maybe.toString(),
+                                        null,
+                                        ChatMessage.STATUS_NONE
+                                );
+                                toolsMsg.setToolUsages(toolUsages);
+                                frag.addMessage(toolsMsg);
+                            }
+                        } catch (Exception ignore) {}
                         String continuation = ToolExecutor.buildToolResultContinuation(results);
                         String fenced = "```json\n" + continuation + "\n```\n";
                         Log.d(TAG, "Sending tool results back to AI: " + fenced);

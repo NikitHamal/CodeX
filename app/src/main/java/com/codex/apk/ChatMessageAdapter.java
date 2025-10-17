@@ -320,11 +320,12 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
             TextView payload = dialogView.findViewById(R.id.text_tool_payload);
             MaterialButton copy = dialogView.findViewById(R.id.button_copy_tool_result);
             title.setText("Result: " + toolName);
-            String pretty = resultJson;
+            String computedPretty = resultJson;
             try {
                 com.google.gson.JsonElement el = com.google.gson.JsonParser.parseString(resultJson);
-                pretty = new com.google.gson.GsonBuilder().setPrettyPrinting().create().toJson(el);
+                computedPretty = new com.google.gson.GsonBuilder().setPrettyPrinting().create().toJson(el);
             } catch (Exception ignore) {}
+            final String pretty = computedPretty; // effectively final for lambda
             payload.setText(pretty);
             AlertDialog dialog = new AlertDialog.Builder(context).setView(dialogView).create();
             copy.setOnClickListener(v -> {

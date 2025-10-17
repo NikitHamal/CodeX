@@ -123,11 +123,14 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
             // Ensure context is retained for providers that lack conversation support
             List<ChatMessage> effectiveHistory = chatHistory;
             try {
-                if (aiAssistant.getCurrentModel() != null && !aiAssistant.getCurrentModel().getCapabilities().supportsThreading) {
-                    // Supply a trimmed but sufficient window of recent messages to maintain context
-                    int max = 12; // safe small window for mobile
-                    if (chatHistory != null && chatHistory.size() > max) {
-                        effectiveHistory = new ArrayList<>(chatHistory.subList(Math.max(0, chatHistory.size() - max), chatHistory.size()));
+                if (aiAssistant.getCurrentModel() != null && aiAssistant.getCurrentModel().getCapabilities() != null) {
+                    boolean singleRound = aiAssistant.getCurrentModel().getCapabilities().isSingleRound;
+                    if (singleRound) {
+                        // Supply a trimmed but sufficient window of recent messages to maintain context
+                        int max = 12; // safe small window for mobile
+                        if (chatHistory != null && chatHistory.size() > max) {
+                            effectiveHistory = new ArrayList<>(chatHistory.subList(Math.max(0, chatHistory.size() - max), chatHistory.size()));
+                        }
                     }
                 }
             } catch (Exception ignore) {}

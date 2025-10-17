@@ -325,8 +325,7 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
             View dialogView = LayoutInflater.from(context).inflate(R.layout.dialog_tool_result, null);
             TextView title = dialogView.findViewById(R.id.text_tool_title);
             TextView payload = dialogView.findViewById(R.id.text_tool_payload);
-            TextView argsPayload = dialogView.findViewById(R.id.text_tool_args_payload);
-            MaterialButton copyArgs = dialogView.findViewById(R.id.button_copy_tool_args);
+            MaterialButton textMode = dialogView.findViewById(R.id.button_text_mode);
             MaterialButton copy = dialogView.findViewById(R.id.button_copy_tool_result);
             MaterialButton close = dialogView.findViewById(R.id.button_close);
             title.setText("Result: " + toolName);
@@ -337,20 +336,9 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
             } catch (Exception ignore) {}
             final String pretty = computedPretty; // effectively final for lambda
             payload.setText(pretty);
-            String argsText = "";
-            try { argsText = ((org.json.JSONObject) null).toString(); } catch (Exception ignore) {}
-            // We don't have args here; they are embedded in the ToolUsage item click; populate via outer binder using tag
-            Object tagArgs = dialogView.getTag();
-            if (tagArgs instanceof String) argsText = (String) tagArgs;
-            argsPayload.setText(argsText != null ? argsText : "{}");
 
             AlertDialog dialog = new AlertDialog.Builder(context).setView(dialogView).create();
-            final String finalArgs = argsText;
-            copyArgs.setOnClickListener(v -> {
-                android.content.ClipboardManager cb = (android.content.ClipboardManager) context.getSystemService(Context.CLIPBOARD_SERVICE);
-                if (cb != null) cb.setPrimaryClip(android.content.ClipData.newPlainText("tool_args", finalArgs != null ? finalArgs : ""));
-                android.widget.Toast.makeText(context, "Copied", android.widget.Toast.LENGTH_SHORT).show();
-            });
+            textMode.setOnClickListener(v -> payload.setText(resultJson));
             copy.setOnClickListener(v -> {
                 android.content.ClipboardManager cb = (android.content.ClipboardManager) context.getSystemService(Context.CLIPBOARD_SERVICE);
                 if (cb != null) cb.setPrimaryClip(android.content.ClipData.newPlainText("tool_result", pretty));
@@ -563,66 +551,23 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
         @Override public int getItemCount() { return tools.size(); }
 
         static class ToolViewHolder extends RecyclerView.ViewHolder {
-            TextView name; TextView status; TextView args; TextView action; TextView meta; TextView toggle;
+            TextView name; TextView action; TextView meta;
             private final OnToolClick listener;
             ToolViewHolder(View itemView, OnToolClick listener) {
                 super(itemView);
                 this.listener = listener;
                 name = itemView.findViewById(R.id.text_tool_name);
-                status = itemView.findViewById(R.id.text_tool_status);
-                args = itemView.findViewById(R.id.text_tool_args);
                 action = itemView.findViewById(R.id.button_view_result);
                 meta = itemView.findViewById(R.id.text_tool_meta);
-                toggle = itemView.findViewById(R.id.button_toggle);
             }
             void bind(ChatMessage.ToolUsage u) {
                 name.setText(u.name);
-                String statusText = u.state != null ? u.state : (u.ok ? "ok" : "failed");
-                if ("running".equals(statusText)) statusText = "running";
-                status.setText(statusText.toUpperCase());
                 if (meta != null) {
                     String when = new java.text.SimpleDateFormat("HH:mm:ss").format(new java.util.Date(u.startedAtMs));
-                    String suffix = u.resultCount > 0 ? (" • " + u.resultCount + " result" + (u.resultCount == 1 ? "" : "s")) : "";
+                    String suffix = (u.state != null ? (" • " + u.state) : "") + (u.resultCount > 0 ? (" • " + u.resultCount + " result" + (u.resultCount == 1 ? "" : "s")) : "");
                     meta.setText(when + " • " + u.durationMs + " ms" + suffix);
                 }
-                try {
-                    String prettyArgs = u.argsJson;
-                    com.google.gson.JsonElement el = com.google.gson.JsonParser.parseString(u.argsJson);
-                    prettyArgs = new com.google.gson.GsonBuilder().setPrettyPrinting().create().toJson(el);
-                    // show single line preview
-                    String compact = prettyArgs.replaceAll("\n+", " ").trim();
-                    if (compact.length() > 120) compact = compact.substring(0, 120) + "…";
-                    args.setText(compact);
-                } catch (Exception e) { args.setText(u.argsJson); }
                 action.setOnClickListener(v -> { if (listener != null) listener.onViewResult(u); });
-                // Store args JSON in the dialog view tag when opening
-                action.setOnLongClickListener(v -> {
-                    // Long-press: quick copy args
-                    android.content.ClipboardManager cb = (android.content.ClipboardManager) v.getContext().getSystemService(Context.CLIPBOARD_SERVICE);
-                    if (cb != null) cb.setPrimaryClip(android.content.ClipData.newPlainText("tool_args", u.argsJson));
-                    android.widget.Toast.makeText(v.getContext(), "Args copied", android.widget.Toast.LENGTH_SHORT).show();
-                    return true;
-                });
-
-                if (toggle != null) {
-                    // Collapse args preview for repeated tool names
-                    boolean collapsed = false;
-                    try {
-                        ToolsUsedAdapter adapter = (ToolsUsedAdapter) ((RecyclerView) itemView.getParent()).getAdapter();
-                        if (adapter != null) {
-                            Boolean c = adapter.collapsedByTool.get(u.name);
-                            collapsed = c != null && c;
-                            toggle.setText(collapsed ? "Expand" : "Collapse");
-                            args.setVisibility(collapsed ? View.GONE : View.VISIBLE);
-                            toggle.setOnClickListener(v -> {
-                                boolean newState = !((adapter.collapsedByTool.get(u.name) != null && adapter.collapsedByTool.get(u.name)));
-                                adapter.collapsedByTool.put(u.name, newState);
-                                toggle.setText(newState ? "Expand" : "Collapse");
-                                args.setVisibility(newState ? View.GONE : View.VISIBLE);
-                            });
-                        }
-                    } catch (Exception ignore) {}
-                }
             }
         }
     }

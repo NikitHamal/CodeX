@@ -14,31 +14,7 @@
         android:textStyle="bold"
         android:textColor="@color/on_surface"/>
 
-    <!-- Arguments section -->
-    <TextView
-        android:id="@+id/text_args_heading"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:text="Arguments"
-        android:textStyle="bold"
-        android:textColor="@color/on_surface_variant"/>
-
-    <ScrollView
-        android:layout_width="match_parent"
-        android:layout_height="120dp"
-        android:fillViewport="true">
-        <TextView
-            android:id="@+id/text_tool_args_payload"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:fontFamily="monospace"
-            android:textIsSelectable="true"
-            android:textColor="@color/on_surface_variant"
-            android:textSize="12sp"/>
-    </ScrollView>
-
-    <!-- Result section -->
+    <!-- Result section only -->
     <TextView
         android:id="@+id/text_result_heading"
         android:layout_width="wrap_content"
@@ -70,18 +46,18 @@
         android:layout_marginTop="12dp">
 
         <com.google.android.material.button.MaterialButton
-            android:id="@+id/button_copy_tool_args"
+            android:id="@+id/button_text_mode"
             style="?attr/materialButtonOutlinedStyle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Copy args"/>
+            android:text="Text"/>
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/button_copy_tool_result"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="8dp"
-            android:text="Copy result"/>
+            android:text="Copy"/>
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/button_close"

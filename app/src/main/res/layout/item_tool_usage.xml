@@ -5,35 +5,14 @@
     android:orientation="vertical"
     android:padding="8dp">
 
-    <LinearLayout
+    <TextView
+        android:id="@+id/text_tool_name"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center_vertical">
-
-        <TextView
-            android:id="@+id/text_tool_name"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="tool name"
-            android:textStyle="bold"
-            android:textColor="@color/on_surface"
-            android:textSize="13sp" />
-
-        <TextView
-            android:id="@+id/text_tool_status"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="OK"
-            android:textColor="@color/on_secondary_container"
-            android:textSize="11sp"
-            android:background="@drawable/rounded_label_background"
-            android:paddingStart="8dp"
-            android:paddingEnd="8dp"
-            android:paddingTop="3dp"
-            android:paddingBottom="3dp"/>
-    </LinearLayout>
+        android:text="tool name"
+        android:textStyle="bold"
+        android:textColor="@color/on_surface"
+        android:textSize="13sp" />
 
     <TextView
         android:id="@+id/text_tool_meta"
@@ -41,16 +20,8 @@
         android:layout_height="wrap_content"
         android:text="0ms"
         android:textColor="@color/on_surface_variant"
-        android:textSize="11sp"/>
-
-    <TextView
-        android:id="@+id/text_tool_args"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="{args}"
-        android:textColor="@color/on_surface_variant"
-        android:textSize="12sp"
-        android:layout_marginTop="4dp"/>
+        android:textSize="11sp"
+        android:layout_marginTop="2dp"/>
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -68,16 +39,6 @@
             android:textSize="12sp"
             android:padding="4dp"
             android:clickable="true"/>
-        
-        <TextView
-            android:id="@+id/button_toggle"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
-            android:text="Collapse"
-            android:textColor="@color/primary"
-            android:textSize="12sp"
-            android:padding="4dp"/>
     </LinearLayout>
 
 </LinearLayout>

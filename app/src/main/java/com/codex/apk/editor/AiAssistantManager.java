@@ -466,6 +466,14 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                             ChatMessage.ToolUsage tu = new ChatMessage.ToolUsage(name);
                             if (c.has("args") && c.get("args").isJsonObject()) {
                                 tu.argsJson = c.getAsJsonObject("args").toString();
+                                // Extract common path keys for quick display
+                                try {
+                                    if (c.getAsJsonObject("args").has("path")) {
+                                        tu.filePath = c.getAsJsonObject("args").get("path").getAsString();
+                                    } else if (c.getAsJsonObject("args").has("oldPath")) {
+                                        tu.filePath = c.getAsJsonObject("args").get("oldPath").getAsString();
+                                    }
+                                } catch (Exception ignore) {}
                             }
                             tu.status = "running";
                             toolUsageList.add(tu);
@@ -509,6 +517,18 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                                 uiUsage.resultJson = exec.toString();
                                 uiUsage.status = uiUsage.ok ? "completed" : "failed";
                                 uiUsage.durationMs = System.currentTimeMillis() - startOne;
+                                // Quick metrics for read/update operations
+                                try {
+                                    if ("readFile".equals(name) && exec.has("content")) {
+                                        String content = exec.get("content").getAsString();
+                                        uiUsage.addedLines = countLines(content);
+                                        uiUsage.removedLines = 0;
+                                    } else if (("updateFile".equals(name) || "createFile".equals(name)) && args.has("content")) {
+                                        String content = args.get("content").getAsString();
+                                        uiUsage.addedLines = countLines(content);
+                                        uiUsage.removedLines = 0;
+                                    }
+                                } catch (Exception ignore) {}
                             } catch (Exception inner) {
                                 JsonObject res = new JsonObject();
                                 res.addProperty("name", "unknown");

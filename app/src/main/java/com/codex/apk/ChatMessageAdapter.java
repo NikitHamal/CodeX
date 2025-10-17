@@ -257,7 +257,7 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
     }
 
     static class AiMessageViewHolder extends RecyclerView.ViewHolder {
-        TextView textMessage; TextView textAiModelName; RecyclerView fileChangesContainer; LinearLayout layoutThinkingSection; TextView textThinkingContent; TextView textThinkingHeaderTitle; LinearLayout layoutWebSources; TextView buttonWebSources; LinearLayout layoutTypingIndicator; TextView textTypingIndicator; LinearLayout layoutPlanSteps; RecyclerView recyclerPlanSteps; TextView textAgentThinking; RecyclerView recyclerToolsUsed;
+        TextView textMessage; TextView textAiModelName; RecyclerView fileChangesContainer; LinearLayout layoutThinkingSection; TextView textThinkingContent; TextView textThinkingHeaderTitle; LinearLayout layoutWebSources; TextView buttonWebSources; LinearLayout layoutTypingIndicator; TextView textTypingIndicator; LinearLayout layoutPlanSteps; RecyclerView recyclerPlanSteps; TextView textAgentThinking; RecyclerView recyclerToolsUsed; View includePlanCard; TextView textPlanTitle; TextView textPlanProgress; RecyclerView recyclerPlanStepsV2; View layoutPlanActionsV2; MaterialButton buttonAcceptPlanV2; MaterialButton buttonDiscardPlanV2;
         LinearLayout layoutPlanActions; MaterialButton buttonAcceptPlan; MaterialButton buttonDiscardPlan;
         private final OnAiActionInteractionListener listener; private final Context context; private MarkdownFormatter markdownFormatter;
         AiMessageViewHolder(View itemView, OnAiActionInteractionListener listener) {
@@ -272,8 +272,18 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
             buttonWebSources = itemView.findViewById(R.id.button_web_sources);
             layoutTypingIndicator = itemView.findViewById(R.id.layout_typing_indicator);
             textTypingIndicator = itemView.findViewById(R.id.text_typing_indicator);
-            layoutPlanSteps = itemView.findViewById(R.id.layout_plan_steps);
-            recyclerPlanSteps = itemView.findViewById(R.id.recycler_plan_steps);
+            // Legacy plan (kept for binding fallback)
+            layoutPlanSteps = null; recyclerPlanSteps = null;
+            // New plan card (v2)
+            includePlanCard = itemView.findViewById(R.id.include_plan_card);
+            if (includePlanCard != null) {
+                textPlanTitle = includePlanCard.findViewById(R.id.text_plan_title);
+                textPlanProgress = includePlanCard.findViewById(R.id.text_plan_progress);
+                recyclerPlanStepsV2 = includePlanCard.findViewById(R.id.recycler_plan_steps_v2);
+                layoutPlanActionsV2 = includePlanCard.findViewById(R.id/layout_plan_actions_v2);
+                buttonAcceptPlanV2 = includePlanCard.findViewById(R.id/button_accept_plan_v2);
+                buttonDiscardPlanV2 = includePlanCard.findViewById(R.id/button_discard_plan_v2);
+            }
             textAgentThinking = itemView.findViewById(R.id.text_agent_thinking);
             recyclerToolsUsed = itemView.findViewById(R.id.recycler_tools_used);
             layoutPlanActions = itemView.findViewById(R.id.layout_plan_actions);
@@ -357,7 +367,8 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
             textMessage.setVisibility(isTyping ? View.GONE : View.VISIBLE);
             layoutThinkingSection.setVisibility(isTyping ? View.GONE : (message.getThinkingContent() != null && !message.getThinkingContent().trim().isEmpty() ? View.VISIBLE : View.GONE));
             layoutWebSources.setVisibility(isTyping ? View.GONE : (message.getWebSources() != null && !message.getWebSources().isEmpty() ? View.VISIBLE : View.GONE));
-            layoutPlanSteps.setVisibility(isTyping ? View.GONE : (message.getPlanSteps() != null && !message.getPlanSteps().isEmpty() ? View.VISIBLE : View.GONE));
+            boolean hasPlan = message.getPlanSteps() != null && !message.getPlanSteps().isEmpty();
+            if (includePlanCard != null) includePlanCard.setVisibility(isTyping ? View.GONE : (hasPlan ? View.VISIBLE : View.GONE));
             itemView.findViewById(R.id.layout_proposed_file_changes).setVisibility(isTyping ? View.GONE : (message.getProposedFileChanges() != null && !message.getProposedFileChanges().isEmpty() ? View.VISIBLE : View.GONE));
             // Tools used list
             List<ChatMessage.ToolUsage> tools = message.getToolUsages();
@@ -437,9 +448,41 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
                 }
             }
 
-            if (layoutPlanSteps.getVisibility() == View.VISIBLE) {
-                recyclerPlanSteps.setAdapter(new PlanStepsAdapter(message.getPlanSteps()));
-                recyclerPlanSteps.setLayoutManager(new LinearLayoutManager(itemView.getContext()));
+            if (includePlanCard != null && includePlanCard.getVisibility() == View.VISIBLE) {
+                // Title and progress
+                String planTitle = null;
+                String raw = message.getRawApiResponse();
+                if (raw != null && !raw.trim().isEmpty()) {
+                    try {
+                        com.google.gson.JsonObject obj = com.google.gson.JsonParser.parseString(raw).getAsJsonObject();
+                        if (obj.has("action") && "plan".equalsIgnoreCase(obj.get("action").getAsString())) {
+                            String goal = obj.has("goal") ? obj.get("goal").getAsString() : "Plan";
+                            planTitle = "Plan: " + goal;
+                        }
+                    } catch (Exception ignore) {}
+                }
+                if (planTitle == null) planTitle = "Plan";
+                if (textPlanTitle != null) textPlanTitle.setText(planTitle);
+
+                int total = message.getPlanSteps().size();
+                int done = 0; int running = 0;
+                for (ChatMessage.PlanStep s : message.getPlanSteps()) {
+                    if ("completed".equals(s.status)) done++; else if ("running".equals(s.status)) running++;
+                }
+                if (textPlanProgress != null) {
+                    String prog = done + "/" + total + (running > 0 ? (" (" + running + " running)") : "");
+                    textPlanProgress.setText(prog);
+                }
+                if (recyclerPlanStepsV2 != null) {
+                    recyclerPlanStepsV2.setAdapter(new PlanStepsAdapter(message.getPlanSteps()));
+                    if (recyclerPlanStepsV2.getLayoutManager() == null) recyclerPlanStepsV2.setLayoutManager(new LinearLayoutManager(itemView.getContext()));
+                }
+                boolean showActions = message.getStatus() == ChatMessage.STATUS_PENDING_APPROVAL;
+                if (layoutPlanActionsV2 != null) layoutPlanActionsV2.setVisibility(showActions ? View.VISIBLE : View.GONE);
+                if (showActions) {
+                    if (buttonAcceptPlanV2 != null) buttonAcceptPlanV2.setOnClickListener(v -> { if (listener != null) listener.onPlanAcceptClicked(messagePosition, message); });
+                    if (buttonDiscardPlanV2 != null) buttonDiscardPlanV2.setOnClickListener(v -> { if (listener != null) listener.onPlanDiscardClicked(messagePosition, message); });
+                }
             }
 
             if (layoutWebSources.getVisibility() == View.VISIBLE) {
@@ -482,22 +525,7 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
                 bottom.clearAnimation(); bottom.setVisibility(View.GONE);
             }
 
-            boolean isPlan = message.getPlanSteps() != null && !message.getPlanSteps().isEmpty();
-            if (isPlan && message.getStatus() == ChatMessage.STATUS_PENDING_APPROVAL) {
-                layoutPlanActions.setVisibility(View.VISIBLE);
-                buttonAcceptPlan.setOnClickListener(v -> {
-                    if (listener != null) {
-                        listener.onPlanAcceptClicked(messagePosition, message);
-                    }
-                });
-                buttonDiscardPlan.setOnClickListener(v -> {
-                    if (listener != null) {
-                        listener.onPlanDiscardClicked(messagePosition, message);
-                    }
-                });
-            } else {
-                layoutPlanActions.setVisibility(View.GONE);
-            }
+            // old plan action block removed in favor of v2
         }
     }
 
@@ -516,6 +544,13 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
             ToolViewHolder(View itemView) { super(itemView); chipName = itemView.findViewById(R.id.text_tool_name); statusIcon = itemView.findViewById(R.id.icon_tool_status); }
             void bind(ChatMessage.ToolUsage u) {
                 String label = u.name != null ? u.name : "Tool";
+                // Add filename or brief path inline for readability
+                if (u.filePath != null && !u.filePath.isEmpty()) {
+                    String p = u.filePath;
+                    int idx = Math.max(p.lastIndexOf('/'), p.lastIndexOf('\\'));
+                    String fn = idx >= 0 && idx < p.length() - 1 ? p.substring(idx + 1) : p;
+                    label += " · " + fn;
+                }
                 if (u.status != null && !u.status.isEmpty() && !"completed".equals(u.status)) {
                     label += " (" + u.status + ")";
                 }
@@ -530,6 +565,9 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
                     MaterialButton buttonClose = dialogView.findViewById(R.id.button_close);
                     StringBuilder sb = new StringBuilder();
                     if (u.argsJson != null && !u.argsJson.isEmpty()) sb.append("Args:\n").append(u.argsJson).append("\n\n");
+                    if (u.filePath != null && !u.filePath.isEmpty()) sb.append("File:\n").append(u.filePath).append("\n\n");
+                    if (u.addedLines > 0 || u.removedLines > 0) sb.append("Δ Lines: +").append(u.addedLines).append(" -").append(u.removedLines).append("\n\n");
+                    if (u.durationMs > 0) sb.append("Duration: ").append(u.durationMs).append(" ms\n\n");
                     if (u.resultJson != null && !u.resultJson.isEmpty()) sb.append("Result:\n").append(u.resultJson);
                     if (sb.length() == 0) sb.append("No details available.");
                     tv.setText(sb.toString());

@@ -163,6 +163,9 @@ public class ChatMessage {
         public boolean ok;                   // Execution success flag
         public String status;                // pending | running | completed | failed
         public long durationMs;              // Optional runtime duration
+        public String filePath;              // Key file path affected/read
+        public int addedLines;               // quick metrics for diffs
+        public int removedLines;
 
         public ToolUsage(String name) {
             this.name = name;

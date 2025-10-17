@@ -90,7 +90,19 @@ public class FileActionAdapter extends RecyclerView.Adapter<FileActionAdapter.Vi
 
         void bind(final ChatMessage.FileActionDetail action, final OnFileActionClickListener listener, int added, int removed) {
             String path = action.type.equals("renameFile") ? action.newPath : action.path;
-            textFileName.setText(path);
+            if (path == null) path = "";
+            // Prefer showing just the file name with a short parent path prefix
+            String display = path;
+            int lastSlash = path.lastIndexOf('/') >= 0 ? path.lastIndexOf('/') : path.lastIndexOf('\\');
+            if (lastSlash >= 0 && lastSlash < path.length() - 1) {
+                String name = path.substring(lastSlash + 1);
+                String dir = path.substring(0, lastSlash);
+                // Keep only last directory for prefix
+                int dirSlash = dir.lastIndexOf('/') >= 0 ? dir.lastIndexOf('/') : dir.lastIndexOf('\\');
+                String shortDir = dirSlash >= 0 ? dir.substring(dirSlash + 1) : dir;
+                display = shortDir.isEmpty() ? name : shortDir + "/" + name;
+            }
+            textFileName.setText(display);
 
             Context context = itemView.getContext();
             // Use full width as provided by RecyclerView layout

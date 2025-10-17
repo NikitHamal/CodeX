@@ -113,29 +113,13 @@
             android:visibility="gone"
             app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
 
-        <!-- Plan Checklist Section -->
-        <LinearLayout
-            android:id="@+id/layout_plan_steps"
+        <!-- Plan Card (v2) -->
+        <include
+            android:id="@+id/include_plan_card"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:layout_marginTop="8dp"
-            android:visibility="gone">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Plan:"
-                android:textColor="@color/on_surface_variant"
-                android:textSize="12sp"
-                android:layout_marginBottom="4dp"/>
-
-            <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/recycler_plan_steps"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
-        </LinearLayout>
+            android:visibility="gone"
+            layout="@layout/item_plan_card"/>
 
         <!-- Proposed file changes list (no header) -->
         <LinearLayout
@@ -227,29 +211,7 @@
         </LinearLayout>
 
         
-        <LinearLayout
-            android:id="@+id/layout_plan_actions"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_marginTop="8dp"
-            android:gravity="end"
-            android:visibility="gone">
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/button_discard_plan"
-                style="?attr/materialButtonOutlinedStyle"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Discard" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/button_accept_plan"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
-                android:text="Accept" />
-        </LinearLayout>
+        <!-- Old plan actions removed in favor of v2 inside card -->
 
         <!-- Thinking indicator at bottom for running steps -->
         <TextView

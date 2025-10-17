@@ -258,7 +258,6 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
 
     static class AiMessageViewHolder extends RecyclerView.ViewHolder {
         TextView textMessage; TextView textAiModelName; RecyclerView fileChangesContainer; LinearLayout layoutThinkingSection; TextView textThinkingContent; TextView textThinkingHeaderTitle; LinearLayout layoutWebSources; TextView buttonWebSources; LinearLayout layoutTypingIndicator; TextView textTypingIndicator; LinearLayout layoutPlanSteps; RecyclerView recyclerPlanSteps; TextView textAgentThinking; RecyclerView recyclerToolsUsed; View includePlanCard; TextView textPlanTitle; TextView textPlanProgress; RecyclerView recyclerPlanStepsV2; View layoutPlanActionsV2; MaterialButton buttonAcceptPlanV2; MaterialButton buttonDiscardPlanV2;
-        LinearLayout layoutPlanActions; MaterialButton buttonAcceptPlan; MaterialButton buttonDiscardPlan;
         private final OnAiActionInteractionListener listener; private final Context context; private MarkdownFormatter markdownFormatter;
         AiMessageViewHolder(View itemView, OnAiActionInteractionListener listener) {
             super(itemView); this.listener = listener; this.context = itemView.getContext();
@@ -286,9 +285,6 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
             }
             textAgentThinking = itemView.findViewById(R.id.text_agent_thinking);
             recyclerToolsUsed = itemView.findViewById(R.id.recycler_tools_used);
-            layoutPlanActions = itemView.findViewById(R.id.layout_plan_actions);
-            buttonAcceptPlan = itemView.findViewById(R.id.button_accept_plan);
-            buttonDiscardPlan = itemView.findViewById(R.id.button_discard_plan);
             markdownFormatter = MarkdownFormatter.getInstance(context);
             // Long click is set in bind with the bound message to avoid outer messages reference
         }

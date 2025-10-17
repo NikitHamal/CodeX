@@ -168,7 +168,7 @@
                     app:tint="@color/on_surface_variant"
                     android:src="@drawable/icon_tune_round" />
 
-                <!-- Model Selector (text-only, clickable) -->
+                <!-- Model Selector (text-only, clickable) with quick menu -->
                 <LinearLayout
                     android:id="@+id/layout_model_selector_custom"
                     android:layout_width="wrap_content"

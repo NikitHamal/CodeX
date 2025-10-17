@@ -47,6 +47,8 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
     private final AiProcessor aiProcessor; // AiProcessor instance
     private final ExecutorService executorService;
     private PlanExecutor planExecutor; // The new PlanExecutor instance
+    // Track last tool usages to attach to the subsequent assistant message
+    private List<ChatMessage.ToolUsage> lastToolUsages;
 
     // Track current streaming AI message position
     private Integer currentStreamingMessagePosition = null;
@@ -455,9 +457,43 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                     JsonObject maybe = JsonParser.parseString(jsonToParseForTools).getAsJsonObject();
                     if (maybe.has("action") && "tool_call".equalsIgnoreCase(maybe.get("action").getAsString()) && maybe.has("tool_calls") && maybe.get("tool_calls").isJsonArray()) {
                         JsonArray calls = maybe.getAsJsonArray("tool_calls");
+
+                        // Create a transient UI message to surface tools being used
+                        List<ChatMessage.ToolUsage> toolUsageList = new ArrayList<>();
+                        for (int i = 0; i < calls.size(); i++) {
+                            JsonObject c = calls.get(i).getAsJsonObject();
+                            String name = c.has("name") ? c.get("name").getAsString() : "tool";
+                            ChatMessage.ToolUsage tu = new ChatMessage.ToolUsage(name);
+                            if (c.has("args") && c.get("args").isJsonObject()) {
+                                tu.argsJson = c.getAsJsonObject("args").toString();
+                            }
+                            tu.status = "running";
+                            toolUsageList.add(tu);
+                        }
+
+                        ChatMessage toolsMsg = new ChatMessage(
+                                ChatMessage.SENDER_AI,
+                                "Running tools...",
+                                null,
+                                null,
+                                aiModelDisplayName,
+                                System.currentTimeMillis(),
+                                rawAiResponseJson,
+                                new ArrayList<>(),
+                                ChatMessage.STATUS_NONE
+                        );
+                        toolsMsg.setToolUsages(toolUsageList);
+
+                        // Insert tools message and keep its position to update progressively
+                        final int toolsMsgPos = uiFrag.addMessage(toolsMsg);
+
+                        // Execute tools sequentially and update the message list as we go
                         JsonArray results = new JsonArray();
                         File projectDir = activity.getProjectDirectory();
+                        long startAll = System.currentTimeMillis();
                         for (int i = 0; i < calls.size(); i++) {
+                            long startOne = System.currentTimeMillis();
+                            ChatMessage.ToolUsage uiUsage = toolUsageList.get(i);
                             try {
                                 JsonObject c = calls.get(i).getAsJsonObject();
                                 String name = c.get("name").getAsString();
@@ -467,6 +503,12 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                                 JsonObject exec = ToolExecutor.execute(projectDir, name, args);
                                 res.add("result", exec);
                                 results.add(res);
+
+                                // Update UI usage
+                                uiUsage.ok = exec.has("ok") && exec.get("ok").getAsBoolean();
+                                uiUsage.resultJson = exec.toString();
+                                uiUsage.status = uiUsage.ok ? "completed" : "failed";
+                                uiUsage.durationMs = System.currentTimeMillis() - startOne;
                             } catch (Exception inner) {
                                 JsonObject res = new JsonObject();
                                 res.addProperty("name", "unknown");
@@ -475,9 +517,24 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                                 err.addProperty("error", inner.getMessage());
                                 res.add("result", err);
                                 results.add(res);
+
+                                uiUsage.ok = false;
+                                uiUsage.resultJson = err.toString();
+                                uiUsage.status = "failed";
+                                uiUsage.durationMs = System.currentTimeMillis() - startOne;
                                 Log.w(TAG, "Error executing tool", inner);
                             }
+                            // Push UI update for each tool completion
+                            uiFrag.updateMessage(toolsMsgPos, toolsMsg);
                         }
+                        long durationAll = System.currentTimeMillis() - startAll;
+                        toolsMsg.setContent("Tools finished in " + durationAll + " ms");
+                        uiFrag.updateMessage(toolsMsgPos, toolsMsg);
+
+                        // Stash for next assistant message so it shows the tool chips too
+                        lastToolUsages = new ArrayList<>(toolUsageList);
+
+                        // Send results back to model and stop further processing of this response
                         String continuation = ToolExecutor.buildToolResultContinuation(results);
                         String fenced = "```json\n" + continuation + "\n```\n";
                         Log.d(TAG, "Sending tool results back to AI: " + fenced);
@@ -547,6 +604,10 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
             }
             if (isPlan) {
                 aiMessage.setPlanSteps(planSteps);
+            }
+            if (lastToolUsages != null && !lastToolUsages.isEmpty()) {
+                aiMessage.setToolUsages(lastToolUsages);
+                lastToolUsages = null;
             }
 
             Integer targetPos = currentStreamingMessagePosition;

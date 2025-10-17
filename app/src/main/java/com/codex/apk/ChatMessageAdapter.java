@@ -257,7 +257,7 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
     }
 
     static class AiMessageViewHolder extends RecyclerView.ViewHolder {
-        TextView textMessage; TextView textAiModelName; RecyclerView fileChangesContainer; LinearLayout layoutThinkingSection; TextView textThinkingContent; TextView textThinkingHeaderTitle; LinearLayout layoutWebSources; TextView buttonWebSources; LinearLayout layoutTypingIndicator; TextView textTypingIndicator; LinearLayout layoutPlanSteps; RecyclerView recyclerPlanSteps; TextView textAgentThinking;
+        TextView textMessage; TextView textAiModelName; RecyclerView fileChangesContainer; LinearLayout layoutThinkingSection; TextView textThinkingContent; TextView textThinkingHeaderTitle; LinearLayout layoutWebSources; TextView buttonWebSources; LinearLayout layoutTypingIndicator; TextView textTypingIndicator; LinearLayout layoutPlanSteps; RecyclerView recyclerPlanSteps; TextView textAgentThinking; RecyclerView recyclerToolsUsed;
         LinearLayout layoutPlanActions; MaterialButton buttonAcceptPlan; MaterialButton buttonDiscardPlan;
         private final OnAiActionInteractionListener listener; private final Context context; private MarkdownFormatter markdownFormatter;
         AiMessageViewHolder(View itemView, OnAiActionInteractionListener listener) {
@@ -275,6 +275,7 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
             layoutPlanSteps = itemView.findViewById(R.id.layout_plan_steps);
             recyclerPlanSteps = itemView.findViewById(R.id.recycler_plan_steps);
             textAgentThinking = itemView.findViewById(R.id.text_agent_thinking);
+            recyclerToolsUsed = itemView.findViewById(R.id.recycler_tools_used);
             layoutPlanActions = itemView.findViewById(R.id.layout_plan_actions);
             buttonAcceptPlan = itemView.findViewById(R.id.button_accept_plan);
             buttonDiscardPlan = itemView.findViewById(R.id.button_discard_plan);
@@ -358,6 +359,21 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
             layoutWebSources.setVisibility(isTyping ? View.GONE : (message.getWebSources() != null && !message.getWebSources().isEmpty() ? View.VISIBLE : View.GONE));
             layoutPlanSteps.setVisibility(isTyping ? View.GONE : (message.getPlanSteps() != null && !message.getPlanSteps().isEmpty() ? View.VISIBLE : View.GONE));
             itemView.findViewById(R.id.layout_proposed_file_changes).setVisibility(isTyping ? View.GONE : (message.getProposedFileChanges() != null && !message.getProposedFileChanges().isEmpty() ? View.VISIBLE : View.GONE));
+            // Tools used list
+            List<ChatMessage.ToolUsage> tools = message.getToolUsages();
+            View toolsContainer = itemView.findViewById(R.id.layout_tools_used);
+            boolean showTools = !isTyping && tools != null && !tools.isEmpty() && recyclerToolsUsed != null;
+            if (toolsContainer != null) toolsContainer.setVisibility(showTools ? View.VISIBLE : View.GONE);
+            if (showTools) {
+                recyclerToolsUsed.setVisibility(View.VISIBLE);
+                if (recyclerToolsUsed.getLayoutManager() == null) {
+                    recyclerToolsUsed.setLayoutManager(new LinearLayoutManager(itemView.getContext(), LinearLayoutManager.HORIZONTAL, false));
+                }
+                recyclerToolsUsed.setAdapter(new ToolsUsedAdapter(tools));
+            } else if (recyclerToolsUsed != null) {
+                recyclerToolsUsed.setVisibility(View.GONE);
+                recyclerToolsUsed.setAdapter(null);
+            }
 
             textAiModelName.setText(message.getAiModelName());
 
@@ -481,6 +497,56 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
                 });
             } else {
                 layoutPlanActions.setVisibility(View.GONE);
+            }
+        }
+    }
+
+    /** Inline adapter to render tools used chips/badges */
+    static class ToolsUsedAdapter extends RecyclerView.Adapter<ToolsUsedAdapter.ToolViewHolder> {
+        private final List<ChatMessage.ToolUsage> tools;
+        ToolsUsedAdapter(List<ChatMessage.ToolUsage> tools) { this.tools = tools; }
+        @NonNull @Override public ToolViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+            View v = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_tool_usage, parent, false);
+            return new ToolViewHolder(v);
+        }
+        @Override public void onBindViewHolder(@NonNull ToolViewHolder holder, int position) { holder.bind(tools.get(position)); }
+        @Override public int getItemCount() { return tools != null ? tools.size() : 0; }
+        static class ToolViewHolder extends RecyclerView.ViewHolder {
+            TextView chipName; ImageView statusIcon;
+            ToolViewHolder(View itemView) { super(itemView); chipName = itemView.findViewById(R.id.text_tool_name); statusIcon = itemView.findViewById(R.id.icon_tool_status); }
+            void bind(ChatMessage.ToolUsage u) {
+                String label = u.name != null ? u.name : "Tool";
+                if (u.status != null && !u.status.isEmpty() && !"completed".equals(u.status)) {
+                    label += " (" + u.status + ")";
+                }
+                chipName.setText(label);
+                int iconRes = u.ok ? R.drawable.icon_check_circle_round : R.drawable.icon_new_releases_round;
+                statusIcon.setImageResource(iconRes);
+                itemView.setOnClickListener(v -> {
+                    Context ctx = itemView.getContext();
+                    View dialogView = LayoutInflater.from(ctx).inflate(R.layout.dialog_raw_api_response, null);
+                    TextView tv = dialogView.findViewById(R.id.text_raw_response);
+                    MaterialButton buttonCopy = dialogView.findViewById(R.id.button_copy);
+                    MaterialButton buttonClose = dialogView.findViewById(R.id.button_close);
+                    StringBuilder sb = new StringBuilder();
+                    if (u.argsJson != null && !u.argsJson.isEmpty()) sb.append("Args:\n").append(u.argsJson).append("\n\n");
+                    if (u.resultJson != null && !u.resultJson.isEmpty()) sb.append("Result:\n").append(u.resultJson);
+                    if (sb.length() == 0) sb.append("No details available.");
+                    tv.setText(sb.toString());
+                    AlertDialog.Builder b = new AlertDialog.Builder(ctx);
+                    b.setView(dialogView);
+                    AlertDialog d = b.create();
+                    buttonCopy.setOnClickListener(x -> {
+                        android.content.ClipboardManager clipboard = (android.content.ClipboardManager) ctx.getSystemService(Context.CLIPBOARD_SERVICE);
+                        if (clipboard != null) {
+                            android.content.ClipData clip = android.content.ClipData.newPlainText("Tool Usage", tv.getText());
+                            clipboard.setPrimaryClip(clip);
+                            android.widget.Toast.makeText(ctx, "Copied", android.widget.Toast.LENGTH_SHORT).show();
+                        }
+                    });
+                    buttonClose.setOnClickListener(x -> d.dismiss());
+                    d.show();
+                });
             }
         }
     }

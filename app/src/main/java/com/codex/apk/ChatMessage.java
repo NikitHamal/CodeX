@@ -43,6 +43,9 @@ public class ChatMessage {
     // Plan steps (for agent plan rendering)
     private List<PlanStep> planSteps;
     
+    // Tools used by the AI for this message (executed via ToolExecutor or provider tools)
+    private List<ToolUsage> toolUsages;
+    
     // Qwen threading fields
     private String fid; // Unique message id
     private String parentId; // Parent message id
@@ -61,6 +64,7 @@ public class ChatMessage {
         this.proposedFileChanges = new ArrayList<>();
         this.webSources = new ArrayList<>();
         this.planSteps = new ArrayList<>();
+        this.toolUsages = new ArrayList<>();
         this.fid = java.util.UUID.randomUUID().toString();
         this.parentId = null;
         this.childrenIds = new ArrayList<>();
@@ -84,6 +88,7 @@ public class ChatMessage {
         this.status = status;
         this.webSources = new ArrayList<>();
         this.planSteps = new ArrayList<>();
+        this.toolUsages = new ArrayList<>();
         this.fid = java.util.UUID.randomUUID().toString();
         this.parentId = null;
         this.childrenIds = new ArrayList<>();
@@ -101,6 +106,7 @@ public class ChatMessage {
     public String getRawApiResponse() { return rawAiResponseJson; }
     public List<FileActionDetail> getProposedFileChanges() { return proposedFileChanges; }
     public List<PlanStep> getPlanSteps() { return planSteps; }
+    public List<ToolUsage> getToolUsages() { return toolUsages; }
     public int getStatus() { return status; }
     public String getThinkingContent() { return thinkingContent; }
     public List<WebSource> getWebSources() { return webSources; }
@@ -124,6 +130,7 @@ public class ChatMessage {
     public void setWebSources(List<WebSource> webSources) { this.webSources = webSources; }
     public void setPlanSteps(List<PlanStep> planSteps) { this.planSteps = planSteps; }
     public void setUserAttachmentPaths(List<String> paths) { this.userAttachmentPaths = paths != null ? new ArrayList<>(paths) : new ArrayList<>(); }
+    public void setToolUsages(List<ToolUsage> toolUsages) { this.toolUsages = toolUsages != null ? new ArrayList<>(toolUsages) : new ArrayList<>(); }
 
     public com.google.gson.JsonObject toJsonObject() {
         com.google.gson.JsonObject jsonObject = new com.google.gson.JsonObject();
@@ -145,6 +152,23 @@ public class ChatMessage {
             this.kind = kind;
             this.status = "pending";
             this.rawResponse = null;
+        }
+    }
+
+    /** Tool usage model for UI */
+    public static class ToolUsage {
+        public final String name;            // Tool name
+        public String argsJson;              // Arguments as JSON string (pretty or compact)
+        public String resultJson;            // Result as JSON string
+        public boolean ok;                   // Execution success flag
+        public String status;                // pending | running | completed | failed
+        public long durationMs;              // Optional runtime duration
+
+        public ToolUsage(String name) {
+            this.name = name;
+            this.status = "pending";
+            this.ok = false;
+            this.durationMs = 0L;
         }
     }
 
@@ -303,6 +327,14 @@ public class ChatMessage {
                 map.put("proposedFileChanges", null);
             }
 
+            // Serialize tool usages list to JSON string for persistence
+            if (toolUsages != null && !toolUsages.isEmpty()) {
+                Gson gson = new Gson();
+                map.put("toolUsages", gson.toJson(toolUsages));
+            } else {
+                map.put("toolUsages", null);
+            }
+
         } else {
             // User message attachments
             if (userAttachmentPaths != null && !userAttachmentPaths.isEmpty()) {
@@ -372,8 +404,25 @@ public class ChatMessage {
                 }
             }
 
-            return new ChatMessage(sender, content, actionSummaries, suggestions, aiModelName,
+            // Deserialize tool usages if present
+            List<ToolUsage> toolUsages = null;
+            String toolUsagesJson = (String) map.get("toolUsages");
+            if (toolUsagesJson != null && !toolUsagesJson.isEmpty()) {
+                try {
+                    Gson gson = new Gson();
+                    Type type = new TypeToken<List<ToolUsage>>() {}.getType();
+                    toolUsages = gson.fromJson(toolUsagesJson, type);
+                } catch (Exception e) {
+                    Log.e("ChatMessage", "Error deserializing toolUsages: " + e.getMessage(), e);
+                }
+            }
+
+            ChatMessage msg = new ChatMessage(sender, content, actionSummaries, suggestions, aiModelName,
                     timestamp, rawAiResponseJson, proposedFileChanges, status);
+            if (toolUsages != null) {
+                msg.setToolUsages(toolUsages);
+            }
+            return msg;
         } else {
             return new ChatMessage(sender, content, timestamp);
         }

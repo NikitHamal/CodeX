@@ -113,13 +113,14 @@ public class AiActionApplier {
                 });
             }
 
+            final boolean finalAnyFailed = anyFailed;
             activity.runOnUiThread(() -> {
                 message.setStatus(ChatMessage.STATUS_ACCEPTED);
                 AIChatFragment frag = activity.getAiChatFragment();
                 if (frag != null) frag.updateMessage(messagePosition, message);
                 activity.tabManager.refreshOpenTabsAfterAi();
                 activity.loadFileTree();
-                activity.showToast(anyFailed ? "Agent steps completed with issues" : "Agent step applied");
+                activity.showToast(finalAnyFailed ? "Agent steps completed with issues" : "Agent step applied");
                 if (planExecutor != null && planExecutor.isExecutingPlan()) {
                     planExecutor.onStepActionsApplied();
                 }

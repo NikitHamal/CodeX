@@ -11,20 +11,18 @@ import com.codex.apk.AIChatFragment;
 import com.codex.apk.AIAssistant;
 import com.codex.apk.ai.AIModel;
 import com.codex.apk.ai.WebSource;
-import com.codex.apk.AiProcessor; // Import AiProcessor
+import com.codex.apk.AiProcessor;
 import com.codex.apk.ChatMessage;
-import com.codex.apk.CodeEditorFragment;
 import com.codex.apk.EditorActivity;
 import com.codex.apk.FileManager;
 import com.codex.apk.ToolSpec;
 import com.codex.apk.SettingsActivity;
 import com.codex.apk.TabItem;
 import com.codex.apk.DiffGenerator;
-import com.codex.apk.QwenResponseParser; // Plan/file parsing
+import com.codex.apk.QwenResponseParser;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import com.codex.apk.ToolExecutor;
 
 import java.io.File;
 import java.io.IOException;
@@ -46,13 +44,13 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
     private final FileManager fileManager;
     private final AiProcessor aiProcessor; // AiProcessor instance
     private final ExecutorService executorService;
-    private PlanExecutor planExecutor; // The new PlanExecutor instance
-    // Track last tool usages to attach to the subsequent assistant message
+    private final AiActionApplier actionApplier;
+    private final ToolExecutionCoordinator toolCoordinator;
+    private final AiStreamingHandler streamingHandler;
+    private final PlanExecutor planExecutor;
+    private final AiResponseRenderer responseRenderer;
     private List<ChatMessage.ToolUsage> lastToolUsages;
-    // Track the position of the transient tools message so we can replace it later
     private Integer currentToolsMessagePosition = null;
-
-    // Track current streaming AI message position
     private Integer currentStreamingMessagePosition = null;
 
     public AiAssistantManager(EditorActivity activity, File projectDir, String projectName,
@@ -60,8 +58,13 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
         this.activity = activity;
         this.fileManager = fileManager;
         this.executorService = executorService;
-        this.aiProcessor = new AiProcessor(projectDir, activity.getApplicationContext());
+        this.aiProcessor = new AiProcessor(projectDir, fileManager);
+
         this.planExecutor = new PlanExecutor(activity, this); // Initialize the PlanExecutor
+        this.actionApplier = new AiActionApplier(activity, aiProcessor, planExecutor, executorService);
+        this.toolCoordinator = new ToolExecutionCoordinator(activity, executorService, this::handleToolContinuation);
+        this.streamingHandler = new AiStreamingHandler(activity, this);
+        this.responseRenderer = new AiResponseRenderer();
 
         String apiKey = SettingsActivity.getGeminiApiKey(activity);
         this.aiAssistant = new AIAssistant(activity, apiKey, projectDir, projectName, executorService, this);
@@ -158,148 +161,11 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
         boolean isAgent = aiAssistant != null && aiAssistant.isAgentModeEnabled();
 
         if (!isAgent) {
-            executorService.execute(() -> {
-                try {
-                    List<String> appliedSummaries = new ArrayList<>();
-                    List<File> changedFiles = new ArrayList<>();
-                    for (ChatMessage.FileActionDetail detail : message.getProposedFileChanges()) {
-                        String summary = aiProcessor.applyFileAction(detail);
-                        appliedSummaries.add(summary);
-                        // Track changed files to refresh them
-                        File fileToRefresh = new File(activity.getProjectDirectory(), detail.path);
-                        if (fileToRefresh.exists()) {
-                            changedFiles.add(fileToRefresh);
-                        }
-                        if ("renameFile".equalsIgnoreCase(detail.type) && detail.newPath != null) {
-                             File newFile = new File(activity.getProjectDirectory(), detail.newPath);
-                             if (newFile.exists()) {
-                                 changedFiles.add(newFile);
-                             }
-                        }
-                    }
-                    activity.runOnUiThread(() -> {
-                        activity.showToast("AI actions applied successfully!");
-                        message.setStatus(ChatMessage.STATUS_ACCEPTED);
-                        message.setActionSummaries(appliedSummaries);
-                        AIChatFragment aiChatFragment = activity.getAiChatFragment();
-                        if (aiChatFragment != null) {
-                            aiChatFragment.updateMessage(messagePosition, message);
-                        }
-                        // Refresh tabs and file tree
-                        activity.tabManager.refreshOpenTabsAfterAi();
-                        activity.loadFileTree();
-                    });
-                } catch (Exception e) {
-                    Log.e(TAG, "Error applying AI actions: " + e.getMessage(), e);
-                    activity.runOnUiThread(() -> activity.showToast("Failed to apply AI actions: " + e.getMessage()));
-                }
-            });
+            actionApplier.applyAcceptedActions(messagePosition, message);
             return;
         }
 
-        // Agent mode: auto-apply without additional approval
-        executorService.execute(() -> {
-            List<String> appliedSummaries = new ArrayList<>();
-            List<ChatMessage.FileActionDetail> steps = message.getProposedFileChanges();
-
-            boolean anyFailed = false;
-            for (int i = 0; i < steps.size(); i++) {
-                ChatMessage.FileActionDetail step = steps.get(i);
-
-                try {
-                    String summary = aiProcessor.applyFileAction(step);
-                    appliedSummaries.add(summary);
-                    if (planExecutor != null && planExecutor.isExecutingPlan()) {
-                        planExecutor.addExecutedStepSummary(summary);
-                    }
-                    step.stepStatus = "completed";
-                    step.stepMessage = "Completed";
-                } catch (Exception ex) {
-                    Log.e(TAG, "Agent step failed: " + step.getSummary(), ex);
-                    step.stepStatus = "failed";
-                    step.stepMessage = ex.getMessage();
-                    if (planExecutor != null && planExecutor.isExecutingPlan()) {
-                        planExecutor.addExecutedStepSummary("FAILED: " + step.getSummary() + " - " + ex.getMessage());
-                    }
-                    anyFailed = true;
-                }
-
-                activity.runOnUiThread(() -> {
-                    AIChatFragment frag = activity.getAiChatFragment();
-                    if (frag != null) {
-                        frag.updateMessage(messagePosition, message);
-                    }
-                });
-            }
-
-            activity.runOnUiThread(() -> {
-                message.setStatus(ChatMessage.STATUS_ACCEPTED);
-                AIChatFragment frag = activity.getAiChatFragment();
-                if (frag != null) frag.updateMessage(messagePosition, message);
-                activity.tabManager.refreshOpenTabsAfterAi();
-                activity.loadFileTree();
-                activity.showToast("Agent step applied");
-                if (planExecutor != null && planExecutor.isExecutingPlan()) {
-                    planExecutor.onStepActionsApplied();
-                }
-            });
-        });
-    }
-
-    private String extractJsonFromCodeBlock(String content) {
-        if (content == null || content.trim().isEmpty()) {
-            return null;
-        }
-        // Look for ```json ... ``` pattern
-        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("```json\\s*([\\s\\S]*?)```", java.util.regex.Pattern.CASE_INSENSITIVE);
-        java.util.regex.Matcher matcher = pattern.matcher(content);
-        if (matcher.find()) {
-            return matcher.group(1).trim();
-        }
-        // Also check for ``` ... ``` pattern (without json specifier)
-        pattern = java.util.regex.Pattern.compile("```\\s*([\\s\\S]*?)```");
-        matcher = pattern.matcher(content);
-        if (matcher.find()) {
-            String extracted = matcher.group(1).trim();
-            if (looksLikeJson(extracted)) {
-                return extracted;
-            }
-        }
-        return null;
-    }
-
-    private boolean looksLikeJson(String text) {
-        if (text == null) return false;
-        String trimmed = text.trim();
-        if (!((trimmed.startsWith("{") && trimmed.endsWith("}")) || (trimmed.startsWith("[") && trimmed.endsWith("]")))) {
-            return false;
-        }
-        try {
-            JsonParser.parseString(trimmed);
-            return true;
-        } catch (com.google.gson.JsonSyntaxException e) {
-            return false;
-        }
-    }
-
-    private int findMatchingBraceEnd(String s, int startIdx) {
-        int depth = 0; boolean inString = false; boolean escape = false;
-        for (int i = startIdx; i < s.length(); i++) {
-            char c = s.charAt(i);
-            if (inString) {
-                if (escape) { escape = false; continue; }
-                if (c == '\\') { escape = true; continue; }
-                if (c == '"') inString = false;
-                continue;
-            }
-            if (c == '"') { inString = true; continue; }
-            if (c == '{') depth++;
-            else if (c == '}') {
-                depth--;
-                if (depth == 0) return i;
-            }
-        }
-        return -1;
+        actionApplier.applyAgentActions(messagePosition, message);
     }
 
     // Public API required by EditorActivity and UI
@@ -461,146 +327,20 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
             }
 
             // Centralized tool call handling
-            String jsonToParseForTools = extractJsonFromCodeBlock(explanation);
-            if (jsonToParseForTools == null) {
-                jsonToParseForTools = extractJsonFromCodeBlock(rawAiResponseJson);
-            }
-            if (jsonToParseForTools == null && looksLikeJson(explanation)) {
-                jsonToParseForTools = explanation;
-            }
+            String jsonToParseForTools = AiResponseUtils.extractJsonBlock(explanation, rawAiResponseJson);
+            JsonArray toolCalls = AiResponseUtils.extractToolCalls(jsonToParseForTools);
 
-            if (jsonToParseForTools != null) {
+            if (toolCalls != null) {
                 try {
-                    JsonObject maybe = JsonParser.parseString(jsonToParseForTools).getAsJsonObject();
-                    if (maybe.has("action") && "tool_call".equalsIgnoreCase(maybe.get("action").getAsString()) && maybe.has("tool_calls") && maybe.get("tool_calls").isJsonArray()) {
-                        JsonArray calls = maybe.getAsJsonArray("tool_calls");
+                    currentToolsMessagePosition = toolCoordinator.displayRunningTools(uiFrag, aiModelDisplayName, rawAiResponseJson, toolCalls);
 
-                        // Create a transient UI message to surface tools being used
-                        List<ChatMessage.ToolUsage> toolUsageList = new ArrayList<>();
-                        for (int i = 0; i < calls.size(); i++) {
-                            JsonObject c = calls.get(i).getAsJsonObject();
-                            String name = c.has("name") ? c.get("name").getAsString() : "tool";
-                            ChatMessage.ToolUsage tu = new ChatMessage.ToolUsage(name);
-                            if (c.has("args") && c.get("args").isJsonObject()) {
-                                tu.argsJson = c.getAsJsonObject("args").toString();
-                                // Extract common path keys for quick display
-                                try {
-                                    if (c.getAsJsonObject("args").has("path")) {
-                                        tu.filePath = c.getAsJsonObject("args").get("path").getAsString();
-                                    } else if (c.getAsJsonObject("args").has("oldPath")) {
-                                        tu.filePath = c.getAsJsonObject("args").get("oldPath").getAsString();
-                                    }
-                                } catch (Exception ignore) {}
-                            }
-                            tu.status = "running";
-                            toolUsageList.add(tu);
-                        }
+                    JsonArray results = toolCoordinator.executeTools(toolCalls, activity.getProjectDirectory(), currentToolsMessagePosition, uiFrag);
+                    lastToolUsages = toolCoordinator.getLastToolUsages();
 
-                        ChatMessage toolsMsg = new ChatMessage(
-                                ChatMessage.SENDER_AI,
-                                "Running tools...",
-                                null,
-                                null,
-                                aiModelDisplayName,
-                                System.currentTimeMillis(),
-                                rawAiResponseJson,
-                                new ArrayList<>(),
-                                ChatMessage.STATUS_NONE
-                        );
-                        toolsMsg.setToolUsages(toolUsageList);
-
-                        // Insert tools message and keep its position to update progressively
-                        currentToolsMessagePosition = uiFrag.addMessage(toolsMsg);
-
-                        // Execute tools sequentially and update the message list as we go
-                        JsonArray results = new JsonArray();
-                        File projectDir = activity.getProjectDirectory();
-                        long startAll = System.currentTimeMillis();
-                        for (int i = 0; i < calls.size(); i++) {
-                            long startOne = System.currentTimeMillis();
-                            ChatMessage.ToolUsage uiUsage = toolUsageList.get(i);
-                            try {
-                                JsonObject c = calls.get(i).getAsJsonObject();
-                                String name = c.get("name").getAsString();
-                                JsonObject args = c.has("args") && c.get("args").isJsonObject() ? c.getAsJsonObject("args") : new JsonObject();
-                                JsonObject res = new JsonObject();
-                                res.addProperty("name", name);
-                                JsonObject exec = ToolExecutor.execute(projectDir, name, args);
-                                res.add("result", exec);
-                                results.add(res);
-
-                                // Update UI usage
-                                uiUsage.ok = exec.has("ok") && exec.get("ok").getAsBoolean();
-                                uiUsage.resultJson = exec.toString();
-                                uiUsage.status = uiUsage.ok ? "completed" : "failed";
-                                uiUsage.durationMs = System.currentTimeMillis() - startOne;
-                                // Quick metrics for read/update operations
-                                try {
-                                    if (("readFile".equals(name) || "listFiles".equals(name) || "searchInProject".equals(name) || "grepSearch".equals(name)) && exec.has("ok")) {
-                                        // Populate metrics generically for discovery tools
-                                        if (args.has("path") && (uiUsage.filePath == null || uiUsage.filePath.isEmpty())) {
-                                            uiUsage.filePath = args.get("path").getAsString();
-                                        }
-                                        if (exec.has("files")) {
-                                            uiUsage.addedLines = exec.getAsJsonArray("files").size();
-                                        } else if (exec.has("matches")) {
-                                            uiUsage.addedLines = exec.getAsJsonArray("matches").size();
-                                        } else if (exec.has("results")) {
-                                            uiUsage.addedLines = exec.getAsJsonArray("results").size();
-                                        }
-                                        // If we can infer multiple file paths, store them
-                                        if (exec.has("files")) {
-                                            for (int j = 0; j < Math.min(5, exec.getAsJsonArray("files").size()); j++) {
-                                                JsonObject f = exec.getAsJsonArray("files").get(j).getAsJsonObject();
-                                                if (f.has("name")) uiUsage.filePaths.add(f.get("name").getAsString());
-                                            }
-                                        }
-                                    } else if ("readFile".equals(name) && exec.has("content")) {
-                                        String content = exec.get("content").getAsString();
-                                        uiUsage.addedLines = countLines(content);
-                                        uiUsage.removedLines = 0;
-                                    } else if (("updateFile".equals(name) || "createFile".equals(name)) && args.has("content")) {
-                                        String content = args.get("content").getAsString();
-                                        uiUsage.addedLines = countLines(content);
-                                        uiUsage.removedLines = 0;
-                                    }
-                                } catch (Exception ignore) {}
-                            } catch (Exception inner) {
-                                JsonObject res = new JsonObject();
-                                res.addProperty("name", "unknown");
-                                JsonObject err = new JsonObject();
-                                err.addProperty("ok", false);
-                                err.addProperty("error", inner.getMessage());
-                                res.add("result", err);
-                                results.add(res);
-
-                                uiUsage.ok = false;
-                                uiUsage.resultJson = err.toString();
-                                uiUsage.status = "failed";
-                                uiUsage.durationMs = System.currentTimeMillis() - startOne;
-                                Log.w(TAG, "Error executing tool", inner);
-                            }
-                            // Push UI update for each tool completion
-                            if (currentToolsMessagePosition != null) {
-                                uiFrag.updateMessage(currentToolsMessagePosition, toolsMsg);
-                            }
-                        }
-                        long durationAll = System.currentTimeMillis() - startAll;
-                        toolsMsg.setContent("Tools finished in " + durationAll + " ms");
-                        if (currentToolsMessagePosition != null) {
-                            uiFrag.updateMessage(currentToolsMessagePosition, toolsMsg);
-                        }
-
-                        // Stash for next assistant message so it shows the tool chips too
-                        lastToolUsages = new ArrayList<>(toolUsageList);
-
-                        // Send results back to model and stop further processing of this response
-                        String continuation = ToolExecutor.buildToolResultContinuation(results);
-                        String fenced = "```json\n" + continuation + "\n```\n";
-                        Log.d(TAG, "Sending tool results back to AI: " + fenced);
-                        sendAiPrompt(fenced, new java.util.ArrayList<>(), activity.getQwenState(), activity.getActiveTab());
-                        return;
-                    }
+                    String continuation = ToolExecutionCoordinator.buildContinuationPayload(results);
+                    Log.d(TAG, "Sending tool results back to AI: ```json\n" + continuation + "\n```\n");
+                    sendAiPrompt("```json\n" + continuation + "\n```\n", new ArrayList<>(), activity.getQwenState(), activity.getActiveTab());
+                    return;
                 } catch (Exception e) {
                     Log.w(TAG, "Could not execute tool call. Error parsing JSON.", e);
                 }
@@ -613,12 +353,12 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                 try {
                     QwenResponseParser.ParsedResponse parsed = null;
                     if (rawAiResponseJson != null) {
-                        String normalized = extractJsonFromCodeBlock(rawAiResponseJson);
+                        String normalized = AiResponseUtils.extractJsonFromContent(rawAiResponseJson);
                         String toParse = normalized != null ? normalized : rawAiResponseJson;
                         if (toParse != null) parsed = QwenResponseParser.parseResponse(toParse);
                     }
                     if (parsed == null && explanation != null && !explanation.isEmpty()) {
-                        String exNorm = extractJsonFromCodeBlock(explanation);
+                        String exNorm = AiResponseUtils.extractJsonFromContent(explanation);
                         if (exNorm != null) parsed = QwenResponseParser.parseResponse(exNorm);
                     }
                     if (parsed != null && parsed.action != null && parsed.action.contains("file")) {
@@ -640,34 +380,17 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                 return;
             }
 
-            String finalExplanation = explanation != null ? explanation.trim() : "";
-            if ((finalExplanation == null || finalExplanation.isEmpty()) && effectiveProposedFileChanges != null && !effectiveProposedFileChanges.isEmpty()) {
-                // Build a concise summary with aggregated counts per affected file
-                try {
-                    finalExplanation = buildFileChangeSummary(effectiveProposedFileChanges);
-                } catch (Exception ignore) {}
-                if (finalExplanation == null || finalExplanation.isEmpty()) {
-                    finalExplanation = "Proposed file changes available.";
-                }
-            }
-            ChatMessage aiMessage = new ChatMessage(
-                    ChatMessage.SENDER_AI, finalExplanation, null,
-                    suggestions != null ? new ArrayList<>(suggestions) : new ArrayList<>(),
-                    aiModelDisplayName, System.currentTimeMillis(), rawAiResponseJson,
-                    effectiveProposedFileChanges, ChatMessage.STATUS_PENDING_APPROVAL
+            ChatMessage aiMessage = responseRenderer.buildAssistantMessage(
+                    explanation,
+                    suggestions,
+                    aiModelDisplayName,
+                    rawAiResponseJson,
+                    effectiveProposedFileChanges,
+                    planSteps,
+                    thinkingContent,
+                    webSources,
+                    lastToolUsages
             );
-            if (thinkingContent != null && !thinkingContent.isEmpty()) {
-                aiMessage.setThinkingContent(thinkingContent);
-            }
-            if (webSources != null && !webSources.isEmpty()) {
-                aiMessage.setWebSources(webSources);
-            }
-            if (isPlan) {
-                aiMessage.setPlanSteps(planSteps);
-            }
-            if (lastToolUsages != null && !lastToolUsages.isEmpty()) {
-                aiMessage.setToolUsages(lastToolUsages);
-            }
 
             Integer targetPos = currentStreamingMessagePosition;
             // Prefer to replace a transient tools message if present to avoid duplicates
@@ -688,84 +411,6 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
             // Clear after attaching/replacing to prevent duplicate display in future messages
             lastToolUsages = null;
         });
-    }
-
-    private String buildFileChangeSummary(List<ChatMessage.FileActionDetail> details) {
-        // Aggregate by effective path (tracking renames in this message)
-        java.util.LinkedHashMap<String, int[]> countsByPath = new java.util.LinkedHashMap<>();
-        java.util.Set<String> allPaths = new java.util.LinkedHashSet<>();
-        for (ChatMessage.FileActionDetail d : details) {
-            if (d.path != null && !d.path.isEmpty()) allPaths.add(d.path);
-            if ("renameFile".equals(d.type)) {
-                if (d.oldPath != null && !d.oldPath.isEmpty()) allPaths.add(d.oldPath);
-                if (d.newPath != null && !d.newPath.isEmpty()) allPaths.add(d.newPath);
-            }
-        }
-        // Build alias set per path by walking rename chain backwards
-        java.util.Map<String, java.util.Set<String>> aliases = new java.util.HashMap<>();
-        for (String p : allPaths) {
-            java.util.Set<String> set = new java.util.LinkedHashSet<>();
-            set.add(p);
-            boolean changed;
-            for (int pass = 0; pass < 3; pass++) {
-                changed = false;
-                for (ChatMessage.FileActionDetail a : details) {
-                    if ("renameFile".equals(a.type) && a.newPath != null && set.contains(a.newPath) && a.oldPath != null) {
-                        if (set.add(a.oldPath)) changed = true;
-                    }
-                }
-                if (!changed) break;
-            }
-            aliases.put(p, set);
-        }
-
-        // Define helper to find a canonical display name
-        java.util.function.Function<ChatMessage.FileActionDetail, String> displayPath = a -> {
-            if ("renameFile".equals(a.type) && a.newPath != null && !a.newPath.isEmpty()) return a.newPath;
-            return a.path != null ? a.path : "";
-        };
-
-        // Aggregate counts
-        for (ChatMessage.FileActionDetail a : details) {
-            String key = displayPath.apply(a);
-            if (key.isEmpty()) continue;
-            int[] current = countsByPath.computeIfAbsent(key, k -> new int[]{0, 0});
-            if ("modifyLines".equals(a.type)) {
-                current[0] += (a.insertLines != null) ? a.insertLines.size() : 0;
-                current[1] += Math.max(0, a.deleteCount);
-            } else if (a.diffPatch != null && !a.diffPatch.isEmpty()) {
-                int[] c = com.codex.apk.DiffUtils.countAddRemove(a.diffPatch);
-                current[0] += c[0];
-                current[1] += c[1];
-            } else if ("createFile".equals(a.type) && a.newContent != null) {
-                current[0] += countLines(a.newContent);
-            } else if ("deleteFile".equals(a.type) && a.oldContent != null) {
-                current[1] += countLines(a.oldContent);
-            } else if (a.oldContent != null || a.newContent != null) {
-                int[] c = com.codex.apk.DiffUtils.countAddRemoveFromContents(a.oldContent, a.newContent);
-                current[0] += c[0];
-                current[1] += c[1];
-            }
-        }
-
-        if (countsByPath.isEmpty()) return "";
-        StringBuilder sb = new StringBuilder();
-        sb.append("Changes:\n");
-        for (java.util.Map.Entry<String, int[]> e : countsByPath.entrySet()) {
-            int add = e.getValue()[0];
-            int rem = e.getValue()[1];
-            sb.append("- ").append(e.getKey());
-            if (add > 0 || rem > 0) sb.append(" (+").append(add).append(" -").append(rem).append(")");
-            sb.append('\n');
-        }
-        return sb.toString().trim();
-    }
-
-    private int countLines(String s) {
-        if (s == null || s.isEmpty()) return 0;
-        int lines = 1;
-        for (int i = 0; i < s.length(); i++) if (s.charAt(i) == '\n') lines++;
-        return lines;
     }
 
     @Override
@@ -830,28 +475,9 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
     @Override
     public void onAiRequestStarted() {
         activity.runOnUiThread(() -> {
-            boolean suppress = aiAssistant != null && aiAssistant.isAgentModeEnabled() && planExecutor != null && planExecutor.isExecutingPlan();
-            if (suppress) {
-                AIChatFragment uiFrag = activity.getAiChatFragment();
-                if (uiFrag != null) {
-                    uiFrag.hideThinkingMessage();
-                }
-                currentStreamingMessagePosition = null;
-                return;
-            }
             AIChatFragment chatFragment = activity.getAiChatFragment();
-            if (chatFragment != null) {
-                ChatMessage aiMsg = new ChatMessage(
-                        ChatMessage.SENDER_AI,
-                        activity.getString(com.codex.apk.R.string.ai_is_thinking),
-                        null, null,
-                        aiAssistant.getCurrentModel().getDisplayName(),
-                        System.currentTimeMillis(),
-                        null, null,
-                        ChatMessage.STATUS_NONE
-                );
-                currentStreamingMessagePosition = chatFragment.addMessage(aiMsg);
-            }
+            boolean suppress = aiAssistant != null && aiAssistant.isAgentModeEnabled() && planExecutor != null && planExecutor.isExecutingPlan();
+            streamingHandler.handleRequestStarted(chatFragment, aiAssistant, suppress);
         });
     }
 
@@ -861,90 +487,13 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
             if (aiAssistant != null && aiAssistant.isAgentModeEnabled() && planExecutor != null && planExecutor.isExecutingPlan()) return;
             AIChatFragment chatFragment = activity.getAiChatFragment();
             if (chatFragment == null || currentStreamingMessagePosition == null) return;
-            ChatMessage msg = chatFragment.getMessageAt(currentStreamingMessagePosition);
-            if (msg == null) return;
-
-            if (isThinking) {
-                msg.setThinkingContent(partialResponse);
-                // When thinking, the main content should be blank or a placeholder
-                if (msg.getContent() == null || !msg.getContent().equals(activity.getString(com.codex.apk.R.string.ai_is_thinking))) {
-                    msg.setContent("");
-                }
-                // Experimental: lightweight live activity parsing (heuristic)
-                try {
-                    String s = partialResponse != null ? partialResponse.toLowerCase() : "";
-                    java.util.List<ChatMessage.ToolUsage> live = new java.util.ArrayList<>();
-                    // Heuristic cues
-                    if (s.contains("reading") || s.contains("read file")) {
-                        ChatMessage.ToolUsage u = new ChatMessage.ToolUsage("readFile");
-                        u.status = "running";
-                        live.add(u);
-                    } else if (s.contains("search") && !s.contains("research")) {
-                        ChatMessage.ToolUsage u = new ChatMessage.ToolUsage("searchInProject");
-                        u.status = "running";
-                        live.add(u);
-                    } else if (s.contains("update") || s.contains("write file") || s.contains("create file")) {
-                        ChatMessage.ToolUsage u = new ChatMessage.ToolUsage("updateFile");
-                        u.status = "running";
-                        live.add(u);
-                    }
-                    if (!live.isEmpty()) {
-                        msg.setToolUsages(live);
-                    }
-                } catch (Exception ignore) {}
-            } else {
-                String pr = partialResponse != null ? partialResponse : "";
-                boolean suppressed = false;
-                // Suppress raw tool_call JSON from being shown to the user; show a planning placeholder + chips instead
-                try {
-                    String normalized = extractJsonFromCodeBlock(pr);
-                    String candidate = normalized != null ? normalized : pr;
-                    if (looksLikeJson(candidate)) {
-                        com.google.gson.JsonObject obj = com.google.gson.JsonParser.parseString(candidate).getAsJsonObject();
-                        if (obj.has("action") && "tool_call".equalsIgnoreCase(obj.get("action").getAsString())) {
-                            suppressed = true;
-                            msg.setContent("Planning tools…");
-                            java.util.List<ChatMessage.ToolUsage> planned = new java.util.ArrayList<>();
-                            if (obj.has("tool_calls") && obj.get("tool_calls").isJsonArray()) {
-                                com.google.gson.JsonArray arr = obj.getAsJsonArray("tool_calls");
-                                for (int i = 0; i < Math.min(5, arr.size()); i++) {
-                                    com.google.gson.JsonObject c = arr.get(i).getAsJsonObject();
-                                    String name = c.has("name") ? c.get("name").getAsString() : "tool";
-                                    ChatMessage.ToolUsage tu = new ChatMessage.ToolUsage(name);
-                                    tu.status = "running";
-                                    if (c.has("args") && c.get("args").isJsonObject()) {
-                                        tu.argsJson = c.get("args").getAsJsonObject().toString();
-                                        if (c.get("args").getAsJsonObject().has("path")) {
-                                            tu.filePath = c.get("args").getAsJsonObject().get("path").getAsString();
-                                        }
-                                    }
-                                    planned.add(tu);
-                                }
-                            }
-                            msg.setToolUsages(planned);
-                        }
-                    }
-                } catch (Exception ignore) {}
-                if (!suppressed) {
-                    msg.setContent(pr);
-                    msg.setToolUsages(null);
-                }
-                // Clear thinking content when we get a final response
-                msg.setThinkingContent(null);
-            }
-            chatFragment.updateMessage(currentStreamingMessagePosition, msg);
+            streamingHandler.handleStreamUpdate(chatFragment, currentStreamingMessagePosition, partialResponse, isThinking);
         });
     }
 
     @Override
     public void onAiRequestCompleted() {
-        activity.runOnUiThread(() -> {
-            AIChatFragment chatFragment = activity.getAiChatFragment();
-            if (chatFragment != null) {
-                chatFragment.hideThinkingMessage();
-            }
-            currentStreamingMessagePosition = null;
-        });
+        activity.runOnUiThread(() -> streamingHandler.handleRequestCompleted(activity.getAiChatFragment()));
     }
 
     @Override

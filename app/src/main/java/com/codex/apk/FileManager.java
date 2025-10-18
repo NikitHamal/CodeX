@@ -4,6 +4,11 @@ import android.content.Context;
 import android.util.Log;
 import android.widget.Toast;
 
+import com.codex.apk.DiffGenerator;
+import com.codex.apk.util.FileContentValidator;
+import com.codex.apk.util.FileContentValidator.ValidationResult;
+import com.codex.apk.util.UnifiedDiffApplier;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
@@ -18,244 +23,350 @@ import java.util.List;
 import java.util.regex.Pattern;
 
 public class FileManager {
-	private static final String TAG = "FileManager";
-	private final Pattern autoInvalidFileNameChars = Pattern.compile("[\\\\/:*?\"<>|]");
-	private final Context context;
-	private final File projectDir;
+    private static final String TAG = "FileManager";
+    private final Pattern autoInvalidFileNameChars = Pattern.compile("[\\\\/:*?\"<>|]");
+    private final Context context;
+    private final File projectDir;
 
-	// File change listener
-	public interface FileChangeListener {
-		void onFileCreated(File file);
-		void onFileModified(File file);
-		void onFileDeleted(File file);
-		void onFileRenamed(File oldFile, File newFile);
-	}
+    // File change listener
+    public interface FileChangeListener {
+        void onFileCreated(File file);
+        void onFileModified(File file);
+        void onFileDeleted(File file);
+        void onFileRenamed(File oldFile, File newFile);
+    }
 
-	private FileChangeListener fileChangeListener;
+    private FileChangeListener fileChangeListener;
 
-	public void setFileChangeListener(FileChangeListener listener) {
-		this.fileChangeListener = listener;
-	}
+    public void setFileChangeListener(FileChangeListener listener) {
+        this.fileChangeListener = listener;
+    }
 
-	public FileManager(Context context, File projectDir) {
-		this.context = context;
-		this.projectDir = projectDir;
-	}
+    public FileManager(Context context, File projectDir) {
+        this.context = context;
+        this.projectDir = projectDir;
+    }
 
-	public String readFileContent(File file) throws IOException {
-		StringBuilder content = new StringBuilder();
-		try (FileInputStream fis = new FileInputStream(file);
-			 BufferedReader reader = new BufferedReader(new InputStreamReader(fis, StandardCharsets.UTF_8))) {
-			String line;
-			while ((line = reader.readLine()) != null) {
-				content.append(line).append("\n");
-			}
-		}
-		return content.toString();
-	}
+    public String readFileContent(File file) throws IOException {
+        StringBuilder content = new StringBuilder();
+        try (FileInputStream fis = new FileInputStream(file);
+             BufferedReader reader = new BufferedReader(new InputStreamReader(fis, StandardCharsets.UTF_8))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                content.append(line).append("\n");
+            }
+        }
+        return content.toString();
+    }
 
-	public void writeFileContent(File file, String content) throws IOException {
-		try (FileOutputStream fos = new FileOutputStream(file);
-			 OutputStreamWriter writer = new OutputStreamWriter(fos, StandardCharsets.UTF_8)) {
-			writer.write(content);
-		}
-		if (fileChangeListener != null) {
-			fileChangeListener.onFileModified(file);
-		}
-	}
+    public void writeFileContent(File file, String content) throws IOException {
+        try (FileOutputStream fos = new FileOutputStream(file);
+             OutputStreamWriter writer = new OutputStreamWriter(fos, StandardCharsets.UTF_8)) {
+            writer.write(content);
+        }
+        if (fileChangeListener != null) {
+            fileChangeListener.onFileModified(file);
+        }
+    }
 
-	public void createNewFile(File parentDirectory, String fileName) throws IOException {
-		if (!parentDirectory.isDirectory() || !parentDirectory.canWrite()) {
-			throw new IOException("Invalid or non-writable parent directory");
-		}
+    public FileOperationResult smartUpdateFile(File file,
+            String newContent,
+            String updateType,
+            boolean validateContent,
+            String contentType,
+            String errorHandling) {
+        FileOperationResult result = new FileOperationResult();
+        try {
+            String currentContent = file.exists() ? readFileContent(file) : "";
+            String finalContent = applyUpdateType(currentContent, newContent, updateType);
 
-		if (fileName.isEmpty()) {
-			throw new IOException("File name cannot be empty");
-		}
+            if (validateContent) {
+                ValidationResult validation = FileContentValidator.validate(finalContent, contentType);
+                if (!validation.isValid()) {
+                    if ("strict".equals(errorHandling)) {
+                        throw new IllegalArgumentException("Content validation failed: " + validation.getReason());
+                    }
+                    result.setSuccess(false);
+                    result.setMessage(validation.getReason());
+                    return result;
+                }
+            }
 
-		if (autoInvalidFileNameChars.matcher(fileName).find()) {
-			throw new IOException("File name contains invalid characters");
-		}
+            if (finalContent.equals(currentContent)) {
+                result.setSuccess(true);
+                result.setMessage("No changes; skipped write");
+                result.setDiff("");
+                return result;
+            }
 
-		if (!isValidFileName(fileName)) {
-			throw new IOException("Invalid file name");
-		}
+            writeFileContent(file, finalContent);
+            String diff = DiffGenerator.generateDiff(currentContent, finalContent, "unified", "a/" + file.getName(), "b/" + file.getName());
+            result.setDiff(diff);
+            result.setSuccess(true);
+            result.setMessage("File updated successfully");
+        } catch (Exception e) {
+            result.setSuccess(false);
+            result.setMessage("Update failed: " + e.getMessage());
+            Log.e(TAG, "smartUpdateFile failed", e);
+        }
+        return result;
+    }
 
-		File newFile = new File(parentDirectory, fileName);
-		if (newFile.exists()) {
-			throw new IOException("File already exists");
-		}
+    private String applyUpdateType(String currentContent, String newContent, String updateType) {
+        if (newContent == null) newContent = "";
+        switch (updateType != null ? updateType : "") {
+            case "append":
+                return currentContent + "\n" + newContent;
+            case "prepend":
+                return newContent + "\n" + currentContent;
+            case "replace":
+            case "full":
+                return newContent;
+            case "smart":
+                return applySmartUpdate(currentContent, newContent);
+            case "patch":
+                return applyPatch(currentContent, newContent);
+            default:
+                return newContent;
+        }
+    }
 
-		if (!newFile.createNewFile()) {
-			throw new IOException("Failed to create file");
-		}
+    private String applySmartUpdate(String currentContent, String newContent) {
+        if (currentContent == null || currentContent.isEmpty()) {
+            return newContent;
+        }
+        if (newContent == null || newContent.isEmpty()) {
+            return currentContent;
+        }
+        if (currentContent.contains(newContent)) {
+            return currentContent;
+        }
+        return currentContent + "\n" + newContent;
+    }
 
-		if (fileChangeListener != null) {
-			fileChangeListener.onFileCreated(newFile);
-		}
-	}
+    private String applyPatch(String currentContent, String patchContent) {
+        if (patchContent == null || patchContent.trim().isEmpty()) {
+            return currentContent;
+        }
+        try {
+            return UnifiedDiffApplier.apply(currentContent, patchContent);
+        } catch (Exception e) {
+            Log.e(TAG, "Patch application failed", e);
+            return currentContent;
+        }
+    }
 
-	public void createNewDirectory(File parentDirectory, String folderName) throws IOException {
-		if (!parentDirectory.isDirectory() || !parentDirectory.canWrite()) {
-			throw new IOException("Invalid or non-writable parent directory");
-		}
+    public void createNewFile(File parentDirectory, String fileName) throws IOException {
+        if (!parentDirectory.isDirectory() || !parentDirectory.canWrite()) {
+            throw new IOException("Invalid or non-writable parent directory");
+        }
 
-		if (folderName.isEmpty()) {
-			throw new IOException("Folder name cannot be empty");
-		}
+        if (fileName.isEmpty()) {
+            throw new IOException("File name cannot be empty");
+        }
 
-		if (autoInvalidFileNameChars.matcher(folderName).find()) {
-			throw new IOException("Folder name contains invalid characters");
-		}
+        if (autoInvalidFileNameChars.matcher(fileName).find()) {
+            throw new IOException("File name contains invalid characters");
+        }
 
-		if (!isValidFileName(folderName)) {
-			throw new IOException("Invalid folder name");
-		}
+        if (!isValidFileName(fileName)) {
+            throw new IOException("Invalid file name");
+        }
 
-		File newFolder = new File(parentDirectory, folderName);
-		if (newFolder.exists()) {
-			throw new IOException("Folder already exists");
-		}
+        File newFile = new File(parentDirectory, fileName);
+        if (newFile.exists()) {
+            throw new IOException("File already exists");
+        }
 
-		if (!newFolder.mkdirs()) {
-			throw new IOException("Failed to create folder");
-		}
+        if (!newFile.createNewFile()) {
+            throw new IOException("Failed to create file");
+        }
 
-		if (fileChangeListener != null) {
-			fileChangeListener.onFileCreated(newFolder);
-		}
-	}
+        if (fileChangeListener != null) {
+            fileChangeListener.onFileCreated(newFile);
+        }
+    }
 
-	public List<FileItem> loadFileTree() {
-		List<FileItem> fileItems = new ArrayList<>();
-		if (projectDir != null && projectDir.exists()) {
-			scanDirectory(projectDir, 0, null, fileItems);
-		} else {
-			Toast.makeText(context, "Project directory not found.", Toast.LENGTH_SHORT).show();
-		}
+    public void createNewDirectory(File parentDirectory, String folderName) throws IOException {
+        if (!parentDirectory.isDirectory() || !parentDirectory.canWrite()) {
+            throw new IOException("Invalid or non-writable parent directory");
+        }
 
-		Collections.sort(fileItems, (o1, o2) -> {
-			if (o1.isDirectory() && !o2.isDirectory()) {
-				return -1;
-			}
-			if (!o1.isDirectory() && o2.isDirectory()) {
-				return 1;
-			}
-			return o1.getName().compareToIgnoreCase(o2.getName());
-		});
+        if (folderName.isEmpty()) {
+            throw new IOException("Folder name cannot be empty");
+        }
 
-		return fileItems;
-	}
+        if (autoInvalidFileNameChars.matcher(folderName).find()) {
+            throw new IOException("Folder name contains invalid characters");
+        }
 
-	private void scanDirectory(File dir, int level, FileItem parent, List<FileItem> fileItems) {
-		File[] files = dir.listFiles();
-		if (files != null) {
-			List<File> sortedFiles = new ArrayList<>();
-			Collections.addAll(sortedFiles, files);
-			Collections.sort(sortedFiles, (f1, f2) -> {
-				if (f1.isDirectory() && !f2.isDirectory()) return -1;
-				if (!f1.isDirectory() && f2.isDirectory()) return 1;
-				return f1.getName().compareToIgnoreCase(f2.getName());
-			});
+        if (!isValidFileName(folderName)) {
+            throw new IOException("Invalid folder name");
+        }
 
-			for (File file : sortedFiles) {
-				FileItem item = new FileItem(file, level, parent);
-				fileItems.add(item);
-				if (file.isDirectory() && item.isExpanded()) {
-					scanDirectory(file, level + 1, item, fileItems);
-				}
-			}
-		}
-	}
+        File newFolder = new File(parentDirectory, folderName);
+        if (newFolder.exists()) {
+            throw new IOException("Folder already exists");
+        }
 
-	public void renameFileOrDir(File oldFile, File newFile) throws IOException {
-		if (!oldFile.exists()) {
-			throw new IOException("Source file/directory does not exist: " + oldFile.getAbsolutePath());
-		}
-		if (newFile.exists()) {
-			throw new IOException("Target file/directory already exists: " + newFile.getAbsolutePath());
-		}
-		File parentDir = newFile.getParentFile();
-		if (parentDir != null && !parentDir.exists()) {
-			if (!parentDir.mkdirs()) {
-				throw new IOException("Failed to create parent directory for new file: " + parentDir.getAbsolutePath());
-			}
-		}
-		if (!oldFile.renameTo(newFile)) {
-			throw new IOException("Failed to rename " + oldFile.getAbsolutePath() + " to " + newFile.getAbsolutePath());
-		}
+        if (!newFolder.mkdirs()) {
+            throw new IOException("Failed to create folder");
+        }
 
-		if (fileChangeListener != null) {
-			fileChangeListener.onFileRenamed(oldFile, newFile);
-		}
-	}
+        if (fileChangeListener != null) {
+            fileChangeListener.onFileCreated(newFolder);
+        }
+    }
 
-	public void deleteFileOrDirectory(File fileOrDirectory) throws IOException {
-		if (!fileOrDirectory.exists()) {
-			Log.w(TAG, "deleteFileByPath: File or directory does not exist: " + fileOrDirectory.getAbsolutePath());
-			return;
-		}
+    public List<FileItem> loadFileTree() {
+        List<FileItem> fileItems = new ArrayList<>();
+        if (projectDir != null && projectDir.exists()) {
+            scanDirectory(projectDir, 0, null, fileItems);
+        } else {
+            Toast.makeText(context, "Project directory not found.", Toast.LENGTH_SHORT).show();
+        }
 
-		if (fileOrDirectory.isDirectory()) {
-			if (!deleteDirectoryRecursive(fileOrDirectory)) {
-				throw new IOException("Failed to delete directory: " + fileOrDirectory.getAbsolutePath());
-			}
-		} else {
-			if (!fileOrDirectory.delete()) {
-				throw new IOException("Failed to delete file: " + fileOrDirectory.getAbsolutePath());
-			}
-		}
+        Collections.sort(fileItems, (o1, o2) -> {
+            if (o1.isDirectory() && !o2.isDirectory()) {
+                return -1;
+            }
+            if (!o1.isDirectory() && o2.isDirectory()) {
+                return 1;
+            }
+            return o1.getName().compareToIgnoreCase(o2.getName());
+        });
 
-		if (fileChangeListener != null) {
-			fileChangeListener.onFileDeleted(fileOrDirectory);
-		}
-	}
+        return fileItems;
+    }
 
-	private boolean deleteDirectoryRecursive(File dir) {
-		if (dir.isDirectory()) {
-			File[] children = dir.listFiles();
-			if (children != null) {
-				for (File child : children) {
-					if (!deleteDirectoryRecursive(child)) {
-						return false;
-					}
-				}
-			}
-		}
-		return dir.delete();
-	}
+    private void scanDirectory(File dir, int level, FileItem parent, List<FileItem> fileItems) {
+        File[] files = dir.listFiles();
+        if (files != null) {
+            List<File> sortedFiles = new ArrayList<>();
+            Collections.addAll(sortedFiles, files);
+            Collections.sort(sortedFiles, (f1, f2) -> {
+                if (f1.isDirectory() && !f2.isDirectory()) return -1;
+                if (!f1.isDirectory() && f2.isDirectory()) return 1;
+                return f1.getName().compareToIgnoreCase(f2.getName());
+            });
 
-	public File findFirstHtmlFile() {
-		File[] files = projectDir.listFiles((dir, name) -> name.toLowerCase().endsWith(".html") || name.toLowerCase().endsWith(".htm"));
-		if (files != null && files.length > 0) {
-			return files[0];
-		}
-		return null;
-	}
+            for (File file : sortedFiles) {
+                FileItem item = new FileItem(file, level, parent);
+                fileItems.add(item);
+                if (file.isDirectory() && item.isExpanded()) {
+                    scanDirectory(file, level + 1, item, fileItems);
+                }
+            }
+        }
+    }
 
-	public String getRelativePath(File file, File baseDir) {
-		String filePath = file.getAbsolutePath();
-		String basePath = baseDir.getAbsolutePath();
-		if (filePath.startsWith(basePath)) {
-			String relative = filePath.substring(basePath.length());
-			if (relative.startsWith(File.separator)) {
-				relative = relative.substring(1);
-			}
-			return relative;
-		}
-		return file.getName();
-	}
+    public void renameFileOrDir(File oldFile, File newFile) throws IOException {
+        if (!oldFile.exists()) {
+            throw new IOException("Source file/directory does not exist: " + oldFile.getAbsolutePath());
+        }
+        if (newFile.exists()) {
+            throw new IOException("Target file/directory already exists: " + newFile.getAbsolutePath());
+        }
+        File parentDir = newFile.getParentFile();
+        if (parentDir != null && !parentDir.exists()) {
+            if (!parentDir.mkdirs()) {
+                throw new IOException("Failed to create parent directory for new file: " + parentDir.getAbsolutePath());
+            }
+        }
+        if (!oldFile.renameTo(newFile)) {
+            throw new IOException("Failed to rename " + oldFile.getAbsolutePath() + " to " + newFile.getAbsolutePath());
+        }
 
-	public boolean isValidFileName(String fileName) {
-		if (fileName == null || fileName.isEmpty()) {
-			return false;
-		}
-		if (fileName.contains("/") || fileName.contains("\\") || fileName.contains(":")) {
-			return false;
-		}
-		if (fileName.trim().isEmpty()) {
-			return false;
-		}
-		return true;
-	}
+        if (fileChangeListener != null) {
+            fileChangeListener.onFileRenamed(oldFile, newFile);
+        }
+    }
+
+    public void deleteFileOrDirectory(File fileOrDirectory) throws IOException {
+        if (!fileOrDirectory.exists()) {
+            Log.w(TAG, "deleteFileByPath: File or directory does not exist: " + fileOrDirectory.getAbsolutePath());
+            return;
+        }
+
+        if (fileOrDirectory.isDirectory()) {
+            if (!deleteDirectoryRecursive(fileOrDirectory)) {
+                throw new IOException("Failed to delete directory: " + fileOrDirectory.getAbsolutePath());
+            }
+        } else {
+            if (!fileOrDirectory.delete()) {
+                throw new IOException("Failed to delete file: " + fileOrDirectory.getAbsolutePath());
+            }
+        }
+
+        if (fileChangeListener != null) {
+            fileChangeListener.onFileDeleted(fileOrDirectory);
+        }
+    }
+
+    private boolean deleteDirectoryRecursive(File dir) {
+        if (dir.isDirectory()) {
+            File[] children = dir.listFiles();
+            if (children != null) {
+                for (File child : children) {
+                    if (!deleteDirectoryRecursive(child)) {
+                        return false;
+                    }
+                }
+            }
+        }
+        return dir.delete();
+    }
+
+    public File findFirstHtmlFile() {
+        File[] files = projectDir.listFiles((dir, name) -> name.toLowerCase().endsWith(".html") || name.toLowerCase().endsWith(".htm"));
+        if (files != null && files.length > 0) {
+            return files[0];
+        }
+        return null;
+    }
+
+    public String getRelativePath(File file, File baseDir) {
+        String filePath = file.getAbsolutePath();
+        String basePath = baseDir.getAbsolutePath();
+        if (filePath.startsWith(basePath)) {
+            String relative = filePath.substring(basePath.length());
+            if (relative.startsWith(File.separator)) {
+                relative = relative.substring(1);
+            }
+            return relative;
+        }
+        return file.getName();
+    }
+
+    public boolean isValidFileName(String fileName) {
+        if (fileName == null || fileName.isEmpty()) {
+            return false;
+        }
+        if (fileName.contains("/") || fileName.contains("\\") || fileName.contains(":")) {
+            return false;
+        }
+        if (fileName.trim().isEmpty()) {
+            return false;
+        }
+        return true;
+    }
+
+    public static class FileOperationResult {
+        private boolean success;
+        private String message;
+        private String diff;
+        private String errorDetails;
+
+        public boolean isSuccess() { return success; }
+        public void setSuccess(boolean success) { this.success = success; }
+
+        public String getMessage() { return message; }
+        public void setMessage(String message) { this.message = message; }
+
+        public String getDiff() { return diff; }
+        public void setDiff(String diff) { this.diff = diff; }
+
+        public String getErrorDetails() { return errorDetails; }
+        public void setErrorDetails(String errorDetails) { this.errorDetails = errorDetails; }
+    }
 }

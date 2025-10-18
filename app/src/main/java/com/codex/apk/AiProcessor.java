@@ -1,6 +1,5 @@
 package com.codex.apk;
 
-import android.content.Context;
 import android.util.Log;
 import java.io.File;
 import java.io.IOException;
@@ -8,19 +7,18 @@ import java.util.List;
 import java.util.ArrayList;
 
 import com.google.gson.Gson;
+import com.codex.apk.util.FileContentValidator;
 import com.codex.apk.util.FileOps;
 
 public class AiProcessor {
     private static final String TAG = "AiProcessor";
     private static final Gson gson = new Gson();
     private final File projectDir;
-    private final Context context;
-    private final AdvancedFileManager advancedFileManager;
+    private final FileManager fileManager;
 
-    public AiProcessor(File projectDir, Context context) {
+    public AiProcessor(File projectDir, FileManager fileManager) {
         this.projectDir = projectDir;
-        this.context = context;
-        this.advancedFileManager = new AdvancedFileManager(context, projectDir);
+        this.fileManager = fileManager;
     }
 
     public String applyFileAction(ChatMessage.FileActionDetail detail) throws IOException, IllegalArgumentException {
@@ -71,7 +69,7 @@ public class AiProcessor {
         String contentType = detail.contentType;
         String errorHandling = detail.errorHandling != null ? detail.errorHandling : "strict";
 
-        AdvancedFileManager.FileOperationResult result = advancedFileManager.smartUpdateFile(
+        FileManager.FileOperationResult result = fileManager.smartUpdateFile(
             fileToUpdate, content, updateType, validateContent, contentType, errorHandling
         );
 
@@ -93,11 +91,11 @@ public class AiProcessor {
             throw new IOException("File not found for search and replace: " + path);
         }
 
-        String content = advancedFileManager.readFileContent(fileToUpdate);
+        String content = fileManager.readFileContent(fileToUpdate);
         String pattern = (searchPattern != null && !searchPattern.isEmpty()) ? searchPattern : search;
         String newContent = FileOps.applySearchReplace(content, pattern, replace);
 
-        AdvancedFileManager.FileOperationResult result = advancedFileManager.smartUpdateFile(
+        FileManager.FileOperationResult result = fileManager.smartUpdateFile(
             fileToUpdate, newContent, "replace", true, detail.contentType, "strict"
         );
 
@@ -116,13 +114,13 @@ public class AiProcessor {
             throw new IOException("File not found for modifyLines: " + path);
         }
 
-        String content = advancedFileManager.readFileContent(fileToUpdate);
+        String content = fileManager.readFileContent(fileToUpdate);
         int startLine = Math.max(1, detail.startLine);
         int deleteCount = Math.max(0, detail.deleteCount);
         java.util.List<String> insertLines = detail.insertLines != null ? detail.insertLines : new java.util.ArrayList<>();
         String newContent = FileOps.applyModifyLines(content, startLine, deleteCount, insertLines);
 
-        AdvancedFileManager.FileOperationResult result = advancedFileManager.smartUpdateFile(
+        FileManager.FileOperationResult result = fileManager.smartUpdateFile(
             fileToUpdate, newContent, "replace",
             detail.validateContent,
             detail.contentType,
@@ -149,7 +147,7 @@ public class AiProcessor {
             throw new IllegalArgumentException("Patch content is empty");
         }
 
-        AdvancedFileManager.FileOperationResult result = advancedFileManager.smartUpdateFile(
+        FileManager.FileOperationResult result = fileManager.smartUpdateFile(
             fileToUpdate, patchContent, "patch", true, detail.contentType, "strict"
         );
 
@@ -171,13 +169,13 @@ public class AiProcessor {
         }
 
         if (detail.validateContent) {
-            AdvancedFileManager.ValidationResult validation = advancedFileManager.validateContent(content, detail.contentType);
+            FileContentValidator.ValidationResult validation = FileContentValidator.validate(content, detail.contentType);
             if (!validation.isValid()) {
                 throw new IllegalArgumentException("Content validation failed: " + validation.getReason());
             }
         }
 
-        advancedFileManager.writeFileContent(newFile, content);
+        fileManager.writeFileContent(newFile, content);
         
         return "Created file: " + path;
     }

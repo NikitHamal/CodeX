@@ -49,4 +49,26 @@ public class AiStreamingHandler {
         }
         manager.setCurrentStreamingMessagePosition(null);
     }
+
+    public void handleStreamUpdate(AIChatFragment chatFragment,
+                                   int messagePosition,
+                                   String partialResponse,
+                                   boolean isThinking) {
+        if (chatFragment == null) {
+            return;
+        }
+
+        ChatMessage existing = chatFragment.getMessageAt(messagePosition);
+        if (existing == null) {
+            return;
+        }
+
+        if (isThinking) {
+            existing.setContent(partialResponse != null ? partialResponse : existing.getContent());
+        } else {
+            existing.setContent(partialResponse != null ? partialResponse : existing.getContent());
+            existing.setThinkingContent(null);
+        }
+        chatFragment.updateMessage(messagePosition, existing);
+    }
 }

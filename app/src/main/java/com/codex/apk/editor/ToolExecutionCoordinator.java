@@ -142,6 +142,7 @@ public class ToolExecutionCoordinator {
                 }
                 continuationCallback.accept(snapshot);
             }
+
         });
 
         return results;

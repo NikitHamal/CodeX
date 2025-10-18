@@ -3,7 +3,9 @@ package com.codex.apk.editor;
 import android.util.Log;
 
 import com.codex.apk.AIChatFragment;
+import com.codex.apk.AiProcessor;
 import com.codex.apk.ChatMessage;
+import com.codex.apk.EditorActivity;
 
 import java.io.File;
 import java.util.ArrayList;

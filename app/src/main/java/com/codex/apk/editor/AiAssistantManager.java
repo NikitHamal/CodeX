@@ -22,7 +22,6 @@ import com.codex.apk.DiffGenerator;
 import com.codex.apk.QwenResponseParser;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
 
 import java.io.File;
 import java.io.IOException;
@@ -81,6 +80,14 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
         if (initialModel != null) {
             this.aiAssistant.setCurrentModel(initialModel);
         }
+    }
+
+    private void handleToolContinuation(JsonArray results) {
+        activity.runOnUiThread(() -> {
+            String continuation = ToolExecutionCoordinator.buildContinuationPayload(results);
+            Log.d(TAG, "Sending tool results back to AI: ```json\n" + continuation + "\n```\n");
+            sendAiPrompt("```json\n" + continuation + "\n```\n", new ArrayList<>(), activity.getQwenState(), activity.getActiveTab());
+        });
     }
 
     public void setCurrentStreamingMessagePosition(Integer position) {
@@ -334,12 +341,8 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                 try {
                     currentToolsMessagePosition = toolCoordinator.displayRunningTools(uiFrag, aiModelDisplayName, rawAiResponseJson, toolCalls);
 
-                    JsonArray results = toolCoordinator.executeTools(toolCalls, activity.getProjectDirectory(), currentToolsMessagePosition, uiFrag);
+                    toolCoordinator.executeTools(toolCalls, activity.getProjectDirectory(), currentToolsMessagePosition, uiFrag);
                     lastToolUsages = toolCoordinator.getLastToolUsages();
-
-                    String continuation = ToolExecutionCoordinator.buildContinuationPayload(results);
-                    Log.d(TAG, "Sending tool results back to AI: ```json\n" + continuation + "\n```\n");
-                    sendAiPrompt("```json\n" + continuation + "\n```\n", new ArrayList<>(), activity.getQwenState(), activity.getActiveTab());
                     return;
                 } catch (Exception e) {
                     Log.w(TAG, "Could not execute tool call. Error parsing JSON.", e);

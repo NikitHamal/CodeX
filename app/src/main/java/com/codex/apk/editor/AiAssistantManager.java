@@ -94,6 +94,13 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
         this.currentStreamingMessagePosition = position;
     }
 
+    public void recordToolUsages(List<ChatMessage.ToolUsage> toolUsages) {
+        if (toolUsages == null || toolUsages.isEmpty()) {
+            return;
+        }
+        this.lastToolUsages = new ArrayList<>(toolUsages);
+    }
+
     public AIAssistant getAIAssistant() { return aiAssistant; }
 
     public void onResume() {

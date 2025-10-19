@@ -138,6 +138,7 @@ public class AIChatFragment extends Fragment implements ChatMessageAdapter.OnAiA
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
         historyManager.loadChatState(chatHistory, qwenConversationState);
+        removeDuplicateRestoredAiJsonMessages();
         aiAssistant = listener.getAIAssistant();
         uiManager.updateUiVisibility(chatHistory.isEmpty());
         uiManager.setListeners();
@@ -236,6 +237,7 @@ public class AIChatFragment extends Fragment implements ChatMessageAdapter.OnAiA
                     int index = chatHistory.indexOf(currentAiStatusMessage);
                     if (index != -1) {
                         chatHistory.set(index, message);
+                        currentAiStatusMessage = message;
                         chatMessageAdapter.notifyItemChanged(index);
                         indexChangedOrAdded = index;
                     } else {
@@ -265,6 +267,47 @@ public class AIChatFragment extends Fragment implements ChatMessageAdapter.OnAiA
             historyManager.saveChatState(chatHistory, qwenConversationState);
         }
         return indexChangedOrAdded;
+    }
+
+    private void removeDuplicateRestoredAiJsonMessages() {
+        if (chatHistory == null || chatHistory.isEmpty()) {
+            return;
+        }
+
+        boolean removed = false;
+        for (int i = chatHistory.size() - 1; i >= 0; i--) {
+            ChatMessage msg = chatHistory.get(i);
+            if (msg == null || msg.getSender() != ChatMessage.SENDER_AI) {
+                continue;
+            }
+            String content = msg.getContent();
+            String raw = msg.getRawAiResponseJson();
+            if (content == null || raw == null) {
+                continue;
+            }
+            String trimmedContent = content.trim();
+            String trimmedRaw = raw.trim();
+            if (trimmedContent.isEmpty()) {
+                continue;
+            }
+            if (!trimmedContent.equals(trimmedRaw)) {
+                continue;
+            }
+            if (!com.codex.apk.QwenResponseParser.looksLikeJson(trimmedContent)) {
+                continue;
+            }
+            chatHistory.remove(i);
+            removed = true;
+        }
+
+        if (removed) {
+            if (chatMessageAdapter != null) {
+                chatMessageAdapter.notifyDataSetChanged();
+            }
+            if (historyManager != null) {
+                historyManager.saveChatState(chatHistory, qwenConversationState);
+            }
+        }
     }
 
     public void updateThinkingMessage(String newContent) {

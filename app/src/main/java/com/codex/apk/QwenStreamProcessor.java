@@ -5,6 +5,8 @@ import com.codex.apk.ai.AIModel;
 import com.codex.apk.ai.WebSource;
 import com.codex.apk.ChatMessage;
 import com.codex.apk.ToolExecutor;
+import com.codex.apk.editor.AiAssistantManager;
+
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -38,6 +40,48 @@ public class QwenStreamProcessor {
         public StreamProcessingResult(boolean isContinuation, String continuationJson) {
             this.isContinuation = isContinuation;
             this.continuationJson = continuationJson;
+        }
+    }
+
+    private ChatMessage.ToolUsage buildToolUsage(String name, JsonObject args) {
+        ChatMessage.ToolUsage usage = new ChatMessage.ToolUsage(name != null ? name : "tool");
+        if (args != null) {
+            usage.argsJson = args.toString();
+            if (args.has("path")) {
+                usage.filePath = args.get("path").getAsString();
+            } else if (args.has("oldPath")) {
+                usage.filePath = args.get("oldPath").getAsString();
+            }
+        }
+        usage.status = "running";
+        return usage;
+    }
+
+    private void updateToolUsageFromResult(ChatMessage.ToolUsage usage,
+                                           String name,
+                                           JsonObject args,
+                                           JsonObject result,
+                                           long durationMs) {
+        if (usage == null) return;
+        usage.durationMs = durationMs;
+        usage.ok = result != null && result.has("ok") && result.get("ok").getAsBoolean();
+        usage.status = usage.ok ? "completed" : "failed";
+        usage.resultJson = result != null ? result.toString() : null;
+
+        if (args != null && ("readFile".equals(name) || "listFiles".equals(name) ||
+                "searchInProject".equals(name) || "grepSearch".equals(name))) {
+            if (args.has("path") && (usage.filePath == null || usage.filePath.isEmpty())) {
+                usage.filePath = args.get("path").getAsString();
+            }
+        }
+    }
+
+    private void recordToolUsages(List<ChatMessage.ToolUsage> usages) {
+        if (usages == null || usages.isEmpty()) {
+            return;
+        }
+        if (actionListener instanceof AiAssistantManager) {
+            ((AiAssistantManager) actionListener).recordToolUsages(usages);
         }
     }
 
@@ -141,16 +185,29 @@ public class QwenStreamProcessor {
                                         if (maybe.has("action") && "tool_call".equals(maybe.get("action").getAsString())) {
                                             JsonArray calls = maybe.getAsJsonArray("tool_calls");
                                             JsonArray results = new JsonArray();
+                                            List<ChatMessage.ToolUsage> usages = new ArrayList<>();
                                             for (int i = 0; i < calls.size(); i++) {
                                                 JsonObject c = calls.get(i).getAsJsonObject();
                                                 String name = c.get("name").getAsString();
-                                                JsonObject args = c.getAsJsonObject("args");
-                                                JsonObject toolResult = ToolExecutor.execute(projectDir, name, args);
+                                                JsonObject args = c.has("args") && c.get("args").isJsonObject() ? c.getAsJsonObject("args") : new JsonObject();
+                                                ChatMessage.ToolUsage usage = buildToolUsage(name, args);
+                                                usages.add(usage);
+                                                long start = System.currentTimeMillis();
+                                                JsonObject toolResult;
+                                                try {
+                                                    toolResult = ToolExecutor.execute(projectDir, name, args);
+                                                } catch (Exception ex) {
+                                                    toolResult = new JsonObject();
+                                                    toolResult.addProperty("ok", false);
+                                                    toolResult.addProperty("error", ex.getMessage());
+                                                }
+                                                updateToolUsageFromResult(usage, name, args, toolResult, System.currentTimeMillis() - start);
                                                 JsonObject res = new JsonObject();
                                                 res.addProperty("name", name);
                                                 res.add("result", toolResult);
                                                 results.add(res);
                                             }
+                                            recordToolUsages(usages);
                                             String continuation = ToolExecutor.buildToolResultContinuation(results);
                                             return new StreamProcessingResult(true, continuation);
                                         }

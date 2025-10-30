@@ -1,0 +1,2392 @@
+# CodeX Android IDE - Comprehensive Developer Guide
+
+## Table of Contents
+1. [System Overview](#system-overview)
+2. [Architecture & Component Relationships](#architecture--component-relationships)
+3. [AI Integration & Data Flows](#ai-integration--data-flows)
+4. [API Interfaces & Contracts](#api-interfaces--contracts)
+5. [Key Classes & Their Purposes](#key-classes--their-purposes)
+6. [Development Guidelines for AI Agents](#development-guidelines-for-ai-agents)
+7. [Common Patterns & Anti-Patterns](#common-patterns--anti-patterns)
+8. [Performance Considerations](#performance-considerations)
+9. [Code Review Checklist](#code-review-checklist)
+10. [Feature Entry Points](#feature-entry-points)
+11. [Testing Strategies](#testing-strategies)
+12. [Deployment Considerations](#deployment-considerations)
+
+---
+
+## System Overview
+
+### Project Summary
+CodeX is a sophisticated Android-based code editor with integrated AI capabilities. The application provides a comprehensive development environment with multi-provider AI support, file management, Git integration, and real-time chat-based AI assistance. Built targeting Android SDK 34 with minimum SDK 21, using Java 17.
+
+### Core Capabilities
+- **Multi-Provider AI Integration**: 9 AI providers with 30+ models (Google, Alibaba, DeepInfra, Free, etc.)
+- **Real-time Code Editing**: Syntax highlighting, multi-tab management, file operations
+- **AI Chat Interface**: Streaming responses, tool execution, file modifications
+- **Project Management**: Git cloning, file tree navigation, workspace management
+- **File Operations**: Create, update, delete, diff viewing, validation
+
+---
+
+## Architecture & Component Relationships
+
+### Primary Architectural Pattern: Hybrid Manager-MVVM Pattern
+
+The application follows a **Manager Pattern** with selective MVVM elements:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    UI Layer (Activities & Fragments)        │
+├─────────────────────────────────────────────────────────────┤
+│              Management Layer (Manager Classes)             │
+├─────────────────────────────────────────────────────────────┤
+│                Domain Layer (Models & Data)                 │
+├─────────────────────────────────────────────────────────────┤
+│           Infrastructure Layer (API Clients & Utilities)    │
+├─────────────────────────────────────────────────────────────┤
+│                  Android System APIs                        │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Core Component Relationships
+
+#### 1. Activity Layer
+- **MainActivity**: Workspace/project navigation entry point
+- **EditorActivity**: Main editor interface orchestrator
+- **SettingsActivity**: Configuration and API key management
+- **ModelsActivity**: AI model selection and management
+
+#### 2. Manager Layer (Primary Orchestrators)
+```
+EditorActivity (Coordinator)
+├── EditorUiManager (UI component management)
+├── FileTreeManager (File navigation and operations)
+├── TabManager (Editor tab lifecycle and state)
+├── AiAssistantManager (AI chat coordination)
+├── ProjectManager (Workspace management)
+├── GitManager (Version control operations)
+└── ThemeManager (Consistent styling)
+```
+
+#### 3. Domain Layer
+```
+ChatMessage (Chat communication model)
+├── AIModel (Provider and capability registry)
+├── AIProvider (Enum of 9 supported providers)
+├── ModelCapabilities (Feature tracking per model)
+├── TabItem (Editor tab state model)
+├── FileItem (File tree navigation model)
+└── PlanStep (AI execution plan model)
+```
+
+#### 4. Infrastructure Layer
+```
+ApiClient Interface (Provider abstraction)
+├── QwenApiClient (Stateful conversations, SSE)
+├── GeminiFreeApiClient (Reverse-engineered endpoints)
+├── GeminiOfficialApiClient (Official Google API)
+├── DeepInfraApiClient (OpenAI-compatible)
+├── AnyProviderApiClient (Free fallback)
+└── SseClient (Unified streaming client)
+```
+
+### Critical Dependencies and Coupling Points
+
+#### High Coupling Areas (Handle with Care)
+1. **EditorActivity ↔ Manager Classes**
+   - Direct field references to all manager instances
+   - Complex initialization dependencies
+   - Fragment coordination responsibilities
+
+2. **AIAssistant ↔ ApiClient Implementations**
+   - Monolithic AIAssistant class handles multiple responsibilities
+   - Provider-specific logic scattered across implementations
+   - Tight coupling with UI callbacks
+
+#### Data Flow Patterns
+```
+User Input → Fragment → Manager → Utility/API → Manager → Activity → UI
+```
+
+**Key Flow Examples:**
+1. **File Operation**: FileTreeManager → DialogHelper → FileManager → FileOps → UI Update
+2. **AI Chat**: AIChatFragment → AiAssistantManager → ApiClient → Streaming Response → UI Update
+3. **Editor State**: TabManager → EditorViewModel → CodeEditorFragment → File Content Update
+
+---
+
+## AI Integration & Data Flows
+
+### Multi-Provider Architecture
+
+#### Supported Providers (9 total)
+1. **GOOGLE** - Official Gemini API with API key authentication
+2. **ALIBABA** - Qwen series models with conversation state
+3. **DEEPINFRA** - OpenAI-compatible endpoint with model discovery
+4. **FREE** - Pollinations free tier with OpenAI compatibility
+5. **COOKIES** - Reverse-engineered Gemini with cookie management
+6. **OIVSCodeSer0501** - Custom provider implementation
+7. **WEWORDLE** - Alternative GPT-4 endpoint
+8. **OPENROUTER** - Multi-provider routing service
+9. **FREE** - Generic free endpoint aggregation
+
+### AI Request Processing Flow
+
+```
+1. Input Preparation (AIChatFragment.sendPrompt)
+   ├── ChatMessage creation with metadata
+   ├── Attachment processing and validation
+   └── System prompt injection based on modes
+
+2. Message Routing (AIAssistant.sendMessage)
+   ├── Provider selection via current model
+   ├── Client selection from apiClients map
+   └── Request composition with context
+
+3. Provider-Specific Processing
+   ├── Authentication handling (API keys, cookies)
+   ├── Request formatting per provider
+   └── Network call execution in background thread
+
+4. Response Processing Pipeline
+   ├── Raw response reception via streaming
+   ├── SSE parsing and content extraction
+   ├── JSON detection and structured parsing
+   ├── Plan and file operation extraction
+   └── UI update via callback interface
+```
+
+### Streaming Implementation
+
+#### SSE Client Architecture
+- **SseClient**: Unified streaming interface across providers
+- **Real-time Updates**: ~40ms minimum between updates
+- **Smart Buffering**: Minimum 24 characters per update
+- **Error Recovery**: Exponential backoff for 429/5xx errors
+- **Graceful Degradation**: Fallback to raw content on parse failures
+
+#### Thinking Mode Support
+- **Collapsible Display**: AI reasoning content hidden by default
+- **Status Tracking**: Real-time "thinking" indicators during generation
+- **Content Separation**: Thinking vs. final content clearly distinguished
+
+### Tool Execution System
+
+#### Plan Execution Flow
+```
+1. AI Response Parsing (QwenResponseParser)
+   ├── JSON extraction from AI responses
+   ├── Plan step identification and validation
+   ├── File operation extraction and categorization
+
+2. Plan Presentation (ChatMessageAdapter)
+   ├── Plan card rendering with step visualization
+   ├── Accept/Discard controls for user approval
+   ├── Progress tracking and status updates
+
+3. Tool Execution (ToolExecutor)
+   ├── File operation execution via FileOps
+   ├── Diff generation and backup creation
+   ├── Success/failure tracking and reporting
+```
+
+#### File Operation Types
+- **Create**: New file creation with validation
+- **Update**: Content replacement with backup
+- **SmartUpdate**: Intelligent content addition
+- **Patch**: Diff-based modifications
+- **Append/Prepend**: Positional content insertion
+
+---
+
+## API Interfaces & Contracts
+
+### Core Interface: ApiClient
+
+```java
+public interface ApiClient {
+    // Primary communication method
+    void sendMessage(String message, List<ChatMessage> chatHistory, 
+                    QwenConversationState qwenState, boolean thinkingMode,
+                    boolean webSearchEnabled, List<ToolSpec> enabledTools,
+                    List<File> attachments);
+    
+    // Model discovery
+    List<AIModel> fetchModels();
+    
+    // Configuration validation
+    boolean isConfigured();
+    String getConfigurationHelp();
+}
+```
+
+### AIAssistant Interface
+
+```java
+public class AIAssistant {
+    // Core communication
+    public void sendMessage(String message, List<ChatMessage> chatHistory, 
+                          QwenConversationState qwenState, List<File> attachments);
+    
+    // Model management
+    public void setCurrentModel(AIModel model);
+    public AIModel getCurrentModel();
+    public List<AIModel> getAvailableModels();
+    
+    // Mode configuration
+    public void setThinkingMode(boolean enabled);
+    public void setWebSearchEnabled(boolean enabled);
+    public void setAgentModeEnabled(boolean enabled);
+    
+    // Event callbacks
+    public void setAIActionListener(AIActionListener listener);
+}
+```
+
+### Callback Interfaces
+
+#### AIActionListener
+```java
+public interface AIActionListener {
+    void onAiResponseStarted(boolean suppressThinkingMessage);
+    void onAiStreamUpdate(String partialResponse, boolean isThinking);
+    void onAiResponseCompleted(String fullContent, String rawResponseJson);
+    void onAiActionsProcessed(String rawResponse, String explanation,
+                            List<String> suggestions, 
+                            List<ChatMessage.FileActionDetail> proposedChanges,
+                            String aiModelDisplayName);
+    void onAiError(String errorMessage);
+}
+```
+
+#### Plan Execution Interface
+```java
+public interface PlanExecutor {
+    void executePlan(List<PlanStep> steps, PlanExecutionCallback callback);
+    void cancelExecution();
+    boolean isExecuting();
+}
+```
+
+### Data Transfer Objects
+
+#### ChatMessage (Primary Communication Model)
+```java
+public class ChatMessage {
+    // Core identification
+    public static final int SENDER_USER = 0;
+    public static final int SENDER_AI = 1;
+    
+    // Content and metadata
+    private String content;
+    private String rawAiResponseJson;
+    private String thinkingContent;
+    private long timestamp;
+    private String modelName;
+    
+    // Action tracking
+    private List<FileActionDetail> proposedFileChanges;
+    private List<PlanStep> planSteps;
+    private List<ToolUsage> toolUsages;
+    private List<WebSource> webSources;
+    
+    // Status management
+    public static final int STATUS_NONE = -1;
+    public static final int STATUS_PENDING_APPROVAL = 0;
+    public static final int STATUS_ACCEPTED = 1;
+    public static final int STATUS_DISCARDED = 2;
+}
+```
+
+#### AIModel (Provider and Capability Registry)
+```java
+public class AIModel {
+    private String id;
+    private String displayName;
+    private AIProvider provider;
+    private ModelCapabilities capabilities;
+    private boolean isEnabled;
+    private boolean isCustom;
+}
+```
+
+---
+
+## Key Classes & Their Purposes
+
+### Core Orchestration Classes
+
+#### AIAssistant (Central AI Coordinator)
+**Location**: `ai/AIAssistant.java`
+**Purpose**: Central orchestrator managing multiple API clients and request routing
+**Key Responsibilities**:
+- Multi-provider client management and routing
+- Request/response processing coordination
+- Model selection and capability validation
+- Background thread management for network operations
+
+**Critical Methods**:
+- `sendMessage()`: Primary entry point for AI interactions
+- `initializeApiClients()`: Setup all provider clients
+- `setCurrentModel()`: Switch active AI model
+
+#### AiAssistantManager (UI-Business Logic Bridge)
+**Location**: `editor/AiAssistantManager.java`
+**Purpose**: Coordinates AI functionality with UI updates and tool execution
+**Key Responsibilities**:
+- UI state management for chat interface
+- Plan execution coordination
+- Error handling and user feedback
+- Streaming response processing
+
+**Critical Methods**:
+- `handleAiResponseStarted()`: Initialize streaming UI
+- `handleStreamUpdate()`: Process incremental AI responses
+- `executeProposedChanges()`: Apply AI-suggested file operations
+
+#### EditorActivity (Main Interface Coordinator)
+**Location**: `EditorActivity.java`
+**Purpose**: Orchestrates editor interface with all manager components
+**Key Responsibilities**:
+- Manager initialization and coordination
+- Fragment lifecycle management
+- UI state persistence across configuration changes
+- Cross-component event routing
+
+**Manager Dependencies**:
+```java
+public EditorUiManager uiManager;
+public FileTreeManager fileTreeManager;
+public TabManager tabManager;
+public AiAssistantManager aiAssistantManager;
+```
+
+### File Management Classes
+
+#### FileTreeManager (File Navigation System)
+**Location**: `FileTreeManager.java`
+**Purpose**: Manages file tree structure, navigation, and file operations
+**Key Responsibilities**:
+- Hierarchical file tree building and maintenance
+- Search and filtering functionality
+- File operation coordination (create, rename, delete)
+- Tree expansion/collapse state management
+
+**Key Methods**:
+- `buildFileTree()`: Construct tree structure from directory
+- `searchFiles()`: Filter tree by filename
+- `performFileOperation()`: Execute file modifications
+
+#### FileManager (File System Operations)
+**Location**: `FileManager.java`
+**Purpose**: Core file operations and project management
+**Key Responsibilities**:
+- Project directory management
+- UTF-8 file encoding support
+- File content read/write operations
+- Project-relative path resolution
+
+#### TabManager (Editor Tab Lifecycle)
+**Location**: `TabManager.java`
+**Purpose**: Manages multi-tab editor state and file operations
+**Key Responsibilities**:
+- Tab creation, deletion, and switching
+- File modification state tracking
+- Tab persistence across configuration changes
+- Editor content synchronization
+
+### AI Provider Implementations
+
+#### QwenApiClient (Primary Streaming Implementation)
+**Location**: `QwenApiClient.java`
+**Purpose**: Alibaba Qwen integration with conversation state management
+**Key Features**:
+- Stateful conversation handling
+- SSE streaming with retry logic
+- Mid-token refresh management
+- Plan and tool execution support
+
+#### GeminiFreeApiClient (Reverse-Engineered Implementation)
+**Location**: `GeminiFreeApiClient.java`
+**Purpose**: Access Gemini without official API costs
+**Key Features**:
+- Cookie-based authentication
+- Session management with auto-refresh
+- File upload support
+- Access token extraction and renewal
+
+### Utility and Support Classes
+
+#### ChatMessageAdapter (Complex Chat UI Rendering)
+**Location**: `ChatMessageAdapter.java`
+**Purpose**: Renders complex chat messages with multiple view types
+**View Types**:
+- User messages with attachments
+- AI responses with markdown
+- Thinking content (collapsible)
+- Plan execution cards
+- File change proposals
+- Tool usage indicators
+
+#### SseClient (Unified Streaming Client)
+**Location**: `SseClient.java`
+**Purpose**: Standardized Server-Sent Events handling across providers
+**Key Features**:
+- Line-by-line SSE parsing
+- Error recovery with exponential backoff
+- Graceful degradation on parse failures
+- Zero read timeout for continuous streaming
+
+#### FileOps (File Operation Utilities)
+**Location**: `util/FileOps.java`
+**Purpose**: Comprehensive file system operations
+**Key Operations**:
+- Safe file read/write with encoding handling
+- Recursive directory operations
+- File validation and content checking
+- BOM (Byte Order Mark) handling for different encodings
+
+---
+
+## Development Guidelines for AI Agents
+
+### Architectural Principles
+
+#### 1. Manager Pattern Compliance
+- **Do**: Create focused manager classes for domain-specific functionality
+- **Don't**: Put business logic directly in Activities or Fragments
+- **Example**: File operations belong in FileManager, not EditorActivity
+
+#### 2. Separation of Concerns
+- **UI Layer**: Activities, Fragments, Adapters (rendering only)
+- **Manager Layer**: Business logic coordination (no direct UI manipulation)
+- **Utility Layer**: Reusable operations (FileOps, JsonUtils, ResponseUtils)
+- **Data Layer**: Models and state management
+
+#### 3. Interface Abstraction
+- **Use**: Interfaces for provider implementations (ApiClient pattern)
+- **Implement**: Dependency inversion for external integrations
+- **Avoid**: Direct concrete class dependencies in business logic
+
+### Code Organization Guidelines
+
+#### 1. Class Size Limits
+- **Target**: Keep classes under 500 lines
+- **Refactor**: Split monolithic classes (AIAssistant: ~2000 lines)
+- **Organize**: Group related methods with clear section headers
+
+#### 2. Package Structure
+```
+app/src/main/java/com/codex/apk/
+├── ai/                    # AI provider implementations and models
+├── editor/               # Editor-specific managers and fragments
+├── adapters/             # RecyclerView adapters
+├── util/                 # Cross-cutting utilities
+├── models/               # Data transfer objects
+└── activities/           # UI orchestration
+```
+
+#### 3. Method Design
+- **Single Responsibility**: Each method should have one clear purpose
+- **Parameter Limits**: Maximum 5 parameters, use parameter objects for more
+- **Return Types**: Use specific types rather than generic Object when possible
+
+### Naming Conventions
+
+#### Classes
+- **Managers**: `SomethingManager.java` (FileTreeManager, TabManager)
+- **Activities**: `SomethingActivity.java` (EditorActivity, SettingsActivity)
+- **Fragments**: `SomethingFragment.java` (AIChatFragment, CodeEditorFragment)
+- **Adapters**: `SomethingAdapter.java` (ChatMessageAdapter, ProjectsAdapter)
+- **Utilities**: `SomethingOps.java` or `SomethingUtils.java` (FileOps, DiffUtils)
+
+#### Methods
+- **Boolean Getters**: `isSomethingEnabled()`, `hasCapability()`
+- **Action Methods**: `performOperation()`, `executeTask()`, `handleEvent()`
+- **Builder Methods**: `createSomething()`, `buildStructure()`
+
+#### Fields
+- **Private Fields**: `mSomethingManager` (Hungarian notation acceptable)
+- **Constants**: `SOMETHING_CONSTANT`
+- **UI Components**: `somethingRecycler`, `somethingButton`
+
+### Error Handling Standards
+
+#### 1. Exception Handling
+```java
+// GOOD: Specific exception handling
+try {
+    fileManager.writeFileContent(file, content);
+} catch (IOException e) {
+    Log.e(TAG, "Failed to write file: " + file.getName(), e);
+    showErrorDialog("Failed to save file: " + e.getMessage());
+    return;
+}
+
+// AVOID: Generic catch-all
+try {
+    // operation
+} catch (Exception e) {
+    // silent failure or generic handling
+}
+```
+
+#### 2. User Feedback
+- **Errors**: Display user-friendly messages via Toast/Dialog
+- **Progress**: Show progress indicators for long operations
+- **Success**: Provide confirmation for completed actions
+
+#### 3. Logging Standards
+```java
+private static final String TAG = "ClassName";
+// Debug information
+Log.d(TAG, "Operation started: " + parameterValue);
+// Error details
+Log.e(TAG, "Operation failed", exception);
+```
+
+### Async Operation Guidelines
+
+#### 1. Thread Management
+```java
+// GOOD: Explicit thread management
+private ExecutorService executorService = Executors.newCachedThreadPool();
+
+private void performAsyncOperation() {
+    executorService.execute(() -> {
+        // Background work
+        String result = doNetworkCall();
+        
+        // UI updates on main thread
+        activity.runOnUiThread(() -> {
+            updateUI(result);
+        });
+    });
+}
+```
+
+#### 2. Lifecycle Awareness
+```java
+@Override
+protected void onDestroy() {
+    super.onDestroy();
+    if (executorService != null && !executorService.isShutdown()) {
+        executorService.shutdownNow();
+    }
+}
+```
+
+#### 3. Cancellation Support
+- **Long Operations**: Support interruption/cancellation
+- **Network Calls**: Use timeout and cancellation mechanisms
+- **Background Tasks**: Proper cleanup in activity destruction
+
+---
+
+## Common Patterns & Anti-Patterns
+
+### ✅ Patterns to Follow
+
+#### 1. Manager Pattern
+```java
+// GOOD: Focused manager class
+public class FileTreeManager {
+    private final FileTreeAdapter adapter;
+    private final FileOps fileOps;
+    
+    public void buildFileTree(File rootDirectory) {
+        // Build tree structure
+        List<TreeNode> treeNodes = scanDirectory(rootDirectory);
+        adapter.updateData(treeNodes);
+    }
+}
+```
+
+#### 2. Observer Pattern for UI Updates
+```java
+// GOOD: Event-based UI updates
+public class EditorViewModel {
+    private final MutableLiveData<List<TabItem>> openTabs = new MutableLiveData<>();
+    
+    public LiveData<List<TabItem>> getOpenTabs() {
+        return openTabs;
+    }
+    
+    public void addTab(TabItem tab) {
+        List<TabItem> current = openTabs.getValue();
+        if (current == null) current = new ArrayList<>();
+        current.add(tab);
+        openTabs.setValue(current);
+    }
+}
+```
+
+#### 3. Builder Pattern for Complex Objects
+```java
+// GOOD: Builder for complex configurations
+public class AIModel {
+    public static class Builder {
+        private String id;
+        private AIProvider provider;
+        private ModelCapabilities capabilities;
+        
+        public Builder setId(String id) {
+            this.id = id;
+            return this;
+        }
+        
+        public AIModel build() {
+            return new AIModel(id, provider, capabilities);
+        }
+    }
+}
+```
+
+#### 4. Factory Pattern for Provider Creation
+```java
+// GOOD: Factory for creating providers
+public class ApiClientFactory {
+    public static ApiClient createClient(AIProvider provider, Context context) {
+        switch (provider) {
+            case QWEN:
+                return new QwenApiClient(context);
+            case GEMINI:
+                return new GeminiOfficialApiClient(context);
+            default:
+                throw new IllegalArgumentException("Unsupported provider: " + provider);
+        }
+    }
+}
+```
+
+#### 5. Template Method Pattern
+```java
+// GOOD: Template method for common workflows
+public abstract class BaseApiClient implements ApiClient {
+    protected abstract JsonObject buildRequestBody(String message);
+    
+    public void sendMessage(String message, List<ChatMessage> history) {
+        JsonObject requestBody = buildRequestBody(message);
+        executeRequest(requestBody, getApiEndpoint());
+    }
+}
+```
+
+### ❌ Anti-Patterns to Avoid
+
+#### 1. God Classes
+```java
+// BAD: Monolithic AIAssistant class
+public class AIAssistant {
+    // 2000+ lines with all responsibilities
+    public void sendMessage() { /* ... */ }
+    public void handleStream() { /* ... */ }
+    public void processPlan() { /* ... */ }
+    public void executeTools() { /* ... */ }
+    public void manageModels() { /* ... */ }
+    // ... 50+ more methods
+}
+```
+**Fix**: Split into focused classes:
+- `MessageProcessor` for request/response handling
+- `PlanExecutor` for plan execution
+- `ModelManager` for model operations
+- `StreamingHandler` for real-time updates
+
+#### 2. Tight Coupling
+```java
+// BAD: Direct dependency on concrete implementation
+public class EditorActivity {
+    private final QwenApiClient qwenClient = new QwenApiClient();
+    // Tight coupling to specific implementation
+}
+```
+**Fix**: Use interface-based dependency injection:
+```java
+// GOOD: Interface-based dependency
+public class EditorActivity {
+    private final ApiClient apiClient; // Interface
+    public EditorActivity(ApiClient apiClient) {
+        this.apiClient = apiClient;
+    }
+}
+```
+
+#### 3. Magic Numbers and Strings
+```java
+// BAD: Magic values throughout code
+if (status == 0) { // What does 0 mean?
+    showToast("Error occurred");
+}
+
+String modelId = "gemini-2.5-flash"; // Hardcoded
+int maxRetries = 12; // Magic number
+```
+**Fix**: Use constants:
+```java
+// GOOD: Named constants
+public static final int STATUS_ERROR = 0;
+public static final String DEFAULT_MODEL = "gemini-2.5-flash";
+public static final int DEFAULT_MAX_RETRIES = 12;
+```
+
+#### 4. Deep Nesting
+```java
+// BAD: Excessive nesting
+public void processFile(File file) {
+    if (file != null) {
+        if (file.exists()) {
+            if (file.canRead()) {
+                if (file.getName().endsWith(".java")) {
+                    // Finally do the actual work
+                }
+            }
+        }
+    }
+}
+```
+**Fix**: Early returns and guard clauses:
+```java
+// GOOD: Early returns
+public void processFile(File file) {
+    if (file == null) return;
+    if (!file.exists()) return;
+    if (!file.canRead()) return;
+    if (!file.getName().endsWith(".java")) return;
+    
+    // Do the actual work
+}
+```
+
+#### 5. Ignoring Exceptions
+```java
+// BAD: Silent exception swallowing
+try {
+    fileManager.writeFile(file, content);
+} catch (Exception e) {
+    // Silently ignored - dangerous!
+}
+```
+**Fix**: Proper exception handling:
+```java
+// GOOD: Proper exception handling
+try {
+    fileManager.writeFile(file, content);
+} catch (IOException e) {
+    Log.e(TAG, "Failed to write file: " + file.getName(), e);
+    showErrorDialog("Save failed: " + e.getMessage());
+    throw new RuntimeException("File save failed", e);
+}
+```
+
+#### 6. Static State Misuse
+```java
+// BAD: Global static state
+public static class GlobalState {
+    public static List<ChatMessage> currentChat;
+    public static AIModel currentModel;
+}
+```
+**Fix**: Dependency injection and proper scoping:
+```java
+// GOOD: Proper state management
+public class ChatSession {
+    private final List<ChatMessage> messages = new ArrayList<>();
+    private AIModel currentModel;
+    
+    public void setModel(AIModel model) {
+        this.currentModel = model;
+    }
+}
+```
+
+### 🔧 Refactoring Guidelines
+
+#### When to Refactor
+- **Class Size**: Over 500 lines
+- **Method Complexity**: Over 50 lines
+- **Parameter Count**: Over 5 parameters
+- **Cyclomatic Complexity**: Over 10 in a single method
+- **Code Duplication**: Repeated patterns (3+ occurrences)
+
+#### Refactoring Strategies
+1. **Extract Method**: Break large methods into smaller ones
+2. **Extract Class**: Separate responsibilities into new classes
+3. **Extract Interface**: Abstract implementation details
+4. **Introduce Parameter Object**: Replace parameter lists
+5. **Replace Magic Numbers**: Use named constants
+6. **Rename Variables**: Use meaningful names
+
+---
+
+## Performance Considerations
+
+### Memory Management
+
+#### 1. Chat History Management
+**Current Issue**: Unbounded growth in chat history
+```java
+// PROBLEM: No size limits
+chatHistory.addAll(loadedHistory);
+```
+
+**Optimization**:
+```java
+// GOOD: Memory-bounded history
+private static final int MAX_CHAT_HISTORY = 100;
+private static final int MAX_HISTORY_SIZE_MB = 10;
+
+public void addMessage(ChatMessage message) {
+    if (chatHistory.size() >= MAX_CHAT_HISTORY) {
+        chatHistory.remove(0); // Remove oldest
+    }
+    chatHistory.add(message);
+    
+    // Check memory usage
+    if (getChatHistorySize() > MAX_HISTORY_SIZE_MB) {
+        trimHistory();
+    }
+}
+```
+
+#### 2. File Tree Memory Usage
+**Current Issue**: Entire project tree loaded into memory
+```java
+// PROBLEM: Complete tree in memory
+List<TreeNode> allNodes = scanDirectoryRecursive(root);
+```
+
+**Optimization**:
+```java
+// GOOD: Lazy loading
+public class LazyTreeNode {
+    private final File file;
+    private List<LazyTreeNode> children;
+    private boolean loaded = false;
+    
+    public List<LazyTreeNode> getChildren() {
+        if (!loaded && file.isDirectory()) {
+            children = loadChildren();
+            loaded = true;
+        }
+        return children;
+    }
+}
+```
+
+#### 3. Streaming Response Management
+**Current Issue**: String building for large responses
+```java
+// PROBLEM: Inefficient string concatenation
+StringBuilder response = new StringBuilder();
+for (String chunk : chunks) {
+    response.append(chunk); // O(n²) complexity
+}
+```
+
+**Optimization**:
+```java
+// GOOD: Efficient streaming
+public class StreamingResponse {
+    private final List<String> chunks = new ArrayList<>();
+    private final int targetChunkSize = 1024;
+    
+    public void addChunk(String chunk) {
+        chunks.add(chunk);
+        if (shouldFlush()) {
+            flushToUI();
+        }
+    }
+}
+```
+
+### Network Performance
+
+#### 1. Connection Management
+**Current Issue**: New connection for each request
+```java
+// PROBLEM: No connection reuse
+OkHttpClient client = new OkHttpClient();
+```
+
+**Optimization**:
+```java
+// GOOD: Connection pooling
+private static final OkHttpClient CLIENT = new OkHttpClient.Builder()
+    .connectionPool(new ConnectionPool(5, 5, TimeUnit.MINUTES))
+    .build();
+```
+
+#### 2. Request Optimization
+**Current Issue**: Redundant requests and data
+```java
+// PROBLEM: Fetching models every time
+List<AIModel> models = fetchModelsFromNetwork();
+```
+
+**Optimization**:
+```java
+// GOOD: Cached model fetching
+private final Map<AIProvider, List<AIModel>> modelCache = new HashMap<>();
+private final long MODEL_CACHE_TTL = 30 * 60 * 1000; // 30 minutes
+
+public List<AIModel> getModels(AIProvider provider) {
+    List<AIModel> cached = modelCache.get(provider);
+    if (cached != null && !isCacheExpired(provider)) {
+        return cached;
+    }
+    
+    List<AIModel> models = fetchFromNetwork(provider);
+    modelCache.put(provider, models);
+    return models;
+}
+```
+
+### UI Performance
+
+#### 1. RecyclerView Optimization
+**Current Issue**: Inefficient adapter updates
+```java
+// PROBLEM: Full refresh for single item change
+adapter.notifyDataSetChanged();
+```
+
+**Optimization**:
+```java
+// GOOD: Targeted updates
+public void updateMessage(int position, ChatMessage message) {
+    messages.set(position, message);
+    adapter.notifyItemChanged(position);
+}
+
+// For bulk updates
+public void updateMessages(List<ChatMessage> newMessages) {
+    int oldSize = messages.size();
+    messages.clear();
+    messages.addAll(newMessages);
+    
+    adapter.notifyItemRangeChanged(0, Math.min(oldSize, newMessages.size()));
+    if (newMessages.size() > oldSize) {
+        adapter.notifyItemRangeInserted(oldSize, newMessages.size() - oldSize);
+    }
+}
+```
+
+#### 2. Image and Markdown Caching
+**Current Issue**: Processing in UI thread
+```java
+// PROBLEM: Expensive operations on UI thread
+String renderedHtml = markdownProcessor.process(message);
+```
+
+**Optimization**:
+```java
+// GOOD: Background processing with caching
+private final Map<String, Spanned> markdownCache = new LruCache<>(100);
+
+public void renderMarkdownAsync(String markdown, Callback<Spanned> callback) {
+    Spanned cached = markdownCache.get(markdown);
+    if (cached != null) {
+        callback.onResult(cached);
+        return;
+    }
+    
+    executorService.execute(() -> {
+        Spanned rendered = markdownProcessor.process(markdown);
+        markdownCache.put(markdown, rendered);
+        
+        mainHandler.post(() -> callback.onResult(rendered));
+    });
+}
+```
+
+### Background Processing
+
+#### 1. Thread Pool Management
+**Current Issue**: Creating threads for each operation
+```java
+// PROBLEM: Thread proliferation
+new Thread(() -> doWork()).start();
+```
+
+**Optimization**:
+```java
+// GOOD: Managed thread pool
+public class TaskManager {
+    private final ExecutorService executor = Executors.newFixedThreadPool(4);
+    
+    public <T> void executeAsync(Callable<T> task, Callback<T> callback) {
+        Future<T> future = executor.submit(task);
+        
+        // Proper cancellation handling
+        registerCancellation(future);
+    }
+}
+```
+
+#### 2. Background File Operations
+**Current Issue**: Large file operations on main thread
+```java
+// PROBLEM: Blocking operations
+String content = FileUtils.readFile(file);
+```
+
+**Optimization**:
+```java
+// GOOD: Async file operations
+public void readFileAsync(File file, FileReadCallback callback) {
+    executorService.execute(() -> {
+        try {
+            String content = FileUtils.readFile(file);
+            mainHandler.post(() -> callback.onSuccess(content));
+        } catch (Exception e) {
+            mainHandler.post(() -> callback.onError(e));
+        }
+    });
+}
+```
+
+### Performance Monitoring
+
+#### 1. Memory Leak Detection
+```java
+// GOOD: Memory leak tracking
+public class MemoryTracker {
+    private final Set<Object> trackedObjects = new WeakHashMap<>();
+    
+    public void track(Object object) {
+        trackedObjects.add(object);
+    }
+    
+    public void reportMemoryUsage() {
+        Runtime runtime = Runtime.getRuntime();
+        long used = runtime.totalMemory() - runtime.freeMemory();
+        Log.d(TAG, "Memory usage: " + (used / 1024 / 1024) + " MB");
+    }
+}
+```
+
+#### 2. Performance Metrics
+```java
+// GOOD: Operation timing
+public class PerformanceMonitor {
+    private final Map<String, List<Long>> operationTimes = new HashMap<>();
+    
+    public void recordOperation(String operationName, long duration) {
+        operationTimes.computeIfAbsent(operationName, k -> new ArrayList<>())
+                     .add(duration);
+    }
+    
+    public void reportMetrics() {
+        for (Map.Entry<String, List<Long>> entry : operationTimes.entrySet()) {
+            List<Long> times = entry.getValue();
+            long avg = times.stream().mapToLong(Long::longValue).sum() / times.size();
+            Log.d(TAG, entry.getKey() + " avg: " + avg + "ms");
+        }
+    }
+}
+```
+
+---
+
+## Code Review Checklist
+
+### Architecture & Design Patterns
+
+#### ✅ Structural Compliance
+- [ ] **Manager Pattern**: Business logic in dedicated manager classes, not activities
+- [ ] **Interface Usage**: Provider implementations use interfaces (ApiClient pattern)
+- [ ] **Separation of Concerns**: UI, business logic, and utilities clearly separated
+- [ ] **Single Responsibility**: Each class has one clear purpose
+- [ ] **Package Organization**: Files in appropriate packages (ai/, editor/, util/)
+
+#### ✅ Design Patterns
+- [ ] **Observer Pattern**: UI updates via listeners/callbacks, not direct references
+- [ ] **Builder Pattern**: Used for complex object construction (AIModel, ChatMessage)
+- [ ] **Factory Pattern**: Provider/client creation abstracted
+- [ ] **Template Method**: Common workflows in base classes
+
+### Code Quality Standards
+
+#### ✅ Class Organization
+- [ ] **File Size**: Classes under 500 lines (flag for refactoring if over)
+- [ ] **Method Length**: Methods under 50 lines, single responsibility
+- [ ] **Parameter Count**: Methods with 5+ parameters use parameter objects
+- [ ] **Constants**: Magic numbers/strings replaced with named constants
+- [ ] **Documentation**: Public methods have clear JavaDoc
+
+#### ✅ Naming Conventions
+- [ ] **Classes**: PascalCase (FileTreeManager, ChatMessageAdapter)
+- [ ] **Methods**: camelCase (performFileOperation, handleAiResponse)
+- [ ] **Fields**: Hungarian notation acceptable (mContext, mFileManager)
+- [ ] **Constants**: SCREAMING_SNAKE_CASE (MAX_RETRY_COUNT, DEFAULT_MODEL)
+- [ ] **Packages**: lowercase (com.codex.apk.ai.editor)
+
+### Error Handling & Resilience
+
+#### ✅ Exception Management
+- [ ] **Specific Exceptions**: Catch specific exceptions, not generic Exception
+- [ ] **User Feedback**: Errors display user-friendly messages
+- [ ] **Logging**: Appropriate Log.d/Log.e usage with class names
+- [ ] **Graceful Degradation**: Fallback mechanisms for failures
+- [ ] **Resource Cleanup**: Proper cleanup in finally blocks
+
+#### ✅ Async Operations
+- [ ] **Thread Management**: Background operations on separate threads
+- [ ] **UI Safety**: UI updates on main thread via runOnUiThread
+- [ ] **Lifecycle Awareness**: Async operations cancelled in onDestroy
+- [ ] **Timeout Handling**: Network operations have appropriate timeouts
+- [ ] **Cancellation**: Long-running operations support cancellation
+
+### Performance Considerations
+
+#### ✅ Memory Management
+- [ ] **List Limits**: Bounded collections for chat history, file lists
+- [ ] **Image Handling**: Efficient image loading and caching
+- [ ] **Context Usage**: No memory leaks from context references
+- [ ] **Resource Cleanup**: Proper cleanup of resources in lifecycle methods
+
+#### ✅ Network Optimization
+- [ ] **Connection Reuse**: OkHttpClient instances reused, not recreated
+- [ ] **Request Caching**: Appropriate caching for static data (models)
+- [ ] **Batch Operations**: Multiple operations batched when possible
+- [ ] **Timeout Configuration**: Reasonable timeouts for different operations
+
+#### ✅ UI Performance
+- [ ] **RecyclerView Optimization**: Efficient adapter updates (notifyItemChanged vs notifyDataSetChanged)
+- [ ] **View Recycling**: Proper RecyclerView view holder patterns
+- [ ] **Expensive Operations**: Heavy operations moved off UI thread
+- [ ] **Animation Optimization**: Smooth animations without blocking UI
+
+### Android-Specific Standards
+
+#### ✅ Lifecycle Management
+- [ ] **Activity Lifecycle**: Proper handling of onCreate, onResume, onPause, onDestroy
+- [ ] **Fragment Lifecycle**: Fragments properly managed and cleaned up
+- [ ] **Background Services**: Services properly started/stopped
+- [ ] **Memory Pressure**: Handling of low-memory situations
+
+#### ✅ Android Best Practices
+- [ ] **Context Usage**: Application context when appropriate, activity context when needed
+- [ ] **Permission Handling**: Runtime permissions properly requested
+- [ ] **Configuration Changes**: State preservation across orientation changes
+- [ ] **Resource Management**: Efficient use of Android resources
+
+### AI-Specific Considerations
+
+#### ✅ Provider Integration
+- [ ] **Error Handling**: Provider-specific errors handled gracefully
+- [ ] **Rate Limiting**: Respectful API usage with appropriate delays
+- [ ] **Credential Security**: API keys and sensitive data properly handled
+- [ ] **Fallback Mechanisms**: Multiple providers available for resilience
+
+#### ✅ Streaming Implementation
+- [ ] **Backpressure Handling**: Efficient processing of streaming responses
+- [ ] **Error Recovery**: Streaming errors handled with retry mechanisms
+- [ ] **Memory Efficiency**: Streaming responses don't accumulate in memory
+- [ ] **Cancellation**: Streaming requests can be cancelled
+
+### File Management Standards
+
+#### ✅ File Operations
+- [ ] **Validation**: File paths and names properly validated
+- [ ] **Encoding**: UTF-8 encoding consistently used
+- [ ] **Error Handling**: File operation errors handled gracefully
+- [ ] **Backup Creation**: Important file operations create backups
+
+#### ✅ Project Structure
+- [ ] **Path Resolution**: Project-relative paths properly calculated
+- [ ] **Permission Handling**: Storage permissions properly managed
+- [ ] **Large Files**: Efficient handling of large files
+- [ ] **Search Performance**: File search operations optimized
+
+### Testing & Documentation
+
+#### ✅ Testing Readiness
+- [ ] **Testability**: Classes designed for unit testing
+- [ ] **Dependency Injection**: Constructor injection for easy mocking
+- [ ] **State Management**: Testable state without Android dependencies
+- [ ] **Interface Usage**: Interfaces enable mocking and testing
+
+#### ✅ Documentation Quality
+- [ ] **Class Purpose**: Clear explanation of class responsibilities
+- [ ] **Method Documentation**: Public methods have clear JavaDoc
+- [ ] **Usage Examples**: Complex APIs have usage examples
+- [ ] **Architecture Decisions**: Significant design decisions documented
+
+---
+
+## Feature Entry Points
+
+### 1. AI Chat System
+
+#### Primary Entry: AIChatFragment
+**Location**: `ai/AIChatFragment.java`
+**Purpose**: User interface for AI interactions
+
+**Key Entry Points**:
+```java
+// Message sending
+private void sendPrompt() {
+    String message = inputField.getText().toString().trim();
+    if (!message.isEmpty()) {
+        aiAssistantManager.sendMessage(message, attachments);
+    }
+}
+
+// File attachment
+private void attachFile() {
+    Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+    intent.setType("*/*");
+    startActivityForResult(intent, ATTACHMENT_REQUEST_CODE);
+}
+```
+
+#### Business Logic: AiAssistantManager
+**Location**: `editor/AiAssistantManager.java`
+**Purpose**: Coordinates AI functionality with UI
+
+**Key Entry Points**:
+```java
+// Send message to AI
+public void sendMessage(String message, List<File> attachments) {
+    ChatMessage userMessage = createUserMessage(message, attachments);
+    addMessageToChat(userMessage);
+    
+    aiAssistant.sendMessage(message, chatHistory, qwenState, attachments);
+}
+
+// Handle streaming response
+public void onAiStreamUpdate(String content, boolean isThinking) {
+    updateStreamingMessage(content, isThinking);
+}
+```
+
+#### Core AI Processing: AIAssistant
+**Location**: `ai/AIAssistant.java`
+**Purpose**: Central AI coordination
+
+**Key Entry Points**:
+```java
+// Primary message processing
+public void sendMessage(String message, List<ChatMessage> chatHistory, 
+                       QwenConversationState qwenState, List<File> attachments) {
+    ApiClient client = getClientForCurrentModel();
+    client.sendMessage(message, chatHistory, qwenState, attachments);
+}
+```
+
+### 2. File Management System
+
+#### File Tree Navigation: FileTreeManager
+**Location**: `FileTreeManager.java`
+**Purpose**: File system navigation and operations
+
+**Key Entry Points**:
+```java
+// Initialize file tree
+public void initialize(File projectDir) {
+    this.projectDir = projectDir;
+    buildFileTree();
+    adapter.setData(treeNodes);
+}
+
+// File operation entry
+public void performFileOperation(FileOperation operation, File target) {
+    switch (operation) {
+        case CREATE_FILE:
+            createNewFile(target);
+            break;
+        case DELETE:
+            deleteFileOrDirectory(target);
+            break;
+        case RENAME:
+            renameFile(target, newName);
+            break;
+    }
+}
+```
+
+#### File Operations: FileManager
+**Location**: `FileManager.java`
+**Purpose**: Core file system operations
+
+**Key Entry Points**:
+```java
+// File reading
+public String readFileContent(File file) throws IOException {
+    return new String(Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8);
+}
+
+// File writing
+public void writeFileContent(File file, String content) throws IOException {
+    Files.write(file.toPath(), content.getBytes(StandardCharsets.UTF_8));
+}
+```
+
+### 3. Editor System
+
+#### Tab Management: TabManager
+**Location**: `TabManager.java`
+**Purpose**: Multi-tab editor lifecycle
+
+**Key Entry Points**:
+```java
+// Open new file
+public void openFile(File file) {
+    TabItem tab = createTabForFile(file);
+    addTab(tab);
+    switchToTab(tab);
+}
+
+// Close tab
+public void closeTab(TabItem tab) {
+    if (hasUnsavedChanges(tab)) {
+        promptToSave(tab);
+    }
+    removeTab(tab);
+}
+```
+
+#### Code Editing: CodeEditorFragment
+**Location**: `editor/CodeEditorFragment.java`
+**Purpose**: Individual file editing interface
+
+**Key Entry Points**:
+```java
+// File content change
+private void onContentChanged(String content) {
+    tabManager.updateTabContent(currentTab, content);
+    setModified(true);
+}
+
+// Save file
+private void saveFile() {
+    String content = editor.getContent();
+    fileManager.writeFileContent(file, content);
+    setModified(false);
+}
+```
+
+### 4. Git Integration
+
+#### Repository Operations: GitManager
+**Location**: `GitManager.java`
+**Purpose**: Version control integration
+
+**Key Entry Points**:
+```java
+// Clone repository
+public void cloneRepository(String repositoryUrl, File targetDir, 
+                           ProgressCallback callback) {
+    executorService.execute(() -> {
+        try {
+            Git git = Git.cloneRepository()
+                       .setURI(repositoryUrl)
+                       .setDirectory(targetDir)
+                       .setProgressMonitor(progressMonitor)
+                       .call();
+            callback.onSuccess(git);
+        } catch (Exception e) {
+            callback.onError(e);
+        }
+    });
+}
+```
+
+### 5. Settings and Configuration
+
+#### Settings Management: SettingsActivity
+**Location**: `SettingsActivity.java`
+**Purpose**: User configuration interface
+
+**Key Entry Points**:
+```java
+// Save API key
+private void saveApiKey(AIProvider provider, String apiKey) {
+    SharedPreferences.Editor editor = prefs.edit();
+    editor.putString(provider.getKeyName(), apiKey);
+    editor.apply();
+    // Notify AIAssistant of configuration change
+    aiAssistant.updateApiKey(provider, apiKey);
+}
+```
+
+#### Model Management: ModelsActivity
+**Location**: `ModelsActivity.java`
+**Purpose**: AI model selection and management
+
+**Key Entry Points**:
+```java
+// Select model
+private void onModelSelected(AIModel model) {
+    aiAssistant.setCurrentModel(model);
+    preferences.putString("current_model", model.getId());
+    finish();
+}
+```
+
+### 6. Project Management
+
+#### Project Operations: ProjectManager
+**Location**: `ProjectManager.java`
+**Purpose**: Workspace and project lifecycle
+
+**Key Entry Points**:
+```java
+// Create new project
+public void createProject(String projectName, File location) {
+    File projectDir = new File(location, projectName);
+    projectDir.mkdirs();
+    initializeProjectStructure(projectDir);
+    saveProjectMetadata(projectDir, projectName);
+}
+
+// Open existing project
+public void openProject(File projectDir) {
+    ProjectMetadata metadata = loadProjectMetadata(projectDir);
+    validateProjectStructure(projectDir, metadata);
+    EditorActivity.start(this, projectDir, metadata);
+}
+```
+
+### 7. UI Navigation Flow
+
+#### Main Navigation: MainActivity
+**Location**: `MainActivity.java`
+**Purpose**: Entry point and project selection
+
+**Key Entry Points**:
+```java
+// Project selection
+private void onProjectSelected(ProjectItem project) {
+    Intent intent = new Intent(this, EditorActivity.class);
+    intent.putExtra(EditorActivity.EXTRA_PROJECT_PATH, project.getPath());
+    startActivity(intent);
+}
+
+// Create new project
+private void createNewProject() {
+    Intent intent = new Intent(this, NewProjectActivity.class);
+    startActivityForResult(intent, CREATE_PROJECT_REQUEST_CODE);
+}
+```
+
+---
+
+## Testing Strategies
+
+### Unit Testing Framework
+
+#### Test Structure
+```
+app/src/test/java/com/codex/apk/
+├── ai/                       # AI provider tests
+│   ├── AIAssistantTest.java
+│   ├── QwenApiClientTest.java
+│   └── AIModelTest.java
+├── editor/                   # Editor functionality tests
+│   ├── TabManagerTest.java
+│   └── FileTreeManagerTest.java
+├── util/                     # Utility tests
+│   ├── FileOpsTest.java
+│   └── DiffUtilsTest.java
+└── models/                   # Data model tests
+    ├── ChatMessageTest.java
+    └── AIModelTest.java
+```
+
+### Core Testing Patterns
+
+#### 1. AI Assistant Testing
+
+**AIAssistantTest.java**:
+```java
+@RunWith(MockitoJUnitRunner.class)
+public class AIAssistantTest {
+    
+    @Mock
+    private ApiClient mockClient;
+    
+    @Mock
+    private AIActionListener mockListener;
+    
+    private AIAssistant assistant;
+    
+    @Before
+    public void setup() {
+        assistant = new AIAssistant();
+        assistant.setAIActionListener(mockListener);
+    }
+    
+    @Test
+    public void testSendMessageRouting() {
+        // Setup
+        AIModel qwenModel = createTestQwenModel();
+        assistant.setCurrentModel(qwenModel);
+        
+        // Execute
+        assistant.sendMessage("test message", new ArrayList<>(), 
+                            new QwenConversationState(), new ArrayList<>());
+        
+        // Verify
+        verify(mockClient).sendMessage(anyString(), anyList(), 
+                                     any(QwenConversationState.class), anyList());
+    }
+    
+    @Test
+    public void testErrorHandling() {
+        // Test error propagation
+        doThrow(new RuntimeException("Network error"))
+            .when(mockClient).sendMessage(any(), any(), any(), any());
+        
+        assistant.sendMessage("test", new ArrayList<>(), 
+                            new QwenConversationState(), new ArrayList<>());
+        
+        verify(mockListener).onAiError("Network error");
+    }
+}
+```
+
+#### 2. File Operations Testing
+
+**FileOpsTest.java**:
+```java
+@RunWith RobolectricTestRunner.class
+public class FileOpsTest {
+    
+    private File tempDir;
+    private FileOps fileOps;
+    
+    @Before
+    public void setup() {
+        tempDir = tempFolder.newFolder("test");
+        fileOps = new FileOps();
+    }
+    
+    @Test
+    public void testFileCreation() throws IOException {
+        // Execute
+        File newFile = new File(tempDir, "test.txt");
+        fileOps.createNewFile(newFile, "Hello World");
+        
+        // Verify
+        assertTrue(newFile.exists());
+        assertEquals("Hello World", fileOps.readFileContent(newFile));
+    }
+    
+    @Test
+    public void testInvalidFileName() {
+        // Test validation
+        File invalidFile = new File(tempDir, "invalid/file:name");
+        
+        assertThrows(IllegalArgumentException.class, () -> {
+            fileOps.createNewFile(invalidFile, "content");
+        });
+    }
+}
+```
+
+#### 3. UI Component Testing
+
+**TabManagerTest.java**:
+```java
+@RunWith(MockitoJUnitRunner.class)
+public class TabManagerTest {
+    
+    @Mock
+    private EditorActivity mockActivity;
+    
+    @Mock
+    private TabAdapter mockAdapter;
+    
+    private TabManager tabManager;
+    
+    @Before
+    public void setup() {
+        tabManager = new TabManager(mockActivity, mockAdapter);
+    }
+    
+    @Test
+    public void testOpenMultipleTabs() {
+        // Execute
+        TabItem tab1 = tabManager.openFile(new File("file1.txt"));
+        TabItem tab2 = tabManager.openFile(new File("file2.txt"));
+        
+        // Verify
+        assertEquals(2, tabManager.getOpenTabs().size());
+        assertEquals(tab1, tabManager.getCurrentTab());
+    }
+    
+    @Test
+    public void testTabSwitching() {
+        // Setup
+        TabItem tab1 = tabManager.openFile(new File("file1.txt"));
+        TabItem tab2 = tabManager.openFile(new File("file2.txt"));
+        
+        // Execute
+        tabManager.switchToTab(tab1);
+        
+        // Verify
+        assertEquals(tab1, tabManager.getCurrentTab());
+        verify(mockAdapter).notifyDataSetChanged();
+    }
+}
+```
+
+### Integration Testing
+
+#### 1. AI Chat Flow Integration
+
+**AIChatIntegrationTest.java**:
+```java
+@RunWith(AndroidJUnit4.class)
+public class AIChatIntegrationTest {
+    
+    private AIChatFragment fragment;
+    private AiAssistantManager manager;
+    
+    @Before
+    public void setup() {
+        fragment = new AIChatFragment();
+        manager = new AiAssistantManager(mockActivity);
+        fragment.setAssistantManager(manager);
+    }
+    
+    @Test
+    public void testFullChatFlow() {
+        // Test complete chat interaction
+        fragment.sendMessage("Hello AI");
+        
+        // Verify message appears in chat
+        assertTrue(fragment.getMessages().contains(userMessage));
+        
+        // Wait for AI response
+        await().atMost(10, TimeUnit.SECONDS).until(() -> 
+            fragment.getMessages().stream()
+                   .anyMatch(msg -> msg.getSender() == ChatMessage.SENDER_AI)
+        );
+        
+        // Verify streaming works
+        ChatMessage aiMessage = fragment.getLastAiMessage();
+        assertNotNull(aiMessage.getContent());
+    }
+}
+```
+
+#### 2. File Management Integration
+
+**FileManagementIntegrationTest.java**:
+```java
+@RunWith(AndroidJUnit4.class)
+public class FileManagementIntegrationTest {
+    
+    @Rule
+    public TemporaryFolder tempFolder = new TemporaryFolder();
+    
+    @Test
+    public void testProjectWorkflow() {
+        // Create project
+        File projectDir = tempFolder.newFolder("TestProject");
+        ProjectManager projectManager = new ProjectManager();
+        projectManager.createProject("TestProject", projectDir);
+        
+        // Open in editor
+        FileTreeManager fileTree = new FileTreeManager(projectDir);
+        fileTree.initialize();
+        
+        // Create and edit file
+        File testFile = new File(projectDir, "test.txt");
+        FileManager fileManager = new FileManager();
+        fileManager.writeFileContent(testFile, "Initial content");
+        
+        // Open in editor
+        TabManager tabManager = new TabManager(mockActivity, mockAdapter);
+        TabItem tab = tabManager.openFile(testFile);
+        
+        // Modify content
+        tabManager.updateTabContent(tab, "Modified content");
+        fileManager.writeFileContent(testFile, "Modified content");
+        
+        // Verify
+        assertEquals("Modified content", fileManager.readFileContent(testFile));
+        assertTrue(tab.isModified());
+    }
+}
+```
+
+### UI Testing with Espresso
+
+#### 1. Editor Activity Testing
+
+**EditorActivityTest.java**:
+```java
+@RunWith(AndroidJUnit4.class)
+public class EditorActivityTest {
+    
+    @Rule
+    public ActivityTestRule<EditorActivity> activityRule = 
+        new ActivityTestRule<>(EditorActivity.class);
+    
+    @Test
+    public void testFileOpening() {
+        // Open file from tree
+        onView(withId(R.id.file_tree_recycler))
+            .perform(RecyclerViewActions.actionOnItemAtPosition(0, click()));
+        
+        // Verify tab appears
+        onView(withId(R.id.tabs_recycler))
+            .check(matches(hasDescendant(withText("test.txt"))));
+        
+        // Verify content loads
+        onView(withId(R.id.editor))
+            .check(matches(withText(containsString("Initial content"))));
+    }
+    
+    @Test
+    public void testChatInteraction() {
+        // Open AI chat
+        onView(withId(R.id.ai_chat_button))
+            .perform(click());
+        
+        // Send message
+        onView(withId(R.id.chat_input))
+            .perform(typeText("Hello"), closeSoftKeyboard());
+        
+        onView(withId(R.id.send_button))
+            .perform(click());
+        
+        // Verify message appears
+        onView(withText("Hello"))
+            .check(matches(isDisplayed()));
+    }
+}
+```
+
+### Mocking and Test Data
+
+#### 1. Mock Providers
+
+**MockApiClient.java**:
+```java
+public class MockApiClient implements ApiClient {
+    
+    private final Queue<ChatMessage> responseQueue = new LinkedList<>();
+    
+    public void enqueueResponse(ChatMessage response) {
+        responseQueue.add(response);
+    }
+    
+    @Override
+    public void sendMessage(String message, List<ChatMessage> chatHistory, 
+                          QwenConversationState qwenState, boolean thinkingMode,
+                          boolean webSearchEnabled, List<ToolSpec> enabledTools,
+                          List<File> attachments) {
+        
+        // Simulate network delay
+        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+            ChatMessage response = responseQueue.poll();
+            if (response != null && listener != null) {
+                listener.onAiResponseCompleted(response.getContent(), 
+                                             response.getRawAiResponseJson());
+            }
+        }, 1000);
+    }
+}
+```
+
+#### 2. Test Data Factory
+
+**TestDataFactory.java**:
+```java
+public class TestDataFactory {
+    
+    public static AIModel createQwenModel() {
+        return new AIModel.Builder()
+            .setId("qwen-plus")
+            .setDisplayName("Qwen Plus")
+            .setProvider(AIProvider.QWEN)
+            .setCapabilities(new ModelCapabilities.Builder()
+                .setSupportsStreaming(true)
+                .setSupportsThinking(true)
+                .setSupportsWebSearch(true)
+                .build())
+            .build();
+    }
+    
+    public static ChatMessage createUserMessage(String content) {
+        return new ChatMessage(ChatMessage.SENDER_USER, content, 
+                             System.currentTimeMillis());
+    }
+    
+    public static ChatMessage createAiMessage(String content) {
+        return new ChatMessage(ChatMessage.SENDER_AI, content,
+                             System.currentTimeMillis());
+    }
+}
+```
+
+### Performance Testing
+
+#### 1. Memory Testing
+
+**MemoryPerformanceTest.java**:
+```java
+@RunWith(AndroidJUnit4.class)
+public class MemoryPerformanceTest {
+    
+    @Test
+    public void testChatHistoryMemoryUsage() {
+        // Create large chat history
+        List<ChatMessage> largeHistory = new ArrayList<>();
+        for (int i = 0; i < 1000; i++) {
+            largeHistory.add(TestDataFactory.createAiMessage("Message " + i));
+        }
+        
+        // Monitor memory usage
+        Runtime runtime = Runtime.getRuntime();
+        long memoryBefore = runtime.totalMemory() - runtime.freeMemory();
+        
+        // Process large history
+        ChatMessageAdapter adapter = new ChatMessageAdapter(largeHistory);
+        
+        long memoryAfter = runtime.totalMemory() - runtime.freeMemory();
+        long memoryUsed = memoryAfter - memoryBefore;
+        
+        // Verify memory usage is reasonable (less than 10MB)
+        assertTrue("Memory usage too high: " + memoryUsed, 
+                  memoryUsed < 10 * 1024 * 1024);
+    }
+}
+```
+
+#### 2. Network Performance Testing
+
+**NetworkPerformanceTest.java**:
+```java
+@Test
+public void testApiResponseTime() {
+    // Mock slow network
+    MockWebServer server = new MockWebServer();
+    server.enqueue(new MockResponse().setBody("test response").setBodyDelay(5, TimeUnit.SECONDS));
+    server.start();
+    
+    // Test response time
+    long startTime = System.currentTimeMillis();
+    // ... make request ...
+    long endTime = System.currentTimeMillis();
+    
+    assertTrue("Response time too slow: " + (endTime - startTime) + "ms",
+              endTime - startTime < 60000); // Should complete within 60 seconds
+}
+```
+
+### Continuous Integration
+
+#### 1. GitHub Actions Workflow
+
+**.github/workflows/test.yml**:
+```yaml
+name: Android CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    
+    - name: Set up JDK 11
+      uses: actions/setup-java@v2
+      with:
+        java-version: '11'
+        distribution: 'temurin'
+    
+    - name: Grant execute permission for gradlew
+      run: chmod +x gradlew
+    
+    - name: Run unit tests
+      run: ./gradlew test
+    
+    - name: Run instrumented tests
+      run: ./gradlew connectedAndroidTest
+    
+    - name: Generate test report
+      run: ./gradlew jacocoTestReport
+    
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v1
+```
+
+#### 2. Test Configuration
+
+**build.gradle**:
+```gradle
+android {
+    testOptions {
+        unitTests {
+            includeAndroidResources = true
+            returnDefaultValues = true
+        }
+        animationsDisabled = true
+    }
+    
+    buildTypes {
+        debug {
+            testCoverageEnabled = true
+        }
+    }
+}
+
+dependencies {
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.mockito:mockito-core:3.12.4'
+    testImplementation 'org.robolectric:robolectric:4.8'
+    
+    androidTestImplementation 'androidx.test.ext:junit:1.1.3'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.4.0'
+    androidTestImplementation 'androidx.test:runner:1.4.0'
+    androidTestImplementation 'androidx.test:rules:1.4.0'
+}
+```
+
+### Test Coverage Goals
+
+#### Coverage Targets
+- **Overall Coverage**: 70%+ (current: unknown)
+- **Critical Path Coverage**: 90%+ for AI chat, file operations
+- **Manager Classes**: 85%+ for business logic
+- **Utility Classes**: 80%+ for core utilities
+
+#### High Priority Test Areas
+1. **AIAssistant**: Message routing, error handling, model management
+2. **FileManager**: File operations, validation, encoding handling
+3. **TabManager**: Tab lifecycle, state management
+4. **ApiClient implementations**: Network error handling, parsing
+5. **ChatMessageAdapter**: Complex UI rendering logic
+
+---
+
+## Deployment Considerations
+
+### Build Configuration
+
+#### 1. Gradle Build Types
+
+**build.gradle (app)**:
+```gradle
+android {
+    buildTypes {
+        debug {
+            applicationIdSuffix ".debug"
+            versionNameSuffix "-debug"
+            debuggable true
+            minifyEnabled false
+            buildConfigField "boolean", "IS_PREMIUM", "false"
+        }
+        
+        beta {
+            applicationIdSuffix ".beta"
+            versionNameSuffix "-beta"
+            debuggable false
+            minifyEnabled true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            buildConfigField "boolean", "IS_PREMIUM", "true"
+        }
+        
+        release {
+            debuggable false
+            minifyEnabled true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            buildConfigField "boolean", "IS_PREMIUM", "true"
+            
+            signingConfig signingConfigs.release
+        }
+    }
+}
+```
+
+#### 2. Proguard Rules
+
+**proguard-rules.pro**:
+```proguard
+# AI Provider Classes
+-keep class com.codex.apk.ai.** { *; }
+-keep class * implements com.codex.apk.ai.ApiClient { *; }
+
+# Gson Classes
+-keepattributes Signature
+-keepattributes *Annotation*
+-dontwarn sun.misc.**
+-keep class com.google.gson.** { *; }
+-keep class * implements com.google.gson.TypeAdapterFactory
+-keep class * implements com.google.gson.JsonSerializer
+-keep class * implements com.google.gson.JsonDeserializer
+
+# OkHttp Classes
+-dontwarn okhttp3.**
+-dontwarn okio.**
+-keep class okhttp3.** { *; }
+-keep interface okhttp3.** { *; }
+
+# Editor Classes
+-keep class io.github.rosemoe.sora.widget.** { *; }
+
+# AI Models and Chat Messages
+-keep class com.codex.apk.models.** { *; }
+-keep class com.codex.apk.ai.models.** { *; }
+```
+
+### Version Management
+
+#### 1. Version Configuration
+
+**gradle.properties**:
+```properties
+# App Version
+VERSION_NAME=2.1.0
+VERSION_CODE=21000
+
+# Build Configuration
+MIN_SDK_VERSION=21
+COMPILE_SDK_VERSION=34
+TARGET_SDK_VERSION=34
+
+# Dependency Versions
+KOTLIN_VERSION=1.7.10
+GRADLE_VERSION=7.5
+ANDROID_GRADLE_PLUGIN_VERSION=7.3.0
+```
+
+#### 2. Semantic Versioning
+
+**Version Strategy**:
+- **Major** (X.0.0): Breaking API changes, major feature additions
+- **Minor** (2.X.0): New features, backward-compatible enhancements
+- **Patch** (2.1.X): Bug fixes, performance improvements, documentation
+
+### Signing Configuration
+
+#### 1. Release Signing
+
+**build.gradle**:
+```gradle
+android {
+    signingConfigs {
+        release {
+            storeFile file('../codex.keystore')
+            storePassword 'codex123'
+            keyAlias 'codex_release'
+            keyPassword 'codex123'
+        }
+    }
+}
+```
+
+#### 2. CI/CD Signing
+
+**GitHub Actions** (workflow for release):
+```yaml
+- name: Sign Release APK
+  uses: r0adkll/sign-android-release@v1
+  with:
+    releaseDirectory: app/build/outputs/apk/release
+    signingKeyBase64: ${{ secrets.SIGNING_KEY }}
+    alias: ${{ secrets.ALIAS }}
+    keyStorePassword: ${{ secrets.KEY_STORE_PASSWORD }}
+```
+
+### Performance Optimization
+
+#### 1. Build Optimization
+
+```gradle
+android {
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+    
+    buildFeatures {
+        viewBinding true
+    }
+    
+    packagingOptions {
+        pickFirst '**/libc++_shared.so'
+        pickFirst '**/libjsc.so'
+    }
+}
+```
+
+#### 2. Resource Optimization
+
+```gradle
+android {
+    defaultConfig {
+        vectorDrawables.useSupportLibrary = true
+    }
+    
+    buildTypes {
+        release {
+            minifyEnabled true
+            shrinkResources true
+            zipAlignEnabled true
+        }
+    }
+}
+```
+
+### Security Considerations
+
+#### 1. API Key Management
+
+**Environment Variables**:
+```bash
+# Local development
+export GEMINI_API_KEY="your-key-here"
+export DEEPINFRA_API_KEY="your-key-here"
+
+# CI/CD Secrets
+GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}
+DEEPINFRA_API_KEY=${{ secrets.DEEPINFRA_API_KEY }}
+```
+
+#### 2. Runtime Security Checks
+
+**SecurityManager.java**:
+```java
+public class SecurityManager {
+    
+    public static boolean isDebugBuild() {
+        return BuildConfig.DEBUG;
+    }
+    
+    public static boolean isEmulator() {
+        return Build.FINGERPRINT.startsWith("generic")
+            || Build.FINGERPRINT.startsWith("unknown")
+            || Build.MODEL.contains("google_sdk")
+            || Build.MODEL.contains("Emulator")
+            || Build.MODEL.contains("Android SDK built for x86")
+            || Build.MANUFACTURER.contains("Genymotion");
+    }
+    
+    public static void checkRoot() {
+        if (isDeviceRooted()) {
+            Log.w(TAG, "Device is rooted - disabling premium features");
+            // Disable sensitive features for rooted devices
+        }
+    }
+}
+```
+
+### Platform Compatibility
+
+#### 1. SDK Version Handling
+
+**CompatibilityManager.java**:
+```java
+public class CompatibilityManager {
+    
+    public static boolean supportsAPI30() {
+        return Build.VERSION.SDK_INT >= Build.VERSION_CODES.R;
+    }
+    
+    public static boolean supportsScopedStorage() {
+        return Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q;
+    }
+    
+    public static void requestPermissions(Activity activity) {
+        if (!supportsScopedStorage()) {
+            // Request legacy storage permissions
+            ActivityCompat.requestPermissions(activity,
+                new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
+                REQUEST_STORAGE_PERMISSION);
+        }
+    }
+}
+```
+
+#### 2. Feature Availability
+
+**FeatureChecker.java**:
+```java
+public class FeatureChecker {
+    
+    public static boolean isAIChatEnabled() {
+        return BuildConfig.FEATURE_AI_CHAT_ENABLED;
+    }
+    
+    public static boolean isGitEnabled() {
+        return BuildConfig.FEATURE_GIT_ENABLED && hasNetworkPermission();
+    }
+    
+    public static boolean isFileOperationsEnabled() {
+        return hasStoragePermission();
+    }
+}
+```
+
+### Distribution
+
+#### 1. Google Play Store
+
+**store_listing.txt**:
+```
+Title: CodeX - AI-Powered Android IDE
+Short Description: CodeX is a powerful Android code editor with integrated AI assistance. 
+Write, edit, and debug code with AI-powered suggestions and chat-based assistance.
+
+Full Description:
+CodeX brings desktop-grade development capabilities to Android with:
+
+• AI-Powered Code Assistant
+  - Chat with AI to get code suggestions and explanations
+  - Multi-provider support (Qwen, Gemini, DeepInfra, and more)
+  - Real-time streaming responses with thinking mode
+  
+• Advanced Code Editor
+  - Syntax highlighting for multiple languages
+  - Multi-tab editing with file management
+  - Code completion and error detection
+  
+• Project Management
+  - Git integration for version control
+  - File tree navigation with search
+  - Project templates and workspace management
+  
+• File Operations
+  - Create, edit, delete, and organize files
+  - Project-wide search and replace
+  - Diff viewing and merge capabilities
+
+Perfect for:
+- Mobile developers working on-the-go
+- Students learning programming
+- Freelancers needing quick code edits
+- Anyone who wants AI-assisted coding on Android
+
+Keywords: code editor, IDE, programming, AI assistant, android development
+Category: Developer Tools
+Content Rating: Everyone
+```
+
+#### 2. Release Checklist
+
+**Pre-Release Checklist**:
+- [ ] **Code Review**: All changes reviewed and approved
+- [ ] **Testing**: Unit tests, integration tests, and UI tests pass
+- [ ] **Performance**: Memory usage and battery impact verified
+- [ ] **Security**: API keys secured, no debug code in release
+- [ ] **Compatibility**: Tested on API 21+ devices
+- [ ] **Proguard**: Code obfuscation and optimization applied
+- [ ] **Signing**: Proper signing configuration verified
+- [ ] **Metadata**: App name, descriptions, and screenshots updated
+- [ ] **Permissions**: All requested permissions justified
+- [ ] **Analytics**: Usage tracking configured (if applicable)
+
+### Monitoring and Analytics
+
+#### 1. Crash Reporting
+
+**CrashReporter.java**:
+```java
+public class CrashReporter {
+    
+    public static void initialize(Context context) {
+        Thread.setDefaultUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler() {
+            @Override
+            public void uncaughtException(Thread thread, Throwable ex) {
+                // Log crash details
+                logCrash(ex);
+                
+                // Show user-friendly crash dialog
+                showCrashDialog(context, ex);
+                
+                // Exit gracefully
+                System.exit(0);
+            }
+        });
+    }
+    
+    private static void logCrash(Throwable ex) {
+        String stackTrace = Log.getStackTraceString(ex);
+        
+        // Log to file or send to analytics service
+        File crashLog = new File(context.getExternalFilesDir("logs"), "crash.log");
+        writeToFile(crashLog, stackTrace);
+    }
+}
+```
+
+#### 2. Usage Analytics
+
+**AnalyticsManager.java**:
+```java
+public class AnalyticsManager {
+    
+    public static void trackEvent(String eventName, Map<String, Object> properties) {
+        if (BuildConfig.DEBUG) return;
+        
+        // Track AI chat usage
+        if ("ai_chat_message_sent".equals(eventName)) {
+            trackAIUsage(properties);
+        }
+        
+        // Track file operations
+        if ("file_operation_performed".equals(eventName)) {
+            trackFileOperations(properties);
+        }
+    }
+    
+    private static void trackAIUsage(Map<String, Object> properties) {
+        String model = (String) properties.get("model");
+        String provider = (String) properties.get("provider");
+        int messageLength = (Integer) properties.get("message_length");
+        
+        // Send to analytics service
+        AnalyticsService.track("ai_usage", Map.of(
+            "model", model,
+            "provider", provider,
+            "message_length", messageLength,
+            "timestamp", System.currentTimeMillis()
+        ));
+    }
+}
+```
+
+---
+
+## Conclusion
+
+This comprehensive developer guide provides AI agents with the essential knowledge to understand, modify, and extend the CodeX Android IDE effectively. The codebase demonstrates sophisticated AI integration, robust file management, and modern Android development patterns while offering significant opportunities for architectural improvements and feature enhancements.
+
+### Key Takeaways for AI Agents
+
+1. **Architecture**: Hybrid Manager-MVVM pattern with clear separation of concerns
+2. **AI Integration**: Multi-provider architecture with streaming capabilities
+3. **Performance**: Consider memory management and threading for large-scale operations
+4. **Testing**: Comprehensive testing strategies needed for complex AI interactions
+5. **Security**: Proper handling of API keys and user data critical
+
+### Future Development Priorities
+
+1. **Architectural Modernization**: Introduce dependency injection and strengthen MVVM
+2. **Performance Optimization**: Implement virtual scrolling and connection pooling
+3. **Feature Enhancement**: Add LSP integration and collaborative editing
+4. **Security Hardening**: Implement proper credential management and encryption
+5. **Testing Coverage**: Achieve comprehensive test coverage for all critical paths
+
+By following the patterns, guidelines, and best practices outlined in this document, AI agents can effectively contribute to and maintain the CodeX codebase while ensuring code quality, performance, and user experience standards.
+
+---
+
+*Document Version: 1.0*
+*Last Updated: October 30, 2025*
+*Total Length: Comprehensive guide covering all aspects of CodeX Android IDE development*

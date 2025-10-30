@@ -134,6 +134,21 @@ public class DeepInfraApiClient implements StreamingApiClient {
         return out;
     }
 
+    @Override
+    @Deprecated
+    public void sendMessage(String message, AIModel model, List<ChatMessage> history, QwenConversationState state, boolean thinkingModeEnabled, boolean webSearchEnabled, List<ToolSpec> enabledTools, List<File> attachments) {
+        MessageRequest request = new MessageRequest.Builder()
+                .message(message)
+                .model(model)
+                .history(history)
+                .conversationState(state)
+                .thinkingModeEnabled(thinkingModeEnabled)
+                .webSearchEnabled(webSearchEnabled)
+                .enabledTools(enabledTools)
+                .attachments(attachments)
+                .build();
+        sendMessageStreaming(request, (StreamListener) actionListener);
+    }
 
     private String toDisplayName(String id) {
         String s = id.replace('-', ' ').replace('_', ' ');

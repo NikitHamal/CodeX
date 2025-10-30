@@ -26,14 +26,17 @@ import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 
-public class OpenRouterApiClient implements ApiClient {
+import okhttp3.ConnectionPool;
+
+public class OpenRouterApiClient implements StreamingApiClient {
     private static final String TAG = "OpenRouterApiClient";
     private static final String BASE_URL = "https://openrouter.ai/api/v1";
     private static final MediaType JSON = MediaType.parse("application/json; charset=utf-8");
 
     private final Context context;
     private final AIAssistant.AIActionListener actionListener;
-    private final OkHttpClient http;
+    private OkHttpClient http;
+    private final java.util.Map<String, SseClient> activeStreams = new java.util.HashMap<>();
 
     public OpenRouterApiClient(Context context, AIAssistant.AIActionListener actionListener) {
         this.context = context.getApplicationContext();
@@ -45,89 +48,6 @@ public class OpenRouterApiClient implements ApiClient {
                 .build();
     }
 
-    @Override
-    public void sendMessage(String message,
-                            AIModel model,
-                            List<ChatMessage> history,
-                            QwenConversationState state,
-                            boolean thinkingModeEnabled,
-                            boolean webSearchEnabled,
-                            List<ToolSpec> enabledTools,
-                            List<File> attachments) {
-        new Thread(() -> {
-            if (actionListener != null) actionListener.onAiRequestStarted();
-            try {
-                String apiKey = SettingsActivity.getOpenRouterApiKey(context);
-                if (apiKey == null || apiKey.isEmpty()) {
-                    if (actionListener != null) actionListener.onAiError("OpenRouter API key is missing. Set it in Settings.");
-                    return;
-                }
-
-                String modelId = model != null ? model.getModelId() : "openai/gpt-3.5-turbo";
-                String url = BASE_URL + "/chat/completions";
-
-                JsonObject req = new JsonObject();
-                req.addProperty("model", modelId);
-                JsonArray messages = new JsonArray();
-                for (ChatMessage msg : history) {
-                    JsonObject messageObject = new JsonObject();
-                    messageObject.addProperty("role", msg.getSender() == ChatMessage.SENDER_USER ? "user" : "assistant");
-                    messageObject.addProperty("content", msg.getContent());
-                    messages.add(messageObject);
-                }
-                JsonObject userMessage = new JsonObject();
-                userMessage.addProperty("role", "user");
-                userMessage.addProperty("content", message);
-                messages.add(userMessage);
-
-                req.add("messages", messages);
-
-                Request httpReq = new Request.Builder()
-                        .url(url)
-                        .post(RequestBody.create(req.toString(), JSON))
-                        .addHeader("Authorization", "Bearer " + apiKey)
-                        .addHeader("Accept", "text/event-stream")
-                        .build();
-
-                SseClient sse = new SseClient(http);
-                StringBuilder finalText = new StringBuilder();
-                StringBuilder rawSse = new StringBuilder();
-                sse.postStream(url, httpReq.headers(), req.getAsJsonObject(), new SseClient.Listener() {
-                    @Override public void onOpen() {}
-                    @Override public void onDelta(JsonObject chunk) {
-                        rawSse.append("data: ").append(chunk.toString()).append('\n');
-                        try {
-                            if (chunk.has("choices") && chunk.get("choices").isJsonArray()) {
-                                JsonArray choices = chunk.getAsJsonArray("choices");
-                                for (int i = 0; i < choices.size(); i++) {
-                                    JsonObject c = choices.get(i).getAsJsonObject();
-                                    JsonObject delta = c.has("delta") && c.get("delta").isJsonObject() ? c.getAsJsonObject("delta") : null;
-                                    if (delta != null && delta.has("content") && !delta.get("content").isJsonNull()) {
-                                        finalText.append(delta.get("content").getAsString());
-                                        actionListener.onAiStreamUpdate(finalText.toString(), false);
-                                    }
-                                }
-                            }
-                        } catch (Exception ignore) {}
-                    }
-                    @Override public void onUsage(JsonObject usage) {}
-                    @Override public void onError(String message, int code) {
-                        if (actionListener != null) actionListener.onAiError("OpenRouter API error: " + code + (message != null ? ": " + message : ""));
-                    }
-                    @Override public void onComplete() {
-                        if (actionListener == null) return;
-                        ResponseDemuxer.handleGeneric(actionListener, model.getDisplayName(), rawSse.toString(), finalText.toString(), null);
-                        actionListener.onAiRequestCompleted();
-                    }
-                });
-            } catch (Exception e) {
-                Log.e(TAG, "Error calling OpenRouter API", e);
-                if (actionListener != null) actionListener.onAiError("Error: " + e.getMessage());
-            } finally {
-                if (actionListener != null) actionListener.onAiRequestCompleted();
-            }
-        }).start();
-    }
 
     @Override
     public List<AIModel> fetchModels() {
@@ -174,5 +94,102 @@ public class OpenRouterApiClient implements ApiClient {
             Log.e(TAG, "Failed to fetch models from OpenRouter", e);
             return new ArrayList<>();
         }
+    }
+
+    @Override
+    public void sendMessageStreaming(MessageRequest request, StreamListener listener) {
+        new Thread(() -> {
+            try {
+                listener.onStreamStarted(request.getRequestId());
+                String apiKey = SettingsActivity.getOpenRouterApiKey(context);
+                if (apiKey == null || apiKey.isEmpty()) {
+                    listener.onStreamError(request.getRequestId(), "OpenRouter API key is missing", null);
+                    return;
+                }
+                String modelId = request.getModel() != null ? request.getModel().getModelId() : "openai/gpt-3.5-turbo";
+
+                JsonObject reqBody = new JsonObject();
+                reqBody.addProperty("model", modelId);
+                JsonArray messages = new JsonArray();
+                for (ChatMessage msg : request.getHistory()) {
+                    JsonObject messageObject = new JsonObject();
+                    messageObject.addProperty("role", msg.getSender() == ChatMessage.SENDER_USER ? "user" : "assistant");
+                    messageObject.addProperty("content", msg.getContent());
+                    messages.add(messageObject);
+                }
+                JsonObject userMessage = new JsonObject();
+                userMessage.addProperty("role", "user");
+                userMessage.addProperty("content", request.getMessage());
+                messages.add(userMessage);
+                reqBody.add("messages", messages);
+
+                Request httpReq = new Request.Builder()
+                        .url(BASE_URL + "/chat/completions")
+                        .post(RequestBody.create(reqBody.toString(), JSON))
+                        .addHeader("Authorization", "Bearer " + apiKey)
+                        .addHeader("Accept", "text/event-stream")
+                        .build();
+
+                SseClient sse = new SseClient(http);
+                activeStreams.put(request.getRequestId(), sse);
+                final StringBuilder finalText = new StringBuilder();
+                final StringBuilder rawSse = new StringBuilder();
+
+                sse.postStream(BASE_URL + "/chat/completions", httpReq.headers(), reqBody, new SseClient.Listener() {
+                    @Override public void onOpen() {}
+                    @Override public void onDelta(JsonObject chunk) {
+                        rawSse.append("data: ").append(chunk.toString()).append('\n');
+                        try {
+                            if (chunk.has("choices") && chunk.getAsJsonArray("choices").size() > 0) {
+                                JsonObject choice = chunk.getAsJsonArray("choices").get(0).getAsJsonObject();
+                                if (choice.has("delta") && choice.get("delta").isJsonObject()) {
+                                    JsonObject delta = choice.getAsJsonObject("delta");
+                                    if (delta.has("content") && !delta.get("content").isJsonNull()) {
+                                        finalText.append(delta.get("content").getAsString());
+                                        listener.onStreamPartialUpdate(request.getRequestId(), finalText.toString(), false);
+                                    }
+                                }
+                            }
+                        } catch (Exception ignore) {}
+                    }
+                    @Override public void onUsage(JsonObject usage) {}
+                    @Override public void onError(String message, int code) {
+                        listener.onStreamError(request.getRequestId(), "HTTP " + code + ": " + message, null);
+                    }
+                    @Override public void onComplete() {
+                        activeStreams.remove(request.getRequestId());
+                        QwenResponseParser.ParsedResponse finalResponse = new QwenResponseParser.ParsedResponse();
+                        finalResponse.action = "message";
+                        finalResponse.explanation = finalText.toString();
+                        finalResponse.rawResponse = rawSse.toString();
+                        finalResponse.isValid = true;
+                        listener.onStreamCompleted(request.getRequestId(), finalResponse);
+                    }
+                });
+            } catch (Exception e) {
+                listener.onStreamError(request.getRequestId(), "Error: " + e.getMessage(), e);
+            }
+        }).start();
+    }
+
+    @Override
+    public void cancelStreaming(String requestId) {
+        if (activeStreams.containsKey(requestId)) {
+            SseClient sse = activeStreams.get(requestId);
+            if (sse != null) {
+                sse.cancel();
+            }
+            activeStreams.remove(requestId);
+        }
+    }
+
+    @Override
+    public void setConnectionPool(ConnectionPool pool) {
+        this.http = new OkHttpClient.Builder()
+                .connectTimeout(60, TimeUnit.SECONDS)
+                .readTimeout(180, TimeUnit.SECONDS)
+                .writeTimeout(120, TimeUnit.SECONDS)
+                .connectionPool(pool)
+                .build();
     }
 }

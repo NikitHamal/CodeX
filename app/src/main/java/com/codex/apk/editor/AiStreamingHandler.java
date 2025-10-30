@@ -4,6 +4,7 @@ import com.codex.apk.AIChatFragment;
 import com.codex.apk.AIAssistant;
 import com.codex.apk.ChatMessage;
 import com.codex.apk.EditorActivity;
+import com.codex.apk.util.AdaptiveUIThrottler;
 
 /**
  * Handles the lifecycle of streaming chat messages (showing and clearing the
@@ -12,10 +13,12 @@ import com.codex.apk.EditorActivity;
 public class AiStreamingHandler {
     private final EditorActivity activity;
     private final AiAssistantManager manager;
+    private final AdaptiveUIThrottler throttler;
 
     public AiStreamingHandler(EditorActivity activity, AiAssistantManager manager) {
         this.activity = activity;
         this.manager = manager;
+        this.throttler = new AdaptiveUIThrottler(activity);
     }
 
     public void handleRequestStarted(AIChatFragment chatFragment,
@@ -69,6 +72,6 @@ public class AiStreamingHandler {
             existing.setContent(partialResponse != null ? partialResponse : existing.getContent());
             existing.setThinkingContent(null);
         }
-        chatFragment.updateMessage(messagePosition, existing);
+        throttler.scheduleUpdate(() -> chatFragment.updateMessage(messagePosition, existing), 1);
     }
 }

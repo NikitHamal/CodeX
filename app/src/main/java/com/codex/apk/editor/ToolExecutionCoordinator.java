@@ -16,6 +16,8 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.function.Consumer;
 
+import com.codex.apk.ParallelToolExecutor;
+
 /**
  * Coordinates execution of AI-requested tool invocations, updating the chat UI as tools run.
  */
@@ -26,6 +28,7 @@ public class ToolExecutionCoordinator {
     private final ExecutorService executorService;
     private final Consumer<JsonArray> continuationCallback;
     private List<ChatMessage.ToolUsage> lastToolUsages = new ArrayList<>();
+    private ParallelToolExecutor parallelToolExecutor;
 
     public ToolExecutionCoordinator(EditorActivity activity,
                                     ExecutorService executorService,
@@ -76,50 +79,29 @@ public class ToolExecutionCoordinator {
         return uiFrag.addMessage(toolsMessage);
     }
 
-    public JsonArray executeTools(JsonArray toolCalls,
-                                  File projectDir,
-                                  Integer toolsMessagePosition,
-                                  AIChatFragment uiFrag) {
-        JsonArray results = new JsonArray();
-        if (toolCalls == null || projectDir == null) return results;
+    public void executeTools(JsonArray toolCalls,
+                             File projectDir,
+                             Integer toolsMessagePosition,
+                             AIChatFragment uiFrag) {
+        if (toolCalls == null || projectDir == null) return;
 
-        executorService.execute(() -> {
+        if (parallelToolExecutor == null) {
+            parallelToolExecutor = new ParallelToolExecutor(projectDir);
+        }
+
+        parallelToolExecutor.executeTools(lastToolUsages).thenAccept(results -> {
             long startAll = System.currentTimeMillis();
-            for (int i = 0; i < toolCalls.size(); i++) {
-                JsonObject call = toolCalls.get(i).getAsJsonObject();
+            JsonArray jsonResults = new JsonArray();
+
+            for (int i = 0; i < results.size(); i++) {
+                ParallelToolExecutor.ToolResult toolResult = results.get(i);
                 ChatMessage.ToolUsage usage = lastToolUsages.get(i);
-                long startOne = System.currentTimeMillis();
-                try {
-                    String name = call.get("name").getAsString();
-                    JsonObject args = call.has("args") && call.get("args").isJsonObject()
-                            ? call.getAsJsonObject("args")
-                            : new JsonObject();
-                    JsonObject result = ToolExecutor.execute(projectDir, name, args);
+                updateUsage(usage, toolResult.name, new JsonObject(), toolResult.result, 0); // Duration is not available per tool
 
-                    JsonObject payload = new JsonObject();
-                    payload.addProperty("name", name);
-                    payload.add("result", result);
-                    synchronized (results) {
-                        results.add(payload);
-                    }
-
-                    updateUsage(usage, name, args, result, System.currentTimeMillis() - startOne);
-                } catch (Exception ex) {
-                    Log.w(TAG, "Tool execution failed", ex);
-                    JsonObject payload = new JsonObject();
-                    payload.addProperty("name", "unknown");
-                    JsonObject err = new JsonObject();
-                    err.addProperty("ok", false);
-                    err.addProperty("error", ex.getMessage());
-                    payload.add("result", err);
-                    synchronized (results) {
-                        results.add(payload);
-                    }
-                    usage.ok = false;
-                    usage.resultJson = err.toString();
-                    usage.status = "failed";
-                    usage.durationMs = System.currentTimeMillis() - startOne;
-                }
+                JsonObject payload = new JsonObject();
+                payload.addProperty("name", toolResult.name);
+                payload.add("result", toolResult.result);
+                jsonResults.add(payload);
 
                 if (uiFrag != null && toolsMessagePosition != null) {
                     int finalIndex = toolsMessagePosition;
@@ -136,16 +118,9 @@ public class ToolExecutionCoordinator {
             }
 
             if (continuationCallback != null) {
-                JsonArray snapshot;
-                synchronized (results) {
-                    snapshot = results.deepCopy();
-                }
-                continuationCallback.accept(snapshot);
+                continuationCallback.accept(jsonResults);
             }
-
         });
-
-        return results;
     }
 
     private void updateUsage(ChatMessage.ToolUsage usage,

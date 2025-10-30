@@ -7,12 +7,23 @@ import com.google.gson.JsonParser;
 import com.google.gson.JsonParseException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import android.os.Handler;
+import android.os.Looper;
 
 /**
  * Parser for handling JSON responses from Qwen models, especially for file operations.
  */
 public class QwenResponseParser {
     private static final String TAG = "QwenResponseParser";
+    private static final ExecutorService backgroundExecutor = Executors.newSingleThreadExecutor();
+    private static final Handler mainHandler = new Handler(Looper.getMainLooper());
+
+    public interface ParseResultListener {
+        void onParseSuccess(ParsedResponse response);
+        void onParseError(Exception e);
+    }
 
     /**
      * Represents a parsed plan step
@@ -108,6 +119,17 @@ public class QwenResponseParser {
      * Attempts to parse a JSON response string into a structured response object.
      * Returns null if the response is not valid JSON or doesn't match expected format.
      */
+    public static void parseResponseAsync(String responseText, ParseResultListener listener) {
+        backgroundExecutor.execute(() -> {
+            try {
+                ParsedResponse response = parseResponse(responseText);
+                mainHandler.post(() -> listener.onParseSuccess(response));
+            } catch (Exception e) {
+                mainHandler.post(() -> listener.onParseError(e));
+            }
+        });
+    }
+
     public static ParsedResponse parseResponse(String responseText) {
         try {
             Log.d(TAG, "Parsing response: " + responseText.substring(0, Math.min(200, responseText.length())) + "...");

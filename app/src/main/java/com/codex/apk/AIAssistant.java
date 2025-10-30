@@ -63,33 +63,41 @@ public class AIAssistant {
     }
 
     public void sendMessage(String message, List<ChatMessage> chatHistory, QwenConversationState qwenState, List<File> attachments, String fileName, String fileContent) {
+        // This method is now deprecated, route to streaming.
+        sendMessageStreaming(message, chatHistory, qwenState, attachments, fileName, fileContent);
+    }
+
+    public void sendMessageStreaming(String message, List<ChatMessage> chatHistory, QwenConversationState qwenState, List<File> attachments, String fileName, String fileContent) {
         ApiClient client = apiClients.get(currentModel.getProvider());
-        if (client != null) {
-            String finalMessage = message;
-
+        if (client instanceof StreamingApiClient) {
+             String finalMessage = message;
             if (fileContent != null && !fileContent.isEmpty()) {
-                finalMessage = "Here is the content of the file `" + fileName + "`:\n\n```\n" + fileContent + "\n```\n\nNow, please perform the following task: " + message;
+                finalMessage = "File `" + fileName + "`:\n```\n" + fileContent + "\n```\n\n" + message;
             }
 
-            // Choose system prompt based on agent mode
-            String system = null;
-            if (agentModeEnabled && enabledTools != null && !enabledTools.isEmpty()) {
-                system = PromptManager.getDefaultFileOpsPrompt();
-            } else {
-                system = PromptManager.getDefaultGeneralPrompt();
-            }
+            String system = agentModeEnabled ? PromptManager.getDefaultFileOpsPrompt() : PromptManager.getDefaultGeneralPrompt();
             if (system != null && !system.isEmpty()) {
                 finalMessage = system + "\n\n" + finalMessage;
             }
-            // Note: Gemini Free context is maintained via server-side conversation metadata (cid,rid,rcid)
-            List<File> safeAttachments = attachments;
-            if (currentModel != null && currentModel.getProvider() != AIProvider.COOKIES) {
-                safeAttachments = new ArrayList<>();
-            }
-            client.sendMessage(finalMessage, currentModel, chatHistory, qwenState, thinkingModeEnabled, webSearchEnabled, enabledTools, safeAttachments);
+
+            StreamingApiClient.MessageRequest request = new StreamingApiClient.MessageRequest.Builder()
+                .message(finalMessage)
+                .history(chatHistory)
+                .model(currentModel)
+                .conversationState(qwenState)
+                .thinkingModeEnabled(thinkingModeEnabled)
+                .webSearchEnabled(webSearchEnabled)
+                .enabledTools(enabledTools)
+                .attachments(attachments)
+                .build();
+
+            ((StreamingApiClient) client).sendMessageStreaming(request, (StreamingApiClient.StreamListener) actionListener);
+
+        } else if (client != null) { // Fallback for any non-streaming clients
+            client.sendMessage(message, currentModel, chatHistory, qwenState, thinkingModeEnabled, webSearchEnabled, enabledTools, attachments);
         } else {
             if (actionListener != null) {
-                actionListener.onAiError("API client for provider " + currentModel.getProvider() + " not found.");
+                actionListener.onAiError("API client for " + currentModel.getProvider() + " not found.");
             }
         }
     }

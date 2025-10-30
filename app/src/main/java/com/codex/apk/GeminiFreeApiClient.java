@@ -35,7 +35,7 @@ import okio.BufferedSource;
  * Reverse-engineered Gemini client using cookies (__Secure-1PSID, __Secure-1PSIDTS).
  * Minimal implementation: text prompt -> text response.
  */
-public class GeminiFreeApiClient implements ApiClient {
+public class GeminiFreeApiClient implements StreamingApiClient {
     private static final String TAG = "GeminiFreeApiClient";
 
     private static final String INIT_URL = "https://gemini.google.com/app";
@@ -46,10 +46,11 @@ public class GeminiFreeApiClient implements ApiClient {
 
     private final Context context;
     private final AIAssistant.AIActionListener actionListener;
-    private final OkHttpClient httpClient;
+    private OkHttpClient httpClient;
 
     private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
     private volatile boolean refreshRunning = false;
+    private final Map<String, okhttp3.Call> activeStreams = new HashMap<>();
 
     public GeminiFreeApiClient(Context context, AIAssistant.AIActionListener actionListener) {
         this.context = context.getApplicationContext();
@@ -62,188 +63,6 @@ public class GeminiFreeApiClient implements ApiClient {
                 .build();
     }
 
-    @Override
-    public void sendMessage(String message, AIModel model, List<ChatMessage> history, QwenConversationState unused, boolean thinkingModeEnabled, boolean webSearchEnabled, List<ToolSpec> enabledTools, List<File> attachments) {
-        new Thread(() -> {
-            try {
-                if (actionListener != null) actionListener.onAiRequestStarted();
-                String psid = SettingsActivity.getSecure1PSID(context);
-                String psidts = SettingsActivity.getSecure1PSIDTS(context);
-                // Load cached 1psidts if missing
-                if ((psidts == null || psidts.isEmpty()) && psid != null && !psid.isEmpty()) {
-                    String cached = SettingsActivity.getCached1psidts(context, psid);
-                    if (cached != null && !cached.isEmpty()) {
-                        psidts = cached;
-                    }
-                }
-                if (psid == null || psid.isEmpty()) {
-                    if (actionListener != null) actionListener.onAiError("__Secure-1PSID cookie not set in Settings");
-                    return;
-                }
-
-                Map<String, String> baseCookies = new HashMap<>();
-                baseCookies.put("__Secure-1PSID", psid);
-                if (psidts != null && !psidts.isEmpty()) baseCookies.put("__Secure-1PSIDTS", psidts);
-
-                Map<String, String> cookies = warmupAndMergeCookies(baseCookies);
-
-                String accessToken = fetchAccessToken(cookies);
-                if (accessToken == null) {
-                    if (actionListener != null) actionListener.onAiError("Failed to retrieve access token from Gemini INIT page");
-                    return;
-                }
-
-                // Start periodic refresh if not running
-                startAutoRefresh(psid, cookies);
-
-                // Optionally rotate 1PSIDTS immediately once
-                rotate1psidtsIfPossible(cookies);
-                // Persist refreshed __Secure-1PSIDTS if present
-                if (cookies.containsKey("__Secure-1PSIDTS")) {
-                    SettingsActivity.setCached1psidts(context, psid, cookies.get("__Secure-1PSIDTS"));
-                }
-
-                String modelId = model != null ? model.getModelId() : "gemini-2.5-flash";
-                Headers requestHeaders = buildGeminiHeaders(modelId);
-
-                // Load prior conversation metadata if any, else derive from history if present
-                String priorMeta = SettingsActivity.getFreeConversationMetadata(context, modelId);
-                String chatMeta = null;
-                if (priorMeta != null && !priorMeta.isEmpty()) {
-                    chatMeta = priorMeta; // Stored as JSON array string like [cid, rid, rcid]
-                } else {
-                    // Try to derive minimal metadata from last assistant message raw response if available
-                    try {
-                        for (int i = history.size() - 1; i >= 0; i--) {
-                            ChatMessage m = history.get(i);
-                            if (m.getSender() == ChatMessage.SENDER_AI && m.getRawApiResponse() != null) {
-                                String meta = extractMetadataArrayFromRaw(m.getRawApiResponse());
-                                if (meta != null) { chatMeta = meta; break; }
-                            }
-                        }
-                    } catch (Exception ignore) {}
-                }
-
-                // Upload attachments minimally and build files array entries
-                List<File> imageFiles = attachments != null ? attachments : new ArrayList<>();
-                List<UploadedRef> uploaded = new ArrayList<>();
-                for (File f : imageFiles) {
-                    try {
-                        String identifier = uploadFileReturnId(cookies, f);
-                        if (identifier != null) uploaded.add(new UploadedRef(identifier, f.getName()));
-                    } catch (Exception e) {
-                        Log.w(TAG, "Upload failed for " + f.getName() + ": " + e.getMessage());
-                    }
-                }
-
-                RequestBody formBody = buildGenerateForm(accessToken, message, chatMeta, uploaded);
-                Request req = new Request.Builder()
-                        .url(GENERATE_URL)
-                        .headers(requestHeaders)
-                        .header("Cookie", buildCookieHeader(cookies))
-                        .post(formBody)
-                        .build();
-
-                try (Response resp = httpClient.newCall(req).execute()) {
-                    if (!resp.isSuccessful() || resp.body() == null) {
-                        String errBody = null;
-                        try { errBody = resp.body() != null ? resp.body().string() : null; } catch (Exception ignore) {}
-                        Log.w(TAG, "Gemini request failed (first attempt): " + resp.code() + ", body=" + errBody);
-
-                        accessToken = fetchAccessToken(cookies);
-                        if (accessToken != null) {
-                            Request retry = new Request.Builder()
-                                    .url(GENERATE_URL)
-                                    .headers(requestHeaders)
-                                    .header("Cookie", buildCookieHeader(cookies))
-                                    .post(buildGenerateForm(accessToken, message, chatMeta, uploaded))
-                                    .build();
-                            try (Response resp2 = httpClient.newCall(retry).execute()) {
-                                if (!resp2.isSuccessful() || resp2.body() == null) {
-                                    String errBody2 = null;
-                                    try { errBody2 = resp2.body() != null ? resp2.body().string() : null; } catch (Exception ignore) {}
-                                    if (actionListener != null) actionListener.onAiError("Gemini request failed: " + resp2.code() + (errBody2 != null ? ": " + errBody2 : ""));
-                                    return;
-                                }
-                                String body2 = resp2.body().string();
-                                ParsedOutput parsed2 = parseOutputFromStream(body2);
-                                persistConversationMetaIfAvailable(modelId, body2);
-                                List<String> suggestions2 = new ArrayList<>();
-                                List<ChatMessage.FileActionDetail> files2 = new ArrayList<>();
-                                // Route via richer callback so thinking is separate
-                                notifyAiActionsProcessed(
-                                        body2,
-                                        parsed2.text,
-                                        suggestions2,
-                                        files2,
-                                        model != null ? model.getDisplayName() : "Gemini (Free)",
-                                        parsed2.thoughts,
-                                        new ArrayList<>()
-                                );
-                                // Cache metadata onto the last chat message raw response to help derive context later
-                                // (UI manager will receive this via onAiActionsProcessed).
-                                
-                                return;
-                            }
-                        }
-
-                        if (actionListener != null) actionListener.onAiError("Gemini request failed: " + resp.code() + (errBody != null ? ": " + errBody : ""));
-                        return;
-                    }
-
-                    // Stream parse lines for partial updates
-                    BufferedSource source = resp.body().source();
-                    StringBuilder full = new StringBuilder();
-                    while (!source.exhausted()) {
-                        String line = source.readUtf8Line();
-                        if (line == null) break;
-                        full.append(line).append("\n");
-                        // emit incremental thinking/text when possible
-                        try {
-                            String[] parts = full.toString().split("\n");
-                            if (parts.length >= 3) {
-                                com.google.gson.JsonArray responseJson = JsonParser.parseString(parts[2]).getAsJsonArray();
-                                // naive partial: look at last part for candidate delta
-                                for (int i = 0; i < responseJson.size(); i++) {
-                                    try {
-                                        com.google.gson.JsonArray part = JsonParser.parseString(responseJson.get(i).getAsJsonArray().get(2).getAsString()).getAsJsonArray();
-                                        if (part.size() > 4 && !part.get(4).isJsonNull()) {
-                                            com.google.gson.JsonArray candidates = part.get(4).getAsJsonArray();
-                                            if (candidates.size() > 0) {
-                                                String partial = candidates.get(0).getAsJsonArray().get(1).getAsJsonArray().get(0).getAsString();
-                                                if (actionListener != null) actionListener.onAiStreamUpdate(partial, false);
-                                            }
-                                        }
-                                    } catch (Exception ignore) {}
-                                }
-                            }
-                        } catch (Exception ignore) {}
-                    }
-
-                    String body = full.toString();
-                    ParsedOutput parsed = parseOutputFromStream(body);
-                    persistConversationMetaIfAvailable(modelId, body);
-                    if (actionListener != null) {
-                        // Store actual raw response for long-press, but show only the derived explanation
-                        notifyAiActionsProcessed(
-                                body,
-                                parsed.text,
-                                new ArrayList<>(),
-                                new ArrayList<>(),
-                                model != null ? model.getDisplayName() : "Gemini (Free)",
-                                parsed.thoughts,
-                                new ArrayList<>()
-                        );
-                    }
-                }
-            } catch (Exception e) {
-                Log.e(TAG, "Error calling Gemini Free API", e);
-                if (actionListener != null) actionListener.onAiError("Error: " + e.getMessage());
-            } finally {
-                if (actionListener != null) actionListener.onAiRequestCompleted();
-            }
-        }).start();
-    }
 
     @Override
     public List<AIModel> fetchModels() {
@@ -582,5 +401,105 @@ public class GeminiFreeApiClient implements ApiClient {
             this.text = text;
             this.thoughts = thoughts;
         }
+    }
+
+    @Override
+    public void sendMessageStreaming(MessageRequest request, StreamListener listener) {
+        new Thread(() -> {
+            try {
+                listener.onStreamStarted(request.getRequestId());
+
+                String psid = SettingsActivity.getSecure1PSID(context);
+                String psidts = SettingsActivity.getSecure1PSIDTS(context);
+                if (psid == null || psid.isEmpty()) {
+                    listener.onStreamError(request.getRequestId(), "__Secure-1PSID cookie not set", null);
+                    return;
+                }
+
+                Map<String, String> cookies = warmupAndMergeCookies(new HashMap<String, String>() {{ put("__Secure-1PSID", psid); if (psidts != null) put("__Secure-1PSIDTS", psidts); }});
+                String accessToken = fetchAccessToken(cookies);
+                if (accessToken == null) {
+                    listener.onStreamError(request.getRequestId(), "Failed to retrieve access token", null);
+                    return;
+                }
+
+                String modelId = request.getModel() != null ? request.getModel().getModelId() : "gemini-2.5-flash";
+                RequestBody formBody = buildGenerateForm(accessToken, request.getMessage(), null, null);
+                Request req = new Request.Builder()
+                        .url(GENERATE_URL)
+                        .headers(buildGeminiHeaders(modelId))
+                        .header("Cookie", buildCookieHeader(cookies))
+                        .post(formBody)
+                        .build();
+
+                okhttp3.Call call = httpClient.newCall(req);
+                activeStreams.put(request.getRequestId(), call);
+
+                try (Response resp = call.execute()) {
+                    if (!resp.isSuccessful() || resp.body() == null) {
+                        listener.onStreamError(request.getRequestId(), "HTTP " + resp.code(), null);
+                        return;
+                    }
+
+                    BufferedSource source = resp.body().source();
+                    StringBuilder fullResponse = new StringBuilder();
+                    StringBuilder fullText = new StringBuilder();
+                    while (!source.exhausted()) {
+                        String line = source.readUtf8Line();
+                        if (line == null) break;
+                        fullResponse.append(line).append("\n");
+                        try {
+                            // In this custom protocol, each line is not a full JSON object,
+                            // so we must parse the whole thing to get the latest text.
+                            // This is inefficient but required by the API's design.
+                            ParsedOutput partial = parseOutputFromStream(fullResponse.toString());
+                            if (partial.text.length() > fullText.length()) {
+                                listener.onStreamPartialUpdate(request.getRequestId(), partial.text, false);
+                                fullText.setLength(0);
+                                fullText.append(partial.text);
+                            }
+                        } catch (Exception ignore) {}
+                    }
+
+                    ParsedOutput finalParsed = parseOutputFromStream(fullResponse.toString());
+                    QwenResponseParser.ParsedResponse finalResponse = new QwenResponseParser.ParsedResponse();
+                    finalResponse.action = "message";
+                    finalResponse.explanation = finalParsed.text;
+                    finalResponse.rawResponse = fullResponse.toString();
+                    finalResponse.isValid = true;
+                    listener.onStreamCompleted(request.getRequestId(), finalResponse);
+
+                } finally {
+                    activeStreams.remove(request.getRequestId());
+                }
+
+            } catch (IOException e) {
+                if (!"Canceled".equalsIgnoreCase(e.getMessage())) {
+                    listener.onStreamError(request.getRequestId(), "Error: " + e.getMessage(), e);
+                }
+            }
+        }).start();
+    }
+
+    @Override
+    public void cancelStreaming(String requestId) {
+        if (activeStreams.containsKey(requestId)) {
+            okhttp3.Call call = activeStreams.get(requestId);
+            if (call != null && !call.isCanceled()) {
+                call.cancel();
+            }
+            activeStreams.remove(requestId);
+        }
+    }
+
+    @Override
+    public void setConnectionPool(okhttp3.ConnectionPool pool) {
+        this.httpClient = new OkHttpClient.Builder()
+                .followRedirects(true)
+                .connectTimeout(60, TimeUnit.SECONDS)
+                .writeTimeout(120, TimeUnit.SECONDS)
+                .readTimeout(180, TimeUnit.SECONDS)
+                .connectionPool(pool)
+                .build();
     }
 }

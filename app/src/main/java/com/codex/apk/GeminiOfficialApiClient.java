@@ -28,16 +28,17 @@ import okhttp3.Response;
  * Official Gemini client using the Generative Language API.
  * Endpoint: https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key=API_KEY
  */
-public class GeminiOfficialApiClient implements ApiClient {
+public class GeminiOfficialApiClient implements StreamingApiClient {
     private static final String TAG = "GeminiOfficialApiClient";
     private static final MediaType JSON = MediaType.parse("application/json; charset=utf-8");
 
     private final Context context;
     private final AIAssistant.AIActionListener actionListener;
-    private final OkHttpClient http;
+    private OkHttpClient http;
 
     // API key is optional at construction and can be set later.
     private volatile String apiKey;
+    private final java.util.Map<String, okhttp3.Call> activeStreams = new java.util.HashMap<>();
 
     public GeminiOfficialApiClient(Context context, AIAssistant.AIActionListener actionListener, String apiKey) {
         this.context = context.getApplicationContext();
@@ -53,100 +54,6 @@ public class GeminiOfficialApiClient implements ApiClient {
     public void setApiKey(String apiKey) { this.apiKey = apiKey; }
     public String getApiKey() { return apiKey; }
 
-    @Override
-    public void sendMessage(String message,
-                            AIModel model,
-                            List<ChatMessage> history,
-                            QwenConversationState state,
-                            boolean thinkingModeEnabled,
-                            boolean webSearchEnabled,
-                            List<ToolSpec> enabledTools,
-                            List<File> attachments) {
-        new Thread(() -> {
-            if (actionListener != null) actionListener.onAiRequestStarted();
-            try {
-                String key = apiKey;
-                if (key == null || key.isEmpty()) {
-                    // Fallback to Settings if not set via setter
-                    key = SettingsActivity.getGeminiApiKey(context);
-                }
-                if (key == null || key.isEmpty()) {
-                    if (actionListener != null) actionListener.onAiError("Gemini API key is missing. Set it in Settings.");
-                    return;
-                }
-
-                String modelId = model != null ? model.getModelId() : "gemini-1.5-flash";
-                String url = "https://generativelanguage.googleapis.com/v1beta/models/" + modelId + ":generateContent?key=" + key;
-
-                // Build request JSON. We prepend the system prompt to the user content (simple and robust).
-                JsonObject req = new JsonObject();
-                JsonArray contents = new JsonArray();
-                JsonObject userMsg = new JsonObject();
-                userMsg.addProperty("role", "user");
-                JsonArray parts = new JsonArray();
-                parts.add(textPart(message));
-                userMsg.add("parts", parts);
-                contents.add(userMsg);
-                req.add("contents", contents);
-
-                Request httpReq = new Request.Builder()
-                        .url(url)
-                        .post(RequestBody.create(req.toString(), JSON))
-                        .build();
-
-                try (Response resp = http.newCall(httpReq).execute()) {
-                    if (!resp.isSuccessful() || resp.body() == null) {
-                        String err = resp.body() != null ? resp.body().string() : null;
-                        if (actionListener != null) actionListener.onAiError("Gemini API error: " + resp.code() + (err != null ? ": " + err : ""));
-                        return;
-                    }
-                    String body = resp.body().string();
-                    Parsed parsed = parseGenerateContent(body);
-
-                    // No web sources for now; could parse citations later.
-                    List<String> suggestions = new ArrayList<>();
-                    List<ChatMessage.FileActionDetail> files = new ArrayList<>();
-                    String explanation = parsed.text;
-
-                    String jsonToParse = JsonUtils.extractJsonFromCodeBlock(parsed.text);
-                    if (jsonToParse == null && JsonUtils.looksLikeJson(parsed.text)) {
-                        jsonToParse = parsed.text;
-                    }
-                    if (jsonToParse != null) {
-                        try {
-                            QwenResponseParser.ParsedResponse parsedResponse = QwenResponseParser.parseResponse(jsonToParse);
-                            if (parsedResponse != null && parsedResponse.isValid) {
-                                if ("plan".equals(parsedResponse.action) && parsedResponse.planSteps != null && !parsedResponse.planSteps.isEmpty()) {
-                                    List<ChatMessage.PlanStep> planSteps = QwenResponseParser.toPlanSteps(parsedResponse);
-                                    actionListener.onAiActionsProcessed(jsonToParse, parsedResponse.explanation, suggestions, new ArrayList<>(), planSteps, model.getDisplayName());
-                                    return;
-                                } else {
-                                    files = QwenResponseParser.toFileActionDetails(parsedResponse);
-                                    explanation = parsedResponse.explanation;
-                                }
-                            }
-                        } catch (Exception e) {
-                            // Fallback to default behavior
-                        }
-                    }
-
-                    if (actionListener instanceof com.codex.apk.editor.AiAssistantManager) {
-                        ((com.codex.apk.editor.AiAssistantManager) actionListener)
-                                .onAiActionsProcessed(parsed.text, explanation, suggestions, files,
-                                        model != null ? model.getDisplayName() : "Gemini", null, new ArrayList<>());
-                    } else {
-                        actionListener.onAiActionsProcessed(parsed.text, explanation, suggestions, files,
-                                model != null ? model.getDisplayName() : "Gemini");
-                    }
-                }
-            } catch (Exception e) {
-                Log.e(TAG, "Error calling Gemini official API", e);
-                if (actionListener != null) actionListener.onAiError("Error: " + e.getMessage());
-            } finally {
-                if (actionListener != null) actionListener.onAiRequestCompleted();
-            }
-        }).start();
-    }
 
     @Override
     public List<AIModel> fetchModels() {
@@ -197,4 +104,91 @@ public class GeminiOfficialApiClient implements ApiClient {
 
 
     private static class Parsed { final String text; Parsed(String t) { this.text = t; } }
+
+    @Override
+    public void sendMessageStreaming(MessageRequest request, StreamListener listener) {
+        new Thread(() -> {
+            try {
+                listener.onStreamStarted(request.getRequestId());
+                String key = apiKey != null && !apiKey.isEmpty() ? apiKey : SettingsActivity.getGeminiApiKey(context);
+                if (key == null || key.isEmpty()) {
+                    listener.onStreamError(request.getRequestId(), "Gemini API key is missing", null);
+                    return;
+                }
+                String modelId = request.getModel() != null ? request.getModel().getModelId() : "gemini-1.5-flash";
+                String url = "https://generativelanguage.googleapis.com/v1beta/models/" + modelId + ":streamGenerateContent?key=" + key;
+
+                JsonObject reqBody = new JsonObject();
+                JsonArray contents = new JsonArray();
+                JsonObject userMsg = new JsonObject();
+                userMsg.addProperty("role", "user");
+                JsonArray parts = new JsonArray();
+                parts.add(textPart(request.getMessage()));
+                userMsg.add("parts", parts);
+                contents.add(userMsg);
+                reqBody.add("contents", contents);
+
+                Request httpReq = new Request.Builder().url(url).post(RequestBody.create(reqBody.toString(), JSON)).build();
+                okhttp3.Call call = http.newCall(httpReq);
+                activeStreams.put(request.getRequestId(), call);
+
+                try (Response resp = call.execute()) {
+                    if (!resp.isSuccessful() || resp.body() == null) {
+                        listener.onStreamError(request.getRequestId(), "HTTP " + resp.code(), null);
+                        return;
+                    }
+
+                    okio.BufferedSource source = resp.body().source();
+                    StringBuilder fullText = new StringBuilder();
+                    StringBuilder rawResponse = new StringBuilder();
+
+                    while (!source.exhausted()) {
+                        String line = source.readUtf8Line();
+                        if (line == null || line.trim().isEmpty()) continue;
+                        rawResponse.append(line).append('\n');
+                        try {
+                           Parsed partial = parseGenerateContent(line);
+                           fullText.append(partial.text);
+                           listener.onStreamPartialUpdate(request.getRequestId(), fullText.toString(), false);
+                        } catch(Exception ignore) {}
+                    }
+
+                    QwenResponseParser.ParsedResponse finalResponse = new QwenResponseParser.ParsedResponse();
+                    finalResponse.action = "message";
+                    finalResponse.explanation = fullText.toString();
+                    finalResponse.rawResponse = rawResponse.toString();
+                    finalResponse.isValid = true;
+                    listener.onStreamCompleted(request.getRequestId(), finalResponse);
+
+                } finally {
+                    activeStreams.remove(request.getRequestId());
+                }
+            } catch (IOException e) {
+                if (!"Canceled".equalsIgnoreCase(e.getMessage())) {
+                    listener.onStreamError(request.getRequestId(), "Error: " + e.getMessage(), e);
+                }
+            }
+        }).start();
+    }
+
+    @Override
+    public void cancelStreaming(String requestId) {
+        if (activeStreams.containsKey(requestId)) {
+            okhttp3.Call call = activeStreams.get(requestId);
+            if (call != null && !call.isCanceled()) {
+                call.cancel();
+            }
+            activeStreams.remove(requestId);
+        }
+    }
+
+    @Override
+    public void setConnectionPool(okhttp3.ConnectionPool pool) {
+        this.http = new OkHttpClient.Builder()
+                .connectTimeout(60, TimeUnit.SECONDS)
+                .readTimeout(180, TimeUnit.SECONDS)
+                .writeTimeout(120, TimeUnit.SECONDS)
+                .connectionPool(pool)
+                .build();
+    }
 }

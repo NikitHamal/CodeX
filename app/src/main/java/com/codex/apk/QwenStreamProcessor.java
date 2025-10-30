@@ -244,26 +244,31 @@ public class QwenStreamProcessor {
         }
 
         if (jsonToParse != null) {
-            try {
-                QwenResponseParser.ParsedResponse parsed = QwenResponseParser.parseResponse(jsonToParse);
-                if (parsed != null && parsed.isValid) {
-                    if ("plan".equals(parsed.action)) {
-                        List<ChatMessage.PlanStep> planSteps = QwenResponseParser.toPlanSteps(parsed);
-                        actionListener.onAiActionsProcessed(rawResponse, parsed.explanation, new ArrayList<>(), new ArrayList<>(), planSteps, model.getDisplayName());
-                    } else if (parsed.action != null && parsed.action.contains("file")) {
-                        List<ChatMessage.FileActionDetail> details = QwenResponseParser.toFileActionDetails(parsed);
-                        enrichFileActionDetails(details);
-                        notifyAiActionsProcessed(rawResponse, parsed.explanation, new ArrayList<>(), details, thinkingContent, webSources);
+            QwenResponseParser.parseResponseAsync(jsonToParse, new QwenResponseParser.ParseResultListener() {
+                @Override
+                public void onParseSuccess(QwenResponseParser.ParsedResponse parsed) {
+                    if (parsed != null && parsed.isValid) {
+                        if ("plan".equals(parsed.action)) {
+                            List<ChatMessage.PlanStep> planSteps = QwenResponseParser.toPlanSteps(parsed);
+                            actionListener.onAiActionsProcessed(rawResponse, parsed.explanation, new ArrayList<>(), new ArrayList<>(), planSteps, model.getDisplayName());
+                        } else if (parsed.action != null && parsed.action.contains("file")) {
+                            List<ChatMessage.FileActionDetail> details = QwenResponseParser.toFileActionDetails(parsed);
+                            enrichFileActionDetails(details);
+                            notifyAiActionsProcessed(rawResponse, parsed.explanation, new ArrayList<>(), details, thinkingContent, webSources);
+                        } else {
+                            notifyAiActionsProcessed(rawResponse, parsed.explanation, new ArrayList<>(), new ArrayList<>(), thinkingContent, webSources);
+                        }
                     } else {
-                        notifyAiActionsProcessed(rawResponse, parsed.explanation, new ArrayList<>(), new ArrayList<>(), thinkingContent, webSources);
+                        notifyAiActionsProcessed(rawResponse, finalContent, new ArrayList<>(), new ArrayList<>(), thinkingContent, webSources);
                     }
-                } else {
+                }
+
+                @Override
+                public void onParseError(Exception e) {
+                    Log.e(TAG, "Failed to parse extracted JSON, treating as text.", e);
                     notifyAiActionsProcessed(rawResponse, finalContent, new ArrayList<>(), new ArrayList<>(), thinkingContent, webSources);
                 }
-            } catch (Exception e) {
-                Log.e(TAG, "Failed to parse extracted JSON, treating as text.", e);
-                notifyAiActionsProcessed(rawResponse, finalContent, new ArrayList<>(), new ArrayList<>(), thinkingContent, webSources);
-            }
+            });
         } else {
             notifyAiActionsProcessed(rawResponse, finalContent, new ArrayList<>(), new ArrayList<>(), thinkingContent, webSources);
         }

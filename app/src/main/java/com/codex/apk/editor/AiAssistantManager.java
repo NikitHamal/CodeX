@@ -32,10 +32,14 @@ import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 
 /**
+import com.codex.apk.QwenResponseParser;
+import com.codex.apk.StreamingApiClient;
+
+/**
  * Manages the interaction with the AIAssistant, handling UI updates and delegation
  * of AI-related actions from EditorActivity to the core AIAssistant logic.
  */
-public class AiAssistantManager implements AIAssistant.AIActionListener { // Directly implement AIActionListener
+public class AiAssistantManager implements AIAssistant.AIActionListener, StreamingApiClient.StreamListener {
 
     private static final String TAG = "AiAssistantManager";
     private final EditorActivity activity; // Reference to the hosting activity
@@ -347,7 +351,6 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
             if (toolCalls != null) {
                 try {
                     currentToolsMessagePosition = toolCoordinator.displayRunningTools(uiFrag, aiModelDisplayName, rawAiResponseJson, toolCalls);
-
                     toolCoordinator.executeTools(toolCalls, activity.getProjectDirectory(), currentToolsMessagePosition, uiFrag);
                     lastToolUsages = toolCoordinator.getLastToolUsages();
                     return;
@@ -513,5 +516,38 @@ public class AiAssistantManager implements AIAssistant.AIActionListener { // Dir
                 activity.onQwenConversationStateUpdated(state);
             }
         });
+    }
+
+    // --- StreamListener Implementation ---
+
+    @Override
+    public void onStreamStarted(String requestId) {
+        onAiRequestStarted();
+    }
+
+    @Override
+    public void onStreamPartialUpdate(String requestId, String partialResponse, boolean isThinking) {
+        onAiStreamUpdate(partialResponse, isThinking);
+    }
+
+    @Override
+    public void onStreamCompleted(String requestId, QwenResponseParser.ParsedResponse response) {
+        onAiActionsProcessedInternal(
+            response.rawResponse,
+            response.explanation,
+            new ArrayList<>(),
+            QwenResponseParser.toFileActionDetails(response),
+            QwenResponseParser.toPlanSteps(response),
+            aiAssistant.getCurrentModel().getDisplayName(),
+            null,
+            null
+        );
+        onAiRequestCompleted();
+    }
+
+    @Override
+    public void onStreamError(String requestId, String errorMessage, Throwable throwable) {
+        onAiError(errorMessage);
+        onAiRequestCompleted();
     }
 }

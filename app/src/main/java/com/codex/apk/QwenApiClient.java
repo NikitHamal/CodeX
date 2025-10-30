@@ -24,15 +24,16 @@ import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 
-public class QwenApiClient implements ApiClient {
+public class QwenApiClient implements StreamingApiClient {
     private static final String TAG = "QwenApiClient";
     private static final String QWEN_BASE_URL = "https://chat.qwen.ai/api/v2";
 
     private final AIAssistant.AIActionListener actionListener;
-    private final OkHttpClient httpClient;
+    private OkHttpClient httpClient;
     private final QwenConversationManager conversationManager;
     private final QwenMidTokenManager midTokenManager;
     private final File projectDir;
+    private final Map<String, SseClient> activeStreams = new HashMap<>();
 
     public QwenApiClient(Context context, AIAssistant.AIActionListener actionListener, File projectDir) {
         this.actionListener = actionListener;
@@ -47,331 +48,7 @@ public class QwenApiClient implements ApiClient {
         this.conversationManager = new QwenConversationManager(this.httpClient, this.midTokenManager);
     }
 
-    @Override
-    public void sendMessage(String message, AIModel model, List<ChatMessage> history, QwenConversationState state, boolean thinkingModeEnabled, boolean webSearchEnabled, List<ToolSpec> enabledTools, List<File> attachments) {
-        new Thread(() -> {
-            try {
-                if (actionListener != null) actionListener.onAiRequestStarted();
-                String conversationId = conversationManager.startOrContinueConversation(state, model, webSearchEnabled);
-                if (conversationId == null) {
-                    if (actionListener != null) actionListener.onAiError("Failed to create conversation");
-                    return;
-                }
-                state.setConversationId(conversationId);
-                performCompletion(state, model, thinkingModeEnabled, webSearchEnabled, enabledTools, message);
-            } catch (IOException e) {
-                if (actionListener != null) actionListener.onAiError("Error: " + e.getMessage());
-            }
-        }).start();
-    }
 
-    private void performCompletion(QwenConversationState state, AIModel model, boolean thinkingModeEnabled, boolean webSearchEnabled, List<ToolSpec> enabledTools, String userMessage) throws IOException {
-        JsonObject requestBody = QwenRequestFactory.buildCompletionRequestBody(state, model, thinkingModeEnabled, webSearchEnabled, enabledTools, userMessage);
-        String qwenToken = midTokenManager.ensureMidToken(false);
-        okhttp3.Headers headers = QwenRequestFactory.buildQwenHeaders(qwenToken, state.getConversationId())
-                .newBuilder().set("Accept", "text/event-stream").build();
-        SseClient sse = new SseClient(httpClient);
-        StringBuilder finalText = new StringBuilder();
-        StringBuilder rawSse = new StringBuilder();
-        final StringBuilder thinkingText = new StringBuilder();
-        final boolean[] aborted = new boolean[]{false};
-        final boolean[] retriedJsonError = new boolean[]{false};
-        final boolean[] retriedHttpError = new boolean[]{false};
-        sse.postStreamWithRetry(QWEN_BASE_URL + "/chat/completions?chat_id=" + state.getConversationId(), headers, requestBody, 3, 500L, new SseClient.Listener() {
-            @Override public void onOpen() {
-                // If midtoken is near expiry by use or age, proactively refresh for next calls
-                try { midTokenManager.ensureMidToken(false); } catch (Exception ignore) {}
-            }
-            @Override public void onDelta(JsonObject chunk) {
-                if (aborted[0]) return;
-                rawSse.append("data: ").append(chunk.toString()).append('\n');
-                try {
-                    // Detect JSON-signaled errors (rate limit/auth/invalid)
-                    boolean isJsonError = false;
-                    String errorCodeStr = null;
-                    if (chunk.has("data") && chunk.get("data").isJsonObject()) {
-                        JsonObject dataObj = chunk.getAsJsonObject("data");
-                        if (dataObj.has("code")) { isJsonError = true; errorCodeStr = String.valueOf(dataObj.get("code")); }
-                    }
-                    if (!isJsonError && chunk.has("code")) { isJsonError = true; errorCodeStr = String.valueOf(chunk.get("code")); }
-                    if (!isJsonError && chunk.has("error") && chunk.get("error").isJsonObject()) {
-                        JsonObject err = chunk.getAsJsonObject("error");
-                        if (err.has("code")) { isJsonError = true; errorCodeStr = String.valueOf(err.get("code")); }
-                        else if (err.has("message")) { isJsonError = true; errorCodeStr = err.get("message").getAsString(); }
-                    }
-                    if (isJsonError) {
-                        if (!retriedJsonError[0]) {
-                            retriedJsonError[0] = true;
-                            aborted[0] = true;
-                            try { midTokenManager.ensureMidToken(true); } catch (Exception ignore) {}
-                            new Thread(() -> {
-                                try { performCompletion(state, model, thinkingModeEnabled, webSearchEnabled, enabledTools, userMessage); } catch (IOException ignore) {}
-                            }).start();
-                            return;
-                        } else {
-                            if (actionListener != null) actionListener.onAiError("Qwen error: " + (errorCodeStr != null ? errorCodeStr : "unknown"));
-                            return;
-                        }
-                    }
-                    if (chunk.has("response.created")) {
-                        JsonObject created = chunk.getAsJsonObject("response.created");
-                        if (created.has("chat_id")) state.setConversationId(created.get("chat_id").getAsString());
-                        if (created.has("response_id")) state.setLastParentId(created.get("response_id").getAsString());
-                        if (actionListener != null) actionListener.onQwenConversationStateUpdated(state);
-                        return;
-                    }
-                    if (chunk.has("choices")) {
-                        JsonArray choices = chunk.getAsJsonArray("choices");
-                        if (choices.size() > 0) {
-                            JsonObject choice = choices.get(0).getAsJsonObject();
-                            JsonObject delta = choice.has("delta") && choice.get("delta").isJsonObject() ? choice.getAsJsonObject("delta") : new JsonObject();
-                            String status = delta.has("status") ? delta.get("status").getAsString() : "";
-                            String content = delta.has("content") && !delta.get("content").isJsonNull() ? delta.get("content").getAsString() : "";
-                            String phase = delta.has("phase") ? delta.get("phase").getAsString() : "";
-                            if ("think".equals(phase)) {
-                                thinkingText.append(content);
-                                actionListener.onAiStreamUpdate(thinkingText.toString(), true);
-                            } else if ("answer".equals(phase)) {
-                                finalText.append(content);
-                                actionListener.onAiStreamUpdate(finalText.toString(), false);
-                            }
-                            // Some providers put the final message at choices[0].message
-                            if ((content == null || content.isEmpty()) && choice.has("message") && choice.get("message").isJsonObject()) {
-                                JsonObject msg = choice.getAsJsonObject("message");
-                                if (msg.has("content") && !msg.get("content").isJsonNull()) {
-                                    finalText.append(msg.get("content").getAsString());
-                                    actionListener.onAiStreamUpdate(finalText.toString(), false);
-                                }
-                            }
-                            if ("finished".equals(status)) {
-                                // Completed; handled onComplete
-                            }
-                        }
-                    }
-                } catch (Exception ignore) {}
-            }
-            @Override public void onUsage(JsonObject usage) {
-                // Heuristic: if server reports low output tokens but many input tokens repeatedly, we may be rate-limited soon.
-                // No-op here but could log/telemetry in future.
-            }
-            @Override public void onError(String message, int code) {
-                if ((code == 401 || code == 403 || code == 429) && !retriedHttpError[0]) {
-                    retriedHttpError[0] = true;
-                    try { midTokenManager.ensureMidToken(true); } catch (Exception ignore) {}
-                    new Thread(() -> {
-                        try { performCompletion(state, model, thinkingModeEnabled, webSearchEnabled, enabledTools, userMessage); } catch (IOException ignore) {}
-                    }).start();
-                    return;
-                }
-                if (actionListener != null) actionListener.onAiError("Failed to send message (HTTP " + code + ")" + (message != null ? (": " + message) : ""));
-            }
-            @Override public void onComplete() {
-                if (aborted[0]) return;
-                // Prefer answer content; if empty, fallback to thinking. If still empty, try salvage from raw.
-                String completedText = finalText.length() > 0 ? finalText.toString() : thinkingText.toString();
-                if (completedText == null || completedText.trim().isEmpty()) {
-                    completedText = new QwenStreamProcessor(actionListener, state, model, projectDir).recoverContentFromRaw(rawSse.toString());
-                }
-                // Final safety: if still empty and we received no valid chunks, perform a non-streaming fallback request
-                if ((completedText == null || completedText.trim().isEmpty())) {
-                    try {
-                        String nonStream = performNonStreamingCompletion(state, model, thinkingModeEnabled, webSearchEnabled, enabledTools, userMessage);
-                        if (nonStream != null && !nonStream.trim().isEmpty()) {
-                            completedText = nonStream;
-                        }
-                    } catch (Exception ignore) {}
-                }
-                // Parse final content into actions/plan/tool_call
-                String jsonToParse = com.codex.apk.util.JsonUtils.extractJsonFromCodeBlock(completedText);
-                if (jsonToParse == null && com.codex.apk.util.JsonUtils.looksLikeJson(completedText)) jsonToParse = completedText;
-                if (jsonToParse != null) {
-                    try {
-                        // Tool call handling: if action == tool_call, execute and continue
-                        try {
-                            JsonObject maybe = JsonParser.parseString(jsonToParse).getAsJsonObject();
-                            if (maybe.has("action") && "tool_call".equalsIgnoreCase(maybe.get("action").getAsString()) && maybe.has("tool_calls")) {
-                                JsonArray calls = maybe.getAsJsonArray("tool_calls");
-                                JsonArray results = new JsonArray();
-                                for (int i = 0; i < calls.size(); i++) {
-                                    JsonObject c = calls.get(i).getAsJsonObject();
-                                    String name = c.get("name").getAsString();
-                                    JsonObject args = c.has("args") && c.get("args").isJsonObject() ? c.getAsJsonObject("args") : new JsonObject();
-                                    JsonObject toolResult = ToolExecutor.execute(projectDir, name, args);
-                                    JsonObject res = new JsonObject();
-                                    res.addProperty("name", name);
-                                    res.add("result", toolResult);
-                                    results.add(res);
-                                }
-                                String continuation = ToolExecutor.buildToolResultContinuation(results);
-                                performContinuation(state, model, continuation);
-                                return; // continuation will complete the request lifecycle
-                            }
-                        } catch (Exception ignore) {}
-
-                        QwenResponseParser.ParsedResponse parsed = QwenResponseParser.parseResponse(jsonToParse);
-                        if (parsed != null && parsed.isValid) {
-                            if ("plan".equals(parsed.action)) {
-                                List<ChatMessage.PlanStep> planSteps = QwenResponseParser.toPlanSteps(parsed);
-                                actionListener.onAiActionsProcessed(rawSse.toString(), parsed.explanation, new ArrayList<>(), new ArrayList<>(), planSteps, model.getDisplayName());
-                            } else if (parsed.action != null && parsed.action.contains("file")) {
-                                List<ChatMessage.FileActionDetail> details = QwenResponseParser.toFileActionDetails(parsed);
-                                actionListener.onAiActionsProcessed(rawSse.toString(), parsed.explanation, new ArrayList<>(), details, model.getDisplayName());
-                            } else {
-                                actionListener.onAiActionsProcessed(rawSse.toString(), parsed.explanation, new ArrayList<>(), new ArrayList<>(), model.getDisplayName());
-                            }
-                        } else {
-                            actionListener.onAiActionsProcessed(rawSse.toString(), completedText, new ArrayList<>(), new ArrayList<>(), model.getDisplayName());
-                        }
-                    } catch (Exception e) {
-                        actionListener.onAiActionsProcessed(rawSse.toString(), completedText, new ArrayList<>(), new ArrayList<>(), model.getDisplayName());
-                    }
-                } else {
-                    actionListener.onAiActionsProcessed(rawSse.toString(), completedText, new ArrayList<>(), new ArrayList<>(), model.getDisplayName());
-                }
-                if (actionListener != null) actionListener.onAiRequestCompleted();
-            }
-        });
-    }
-
-    /**
-     * Fallback: perform a non-streaming completion to recover content when SSE yields nothing.
-     */
-    private String performNonStreamingCompletion(QwenConversationState state, AIModel model, boolean thinkingModeEnabled, boolean webSearchEnabled, List<ToolSpec> enabledTools, String userMessage) throws IOException {
-        JsonObject body = QwenRequestFactory.buildCompletionRequestBody(state, model, thinkingModeEnabled, webSearchEnabled, enabledTools, userMessage);
-        body.addProperty("stream", false);
-        body.addProperty("incremental_output", false);
-        String qwenToken = midTokenManager.ensureMidToken(false);
-        okhttp3.Headers headers = QwenRequestFactory.buildQwenHeaders(qwenToken, state.getConversationId())
-                .newBuilder()
-                .set("Accept", "application/json")
-                .add("Cache-Control", "no-cache")
-                .add("Pragma", "no-cache")
-                .build();
-        Request req = new Request.Builder()
-                .url(QWEN_BASE_URL + "/chat/completions?chat_id=" + state.getConversationId())
-                .headers(headers)
-                .post(RequestBody.create(body.toString(), MediaType.parse("application/json")))
-                .build();
-        try (Response resp = httpClient.newCall(req).execute()) {
-            if (!resp.isSuccessful() || resp.body() == null) return null;
-            String text = resp.body().string();
-            try {
-                JsonObject obj = JsonParser.parseString(text).getAsJsonObject();
-                // Handle error code in non-stream
-                if (obj.has("data") && obj.get("data").isJsonObject()) {
-                    JsonObject data = obj.getAsJsonObject("data");
-                    if (data.has("code")) {
-                        // If chat invalid, create new chat and retry once
-                        String codeStr = String.valueOf(data.get("code"));
-                        if (codeStr.toLowerCase().contains("chat") && codeStr.toLowerCase().contains("not")) {
-                            try {
-                                String newChat = conversationManager.createNewConversation(model, webSearchEnabled);
-                                if (newChat != null) state.setConversationId(newChat);
-                            } catch (Exception ignore) {}
-                            return performNonStreamingCompletion(state, model, thinkingModeEnabled, webSearchEnabled, enabledTools, userMessage);
-                        }
-                        return null;
-                    }
-                }
-                if (obj.has("choices") && obj.get("choices").isJsonArray() && obj.getAsJsonArray("choices").size() > 0) {
-                    JsonObject choice = obj.getAsJsonArray("choices").get(0).getAsJsonObject();
-                    if (choice.has("message") && choice.get("message").isJsonObject()) {
-                        JsonObject msg = choice.getAsJsonObject("message");
-                        if (msg.has("content") && !msg.get("content").isJsonNull()) {
-                            return msg.get("content").getAsString();
-                        }
-                    }
-                    if (choice.has("delta") && choice.get("delta").isJsonObject()) {
-                        JsonObject delta = choice.getAsJsonObject("delta");
-                        if (delta.has("content") && !delta.get("content").isJsonNull()) {
-                            return delta.get("content").getAsString();
-                        }
-                    }
-                }
-            } catch (Exception ignore) { return text; }
-            return null;
-        }
-    }
-
-    private void performContinuation(QwenConversationState state, AIModel model, String toolResultJson) throws IOException {
-        JsonObject requestBody = QwenRequestFactory.buildContinuationRequestBody(state, model, toolResultJson);
-        String qwenToken = midTokenManager.ensureMidToken(false);
-        okhttp3.Headers headers = QwenRequestFactory.buildQwenHeaders(qwenToken, state.getConversationId())
-                .newBuilder().add("Accept", "text/event-stream").build();
-        SseClient sse = new SseClient(httpClient);
-        StringBuilder finalText = new StringBuilder();
-        StringBuilder rawSse = new StringBuilder();
-        sse.postStreamWithRetry(QWEN_BASE_URL + "/chat/completions?chat_id=" + state.getConversationId(), headers, requestBody, 3, 500L, new SseClient.Listener() {
-            @Override public void onOpen() {}
-            @Override public void onDelta(JsonObject chunk) {
-                rawSse.append("data: ").append(chunk.toString()).append('\n');
-                try {
-                    if (chunk.has("response.created")) {
-                        JsonObject created = chunk.getAsJsonObject("response.created");
-                        if (created.has("chat_id")) state.setConversationId(created.get("chat_id").getAsString());
-                        if (created.has("response_id")) state.setLastParentId(created.get("response_id").getAsString());
-                        if (actionListener != null) actionListener.onQwenConversationStateUpdated(state);
-                        return;
-                    }
-                    if (chunk.has("choices")) {
-                        JsonArray choices = chunk.getAsJsonArray("choices");
-                        if (choices.size() > 0) {
-                            JsonObject choice = choices.get(0).getAsJsonObject();
-                            JsonObject delta = choice.has("delta") && choice.get("delta").isJsonObject() ? choice.getAsJsonObject("delta") : new JsonObject();
-                            String status = delta.has("status") ? delta.get("status").getAsString() : "";
-                            String content = delta.has("content") && !delta.get("content").isJsonNull() ? delta.get("content").getAsString() : "";
-                            String phase = delta.has("phase") ? delta.get("phase").getAsString() : "";
-                            if ("answer".equals(phase)) {
-                                finalText.append(content);
-                                actionListener.onAiStreamUpdate(finalText.toString(), false);
-                            }
-                            // message fallback
-                            if ((content == null || content.isEmpty()) && choice.has("message") && choice.get("message").isJsonObject()) {
-                                JsonObject msg = choice.getAsJsonObject("message");
-                                if (msg.has("content") && !msg.get("content").isJsonNull()) {
-                                    finalText.append(msg.get("content").getAsString());
-                                    actionListener.onAiStreamUpdate(finalText.toString(), false);
-                                }
-                            }
-                        }
-                    }
-                } catch (Exception ignore) {}
-            }
-            @Override public void onUsage(JsonObject usage) {}
-            @Override public void onError(String message, int code) {}
-            @Override public void onComplete() {
-                String completed = finalText.toString();
-                if (completed == null || completed.trim().isEmpty()) {
-                    completed = new QwenStreamProcessor(actionListener, state, model, projectDir).recoverContentFromRaw(rawSse.toString());
-                    if (completed == null || completed.trim().isEmpty()) {
-                        try {
-                            String nonStream = performNonStreamingCompletion(state, model, false, false, new java.util.ArrayList<>(), "");
-                            if (nonStream != null) completed = nonStream;
-                        } catch (Exception ignore) {}
-                    }
-                }
-                String jsonToParse = com.codex.apk.util.JsonUtils.extractJsonFromCodeBlock(completed);
-                if (jsonToParse == null && com.codex.apk.util.JsonUtils.looksLikeJson(completed)) jsonToParse = completed;
-                if (jsonToParse != null) {
-                    try {
-                        QwenResponseParser.ParsedResponse parsed = QwenResponseParser.parseResponse(jsonToParse);
-                        if (parsed != null && parsed.isValid) {
-                            if ("plan".equals(parsed.action)) {
-                                List<ChatMessage.PlanStep> planSteps = QwenResponseParser.toPlanSteps(parsed);
-                                actionListener.onAiActionsProcessed(rawSse.toString(), parsed.explanation, new ArrayList<>(), new ArrayList<>(), planSteps, model.getDisplayName());
-                            } else if (parsed.action != null && parsed.action.contains("file")) {
-                                List<ChatMessage.FileActionDetail> details = QwenResponseParser.toFileActionDetails(parsed);
-                                actionListener.onAiActionsProcessed(rawSse.toString(), parsed.explanation, new ArrayList<>(), details, model.getDisplayName());
-                            } else {
-                                actionListener.onAiActionsProcessed(rawSse.toString(), completed, new ArrayList<>(), new ArrayList<>(), model.getDisplayName());
-                            }
-                        }
-                    } catch (Exception ignore) {}
-                }
-                if (actionListener != null) actionListener.onAiRequestCompleted();
-            }
-        });
-    }
 
     // Simple in-memory cookie jar for Qwen continuity
     private static class InMemoryCookieJar implements CookieJar {
@@ -523,5 +200,265 @@ public class QwenApiClient implements ApiClient {
             Log.e(TAG, "Error parsing model data", e);
             return null;
         }
+    }
+
+    @Override
+    public void sendMessageStreaming(MessageRequest request, StreamListener listener) {
+        new Thread(() -> {
+            try {
+                listener.onStreamStarted(request.getRequestId());
+                QwenConversationState state = (QwenConversationState) request.getConversationState();
+                String conversationId = conversationManager.startOrContinueConversation(state, request.getModel(), request.isWebSearchEnabled());
+                if (conversationId == null) {
+                    listener.onStreamError(request.getRequestId(), "Failed to create conversation", null);
+                    return;
+                }
+                state.setConversationId(conversationId);
+
+                performStreamingCompletion(request, state, listener);
+
+            } catch (IOException e) {
+                listener.onStreamError(request.getRequestId(), "Error: " + e.getMessage(), e);
+            }
+        }).start();
+    }
+
+    private void performStreamingCompletion(MessageRequest request, QwenConversationState state, StreamListener listener) throws IOException {
+        JsonObject requestBody = QwenRequestFactory.buildCompletionRequestBody(state, request.getModel(), request.isThinkingModeEnabled(), request.isWebSearchEnabled(), request.getEnabledTools(), request.getMessage());
+        String qwenToken = midTokenManager.ensureMidToken(false);
+        okhttp3.Headers headers = QwenRequestFactory.buildQwenHeaders(qwenToken, state.getConversationId())
+                .newBuilder().set("Accept", "text/event-stream").build();
+
+        SseClient sse = new SseClient(httpClient);
+        activeStreams.put(request.getRequestId(), sse);
+
+        final StringBuilder finalText = new StringBuilder();
+        final StringBuilder rawSse = new StringBuilder();
+        final boolean[] retriedJsonError = new boolean[]{false};
+        final boolean[] retriedHttpError = new boolean[]{false};
+        final boolean[] aborted = new boolean[]{false};
+
+        sse.postStreamWithRetry(QWEN_BASE_URL + "/chat/completions?chat_id=" + state.getConversationId(), headers, requestBody, 3, 500L, new SseClient.Listener() {
+            @Override
+            public void onOpen() {}
+
+            @Override
+            public void onDelta(JsonObject chunk) {
+                if (aborted[0]) return;
+                rawSse.append("data: ").append(chunk.toString()).append('\n');
+
+                if (QwenStreamProcessor.isErrorChunk(chunk)) {
+                    if (!retriedJsonError[0]) {
+                        retriedJsonError[0] = true;
+                        aborted[0] = true;
+                        try { midTokenManager.ensureMidToken(true); } catch (Exception ignore) {}
+                        new Thread(() -> {
+                            try { performStreamingCompletion(request, state, listener); } catch (IOException ignore) {}
+                        }).start();
+                        return;
+                    } else {
+                        listener.onStreamError(request.getRequestId(), "Qwen API Error after retry", null);
+                        return;
+                    }
+                }
+
+                QwenStreamProcessor.processChunk(chunk, state, finalText, (partialResult, isThinking) -> {
+                    listener.onStreamPartialUpdate(request.getRequestId(), partialResult, isThinking);
+                }, actionListener);
+            }
+
+            @Override
+            public void onUsage(JsonObject usage) {}
+
+            @Override
+            public void onError(String message, int code) {
+                if ((code == 401 || code == 403 || code == 429) && !retriedHttpError[0]) {
+                    retriedHttpError[0] = true;
+                    aborted[0] = true;
+                    try { midTokenManager.ensureMidToken(true); } catch (Exception ignore) {}
+                    new Thread(() -> {
+                        try { performStreamingCompletion(request, state, listener); } catch (IOException ignore) {}
+                    }).start();
+                    return;
+                }
+                listener.onStreamError(request.getRequestId(), "HTTP " + code + ": " + message, null);
+            }
+
+            @Override
+            public void onComplete() {
+                activeStreams.remove(request.getRequestId());
+                String completedText = finalText.toString();
+
+                if (completedText.trim().isEmpty()) {
+                    new Thread(() -> {
+                        try {
+                            String fallbackText = performNonStreamingCompletion(request, state);
+                            processFinalText(fallbackText != null ? fallbackText : "", rawSse.toString(), listener, request, state);
+                        } catch (IOException e) {
+                            listener.onStreamError(request.getRequestId(), "Non-streaming fallback failed", e);
+                        }
+                    }).start();
+                } else {
+                    processFinalText(completedText, rawSse.toString(), listener, request, state);
+                }
+            }
+        });
+    }
+
+    private void processFinalText(String completedText, String rawSse, StreamListener listener, MessageRequest request, QwenConversationState state) {
+        String jsonToParse = com.codex.apk.util.JsonUtils.extractJsonFromCodeBlock(completedText);
+        if (jsonToParse == null && com.codex.apk.util.JsonUtils.looksLikeJson(completedText)) {
+            jsonToParse = completedText;
+        }
+
+        if (jsonToParse != null) {
+            try {
+                JsonObject maybe = JsonParser.parseString(jsonToParse).getAsJsonObject();
+                if (maybe.has("action") && "tool_call".equalsIgnoreCase(maybe.get("action").getAsString()) && maybe.has("tool_calls")) {
+                    new Thread(() -> {
+                        try {
+                            performToolContinuation(maybe.getAsJsonArray("tool_calls"), request, state, listener);
+                        } catch (IOException e) {
+                            listener.onStreamError(request.getRequestId(), "Tool continuation failed", e);
+                        }
+                    }).start();
+                    return;
+                }
+            } catch (Exception ignore) {}
+        }
+
+        QwenResponseParser.parseResponseAsync(completedText, rawSse, new QwenResponseParser.ParseResultListener() {
+            @Override
+            public void onParseSuccess(QwenResponseParser.ParsedResponse parsedResponse) {
+                listener.onStreamCompleted(request.getRequestId(), parsedResponse);
+            }
+
+            @Override
+            public void onParseFailed() {
+                QwenResponseParser.ParsedResponse fallback = new QwenResponseParser.ParsedResponse();
+                fallback.action = "message";
+                fallback.explanation = completedText;
+                fallback.rawResponse = rawSse;
+                fallback.isValid = true;
+                listener.onStreamCompleted(request.getRequestId(), fallback);
+            }
+        });
+    }
+
+    private void performToolContinuation(JsonArray toolCalls, MessageRequest originalRequest, QwenConversationState state, StreamListener listener) {
+        ParallelToolExecutor executor = new ParallelToolExecutor(projectDir);
+        executor.executeTools(toolCalls).thenAccept(results -> {
+            try {
+                JsonArray jsonResults = new JsonArray();
+                for (ParallelToolExecutor.ToolResult result : results) {
+                    JsonObject res = new JsonObject();
+                    res.addProperty("name", result.toolName);
+                    res.add("result", result.result);
+                    jsonResults.add(res);
+                }
+
+                String continuation = ToolExecutor.buildToolResultContinuation(jsonResults);
+                JsonObject requestBody = QwenRequestFactory.buildContinuationRequestBody(state, originalRequest.getModel(), continuation);
+
+                // Continue with the streaming logic here...
+                continueStreamingWithToolResults(requestBody, originalRequest, state, listener);
+
+            } catch (Exception e) {
+                listener.onStreamError(originalRequest.getRequestId(), "Failed to process tool results", e);
+            }
+        });
+    }
+
+    private void continueStreamingWithToolResults(JsonObject requestBody, MessageRequest originalRequest, QwenConversationState state, StreamListener listener) throws IOException {
+        String qwenToken = midTokenManager.ensureMidToken(false);
+        okhttp3.Headers headers = QwenRequestFactory.buildQwenHeaders(qwenToken, state.getConversationId())
+                .newBuilder().add("Accept", "text/event-stream").build();
+
+        SseClient sse = new SseClient(httpClient);
+        activeStreams.put(originalRequest.getRequestId(), sse);
+
+        final StringBuilder finalText = new StringBuilder();
+        final StringBuilder rawSse = new StringBuilder();
+
+        sse.postStreamWithRetry(QWEN_BASE_URL + "/chat/completions?chat_id=" + state.getConversationId(), headers, requestBody, 3, 500L, new SseClient.Listener() {
+            @Override public void onOpen() {}
+            @Override public void onDelta(JsonObject chunk) {
+                rawSse.append("data: ").append(chunk.toString()).append('\n');
+                QwenStreamProcessor.processChunk(chunk, state, finalText, (partialResult, isThinking) -> {
+                    listener.onStreamPartialUpdate(originalRequest.getRequestId(), partialResult, isThinking);
+                }, actionListener);
+            }
+            @Override public void onUsage(JsonObject usage) {}
+            @Override public void onError(String message, int code) {
+                listener.onStreamError(originalRequest.getRequestId(), "HTTP " + code + ": " + message, null);
+            }
+            @Override public void onComplete() {
+                activeStreams.remove(originalRequest.getRequestId());
+                processFinalText(finalText.toString(), rawSse.toString(), listener, originalRequest, state);
+            }
+        });
+    }
+
+    private String performNonStreamingCompletion(MessageRequest request, QwenConversationState state) throws IOException {
+        JsonObject body = QwenRequestFactory.buildCompletionRequestBody(state, request.getModel(), request.isThinkingModeEnabled(), request.isWebSearchEnabled(), request.getEnabledTools(), request.getMessage());
+        body.addProperty("stream", false);
+        body.addProperty("incremental_output", false);
+
+        String qwenToken = midTokenManager.ensureMidToken(false);
+        okhttp3.Headers headers = QwenRequestFactory.buildQwenHeaders(qwenToken, state.getConversationId())
+                .newBuilder()
+                .set("Accept", "application/json")
+                .build();
+
+        Request req = new Request.Builder()
+                .url(QWEN_BASE_URL + "/chat/completions?chat_id=" + state.getConversationId())
+                .headers(headers)
+                .post(RequestBody.create(body.toString(), MediaType.parse("application/json")))
+                .build();
+
+        try (Response resp = httpClient.newCall(req).execute()) {
+            if (!resp.isSuccessful() || resp.body() == null) {
+                return null;
+            }
+            String text = resp.body().string();
+            try {
+                JsonObject obj = JsonParser.parseString(text).getAsJsonObject();
+                if (obj.has("choices") && obj.getAsJsonArray("choices").size() > 0) {
+                    JsonObject choice = obj.getAsJsonArray("choices").get(0).getAsJsonObject();
+                    if (choice.has("message") && choice.get("message").isJsonObject()) {
+                        JsonObject msg = choice.getAsJsonObject("message");
+                        if (msg.has("content") && !msg.get("content").isJsonNull()) {
+                            return msg.get("content").getAsString();
+                        }
+                    }
+                }
+                return text;
+            } catch (Exception ignore) {
+                return text;
+            }
+        }
+    }
+
+
+    @Override
+    public void cancelStreaming(String requestId) {
+        if (activeStreams.containsKey(requestId)) {
+            SseClient sse = activeStreams.get(requestId);
+            if (sse != null) {
+                sse.cancel();
+            }
+            activeStreams.remove(requestId);
+        }
+    }
+
+    @Override
+    public void setConnectionPool(okhttp3.ConnectionPool pool) {
+        this.httpClient = new OkHttpClient.Builder()
+                .connectTimeout(30, TimeUnit.SECONDS)
+                .writeTimeout(30, TimeUnit.SECONDS)
+                .readTimeout(0, TimeUnit.SECONDS)
+                .cookieJar(new InMemoryCookieJar())
+                .connectionPool(pool)
+                .build();
     }
 }

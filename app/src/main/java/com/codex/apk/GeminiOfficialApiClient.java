@@ -54,6 +54,21 @@ public class GeminiOfficialApiClient implements StreamingApiClient {
     public void setApiKey(String apiKey) { this.apiKey = apiKey; }
     public String getApiKey() { return apiKey; }
 
+    @Override
+    @Deprecated
+    public void sendMessage(String message, AIModel model, List<ChatMessage> history, QwenConversationState state, boolean thinkingModeEnabled, boolean webSearchEnabled, List<ToolSpec> enabledTools, List<File> attachments) {
+        MessageRequest request = new MessageRequest.Builder()
+                .message(message)
+                .model(model)
+                .history(history)
+                .conversationState(state)
+                .thinkingModeEnabled(thinkingModeEnabled)
+                .webSearchEnabled(webSearchEnabled)
+                .enabledTools(enabledTools)
+                .attachments(attachments)
+                .build();
+        sendMessageStreaming(request, (StreamListener) actionListener);
+    }
 
     @Override
     public List<AIModel> fetchModels() {

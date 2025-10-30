@@ -21,50 +21,18 @@ public class OIVSCodeSer0501ApiClient extends AnyProviderApiClient {
 
     @Override
     public void sendMessage(String message, AIModel model, List<ChatMessage> history, QwenConversationState state, boolean thinkingModeEnabled, boolean webSearchEnabled, List<ToolSpec> enabledTools, List<File> attachments) {
-        new Thread(() -> {
-            Response response = null;
-            try {
-                if (actionListener != null) actionListener.onAiRequestStarted();
-
-                JsonObject body = buildOpenAIStyleBody(model.getModelId(), message, history, thinkingModeEnabled);
-
-                String userid = generateUserId();
-
-                Request request = new Request.Builder()
-                        .url(API_ENDPOINT)
-                        .post(RequestBody.create(body.toString(), MediaType.parse("application/json")))
-                        .addHeader("accept", "text/event-stream")
-                        .addHeader("user-agent", "Mozilla/5.0 (Linux; Android) CodeX-Android/1.0")
-                        .addHeader("userid", userid)
-                        .build();
-
-                response = httpClient.newCall(request).execute();
-                if (!response.isSuccessful() || response.body() == null) {
-                    String errBody = null;
-                    try { if (response != null && response.body() != null) errBody = response.body().string(); } catch (Exception ignore) {}
-                    String snippet = errBody != null ? (errBody.length() > 400 ? errBody.substring(0, 400) + "..." : errBody) : null;
-                    if (actionListener != null) actionListener.onAiError("API request failed: " + (response != null ? response.code() : -1) + (snippet != null ? (" | body: " + snippet) : ""));
-                    return;
-                }
-
-                StringBuilder finalText = new StringBuilder();
-                StringBuilder rawSse = new StringBuilder();
-                streamOpenAiSse(response, finalText, rawSse);
-
-                if (finalText.length() > 0) {
-                    if (actionListener != null) {
-                        actionListener.onAiActionsProcessed(rawSse.toString(), finalText.toString(), new java.util.ArrayList<>(), new java.util.ArrayList<>(), model.getDisplayName());
-                    }
-                } else {
-                    if (actionListener != null) actionListener.onAiError("No response from provider");
-                }
-            } catch (Exception e) {
-                if (actionListener != null) actionListener.onAiError("Error: " + e.getMessage());
-            } finally {
-                try { if (response != null) response.close(); } catch (Exception ignore) {}
-                if (actionListener != null) actionListener.onAiRequestCompleted();
-            }
-        }).start();
+        // This class now delegates to the streaming implementation.
+        MessageRequest request = new MessageRequest.Builder()
+                .message(message)
+                .model(model)
+                .history(history)
+                .conversationState(state)
+                .thinkingModeEnabled(thinkingModeEnabled)
+                .webSearchEnabled(webSearchEnabled)
+                .enabledTools(enabledTools)
+                .attachments(attachments)
+                .build();
+        sendMessageStreaming(request, (StreamListener) actionListener);
     }
 
     private String generateUserId() {
@@ -81,5 +49,67 @@ public class OIVSCodeSer0501ApiClient extends AnyProviderApiClient {
         JsonObject body = super.buildOpenAIStyleBody(modelId, userMessage, history, thinkingModeEnabled);
         body.remove("referrer");
         return body;
+    }
+
+    @Override
+    public void sendMessageStreaming(MessageRequest request, StreamListener listener) {
+        new Thread(() -> {
+            try {
+                listener.onStreamStarted(request.getRequestId());
+                String providerModel = mapToProviderModel(request.getModel() != null ? request.getModel().getModelId() : null);
+                JsonObject body = buildOpenAIStyleBody(providerModel, request.getMessage(), request.getHistory(), request.isThinkingModeEnabled());
+
+                Request req = new Request.Builder()
+                        .url(API_ENDPOINT)
+                        .post(RequestBody.create(body.toString(), MediaType.parse("application/json")))
+                        .addHeader("accept", "text/event-stream")
+                        .addHeader("user-agent", "Mozilla/5.0 (Linux; Android) CodeX-Android/1.0")
+                        .addHeader("userid", generateUserId())
+                        .build();
+
+                SseClient sse = new SseClient(httpClient);
+                activeStreams.put(request.getRequestId(), sse);
+                final StringBuilder finalText = new StringBuilder();
+                final StringBuilder rawSse = new StringBuilder();
+
+                sse.postStream(API_ENDPOINT, req.headers(), body, new SseClient.Listener() {
+                    @Override public void onOpen() {}
+                    @Override public void onDelta(JsonObject chunk) {
+                        rawSse.append("data: ").append(chunk.toString()).append('\n');
+                        try {
+                            if (chunk.has("choices")) {
+                                JsonArray choices = chunk.getAsJsonArray("choices");
+                                for (int i = 0; i < choices.size(); i++) {
+                                    JsonObject c = choices.get(i).getAsJsonObject();
+                                    if (c.has("delta") && c.get("delta").isJsonObject()) {
+                                        JsonObject delta = c.getAsJsonObject("delta");
+                                        if (delta.has("content") && !delta.get("content").isJsonNull()) {
+                                            finalText.append(delta.get("content").getAsString());
+                                            listener.onStreamPartialUpdate(request.getRequestId(), finalText.toString(), false);
+                                        }
+                                    }
+                                }
+                            }
+                        } catch (Exception ignore) {}
+                    }
+                    @Override public void onUsage(JsonObject usage) {}
+                    @Override public void onError(String message, int code) {
+                        listener.onStreamError(request.getRequestId(), "HTTP " + code + ": " + message, null);
+                    }
+                    @Override public void onComplete() {
+                        activeStreams.remove(request.getRequestId());
+                        QwenResponseParser.ParsedResponse finalResponse = new QwenResponseParser.ParsedResponse();
+                        finalResponse.action = "message";
+                        finalResponse.explanation = finalText.toString();
+                        finalResponse.rawResponse = rawSse.toString();
+                        finalResponse.isValid = true;
+                        listener.onStreamCompleted(request.getRequestId(), finalResponse);
+                    }
+                });
+
+            } catch (Exception e) {
+                listener.onStreamError(request.getRequestId(), "Error: " + e.getMessage(), e);
+            }
+        }).start();
     }
 }

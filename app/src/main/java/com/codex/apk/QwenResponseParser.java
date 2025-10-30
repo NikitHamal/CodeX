@@ -22,7 +22,7 @@ public class QwenResponseParser {
 
     public interface ParseResultListener {
         void onParseSuccess(ParsedResponse response);
-        void onParseError(Exception e);
+        void onParseFailed();
     }
 
     /**
@@ -125,13 +125,18 @@ public class QwenResponseParser {
      * Attempts to parse a JSON response string into a structured response object.
      * Returns null if the response is not valid JSON or doesn't match expected format.
      */
-    public static void parseResponseAsync(String responseText, ParseResultListener listener) {
+    public static void parseResponseAsync(String jsonToParse, String rawSse, ParseResultListener listener) {
         backgroundExecutor.execute(() -> {
             try {
-                ParsedResponse response = parseResponse(responseText);
-                mainHandler.post(() -> listener.onParseSuccess(response));
+                ParsedResponse response = parseResponse(jsonToParse);
+                if (response != null) {
+                    response.rawResponse = rawSse;
+                    mainHandler.post(() -> listener.onParseSuccess(response));
+                } else {
+                    mainHandler.post(listener::onParseFailed);
+                }
             } catch (Exception e) {
-                mainHandler.post(() -> listener.onParseError(e));
+                mainHandler.post(listener::onParseFailed);
             }
         });
     }

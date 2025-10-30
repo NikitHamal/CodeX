@@ -39,7 +39,7 @@ import com.codex.apk.StreamingApiClient;
  * Manages the interaction with the AIAssistant, handling UI updates and delegation
  * of AI-related actions from EditorActivity to the core AIAssistant logic.
  */
-public class AiAssistantManager implements AIAssistant.AIActionListener, StreamingApiClient.StreamListener {
+public class AiAssistantManager implements AIAssistant.AIActionListener, com.codex.apk.StreamingApiClient.StreamListener {
 
     private static final String TAG = "AiAssistantManager";
     private final EditorActivity activity; // Reference to the hosting activity
@@ -531,13 +531,13 @@ public class AiAssistantManager implements AIAssistant.AIActionListener, Streami
     }
 
     @Override
-    public void onStreamCompleted(String requestId, QwenResponseParser.ParsedResponse response) {
+    public void onStreamCompleted(String requestId, com.codex.apk.QwenResponseParser.ParsedResponse response) {
         onAiActionsProcessedInternal(
             response.rawResponse,
             response.explanation,
             new ArrayList<>(),
-            QwenResponseParser.toFileActionDetails(response),
-            QwenResponseParser.toPlanSteps(response),
+            com.codex.apk.QwenResponseParser.toFileActionDetails(response),
+            com.codex.apk.QwenResponseParser.toPlanSteps(response),
             aiAssistant.getCurrentModel().getDisplayName(),
             null,
             null

@@ -30,10 +30,17 @@ public class SseClient {
     }
 
     private final OkHttpClient http;
+    private Call call;
 
     public SseClient(OkHttpClient base) {
         // Derive a client with longer read timeout for streaming.
         this.http = base.newBuilder().readTimeout(0, TimeUnit.SECONDS).build();
+    }
+
+    public void cancel() {
+        if (call != null) {
+            call.cancel();
+        }
     }
 
     public void postStream(String url, okhttp3.Headers headers, JsonObject body, Listener listener) {
@@ -43,7 +50,8 @@ public class SseClient {
                 .post(RequestBody.create(body.toString(), MediaType.parse("application/json")))
                 .addHeader("accept", "text/event-stream")
                 .build();
-        http.newCall(req).enqueue(new Callback() {
+        call = http.newCall(req);
+        call.enqueue(new Callback() {
             @Override public void onFailure(Call call, IOException e) {
                 if (listener != null) listener.onError(e.getMessage(), -1);
             }
@@ -138,7 +146,8 @@ public class SseClient {
                     .post(RequestBody.create(body.toString(), MediaType.parse("application/json")))
                     .addHeader("accept", "text/event-stream")
                     .build();
-            try (Response response = http.newCall(req).execute()) {
+            call = http.newCall(req);
+            try (Response response = call.execute()) {
                 if (!response.isSuccessful() || response.body() == null) {
                     int code = response.code();
                     boolean retry = (code == 429 || (code >= 500 && code < 600));

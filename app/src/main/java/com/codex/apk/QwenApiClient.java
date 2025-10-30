@@ -203,6 +203,23 @@ public class QwenApiClient implements StreamingApiClient {
     }
 
     @Override
+    @Override
+    @Deprecated
+    public void sendMessage(String message, AIModel model, List<ChatMessage> history, QwenConversationState state, boolean thinkingModeEnabled, boolean webSearchEnabled, List<ToolSpec> enabledTools, List<File> attachments) {
+        MessageRequest request = new MessageRequest.Builder()
+                .message(message)
+                .model(model)
+                .history(history)
+                .conversationState(state)
+                .thinkingModeEnabled(thinkingModeEnabled)
+                .webSearchEnabled(webSearchEnabled)
+                .enabledTools(enabledTools)
+                .attachments(attachments)
+                .build();
+        sendMessageStreaming(request, (StreamListener) actionListener);
+    }
+
+    @Override
     public void sendMessageStreaming(MessageRequest request, StreamListener listener) {
         new Thread(() -> {
             try {
@@ -347,12 +364,26 @@ public class QwenApiClient implements StreamingApiClient {
 
     private void performToolContinuation(JsonArray toolCalls, MessageRequest originalRequest, QwenConversationState state, StreamListener listener) {
         ParallelToolExecutor executor = new ParallelToolExecutor(projectDir);
-        executor.executeTools(toolCalls).thenAccept(results -> {
+        List<ChatMessage.ToolUsage> toolUsages = new ArrayList<>();
+        for (int i = 0; i < toolCalls.size(); i++) {
+            try {
+                JsonObject call = toolCalls.get(i).getAsJsonObject();
+                String toolName = call.get("name").getAsString();
+                JsonObject args = call.has("args") && call.get("args").isJsonObject() ? call.getAsJsonObject("args") : new JsonObject();
+                ChatMessage.ToolUsage usage = new ChatMessage.ToolUsage(toolName);
+                usage.argsJson = args.toString();
+                toolUsages.add(usage);
+            } catch (Exception e) {
+                Log.e(TAG, "Failed to parse tool call from JSON", e);
+            }
+        }
+
+        executor.executeTools(toolUsages).thenAccept(results -> {
             try {
                 JsonArray jsonResults = new JsonArray();
                 for (ParallelToolExecutor.ToolResult result : results) {
                     JsonObject res = new JsonObject();
-                    res.addProperty("name", result.toolName);
+                    res.addProperty("toolName", result.toolName);
                     res.add("result", result.result);
                     jsonResults.add(res);
                 }

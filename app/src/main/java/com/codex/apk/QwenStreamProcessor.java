@@ -19,6 +19,12 @@ import java.util.Set;
 import okhttp3.Response;
 
 public class QwenStreamProcessor {
+
+    @FunctionalInterface
+    public interface PartialUpdateCallback {
+        void onUpdate(String partialResult, boolean isThinking);
+    }
+
     private static final String TAG = "QwenStreamProcessor";
 
     private final AIAssistant.AIActionListener actionListener;
@@ -428,6 +434,41 @@ public class QwenStreamProcessor {
         } else {
             String fallback = com.codex.apk.util.ResponseUtils.buildExplanationWithThinking(explanation, thinking);
             actionListener.onAiActionsProcessed(rawAiResponseJson, fallback, suggestions, fileActions, model.getDisplayName());
+        }
+    }
+
+    public static boolean isErrorChunk(JsonObject chunk) {
+        // Simple check for now, can be expanded
+        return chunk.has("error");
+    }
+
+    public static void processChunk(JsonObject data, QwenConversationState state, StringBuilder finalText, PartialUpdateCallback callback, AIAssistant.AIActionListener listener) {
+        try {
+            if (data.has("response.created")) {
+                JsonObject created = data.getAsJsonObject("response.created");
+                if (created.has("chat_id")) state.setConversationId(created.get("chat_id").getAsString());
+                if (created.has("response_id")) state.setLastParentId(created.get("response_id").getAsString());
+                if (listener != null) listener.onQwenConversationStateUpdated(state);
+                return;
+            }
+
+            if (data.has("choices")) {
+                JsonArray choices = data.getAsJsonArray("choices");
+                if (choices.size() > 0) {
+                    JsonObject choice = choices.get(0).getAsJsonObject();
+                    if (choice.has("delta")) {
+                        JsonObject delta = choice.getAsJsonObject("delta");
+                        String content = delta.has("content") ? delta.get("content").getAsString() : "";
+                        String phase = delta.has("phase") ? delta.get("phase").getAsString() : "answer";
+                        finalText.append(content);
+                        if (callback != null) {
+                            callback.onUpdate(finalText.toString(), "think".equals(phase));
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Error processing stream chunk in QwenStreamProcessor", e);
         }
     }
 }

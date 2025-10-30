@@ -96,10 +96,10 @@ public class ToolExecutionCoordinator {
             for (int i = 0; i < results.size(); i++) {
                 ParallelToolExecutor.ToolResult toolResult = results.get(i);
                 ChatMessage.ToolUsage usage = lastToolUsages.get(i);
-                updateUsage(usage, toolResult.name, new JsonObject(), toolResult.result, 0); // Duration is not available per tool
+                updateUsage(usage, toolResult.toolName, new JsonObject(), toolResult.result, 0); // Duration is not available per tool
 
                 JsonObject payload = new JsonObject();
-                payload.addProperty("name", toolResult.name);
+                payload.addProperty("toolName", toolResult.toolName);
                 payload.add("result", toolResult.result);
                 jsonResults.add(payload);
 

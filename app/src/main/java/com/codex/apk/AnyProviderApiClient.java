@@ -48,7 +48,7 @@ public class AnyProviderApiClient implements StreamingApiClient {
     protected OkHttpClient httpClient;
     protected final Gson gson = new Gson();
     protected final Random random = new Random();
-    private final java.util.Map<String, SseClient> activeStreams = new java.util.HashMap<>();
+    protected final java.util.Map<String, SseClient> activeStreams = new java.util.HashMap<>();
 
     public AnyProviderApiClient(Context context, AIAssistant.AIActionListener actionListener) {
         this.context = context.getApplicationContext();

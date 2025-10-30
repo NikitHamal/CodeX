@@ -250,7 +250,7 @@ public class QwenStreamProcessor {
         }
 
         if (jsonToParse != null) {
-            QwenResponseParser.parseResponseAsync(jsonToParse, new QwenResponseParser.ParseResultListener() {
+            QwenResponseParser.parseResponseAsync(jsonToParse, rawResponse, new QwenResponseParser.ParseResultListener() {
                 @Override
                 public void onParseSuccess(QwenResponseParser.ParsedResponse parsed) {
                     if (parsed != null && parsed.isValid) {
@@ -270,8 +270,8 @@ public class QwenStreamProcessor {
                 }
 
                 @Override
-                public void onParseError(Exception e) {
-                    Log.e(TAG, "Failed to parse extracted JSON, treating as text.", e);
+                public void onParseFailed() {
+                    Log.e(TAG, "Failed to parse extracted JSON, treating as text.");
                     notifyAiActionsProcessed(rawResponse, finalContent, new ArrayList<>(), new ArrayList<>(), thinkingContent, webSources);
                 }
             });

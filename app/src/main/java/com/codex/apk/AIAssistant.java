@@ -92,9 +92,6 @@ public class AIAssistant {
                 .build();
 
             ((StreamingApiClient) client).sendMessageStreaming(request, (StreamingApiClient.StreamListener) actionListener);
-
-        } else if (client != null) { // Fallback for any non-streaming clients
-            client.sendMessage(message, currentModel, chatHistory, qwenState, thinkingModeEnabled, webSearchEnabled, enabledTools, attachments);
         } else {
             if (actionListener != null) {
                 actionListener.onAiError("API client for " + currentModel.getProvider() + " not found.");

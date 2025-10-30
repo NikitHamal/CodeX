@@ -96,22 +96,6 @@ public class AnyProviderApiClient implements StreamingApiClient {
     }
 
 
-    @Override
-    @Deprecated
-    public void sendMessage(String message, AIModel model, List<ChatMessage> history, QwenConversationState state, boolean thinkingModeEnabled, boolean webSearchEnabled, List<ToolSpec> enabledTools, List<File> attachments) {
-        MessageRequest request = new MessageRequest.Builder()
-                .message(message)
-                .model(model)
-                .history(history)
-                .conversationState(state)
-                .thinkingModeEnabled(thinkingModeEnabled)
-                .webSearchEnabled(webSearchEnabled)
-                .enabledTools(enabledTools)
-                .attachments(attachments)
-                .build();
-        sendMessageStreaming(request, (StreamListener) actionListener);
-    }
-
     protected String mapToProviderModel(String modelId) {
         if (modelId == null || modelId.isEmpty()) return "openai"; // sensible default
         String lower = modelId.toLowerCase(Locale.ROOT);

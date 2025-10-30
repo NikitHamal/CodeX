@@ -316,11 +316,7 @@ public class QwenApiClient implements StreamingApiClient {
                 JsonObject maybe = JsonParser.parseString(jsonToParse).getAsJsonObject();
                 if (maybe.has("action") && "tool_call".equalsIgnoreCase(maybe.get("action").getAsString()) && maybe.has("tool_calls")) {
                     new Thread(() -> {
-                        try {
-                            performToolContinuation(maybe.getAsJsonArray("tool_calls"), request, state, listener);
-                        } catch (IOException e) {
-                            listener.onStreamError(request.getRequestId(), "Tool continuation failed", e);
-                        }
+                        performToolContinuation(maybe.getAsJsonArray("tool_calls"), request, state, listener);
                     }).start();
                     return;
                 }

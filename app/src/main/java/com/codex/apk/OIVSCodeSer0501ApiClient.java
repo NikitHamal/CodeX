@@ -20,22 +20,6 @@ public class OIVSCodeSer0501ApiClient extends AnyProviderApiClient {
         super(context, actionListener);
     }
 
-    @Override
-    public void sendMessage(String message, AIModel model, List<ChatMessage> history, QwenConversationState state, boolean thinkingModeEnabled, boolean webSearchEnabled, List<ToolSpec> enabledTools, List<File> attachments) {
-        // This class now delegates to the streaming implementation.
-        MessageRequest request = new MessageRequest.Builder()
-                .message(message)
-                .model(model)
-                .history(history)
-                .conversationState(state)
-                .thinkingModeEnabled(thinkingModeEnabled)
-                .webSearchEnabled(webSearchEnabled)
-                .enabledTools(enabledTools)
-                .attachments(attachments)
-                .build();
-        sendMessageStreaming(request, (StreamListener) actionListener);
-    }
-
     private String generateUserId() {
         String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
         StringBuilder sb = new StringBuilder(21);

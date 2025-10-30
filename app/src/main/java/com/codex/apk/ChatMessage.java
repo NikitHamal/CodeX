@@ -157,7 +157,7 @@ public class ChatMessage {
 
     /** Tool usage model for UI */
     public static class ToolUsage {
-        public final String name;            // Tool name
+        public final String toolName;            // Tool name
         public String argsJson;              // Arguments as JSON string (pretty or compact)
         public String resultJson;            // Result as JSON string
         public boolean ok;                   // Execution success flag
@@ -168,8 +168,8 @@ public class ChatMessage {
         public int removedLines;
         public List<String> filePaths;       // Aggregated related paths (for grouping)
 
-        public ToolUsage(String name) {
-            this.name = name;
+        public ToolUsage(String toolName) {
+            this.toolName = toolName;
             this.status = "pending";
             this.ok = false;
             this.durationMs = 0L;

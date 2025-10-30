@@ -99,11 +99,12 @@ public class QwenResponseParser {
      * Represents a complete parsed JSON response
      */
     public static class ParsedResponse {
-        public final String action; // plan | file_operation | json_response | single file op
-        public final List<FileOperation> operations;
-        public final List<PlanStep> planSteps;
-        public final String explanation;
-        public final boolean isValid;
+        public String action; // plan | file_operation | json_response | single file op
+        public List<FileOperation> operations;
+        public List<PlanStep> planSteps;
+        public String explanation;
+        public boolean isValid;
+        public String rawResponse;
 
         public ParsedResponse(String action, List<FileOperation> operations, List<PlanStep> planSteps,
                               String explanation, boolean isValid) {
@@ -112,6 +113,11 @@ public class QwenResponseParser {
             this.planSteps = planSteps;
             this.explanation = explanation;
             this.isValid = isValid;
+        }
+
+        public ParsedResponse() {
+            this.operations = new ArrayList<>();
+            this.planSteps = new ArrayList<>();
         }
     }
 

@@ -17,11 +17,11 @@ public class ParallelToolExecutor {
     }
 
     public static class ToolResult {
-        public final String name;
+        public final String toolName;
         public final JsonObject result;
 
-        public ToolResult(String name, JsonObject result) {
-            this.name = name;
+        public ToolResult(String toolName, JsonObject result) {
+            this.toolName = toolName;
             this.result = result;
         }
     }
